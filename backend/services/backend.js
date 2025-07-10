@@ -44,10 +44,7 @@ export const setMemoAsSource = id => api.put(`/memos/${id}/isSource`).then(r => 
 export const setMemoAsNotSource = id => api.put(`/memos/${id}/isNotSource`).then(r => r.data);
 export const moveMemoToFolder = (targetFolderId, memoId) => api.put(`/memos/changeFolder/${targetFolderId}/${memoId}`).then(r => r.data);
 export const removeMemoFromFolder = memoId => api.put(`/memos/MoveOutFolder/${memoId}`).then(r => r.data);
-export const deleteMemoToTrash = (id) => api.put(`/memos/${id}/goToTrashBin`).then((r) => r.data);
-export const restoreMemo = (id) => api.put(`/memos/${id}/revert`).then((r) => r.data);
 export const getMemosByBrain = (brainId) => api.get(`/memos/brain/${brainId}`).then((r) => r.data);
-export const getTrashBinMemos = (brainId) => api.get(`/memos/brain/${brainId}/trashBinList`).then((r) => r.data);
 
 /* ───────── PDF FILES ───────── */
 export const createPdf = body => api.post('/pdfs', body).then(r => r.data);

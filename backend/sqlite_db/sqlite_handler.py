@@ -843,7 +843,7 @@ class SQLiteHandler:
             logging.error("메모 삭제 오류: %s", str(e))
             raise RuntimeError(f"메모 삭제 오류: {str(e)}")
     
-    def update_memo(self, memo_id: int, memo_title: str = None, memo_text: str = None, is_source: bool = None, folder_id: Optional[int] = None, type: Optional[str] = None, is_delete: bool = None, brain_id: Optional[int] = None, deleted_at=None) -> bool:
+    def update_memo(self, memo_id: int, memo_title: str = None, memo_text: str = None, is_source: bool = None, folder_id: Optional[int] = None, type: Optional[str] = None, brain_id: Optional[int] = None) -> bool:
         """메모 정보 업데이트"""
         try:
             # 메모가 존재하는지 확인
@@ -885,15 +885,7 @@ class SQLiteHandler:
             if type is not None:
                 update_fields.append("type = ?")
                 params.append(type)
-
-            if is_delete is not None:
-                update_fields.append("is_delete = ?")
-                params.append(1 if is_delete else 0)
-
-            if deleted_at is not None or deleted_at == "":
-                update_fields.append("deleted_at = ?")
-                params.append(deleted_at) 
-
+                
             # folder_id가 None이거나 "null"이면 NULL로 설정
             if folder_id is None or folder_id == "null":
                 update_fields.append("folder_id = NULL")
@@ -1076,24 +1068,6 @@ class SQLiteHandler:
         except Exception as e:
             logging.error("폴더 없는 메모 제목 목록 조회 오류: %s", str(e))
             return []
-        
-    def get_all_deleted_memos(self):
-        """휴지통에 있는 모든 메모 중, deleted_at이 설정된 것만 조회"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute(
-                "SELECT * FROM Memo WHERE is_delete = 1 AND deleted_at IS NOT NULL"
-            )
-            rows = cursor.fetchall()
-            conn.close()
-            return [dict(row) for row in rows]
-        except Exception as e:
-            logging.error("삭제된 메모 조회 오류: %s", str(e))
-            return []
-
 
     # PDF 관련 메서드
     def create_pdf(self, pdf_title: str, pdf_path: str, folder_id: Optional[int] = None, type: Optional[str] = None, brain_id: Optional[int] = None) -> dict:

@@ -18,10 +18,8 @@ import memoOffIcon from '../../assets/icons/memo-off.png';
 import {
   createMemo,
   getMemosByBrain,
-  getTrashBinMemos,
   updateMemo,
-  deleteMemoToTrash,
-  restoreMemo
+  deleteMemo
 } from '../../../../backend/services/backend';
 
 function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [] }) {
@@ -29,7 +27,6 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
   const [memos, setMemos] = useState([]);
-  const [deletedMemos, setDeletedMemos] = useState([]);
   const [selectedMemoId, setSelectedMemoId] = useState(null);
   const [highlightedMemoId, setHighlightedMemoId] = useState(null);
   const [graphHeight, setGraphHeight] = useState(450);
@@ -39,12 +36,8 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
     const fetch = async () => {
       if (!projectId) return;
       try {
-        const [alive, deleted] = await Promise.all([
-          getMemosByBrain(projectId),
-          getTrashBinMemos(projectId),
-        ]);
-        setMemos(alive);
-        setDeletedMemos(deleted);
+        const memos = await getMemosByBrain(projectId);
+        setMemos(memos);
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);
       }
@@ -86,8 +79,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
         folder_id: null,
         brain_id: projectId,
       });
-      console.log("projectId : ", projectId)
-      console.log("newMemo : ", newMemo)
+
       setMemos(prev => [newMemo, ...prev]);
 
       setHighlightedMemoId(newMemo.memo_id);
@@ -130,24 +122,11 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
 
   const handleDeleteMemo = async (id) => {
     try {
-      await deleteMemoToTrash(id);
-      const memo = memos.find((m) => m.memo_id === id);
+      await deleteMemo(id);
       setMemos((prev) => prev.filter((m) => m.memo_id !== id));
-      setDeletedMemos((prev) => [memo, ...prev]);
       if (selectedMemoId === id) setSelectedMemoId(null);
     } catch (err) {
       console.error('삭제 실패:', err);
-    }
-  };
-
-  const handleRestoreMemo = async (id) => {
-    try {
-      await restoreMemo(id);
-      const memo = deletedMemos.find((m) => m.memo_id === id);
-      setDeletedMemos((prev) => prev.filter((m) => m.memo_id !== id));
-      setMemos((prev) => [memo, ...prev]);
-    } catch (err) {
-      console.error('복원 실패:', err);
     }
   };
 
@@ -247,16 +226,13 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
               ) : (
                 <MemoListPanel
                   memos={memos}
-                  deletedMemos={deletedMemos}
                   selectedId={selectedMemoId}
                   highlightedId={highlightedMemoId}
                   onSelect={setSelectedMemoId}
                   onAdd={handleAddMemo}
                   onDelete={handleDeleteMemo}
-                  onRestore={handleRestoreMemo}
                 />
               )}
-
             </div>
           )}
         </div>

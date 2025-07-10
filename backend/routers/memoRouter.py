@@ -111,8 +111,6 @@ async def get_memo(memo_id: int):
     memo = sqlite_handler.get_memo(memo_id)
     if not memo:
         raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
-    # if memo.get("is_delete"):
-    #     raise HTTPException(status_code=404, detail="휴지통에 있는 메모입니다")
     return memo
 
 @router.put("/{memo_id}", response_model=MemoResponse,
@@ -148,7 +146,6 @@ async def update_memo(memo_id: int, memo_data: MemoUpdate):
             memo_data.is_source,
             memo.get("folder_id"),  # 기존 folder_id 유지
             memo_data.type,
-            None,  # is_delete는 변경하지 않음
             memo_data.brain_id
         )
         
@@ -161,60 +158,28 @@ async def update_memo(memo_id: int, memo_data: MemoUpdate):
     except Exception as e:
         logging.error("메모 업데이트 오류: %s", str(e))
         raise HTTPException(status_code=500, detail="내부 서버 오류")
-
-@router.put("/{memo_id}/goToTrashBin", response_model=MemoResponse,
-           summary="메모를 휴지통으로 이동",
-           description="메모를 휴지통으로 이동시킵니다. is_delete가 true로 설정됩니다.")
-async def go_to_trash_bin(memo_id: int):
-    """
-    메모를 휴지통으로 이동시킵니다:
     
-    - **memo_id**: 휴지통으로 이동할 메모의 ID
-    """
-    # 메모 존재 여부 확인
-    memo = sqlite_handler.get_memo(memo_id)
-    if not memo:
-        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
-    
-    try:
-        # 기존 메모의 folder_id와 brain_id를 가져옴
-        folder_id = memo.get("folder_id")
-        brain_id = memo.get("brain_id")
-        deleted_at = datetime.now().isoformat()
-        updated = sqlite_handler.update_memo(
-            memo_id,
-            memo_title=None,
-            memo_text=None,
-            is_source=None,
-            folder_id=folder_id,  # 기존 folder_id 사용
-            type=None,
-            is_delete=True,
-            brain_id=brain_id,  # 기존 brain_id 사용
-            deleted_at=deleted_at
-
-        )
-        
-        if not updated:
-            raise HTTPException(status_code=400, detail="메모 휴지통 이동 실패")
-            
-        updated_memo = sqlite_handler.get_memo(memo_id)
-        return updated_memo
-    except Exception as e:
-        logging.error("메모 휴지통 이동 오류: %s", str(e))
-        raise HTTPException(status_code=500, detail="내부 서버 오류")
-
-@router.delete("/{memo_id}/inTrashBin", status_code=status.HTTP_204_NO_CONTENT,
-              summary="메모 삭제",
-              description="특정 메모를 휴지통통에서 영구적으로 삭제합니다.")
+@router.delete("/{memo_id}", status_code=204,
+    summary="메모 삭제",
+    description="특정 메모를 완전히 삭제합니다.")
 async def delete_memo(memo_id: int):
     """
-    메모를 휴지통에서 영구적으로 삭제합니다:
-    
+    메모를 삭제합니다:
     - **memo_id**: 삭제할 메모의 ID
     """
-    deleted = sqlite_handler.delete_memo(memo_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+    memo = sqlite_handler.get_memo(memo_id)
+    if not memo:
+        raise HTTPException(status_code=404, detail="삭제할 메모를 찾을 수 없습니다")
+    
+    try:
+        success = sqlite_handler.delete_memo(memo_id)
+        if not success:
+            raise HTTPException(status_code=400, detail="메모 삭제 실패")
+        return  # 204 No Content
+    except Exception as e:
+        logging.error("메모 삭제 오류: %s", str(e))
+        raise HTTPException(status_code=500, detail="서버 오류")
+
 
 @router.put("/{memo_id}/isSource", response_model=MemoResponse,
            summary="메모를 소스로 설정",
@@ -241,7 +206,6 @@ async def set_memo_as_source(memo_id: int):
             is_source=True,
             folder_id=folder_id,
             type=None,
-            is_delete=False,
             brain_id=brain_id
         )
         
@@ -279,7 +243,6 @@ async def set_memo_as_not_source(memo_id: int):
             is_source=False,
             folder_id=folder_id,
             type=None,
-            is_delete=False,
             brain_id=brain_id
         )
         
@@ -325,7 +288,6 @@ async def change_memo_folder(target_folder_id: int, memo_id: int):
             is_source=None,   # 기존 값 유지
             folder_id=target_folder_id,
             type=None,
-            is_delete=False,
             brain_id=brain_id
         )
         
@@ -364,7 +326,6 @@ async def move_memo_out_of_folder(memo_id: int):
             is_source=None,   # 기존 값 유지
             folder_id=None,    # folder_id를 null로 설정
             type=None,
-            is_delete=False,
             brain_id=brain_id
         )
         
@@ -375,28 +336,6 @@ async def move_memo_out_of_folder(memo_id: int):
         return updated_memo
     except Exception as e:
         logging.error("메모 폴더 제거 오류: %s", str(e))
-        raise HTTPException(status_code=500, detail="내부 서버 오류")
-
-@router.get("/brain/{brain_id}/trashBinList", response_model=List[MemoResponse],
-           summary="휴지통 메모 조회",
-           description="특정 Brain의 휴지통에 있는 모든 메모 정보를 반환합니다.")
-async def get_trash_bin_memos(brain_id: int):
-    """
-    특정 Brain의 휴지통에 있는 모든 메모 정보를 반환합니다:
-    
-    - **brain_id**: 조회할 Brain의 ID
-    """
-    try:
-        # Brain 존재 여부 확인
-        brain = sqlite_handler.get_brain(brain_id)
-        if not brain:
-            raise HTTPException(status_code=404, detail="Brain을 찾을 수 없습니다")
-
-        # 휴지통 메모 조회
-        memos = sqlite_handler.get_trash_bin_memos(brain_id)
-        return memos
-    except Exception as e:
-        logging.error("휴지통 메모 조회 오류: %s", str(e))
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 @router.get(
@@ -416,59 +355,3 @@ async def get_memos_by_brain(
     except Exception as e:
         logging.error("메모 조회 오류: %s", e)
         raise HTTPException(status_code=500, detail="서버 오류")
-
-@router.put("/{memo_id}/revert", response_model=MemoResponse,
-           summary="메모 휴지통에서 되돌리기",
-           description="휴지통에 있는 메모를 원래 상태로 되돌립니다. is_delete가 false로 설정됩니다.")
-async def revert_memo(memo_id: int):
-    """
-    휴지통에 있는 메모를 원래 상태로 되돌립니다:
-    
-    - **memo_id**: 되돌릴 메모의 ID
-    """
-    # 메모 존재 여부 확인
-    memo = sqlite_handler.get_memo(memo_id)
-    if not memo:
-        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
-    
-    try:
-        # 기존 메모의 folder_id와 brain_id를 가져옴
-        folder_id = memo.get("folder_id")
-        brain_id = memo.get("brain_id")
-        
-        updated = sqlite_handler.update_memo(
-            memo_id=memo_id,
-            memo_title=None,
-            memo_text=None,
-            is_source=None,
-            folder_id=folder_id,
-            type=None,
-            is_delete=False,
-            brain_id=brain_id,
-            deleted_at=None
-        )
-        
-        if not updated:
-            raise HTTPException(status_code=400, detail="메모 되돌리기 실패")
-            
-        updated_memo = sqlite_handler.get_memo(memo_id)
-        return updated_memo
-    except Exception as e:
-        logging.error("메모 되돌리기 오류: %s", str(e))
-        raise HTTPException(status_code=500, detail="내부 서버 오류") 
-    
-@router.delete("/auto/cleanTrash", status_code=200)
-async def auto_clean_trash():
-    try:
-        threshold = datetime.now() - timedelta(days=30)
-        deleted_memos = sqlite_handler.get_all_deleted_memos()
-
-        count = 0
-        for memo in deleted_memos:
-            if memo.get("deleted_at") and datetime.fromisoformat(memo["deleted_at"]) < threshold:
-                sqlite_handler.delete_memo(memo["memo_id"])
-                count += 1
-        return {"deleted_count": count}
-    except Exception as e:
-        logging.error("휴지통 자동 정리 실패: %s", str(e))
-        raise HTTPException(status_code=500, detail="자동 정리 오류")
