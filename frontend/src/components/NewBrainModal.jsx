@@ -1,12 +1,10 @@
 // src/components/NewBrainModal.jsx
 import React, { useState } from 'react';
 import { createBrain } from '../../../backend/services/backend';
-import { ICONS } from './iconMap';
 import './NewBrainModal.css';
-
+import { RiDeleteBack2Line } from "react-icons/ri";
 export default function NewBrainModal({ onClose, onCreated }) {
     const [name, setName] = useState('');
-    const [iconKey, setIconKey] = useState(ICONS[0].key);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async e => {
@@ -19,7 +17,6 @@ export default function NewBrainModal({ onClose, onCreated }) {
             const newBrain = await createBrain({
                 brain_name: name,
                 user_id: uid,
-                icon_key: iconKey
             });
             onCreated(newBrain);
             onClose();
@@ -33,45 +30,27 @@ export default function NewBrainModal({ onClose, onCreated }) {
     return (
         <div className="modal-back">
             <form className="modal-box" onSubmit={handleSubmit}>
-                <h3>새 프로젝트</h3>
+                <div className="modal-header">
 
-                <label>이름</label>
+                    <h3>새 프로젝트 만들기</h3>
+                    <button
+                        onClick={onClose}
+                        className='close-button'
+                    >
+                        <RiDeleteBack2Line size={22} />
+                    </button>
+                </div>
+
                 <input
+                    type="text"
+                    placeholder="프로젝트 이름 입력"
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    required
                 />
 
-                {/* <label>소개</label>
-                <input
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="이 프로젝트는 어떤 내용을 다루나요?"
-                    maxLength={100}
-                /> */}
-
-                <label>아이콘</label>
-                <div className="icon-grid">
-                    {ICONS.map(({ key, cmp: Icon }) => (
-                        <div
-                            key={key}
-                            className={`icon-cell ${iconKey === key ? 'active' : ''}`}
-                            onClick={() => setIconKey(key)}
-                        >
-                            <Icon size={28} />
-                        </div>
-                    ))}
-                </div>
 
                 <button type="submit" disabled={loading}>
                     {loading ? '저장 중…' : '생성'}
-                </button>
-                <button
-                    type="button"
-                    className="secondary"
-                    onClick={onClose}
-                >
-                    취소
                 </button>
             </form>
         </div>

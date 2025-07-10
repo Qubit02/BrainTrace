@@ -51,7 +51,6 @@ class SQLiteHandler:
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
                 user_id    INTEGER NOT NULL,
-                icon_key   TEXT,
                 created_at TEXT,
                 FOREIGN KEY (user_id) REFERENCES User(user_id)
             )
@@ -76,7 +75,6 @@ class SQLiteHandler:
                 memo_title TEXT,
                 memo_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_source BOOLEAN DEFAULT 0,
-                is_delete BOOLEAN DEFAULT 0,
                 type TEXT,                
                 folder_id INTEGER,
                 brain_id INTEGER,
@@ -318,7 +316,6 @@ class SQLiteHandler:
     
     # Brain 관련 메서드
     def create_brain(self, brain_name: str, user_id: int,
-                     icon_key: str | None = None,
                      created_at: str | None = None) -> dict:
         try:
             # 사용자 존재 확인
@@ -333,12 +330,11 @@ class SQLiteHandler:
             cur  = conn.cursor()
             cur.execute(
                 """INSERT INTO Brain
-                     (brain_name, user_id, icon_key, created_at)
-                   VALUES (?,?,?,?)""",
+                     (brain_name, user_id, created_at)
+                   VALUES (?,?,?)""",
                 (
                     brain_name,
                     user_id,
-                    icon_key,
                     created_at
                 )
             )
@@ -349,7 +345,6 @@ class SQLiteHandler:
                 "brain_id":   brain_id,
                 "brain_name": brain_name,
                 "user_id":    user_id,
-                "icon_key":   icon_key,
                 "created_at": created_at,
             }
         except Exception as e:
@@ -437,7 +432,7 @@ class SQLiteHandler:
             cur  = conn.cursor()
             cur.execute(
                 """SELECT brain_id, brain_name, user_id,
-                          icon_key, created_at
+                        created_at
                    FROM Brain WHERE brain_id=?""",
                 (brain_id,)
             )
@@ -449,8 +444,7 @@ class SQLiteHandler:
                 "brain_id":   row[0],
                 "brain_name": row[1],
                 "user_id":    row[2],
-                "icon_key":   row[3],
-                "created_at": row[4],
+                "created_at": row[3],
             }
         except Exception as e:
             logging.error("브레인 조회 오류: %s", e)
@@ -463,7 +457,7 @@ class SQLiteHandler:
             cur  = conn.cursor()
             cur.execute(
                 """SELECT brain_id, brain_name, user_id,
-                          icon_key, created_at
+                          created_at
                      FROM Brain WHERE user_id=?""",
                 (user_id,)
             )
@@ -473,8 +467,7 @@ class SQLiteHandler:
                     "brain_id":   r[0],
                     "brain_name": r[1],
                     "user_id":    r[2],
-                    "icon_key":   r[3],
-                    "created_at": r[4],
+                    "created_at": r[3],
                 } for r in rows
             ]
         except Exception as e:
@@ -488,7 +481,7 @@ class SQLiteHandler:
             cur  = conn.cursor()
             cur.execute(
                 """SELECT brain_id, brain_name, user_id,
-                          icon_key, created_at
+                          created_at
                      FROM Brain"""
             )
             rows = cur.fetchall(); conn.close()
@@ -497,8 +490,7 @@ class SQLiteHandler:
                     "brain_id":   r[0],
                     "brain_name": r[1],
                     "user_id":    r[2],
-                    "icon_key":   r[3],
-                    "created_at": r[4],
+                    "created_at": r[3],
                 } for r in rows
             ]
         except Exception as e:

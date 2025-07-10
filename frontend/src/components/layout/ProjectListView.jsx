@@ -10,7 +10,6 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { RiDeleteBinLine } from "react-icons/ri";
 import { GoPencil } from "react-icons/go";
-import { iconByKey } from '../iconMap';
 import NewBrainModal from '../NewBrainModal';
 import ConfirmDialog from '../ConfirmDialog';
 import './ProjectListView.css';
@@ -186,7 +185,6 @@ export default function ProjectListView() {
                 {/* 프로젝트 카드 그리드 */}
                 <div className={`project-grid ${showCards ? 'cards-visible' : ''}`}>
                     {sorted.map((p, index) => {
-                        const Icon = iconByKey[p.icon_key] ?? iconByKey.BsGraphUp;
                         return (
                             <div
                                 key={p.brain_id}
@@ -319,11 +317,6 @@ export default function ProjectListView() {
 
                                 setBrains(prev => [newBrain, ...prev]);
                                 setHighlightId(newBrain.brain_id);
-
-                                // setTimeout(() => {
-                                //     nav(`/project/${newBrain.brain_id}`);
-                                // }, 1800);
-                                // 👉 1초 뒤 하이라이팅 제거 및 수정 진입
                                 setTimeout(() => {
                                     setHighlightId(null);
                                     setEditingId(newBrain.brain_id);

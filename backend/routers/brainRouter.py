@@ -20,19 +20,16 @@ router = APIRouter(
 class BrainCreate(BaseModel):
     brain_name : str = Field(..., min_length=1, max_length=50)
     user_id    : int
-    icon_key   : Optional[str]  = None        # 예: "BsGraphUp"
     created_at : Optional[str]  = None        # "2025-05-06" 등
 
 class BrainUpdate(BaseModel):
     brain_name : Optional[str]  = None
-    icon_key   : Optional[str]  = None
     created_at : Optional[str]  = None
 
 class BrainResponse(BaseModel):
     brain_id: int = Field(..., description="브레인 ID", example=1)
     brain_name: str = Field(..., description="브레인 이름", example="파이썬 학습")
     user_id: int = Field(..., description="소유자 사용자 ID", example=1)
-    icon_key:   str | None = None        
     created_at: str | None = None
     
     class Config:
@@ -59,7 +56,6 @@ async def create_brain(brain: BrainCreate):
         return sqlite_handler.create_brain(
             brain_name = brain.brain_name,
             user_id    = brain.user_id,
-            icon_key   = brain.icon_key,
             created_at = date.today().isoformat()   # ← 오늘 날짜 자동 입력
         )
     except ValueError as e:
