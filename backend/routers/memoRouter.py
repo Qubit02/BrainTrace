@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlite_db.sqlite_handler import SQLiteHandler
 import logging
+from datetime import datetime,timedelta
 
 # SQLite 핸들러 인스턴스 생성
 sqlite_handler = SQLiteHandler()
@@ -59,6 +60,7 @@ class MemoResponse(BaseModel):
             summary="메모 생성",
             description="새로운 메모를 생성합니다. folder_id가 주어지면 해당 폴더에 메모가 생성되고, 주어지지 않으면 폴더 없이 생성됩니다.")
 async def create_memo(memo_data: MemoCreate):
+    print("🧠 받은 brain_id:", memo_data.brain_id)
     """
     새 메모를 생성합니다:
     
@@ -178,7 +180,7 @@ async def go_to_trash_bin(memo_id: int):
         # 기존 메모의 folder_id와 brain_id를 가져옴
         folder_id = memo.get("folder_id")
         brain_id = memo.get("brain_id")
-        
+        deleted_at = datetime.now().isoformat()
         updated = sqlite_handler.update_memo(
             memo_id,
             memo_title=None,
@@ -187,7 +189,9 @@ async def go_to_trash_bin(memo_id: int):
             folder_id=folder_id,  # 기존 folder_id 사용
             type=None,
             is_delete=True,
-            brain_id=brain_id  # 기존 brain_id 사용
+            brain_id=brain_id,  # 기존 brain_id 사용
+            deleted_at=deleted_at
+
         )
         
         if not updated:
@@ -440,7 +444,8 @@ async def revert_memo(memo_id: int):
             folder_id=folder_id,
             type=None,
             is_delete=False,
-            brain_id=brain_id
+            brain_id=brain_id,
+            deleted_at=None
         )
         
         if not updated:
@@ -451,3 +456,19 @@ async def revert_memo(memo_id: int):
     except Exception as e:
         logging.error("메모 되돌리기 오류: %s", str(e))
         raise HTTPException(status_code=500, detail="내부 서버 오류") 
+    
+@router.delete("/auto/cleanTrash", status_code=200)
+async def auto_clean_trash():
+    try:
+        threshold = datetime.now() - timedelta(days=30)
+        deleted_memos = sqlite_handler.get_all_deleted_memos()
+
+        count = 0
+        for memo in deleted_memos:
+            if memo.get("deleted_at") and datetime.fromisoformat(memo["deleted_at"]) < threshold:
+                sqlite_handler.delete_memo(memo["memo_id"])
+                count += 1
+        return {"deleted_count": count}
+    except Exception as e:
+        logging.error("휴지통 자동 정리 실패: %s", str(e))
+        raise HTTPException(status_code=500, detail="자동 정리 오류")

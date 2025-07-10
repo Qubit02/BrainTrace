@@ -229,13 +229,13 @@ function MemoListPanel({
 
 
                 {displayedMemos.map((memo) => {
-                    const filename = `${memo.title || '메모'}.txt`;
-                    const content = memo.content || '';
+                    const filename = `${memo.memo_title || '메모'}.txt`;
+                    const content = memo.memo_text || '';
 
                     return (
                         <div
-                            key={memo.id}
-                            className={`memo-item ${isTrash ? 'trash' : ''} ${selectedId === memo.id ? 'active' : ''} ${highlightedId === memo.id ? 'highlighted' : ''}`}
+                            key={memo.memo_id}
+                            className={`memo-item ${isTrash ? 'trash' : ''} ${selectedId === memo.memo_id ? 'active' : ''} ${highlightedId === memo.memo_id ? 'highlighted' : ''}`}
                             draggable={!isTrash}
                             onDragStart={!isTrash ? e => {
                                 const dragData = { name: filename, content };
@@ -245,12 +245,15 @@ function MemoListPanel({
                             } : undefined}
                             onDragEnd={!isTrash ? e => e.currentTarget.classList.remove('dragging') : undefined}
                         >
-                            <div className="memo-item-content" onClick={() => !isTrash && onSelect(memo.id)}>
-                                <div className="memo-title">{memo.title || '제목 없음'}</div>
+                            <div className="memo-item-content" onClick={() => !isTrash && onSelect(memo.memo_id)}>
+                                <div className="memo-title">{memo.memo_title || '제목 없음'}</div>
                                 <div className="memo-preview">
                                     {(content.length > 0 ? content.slice(0, 40).replace(/\n/g, ' ') : '내용 없음')}...
                                 </div>
-                                <div className="memo-date">{new Date(memo.id).toLocaleDateString()}</div>
+                                <div className="memo-date">
+                                    {memo.memo_date ? new Date(memo.memo_date).toLocaleDateString() : ''}
+                                </div>
+
                             </div>
 
                             {!isTrash ? (
@@ -258,7 +261,7 @@ function MemoListPanel({
                                     className="delete-button"
                                     onClick={e => {
                                         e.stopPropagation();
-                                        onDelete(memo.id);
+                                        onDelete(memo.memo_id);
                                     }}
                                 >
                                     <IoTrashBinOutline size={18} />
@@ -266,7 +269,7 @@ function MemoListPanel({
                             ) : (
                                 <button
                                     className="restore-button"
-                                    onClick={() => onRestore(memo.id)}
+                                    onClick={() => onRestore(memo.memo_id)}
                                 >
                                     <MdOutlineRestore />
                                 </button>

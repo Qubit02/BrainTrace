@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './styles/MemoEditor.css';
-import { MdKeyboardBackspace } from "react-icons/md";
-import { TbArrowsMinimize } from "react-icons/tb";
-import { TbArrowsDiagonalMinimize2 } from "react-icons/tb";
-import { LuMoveDiagonal } from "react-icons/lu";
 import { RiCollapseDiagonalFill } from "react-icons/ri";
 function MemoEditor({ memo, onSaveAndClose }) {
-  const [title, setTitle] = useState(memo?.title || '');
-  const [body, setBody] = useState(memo?.content || '');
+
+  const [title, setTitle] = useState(memo.memo_title || '');
+  const [body, setBody] = useState(memo.memo_text || '');
   const titleInputRef = useRef(null);
 
   const handleBack = () => {
     const finalTitle = title.trim() === '' ? 'Untitled' : title;
-    const updated = { ...memo, title: finalTitle, content: body };
+    const updated = { ...memo, title: finalTitle, content: body, brain_id: memo.brain_id };
     onSaveAndClose(updated);
   };
 
   useEffect(() => {
-    setTitle(memo?.title || '');
-    setBody(memo?.content || '');
+    setTitle(memo.memo_title || '');
+    setBody(memo.memo_text || '');
   }, [memo]);
 
   useEffect(() => {

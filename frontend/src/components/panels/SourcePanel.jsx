@@ -24,8 +24,6 @@ import './styles/Scrollbar.css';
 
 import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";
-import { IoIosSearch } from "react-icons/io";
-import { IoSearchSharp } from "react-icons/io5";
 import { IoMdSearch } from "react-icons/io";
 function normalizeApiTree(apiFolders = []) {
   return apiFolders.map(folder => ({
@@ -98,17 +96,12 @@ export default function SourcePanel({
   };
 
   useEffect(() => {
-    //console.log("focusSourceId 1111: ", focusSource.id)
     if (focusSource) {
-
-      console.log("focusSourceId : ", focusSource.id)
-      console.log("allFiles : ", allFiles)
       const targetFile = allFiles.find(file => {
         if (file.type === 'pdf') return file.pdf_id == focusSource.id;
         if (file.type === 'txt') return file.txt_id == focusSource.id;
         return false;
       });
-      console.log("targetFile : ", targetFile)
 
       if (targetFile) {
         if (targetFile.type === 'pdf') {
@@ -118,7 +111,6 @@ export default function SourcePanel({
           setOpenedTXT(targetFile);
           setIsPDFOpen(true);
         }
-
         setLocalFocusSource(null);
       }
     }
@@ -324,12 +316,12 @@ export default function SourcePanel({
                   fontSize: '14px',
                   borderRadius: '6px',
                   border: '1px solid #ccc',
-                  backgroundColor: '#f9f9f9'
+                  backgroundColor: '#f9f9f9',
+                  color: 'black'
                 }}
               />
             </form>
           )}
-
 
           {showAddFolderInput && (
             <form className="add-form fancy-form" onSubmit={handleAddFolder}>
