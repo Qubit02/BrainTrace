@@ -36,23 +36,12 @@ class SQLiteHandler:
             INSERT OR IGNORE INTO Sequence (name, value) VALUES ('content_id', 0)
             ''')
             
-            # User 테이블 생성
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS User (
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_name TEXT NOT NULL UNIQUE,
-                user_pw TEXT NOT NULL
-            )
-            ''')
-            
             # Brain 테이블 생성
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS Brain (
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
-                user_id    INTEGER NOT NULL,
                 created_at TEXT,
-                FOREIGN KEY (user_id) REFERENCES User(user_id)
             )
             ''')
             
@@ -149,180 +138,10 @@ class SQLiteHandler:
             if conn:
                 conn.close()
     
-    def _hash_password(self, password: str) -> str:
-        """비밀번호를 SHA-256 해시로 변환"""
-        return hashlib.sha256(password.encode()).hexdigest()
-    
-    def create_user(self, username: str, password: str) -> dict:
-        """새 사용자 생성"""
-        try:
-            hashed_pw = self._hash_password(password)
-            
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                "INSERT INTO User (user_name, user_pw) VALUES (?, ?)",
-                (username, hashed_pw)
-            )
-            user_id = cursor.lastrowid
-            
-            conn.commit()
-            conn.close()
-            
-            logging.info("사용자 생성 완료: user_id=%s, username=%s", user_id, username)
-            return {"user_id": user_id, "user_name": username}
-        except sqlite3.IntegrityError:
-            logging.error("사용자 생성 실패: 이미 존재하는 사용자명")
-            raise ValueError("이미 존재하는 사용자명입니다")
-        except Exception as e:
-            logging.error("사용자 생성 오류: %s", str(e))
-            raise RuntimeError(f"사용자 생성 오류: {str(e)}")
-    
-    def delete_user(self, user_id: int) -> bool:
-        """사용자 삭제"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("DELETE FROM User WHERE user_id = ?", (user_id,))
-            deleted = cursor.rowcount > 0
-            
-            conn.commit()
-            conn.close()
-            
-            if deleted:
-                logging.info("사용자 삭제 완료: user_id=%s", user_id)
-            else:
-                logging.warning("사용자 삭제 실패: 존재하지 않는 user_id=%s", user_id)
-            
-            return deleted
-        except Exception as e:
-            logging.error("사용자 삭제 오류: %s", str(e))
-            raise RuntimeError(f"사용자 삭제 오류: {str(e)}")
-    
-    def update_username(self, user_id: int, new_username: str) -> bool:
-        """사용자 이름 업데이트"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                "UPDATE User SET user_name = ? WHERE user_id = ?",
-                (new_username, user_id)
-            )
-            updated = cursor.rowcount > 0
-            
-            conn.commit()
-            conn.close()
-            
-            if updated:
-                logging.info("사용자 이름 업데이트 완료: user_id=%s, new_username=%s", user_id, new_username)
-            else:
-                logging.warning("사용자 이름 업데이트 실패: 존재하지 않는 user_id=%s", user_id)
-            
-            return updated
-        except sqlite3.IntegrityError:
-            logging.error("사용자 이름 업데이트 실패: 이미 존재하는 사용자명")
-            raise ValueError("이미 존재하는 사용자명입니다")
-        except Exception as e:
-            logging.error("사용자 이름 업데이트 오류: %s", str(e))
-            raise RuntimeError(f"사용자 이름 업데이트 오류: {str(e)}")
-    
-    def update_password(self, user_id: int, new_password: str) -> bool:
-        """사용자 비밀번호 업데이트"""
-        try:
-            hashed_pw = self._hash_password(new_password)
-            
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                "UPDATE User SET user_pw = ? WHERE user_id = ?",
-                (hashed_pw, user_id)
-            )
-            updated = cursor.rowcount > 0
-            
-            conn.commit()
-            conn.close()
-            
-            if updated:
-                logging.info("사용자 비밀번호 업데이트 완료: user_id=%s", user_id)
-            else:
-                logging.warning("사용자 비밀번호 업데이트 실패: 존재하지 않는 user_id=%s", user_id)
-            
-            return updated
-        except Exception as e:
-            logging.error("사용자 비밀번호 업데이트 오류: %s", str(e))
-            raise RuntimeError(f"사용자 비밀번호 업데이트 오류: {str(e)}")
-    
-    def get_user(self, user_id: int) -> Optional[dict]:
-        """사용자 정보 조회"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT user_id, user_name FROM User WHERE user_id = ?", (user_id,))
-            user = cursor.fetchone()
-            
-            conn.close()
-            
-            if user:
-                return {"user_id": user[0], "user_name": user[1]}
-            else:
-                return None
-        except Exception as e:
-            logging.error("사용자 조회 오류: %s", str(e))
-            return None
-    
-    def get_all_users(self) -> List[dict]:
-        """모든 사용자 조회"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT user_id, user_name FROM User")
-            users = cursor.fetchall()
-            
-            conn.close()
-            
-            return [{"user_id": user[0], "user_name": user[1]} for user in users]
-        except Exception as e:
-            logging.error("사용자 목록 조회 오류: %s", str(e))
-            return []
-            
-    def authenticate_user(self, username: str, password: str) -> Optional[dict]:
-        """사용자 인증"""
-        try:
-            hashed_pw = self._hash_password(password)
-            
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                "SELECT user_id, user_name FROM User WHERE user_name = ? AND user_pw = ?",
-                (username, hashed_pw)
-            )
-            user = cursor.fetchone()
-            conn.close()
-            
-            if user:
-                return {"user_id": user[0], "user_name": user[1]}
-            else:
-                return None
-        except Exception as e:
-            logging.error("사용자 인증 오류: %s", str(e))
-            return None
-    
     # Brain 관련 메서드
-    def create_brain(self, brain_name: str, user_id: int,
-                     created_at: str | None = None) -> dict:
+    def create_brain(self, brain_name: str, created_at: str | None = None) -> dict:
         try:
-            # 사용자 존재 확인
-            if not self.get_user(user_id):
-                raise ValueError("존재하지 않는 사용자")
-            
-            # 2) created_at 기본값: 오늘
+            # created_at 기본값: 오늘
             if created_at is None:
                 created_at = datetime.date.today().isoformat()   # '2025-05-07'
 
@@ -330,11 +149,10 @@ class SQLiteHandler:
             cur  = conn.cursor()
             cur.execute(
                 """INSERT INTO Brain
-                     (brain_name, user_id, created_at)
-                   VALUES (?,?,?)""",
+                     (brain_name, created_at)
+                   VALUES (?, ?)""",
                 (
                     brain_name,
-                    user_id,
                     created_at
                 )
             )
@@ -344,7 +162,6 @@ class SQLiteHandler:
             return {
                 "brain_id":   brain_id,
                 "brain_name": brain_name,
-                "user_id":    user_id,
                 "created_at": created_at,
             }
         except Exception as e:
@@ -431,8 +248,7 @@ class SQLiteHandler:
             conn = sqlite3.connect(self.db_path)
             cur  = conn.cursor()
             cur.execute(
-                """SELECT brain_id, brain_name, user_id,
-                        created_at
+                """SELECT brain_id, brain_name, created_at
                    FROM Brain WHERE brain_id=?""",
                 (brain_id,)
             )
@@ -443,45 +259,19 @@ class SQLiteHandler:
             return {
                 "brain_id":   row[0],
                 "brain_name": row[1],
-                "user_id":    row[2],
-                "created_at": row[3],
+                "created_at": row[2],
             }
         except Exception as e:
             logging.error("브레인 조회 오류: %s", e)
             return None
          
-    def get_user_brains(self, user_id: int) -> List[dict]:
-        """특정 사용자의 모든 브레인"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cur  = conn.cursor()
-            cur.execute(
-                """SELECT brain_id, brain_name, user_id,
-                          created_at
-                     FROM Brain WHERE user_id=?""",
-                (user_id,)
-            )
-            rows = cur.fetchall(); conn.close()
-            return [
-                {
-                    "brain_id":   r[0],
-                    "brain_name": r[1],
-                    "user_id":    r[2],
-                    "created_at": r[3],
-                } for r in rows
-            ]
-        except Exception as e:
-            logging.error("사용자 브레인 목록 조회 오류: %s", e)
-            return []
-    
     def get_all_brains(self) -> List[dict]:
         """시스템의 모든 브레인"""
         try:
             conn = sqlite3.connect(self.db_path)
             cur  = conn.cursor()
             cur.execute(
-                """SELECT brain_id, brain_name, user_id,
-                          created_at
+                """SELECT brain_id, brain_name, created_at
                      FROM Brain"""
             )
             rows = cur.fetchall(); conn.close()
@@ -489,8 +279,7 @@ class SQLiteHandler:
                 {
                     "brain_id":   r[0],
                     "brain_name": r[1],
-                    "user_id":    r[2],
-                    "created_at": r[3],
+                    "created_at": r[2],
                 } for r in rows
             ]
         except Exception as e:

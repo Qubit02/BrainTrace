@@ -1,22 +1,9 @@
 // src/services/backend.js
 import { api } from './api';
 
-/* ───────── USERS ───────── */
-export const createUser = (username, password) => api.post('/users', { username, password }).then(r => r.data);
-export const listUsers = () => api.get('/users').then(r => r.data);
-export const getUser = id => api.get(`/users/${id}`).then(r => r.data);
-export const updateUser = (id, body) => api.put(`/users/${id}`, body).then(r => r.data);
-export const authUser = (username, password) => api.post('/users/auth', { username, password }).then(r => r.data);
-
 /* ───────── BRAINS ───────── */
-export const createBrain = ({ brain_name, user_id, icon_key }) =>
-    api.post('/brains', {
-        brain_name,
-        user_id,
-        icon_key,
-    }).then(res => res.data);
+export const createBrain = ({ brain_name }) => api.post('/brains', { brain_name }).then(res => res.data);
 export const listBrains = () => api.get('/brains').then(r => r.data);
-export const listUserBrains = user_id => api.get(`/brains/user/${user_id}`).then(r => r.data);
 export const getBrain = id => api.get(`/brains/${id}`).then(r => r.data);
 export const updateBrain = (id, body) => api.put(`/brains/${id}`, body).then(r => r.data);
 export const deleteBrain = id => api.delete(`/brains/${id}`);

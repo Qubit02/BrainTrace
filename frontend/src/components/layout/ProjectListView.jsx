@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    listUserBrains,
+    listBrains,
     deleteBrain,
-    renameBrain, createBrain
+    renameBrain,
+    createBrain
 } from '../../../../backend/services/backend';
 
 import AppHeader from './AppHeader';
@@ -36,47 +37,61 @@ export default function ProjectListView() {
 
     const fullText = '당신만의 세컨드 브레인을 만들어보세요.';
 
-    /* ───────── DB 요청 ───────── */
-    const fetchBrains = () => {
-        const uid = Number(localStorage.getItem('userId'));
-        if (!uid) return;
-        listUserBrains(uid).then(setBrains).catch(console.error);
+    const fetchBrains = () => { // 모든 브레인 가져오기
+        listBrains()
+            .then(setBrains)
+            .catch(console.error);
     };
-    useEffect(fetchBrains, []);
+
+    useEffect(() => {
+        fetchBrains();
+    }, []);
 
     /* ───────── 타이핑 애니메이션 ───────── */
     useEffect(() => {
-        let timeoutId;
-        let currentIndex = 0;
+        const hasVisited = sessionStorage.getItem('hasVisited');
 
-        const typeText = () => {
-            if (currentIndex <= fullText.length) {
-                setDisplayText(fullText.slice(0, currentIndex));
-                currentIndex++;
-                timeoutId = setTimeout(typeText, 80); // 타이핑 속도
-            } else {
-                // 타이핑 완료 후 1초 대기 후 제목을 위로 이동
-                setTimeout(() => {
-                    setAnimationComplete(true); // 먼저 제목을 위로 이동
+        if (hasVisited) {
+            // 이미 한 번 본 경우: 애니메이션 없이 바로 카드 보이기
+            setDisplayText(fullText);
+            setAnimationComplete(true);
+            setShowCards(true);
+            setShowSortButton(true);
+        } else {
+            // 처음 접속한 경우: 애니메이션 실행
+            sessionStorage.setItem('hasVisited', 'true');
+
+            let timeoutId;
+            let currentIndex = 0;
+
+            const typeText = () => {
+                if (currentIndex <= fullText.length) {
+                    setDisplayText(fullText.slice(0, currentIndex));
+                    currentIndex++;
+                    timeoutId = setTimeout(typeText, 80); // 타이핑 속도
+                } else {
+                    // 타이핑 완료 후 1초 대기 후 제목을 위로 이동
                     setTimeout(() => {
-                        setShowCards(true);
-                        // 카드들이 나타난 후 0.3초 후에 정렬 버튼 나타내기
+                        setAnimationComplete(true); // 먼저 제목을 위로 이동
                         setTimeout(() => {
-                            setShowSortButton(true);
-                        }, 300);
-                    }, 800); // 제목 이동 후 0.8초 대기
-                }, 1000);
-            }
-        };
+                            setShowCards(true);
+                            setTimeout(() => {
+                                setShowSortButton(true);
+                            }, 300);
+                        }, 800);
+                    }, 1000);
+                }
+            };
 
-        // 초기 로딩 시 0.5초 후 타이핑 시작
-        const initialDelay = setTimeout(typeText, 500);
+            const initialDelay = setTimeout(typeText, 500);
 
-        return () => {
-            clearTimeout(timeoutId);
-            clearTimeout(initialDelay);
-        };
+            return () => {
+                clearTimeout(timeoutId);
+                clearTimeout(initialDelay);
+            };
+        }
     }, []);
+
 
     /* 팝업 외부 클릭 시 자동 닫기 */
     useEffect(() => {
@@ -310,9 +325,7 @@ export default function ProjectListView() {
 
                             try {
                                 const newBrain = await createBrain({
-                                    brain_name: 'Untitled',
-                                    user_id: uid,
-                                    icon_key: 'BsGraphUp'
+                                    brain_name: 'Untitled'
                                 });
 
                                 setBrains(prev => [newBrain, ...prev]);

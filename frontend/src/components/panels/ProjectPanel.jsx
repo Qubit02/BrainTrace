@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /* API ─ backend */
-import { listUserBrains } from '../../../../backend/services/backend';
+import { listBrains } from '../../../../backend/services/backend';
 
 /* style */
 import './styles/Common.css';
@@ -27,9 +27,7 @@ export default function ProjectPanel({ activeProject, onProjectChange }) {
 
   /* ───────── DB 호출 ───────── */
   useEffect(() => {
-    const uid = Number(localStorage.getItem('userId'));
-    if (!uid) return;
-    listUserBrains(uid)
+    listBrains()
       .then(setBrains)
       .catch(console.error);
   }, []);

@@ -13,8 +13,7 @@ from neo4j_db.utils import run_neo4j
 from sqlite_db.sqlite_handler import SQLiteHandler
 
 # 기존 라우터
-from routers import brainGraph, userRouter, brainRouter, folderRouter, memoRouter, pdfRouter, textFileRouter, voiceRouter, chatRouter, searchRouter
-# 새로 추가할 파일/텍스트/음성 라우터
+from routers import brainGraph, brainRouter, folderRouter, memoRouter, pdfRouter, textFileRouter, voiceRouter, chatRouter, searchRouter
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -25,7 +24,7 @@ logging.basicConfig(
 logging.getLogger("uvicorn").setLevel(logging.INFO)
 logging.getLogger("uvicorn.access").setLevel(logging.INFO)
 
-# ─── DB 핸들러 & 전역 변수 ──────────────────────────
+# ───── DB 핸들러 및 Neo4j 프로세스 ─────
 sqlite_handler = SQLiteHandler()
 neo4j_process = None
 
@@ -79,7 +78,6 @@ app.add_middleware(
 
 # ─── 라우터 등록 ────────────────────────────────────
 app.include_router(brainGraph.router)
-app.include_router(userRouter.router)
 app.include_router(brainRouter.router)
 app.include_router(folderRouter.router)
 app.include_router(memoRouter.router)
