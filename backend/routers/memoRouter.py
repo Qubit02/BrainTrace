@@ -17,7 +17,7 @@ router = APIRouter(
 
 # Pydantic 모델 정의
 class MemoCreate(BaseModel):
-    memo_title: str = Field(..., description="메모 제목", min_length=1, max_length=100, example="파이썬 문법 정리")
+    memo_title: Optional[str] = Field(None, description="메모 제목", max_length=100)
     memo_text: str = Field(..., description="메모 내용", example="파이썬은 들여쓰기가 중요한 언어입니다.")
     folder_id: Optional[int] = Field(None, description="메모가 속한 폴더 ID", example=1)
     is_source: Optional[bool] = Field(False, description="소스 메모 여부", example=False)

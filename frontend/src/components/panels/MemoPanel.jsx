@@ -72,9 +72,8 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
     try {
       const newMemo = await createMemo({
         memo_text: content,
-        memo_title: 'Untitled',
+        memo_title: "",
         is_source: false,
-        is_delete: false,
         type: 'memo',
         folder_id: null,
         brain_id: projectId,

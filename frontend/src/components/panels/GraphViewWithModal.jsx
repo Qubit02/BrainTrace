@@ -58,7 +58,7 @@ function GraphViewWithModal(props) {
                 newlyAddedNodesLength: newlyAddedNodeNames?.length || 0
             });
         }
-    }); // ✅ 의존성 배열 제거 - 매 렌더링마다 실행되지만 조건부로 제한
+    }, []);
 
     // ESC로 닫기
     useEffect(() => {
