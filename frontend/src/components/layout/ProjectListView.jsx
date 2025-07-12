@@ -11,7 +11,6 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { RiDeleteBinLine } from "react-icons/ri";
 import { GoPencil } from "react-icons/go";
-import NewBrainModal from '../NewBrainModal';
 import ConfirmDialog from '../ConfirmDialog';
 import './ProjectListView.css';
 import { FaPlus } from "react-icons/fa";
@@ -22,7 +21,6 @@ export default function ProjectListView() {
     /* ───────── state ───────── */
     const [sortOption, setSortOption] = useState('최신 항목');
     const [brains, setBrains] = useState([]);
-    const [showModal, setShowModal] = useState(false);
     const [menuOpenId, setMenuOpenId] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [tempTitle, setTempTitle] = useState('');
@@ -92,7 +90,6 @@ export default function ProjectListView() {
         }
     }, []);
 
-
     /* 팝업 외부 클릭 시 자동 닫기 */
     useEffect(() => {
         const close = () => setMenuOpenId(null);
@@ -141,7 +138,6 @@ export default function ProjectListView() {
                     transform: animationComplete ? 'translateY(0)' : 'translateY(25vh)',
                     transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
-
                     <h1
                         className={`page-highlight ${animationComplete ? 'animation-complete' : ''}`}
                         style={{
@@ -185,7 +181,7 @@ export default function ProjectListView() {
                             />
                         </button>
                         <div className="sort-menu">
-                            {['최신 항목', '제목', '공유 문서함'].map(option => (
+                            {['최신 항목', '제목'].map(option => (
                                 <div
                                     key={option}
                                     className="sort-menu-item"
@@ -320,9 +316,6 @@ export default function ProjectListView() {
                             transition: `all 0.6s ease ${sorted.length * 0.1}s`,
                         }}
                         onClick={async () => {
-                            const uid = Number(localStorage.getItem('userId'));
-                            if (!uid) return alert('로그인이 필요합니다');
-
                             try {
                                 const newBrain = await createBrain({
                                     brain_name: 'Untitled'
@@ -366,14 +359,6 @@ export default function ProjectListView() {
             </div>
 
             <AppFooter />
-
-            {/* 새 브레인 모달 */}
-            {showModal && (
-                <NewBrainModal
-                    onClose={() => setShowModal(false)}
-                    onCreated={brain => setBrains(prev => [brain, ...prev])}
-                />
-            )}
 
             {/* 삭제 확인 다이얼로그 */}
             {confirmId !== null && (

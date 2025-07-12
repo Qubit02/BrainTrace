@@ -109,8 +109,6 @@ function MainLayout() {
     }
 
     setActiveProject(projectId);
-    setShowChatPanel(false);
-    navigate(`/project/${projectId}`);
     setReferencedNodes([]);
   };
 
