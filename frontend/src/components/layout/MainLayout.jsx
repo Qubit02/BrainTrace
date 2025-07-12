@@ -11,7 +11,6 @@ import './MainLayout.css';
 import ProjectPanel from '../panels/ProjectPanel';
 import SourcePanel from '../panels/SourcePanel';
 import ChatPanel from '../panels/ChatPanel';
-import ChatSidebar from '../panels/ChatSidebar';
 import MemoPanel from '../panels/MemoPanel';
 import { listBrains } from '../../../../backend/services/backend'
 
@@ -32,53 +31,59 @@ function ResizeHandle() {
 }
 
 function MainLayout() {
+
+  // 라우팅 관련 상태
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [hasProject, setHasProject] = useState(true);
-  const [sessions, setSessions] = useState([]);
-  const [currentSessionId, setCurrentSessionId] = useState(null);
-  const [showChatPanel, setShowChatPanel] = useState(false); // ← 채팅 보기 여부
-  const [newlyCreatedSessionId, setNewlyCreatedSessionId] = useState(null);
-  const lastSavedProjectRef = useRef(null);
 
-  const DEFAULT_SOURCE_PANEL_SIZE = 18;
-  const DEFAULT_CHAT_PANEL_SIZE = 50;
-  const DEFAULT_MEMO_PANEL_SIZE = 40;
+  // 프로젝트 및 세션 상태
+  const [hasProject, setHasProject] = useState(true);  // 존재하지 않는 projectId 방지용
+  const [activeProject, setActiveProject] = useState(projectId);  // 현재 brain_id
+  const lastSavedProjectRef = useRef(null); // 이전에 저장한 프로젝트 ID를 기억하기 위한 ref
+  const [sessions, setSessions] = useState([]);  // 채팅 세션 목록
+  const [currentSessionId, setCurrentSessionId] = useState(null);  // 현재 선택된 세션 ID
 
-  const [activeProject, setActiveProject] = useState(projectId);
+  // 패널 접힘 상태
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
   const [memoCollapsed, setMemoCollapsed] = useState(false);
 
-  // 참고된 노드 목록을 위한 state 추가
-  const [referencedNodes, setReferencedNodes] = useState([]);
-  const [allNodeNames, setAllNodeNames] = useState([]);
-  const [focusNodeNames, setFocusNodeNames] = useState([]);
-  const [focusSourceId, setFocusSourceId] = useState(null);
+  // 그래프 연관 노드 상태
+  const [referencedNodes, setReferencedNodes] = useState([]);  // 응답에 등장한 노드
+  const [allNodeNames, setAllNodeNames] = useState([]);        // 그래프 내 전체 노드 이름
+  const [focusNodeNames, setFocusNodeNames] = useState([]);    // 포커싱할 노드들
+  const [focusSourceId, setFocusSourceId] = useState(null);    // 포커싱할 소스 ID
 
   // 그래프 Refresh 용도
   const [graphRefreshTrigger, setGraphRefreshTrigger] = useState(0);
-  // FileView에서 호출할 함수
   const handleGraphRefresh = () => {
     setGraphRefreshTrigger(prev => prev + 1);
     syncToStandaloneWindow({ action: 'refresh' });
-
   };
+
+  // 그래프 데이터 변경 시 전체 노드명 업데이트
   const handleGraphDataUpdate = (graphData) => {
     const nodeNames = graphData?.nodes?.map(n => n.name) || [];
     setAllNodeNames(nodeNames);
   };
 
+  // 각 패널 크기 조절을 위한 ref
   const sourcePanelRef = useRef(null);
   const chatPanelRef = useRef(null);
   const memoPanelRef = useRef(null);
-  const firstPdfExpand = useRef(true);
+  const firstPdfExpand = useRef(true);  // PDF 처음 열릴 때 한 번만 확장되도록
 
+  // 패널 크기 상태
   const [sourcePanelSize, setSourcePanelSize] = useState(PANEL.SOURCE.DEFAULT);
   const [chatPanelSize, setChatPanelSize] = useState(PANEL.CHAT.DEFAULT);
   const [memoPanelSize, setMemoPanelSize] = useState(PANEL.MEMO.DEFAULT);
+
+  // PDF 열림 여부 상태
   const [isPDFOpen, setIsPDFOpen] = useState(false);
+
+  // 현재 소스 개수 상태 (상단 표시용 등)
   const [sourceCount, setSourceCount] = useState(0);
 
+  // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
     localStorage.setItem('graphStateSync', JSON.stringify({
       brainId: activeProject,
@@ -87,6 +92,7 @@ function MainLayout() {
     }));
   };
 
+  // PDF 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
   const handleBackFromPDF = () => {
     setIsPDFOpen(false);
     firstPdfExpand.current = true;
@@ -95,7 +101,9 @@ function MainLayout() {
     }
   };
 
+  // 프로젝트 변경 시 상태 저장 및 라우팅 이동 처리
   const handleProjectChange = (projectId) => {
+    // 기존 세션을 localStorage에 저장
     if (activeProject && sessions.length > 0) {
       localStorage.setItem(`sessions-${activeProject}`, JSON.stringify(sessions));
     }
@@ -106,25 +114,30 @@ function MainLayout() {
     setReferencedNodes([]);
   };
 
-  // 패널 리사이즈 핸들러들
+  // 패널 리사이즈 핸들러들 (사용자 리사이즈 반영용)
   const handleSourceResize = (size) => {
-    if (!sourceCollapsed) { setSourcePanelSize(size); }
+    if (!sourceCollapsed) {
+      setSourcePanelSize(size);
+    }
   };
 
-  const handleChatResize = (size) => { setChatPanelSize(size); };
+  const handleChatResize = (size) => {
+    setChatPanelSize(size);
+  };
 
   const handleMemoResize = (size) => {
-    if (!memoCollapsed) { setMemoPanelSize(size); }
+    if (!memoCollapsed) {
+      setMemoPanelSize(size);
+    }
   };
 
-  // 참고된 노드 목록 업데이트
+  // 참고된 노드 목록을 업데이트하고 상태를 동기화
   const onReferencedNodesUpdate = (nodes) => {
     setReferencedNodes(nodes);
     syncToStandaloneWindow({ referencedNodes: nodes });
-
   };
 
-  // 노드 이름 포커스 처리
+  // 특정 노드 이름들에 포커스를 설정하고 상태를 동기화
   const handleFocusNodeNames = (nodeObject) => {
     if (Array.isArray(nodeObject)) {
       setFocusNodeNames(nodeObject);
@@ -138,33 +151,19 @@ function MainLayout() {
     }
   };
 
-  const onRenameSession = (id, newTitle) => {
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
-  };
-
-  const onDeleteSession = (id) => {
-    const updated = sessions.filter(s => s.id !== id);
-    setSessions(updated);
-    localStorage.setItem(`sessions-${activeProject}`, JSON.stringify(updated));
-
-    if (id === currentSessionId) {
-      setCurrentSessionId(null);
-      setShowChatPanel(false);
-    }
-  };
-
+  // 특정 소스를 열 때 포커스 ID와 타임스탬프를 기록
   const handleOpenSource = (sourceId) => {
-    console.log("sourceId : ", sourceId)
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
+  // URL 변경(projectId 변경)에 따라 activeProject 상태 업데이트
   useEffect(() => {
     setActiveProject(projectId);
-    setShowChatPanel(false);  // 프로젝트 이동 시 채팅 리스트로 초기화
   }, [projectId]);
 
+  // 세션 저장: 프로젝트 ID 또는 세션 목록이 바뀌었을 때 localStorage에 저장
   useEffect(() => {
-    if (!activeProject || !showChatPanel) return;
+    if (!activeProject) return;
 
     const activeProjectStr = String(activeProject);
     const projectIdStr = String(projectId);
@@ -176,8 +175,9 @@ function MainLayout() {
       localStorage.setItem(`sessions-${activeProjectStr}`, JSON.stringify(sessions));
       lastSavedProjectRef.current = activeProjectStr;
     }
-  }, [sessions, activeProject, projectId, showChatPanel]);
+  }, [sessions, activeProject, projectId]);
 
+  // activeProject 변경 시 localStorage에서 세션 목록을 불러오고 초기 세션 설정
   useEffect(() => {
     if (!activeProject) return;
     const saved = localStorage.getItem(`sessions-${activeProject}`);
@@ -191,7 +191,7 @@ function MainLayout() {
     }
   }, [activeProject]);
 
-  // 소스 패널 크기 변경 효과
+  // projectId가 유효한 brain인지 확인하고 존재하지 않으면 홈으로 이동
   useEffect(() => {
     if (!projectId) return;
     listBrains()
@@ -203,12 +203,13 @@ function MainLayout() {
       .catch(() => navigate('/'));
   }, [projectId, navigate]);
 
-
-  // 소스 패널 크기 변경 효과
+  // PDF 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
   useEffect(() => {
     if (!sourcePanelRef.current) return;
-    if (sourceCollapsed) return sourcePanelRef.current.resize(PANEL.SOURCE.COLLAPSED);
-    if (isPDFOpen && firstPdfExpand.current) {
+
+    if (sourceCollapsed) {
+      sourcePanelRef.current.resize(PANEL.SOURCE.COLLAPSED);
+    } else if (isPDFOpen && firstPdfExpand.current) {
       sourcePanelRef.current.resize(40);
       firstPdfExpand.current = false;
     } else {
@@ -216,14 +217,19 @@ function MainLayout() {
     }
   }, [isPDFOpen, sourceCollapsed, sourcePanelSize]);
 
-  // 메모 패널 크기 변경 효과
+  // 메모 패널 열림/접힘에 따른 크기 조절
   useEffect(() => {
     if (!memoPanelRef.current) return;
-    if (memoCollapsed) memoPanelRef.current.resize(PANEL.MEMO.COLLAPSED);
-    else memoPanelRef.current.resize(memoPanelSize === PANEL.MEMO.COLLAPSED ? PANEL.MEMO.DEFAULT : memoPanelSize);
+    if (memoCollapsed) {
+      memoPanelRef.current.resize(PANEL.MEMO.COLLAPSED);
+    } else {
+      memoPanelRef.current.resize(
+        memoPanelSize === PANEL.MEMO.COLLAPSED ? PANEL.MEMO.DEFAULT : memoPanelSize
+      );
+    }
   }, [memoCollapsed]);
 
-  // 패널 레이아웃 재조정 (총합이 100%가 되도록)
+  // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
   useEffect(() => {
     if (!sourceCollapsed && !memoCollapsed) {
       const total = sourcePanelSize + chatPanelSize + memoPanelSize;
@@ -236,6 +242,7 @@ function MainLayout() {
     }
   }, [sourceCollapsed, memoCollapsed]);
 
+  // 전역 dragover 이벤트 핸들링 (기본 동작 방지)
   useEffect(() => {
     const handleDragOver = (e) => e.preventDefault();
     window.addEventListener('dragover', handleDragOver);
@@ -244,6 +251,7 @@ function MainLayout() {
 
   return (
     <div className="main-container">
+      {/* 좌측 프로젝트 선택 패널 */}
       <div className="layout project-layout">
         <ProjectPanel
           activeProject={Number(activeProject)}
@@ -251,7 +259,10 @@ function MainLayout() {
         />
       </div>
 
+      {/* 중앙 패널 그룹: 소스 - 채팅 - 메모 */}
       <PanelGroup direction="horizontal" className="panels-container">
+
+        {/* 1. 소스 패널 */}
         <Panel
           ref={sourcePanelRef}
           defaultSize={sourceCollapsed ? PANEL.SOURCE.COLLAPSED : PANEL.SOURCE.DEFAULT}
@@ -277,6 +288,7 @@ function MainLayout() {
 
         <ResizeHandle />
 
+        {/* 2. 채팅 패널 (ChatSidebar 없이 바로 ChatPanel 노출) */}
         <Panel
           ref={chatPanelRef}
           defaultSize={PANEL.CHAT.DEFAULT}
@@ -284,56 +296,23 @@ function MainLayout() {
           onResize={handleChatResize}
         >
           <div className="layout-inner chat-inner">
-            {!showChatPanel ? (
-              <ChatSidebar
-                sessions={sessions}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  setCurrentSessionId(id);
-                  setShowChatPanel(true);
-                }}
-                onNewSession={(firstMessageText = '') => {
-                  const newId = Date.now().toString();
-                  const newSession = {
-                    id: newId,
-                    title: firstMessageText.slice(0, 20) || 'Untitled',
-                    messages: firstMessageText ? [{ text: firstMessageText, isUser: true }] : [],
-                  };
-                  const updated = [...sessions, newSession];
-                  setSessions(updated);
-                  setNewlyCreatedSessionId(newId);
-                  setTimeout(() => {
-                    setCurrentSessionId(newId);
-                    setShowChatPanel(true);
-                    setNewlyCreatedSessionId(null);
-                  }, 1200);
-                  return newSession;
-                }}
-                onRenameSession={onRenameSession}
-                onDeleteSession={onDeleteSession}
-                newlyCreatedSessionId={newlyCreatedSessionId}
-                setNewlyCreatedSessionId={setNewlyCreatedSessionId}
-              />
-            ) : (
-              <ChatPanel
-                activeProject={activeProject}
-                onReferencedNodesUpdate={onReferencedNodesUpdate}
-                sessions={sessions}
-                setSessions={setSessions}
-                currentSessionId={currentSessionId}
-                setCurrentSessionId={setCurrentSessionId}
-                showChatPanel={showChatPanel}
-                setShowChatPanel={setShowChatPanel}
-                allNodeNames={allNodeNames}
-                onOpenSource={handleOpenSource}
-                sourceCount={sourceCount}
-              />
-            )}
+            <ChatPanel
+              activeProject={activeProject}
+              onReferencedNodesUpdate={onReferencedNodesUpdate}
+              sessions={sessions}
+              setSessions={setSessions}
+              currentSessionId={currentSessionId}
+              setCurrentSessionId={setCurrentSessionId}
+              allNodeNames={allNodeNames}
+              onOpenSource={handleOpenSource}
+              sourceCount={sourceCount}
+            />
           </div>
         </Panel>
 
         <ResizeHandle />
 
+        {/* 3. 메모 패널 */}
         <Panel
           ref={memoPanelRef}
           defaultSize={memoCollapsed ? PANEL.MEMO.COLLAPSED : PANEL.MEMO.DEFAULT}
@@ -354,6 +333,7 @@ function MainLayout() {
             />
           </div>
         </Panel>
+
       </PanelGroup>
     </div>
   );

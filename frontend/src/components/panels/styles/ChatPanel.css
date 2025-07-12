@@ -617,3 +617,21 @@
   align-self: center;
   color: rgb(84, 84, 84)
 }
+
+.refresh-button {
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #333;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background-color: #e0e0e0;
+  border: none;
+  color: black;
+  /* hover 시 강조 */
+}
