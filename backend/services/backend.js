@@ -31,7 +31,6 @@ export const deleteFolder = id => api.delete(`/folders/${id}`);
 export const getFolderTextfiles = folderId => api.get(`/textfiles/folder/${folderId}`).then(r => r.data);
 export const getFolderPdfs = folderId => api.get(`/pdfs/folder/${folderId}`).then(r => r.data);
 export const getFolderVoices = folderId => api.get(`/voices/folder/${folderId}`).then(r => r.data);
-
 export const deleteFolderWithMemos = (folderId, brainId) =>
     api.delete(`/folders/deleteAll/${folderId}`, { params: { brain_id: brainId } }).then(r => r.data);
 
@@ -45,7 +44,12 @@ export const setMemoAsNotSource = id => api.put(`/memos/${id}/isNotSource`).then
 export const moveMemoToFolder = (targetFolderId, memoId) => api.put(`/memos/changeFolder/${targetFolderId}/${memoId}`).then(r => r.data);
 export const removeMemoFromFolder = memoId => api.put(`/memos/MoveOutFolder/${memoId}`).then(r => r.data);
 export const getMemosByBrain = (brainId) => api.get(`/memos/brain/${brainId}`).then((r) => r.data);
-
+export const getSourceMemosByBrain = (brainId, folderId = null) => {
+    const url = `/memos/source/brain/${brainId}`;
+    return api.get(url, {
+        params: folderId ? { folder_id: folderId } : {}
+    }).then(r => r.data);
+};
 /* ───────── PDF FILES ───────── */
 export const createPdf = body => api.post('/pdfs', body).then(r => r.data);
 export const getPdf = id => api.get(`/pdfs/${id}`).then(r => r.data);

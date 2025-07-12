@@ -1,46 +1,35 @@
 import {
-    TbFileTypePdf,
-    TbFileTypePng,
-    TbFileTypeJpg,
-    TbFileTypeJs,
-    TbFileTypeCss,
-    TbFileTypeDocx,
-    TbFileTypeXls,
-    TbFileTypePpt,
-    TbFileTypeTxt,
-    TbFileTypeHtml,
-    TbFileTypeSvg,
-    TbFileTypeTs,
-    TbFileTypeXml,
-    TbFileTypeZip,
-    TbFileUnknown,
+    TbFileTypePdf,       // PDF 파일 아이콘
+    TbFileTypeXls,       // Excel 파일 아이콘
+    TbFileTypeTxt,       // 텍스트 파일 아이콘
+    TbFileUnknown,       // 확장자를 알 수 없는 파일 아이콘
+    TbFileDescription    // 일반적인 파일 설명 아이콘 (기본 fallback)
 } from "react-icons/tb";
 
 function FileIcon({ fileName }) {
-    const iconSize = 20; // 원하는 크기로 조정 (예: 18, 20, 24 등)
+    const iconSize = 20; // 아이콘 크기 지정 (예: 20px)
 
+    // fileName이 없거나 문자열이 아닐 경우, 알 수 없는 파일 아이콘 표시
     if (!fileName || typeof fileName !== "string") {
         return <TbFileUnknown color="black" size={iconSize} />;
     }
 
+    // 파일 이름을 소문자로 변환하여 확장자 비교에 사용
     const lower = fileName.toLowerCase();
 
-    if (lower.endsWith(".pdf")) return <TbFileTypePdf color="black" size={iconSize} />;
-    if (lower.endsWith(".png")) return <TbFileTypePng color="black" size={iconSize} />;
-    if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return <TbFileTypeJpg color="black" size={iconSize} />;
-    if (lower.endsWith(".js") || lower.endsWith(".jsx")) return <TbFileTypeJs color="black" size={iconSize} />;
-    if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return <TbFileTypeTs color="black" size={iconSize} />;
-    if (lower.endsWith(".css")) return <TbFileTypeCss color="black" size={iconSize} />;
-    if (lower.endsWith(".doc") || lower.endsWith(".docx")) return <TbFileTypeDocx color="black" size={iconSize} />;
-    if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return <TbFileTypeXls color="black" size={iconSize} />;
-    if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return <TbFileTypePpt color="black" size={iconSize} />;
-    if (lower.endsWith(".txt")) return <TbFileTypeTxt color="black" size={iconSize} />;
-    if (lower.endsWith(".html")) return <TbFileTypeHtml color="black" size={iconSize} />;
-    if (lower.endsWith(".svg")) return <TbFileTypeSvg color="black" size={iconSize} />;
-    if (lower.endsWith(".xml")) return <TbFileTypeXml color="black" size={iconSize} />;
-    if (lower.endsWith(".zip")) return <TbFileTypeZip color="black" size={iconSize} />;
+    // 확장자에 따라 해당 파일 아이콘 렌더링
+    if (lower.endsWith(".pdf")) {
+        return <TbFileTypePdf color="black" size={iconSize} />;
+    }
+    if (lower.endsWith(".txt")) {
+        return <TbFileTypeTxt color="black" size={iconSize} />;
+    }
+    if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
+        return <TbFileTypeXls color="black" size={iconSize} />;
+    }
 
-    return <TbFileUnknown color="black" size={iconSize} />;
+    // 위 조건에 해당하지 않으면 일반적인 파일 설명 아이콘으로 대체
+    return <TbFileDescription color="black" size={iconSize} />;
 }
 
 export default FileIcon;

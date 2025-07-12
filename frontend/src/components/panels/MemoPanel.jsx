@@ -75,7 +75,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
         memo_title: 'Untitled',
         is_source: false,
         is_delete: false,
-        type: 'text',
+        type: 'memo',
         folder_id: null,
         brain_id: projectId,
       });

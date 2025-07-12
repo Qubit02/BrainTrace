@@ -188,7 +188,8 @@ function MemoListPanel({
                 )}
 
                 {displayedMemos.map((memo) => {
-                    const filename = `${memo.memo_title || '메모'}.txt`;
+                    const id = memo.memo_id;
+                    const filename = `${memo.memo_title || '메모'}.memo`;
                     const content = memo.memo_text || '';
 
                     return (
@@ -197,7 +198,7 @@ function MemoListPanel({
                             className={`memo-item ${selectedId === memo.memo_id ? 'active' : ''} ${highlightedId === memo.memo_id ? 'highlighted' : ''}`}
                             draggable
                             onDragStart={e => {
-                                const dragData = { name: filename, content };
+                                const dragData = { id: id, name: filename, content };
                                 e.dataTransfer.setData('application/json-memo', JSON.stringify(dragData));
                                 e.dataTransfer.effectAllowed = 'copy';
                                 e.currentTarget.classList.add('dragging');

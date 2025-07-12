@@ -1,24 +1,28 @@
-// src/components/panels/TxtViewer.jsx
+// src/components/panels/MemoViewer.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import HighlightPopup from './HighlightPopup';
 import './styles/Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
+import { getMemo } from '../../../../backend/services/backend';
 
-export default function TxtViewer({ fileUrl, onBack }) {
+export default function MemoViewer({ memoId, onBack }) {
     const [content, setContent] = useState('');
     const [popup, setPopup] = useState(null);
     const [fontSize, setFontSize] = useState(16);
     const containerRef = useRef(null);
 
     useEffect(() => {
-        fetch(fileUrl)
-            .then(res => res.text())
-            .then(setContent)
-            .catch(err => {
-                console.error("TXT 파일 로드 실패", err);
-                setContent('[텍스트 파일을 불러올 수 없습니다]');
-            });
-    }, [fileUrl]);
+        const fetchMemo = async () => {
+            try {
+                const memo = await getMemo(memoId);
+                setContent(memo.memo_text);
+            } catch (err) {
+                console.error("메모 로딩 실패", err);
+                setContent('[메모를 불러올 수 없습니다]');
+            }
+        };
+        fetchMemo();
+    }, [memoId]);
 
     const onTextSelection = () => {
         const selection = window.getSelection();

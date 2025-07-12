@@ -298,7 +298,7 @@ function MainLayout() {
               activeProject={Number(activeProject)}
               collapsed={sourceCollapsed}
               setCollapsed={setSourceCollapsed}
-              setIsPDFOpen={setIsPDFOpen}
+              setIsSourceOpen={setIsPDFOpen}
               onBackFromPDF={handleBackFromPDF}
               onGraphRefresh={handleGraphRefresh} // 그래프 refresh 용도
               onFocusNodeNamesUpdate={handleFocusNodeNames}

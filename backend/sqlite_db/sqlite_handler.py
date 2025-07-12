@@ -862,6 +862,7 @@ class SQLiteHandler:
             update_fields = []
             params = []
             
+            # 값이 None인 필드는 업데이트 하지 않음
             if memo_title is not None:
                 update_fields.append("memo_title = ?")
                 params.append(memo_title)
@@ -2005,17 +2006,28 @@ class SQLiteHandler:
     def get_memos_by_brain_and_folder(
         self,
         brain_id: int,
-        folder_id: Optional[int] = None
+        folder_id: Optional[int] = None,
+        is_source: Optional[bool] = None
     ) -> List[Dict]:
         conn   = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # 기본 조건
+        where_clauses = ["brain_id = ?"]
+        params = [brain_id]
+
+        # folder 조건
         if folder_id is None:
-            where  = "brain_id = ? AND folder_id IS NULL"
-            params = (brain_id,)
+            where_clauses.append("folder_id IS NULL")
         else:
-            where  = "brain_id = ? AND folder_id IS NOT NULL"
-            params = (brain_id,)
+            where_clauses.append("folder_id IS NOT NULL")
+
+        # is_source 조건
+        if is_source is not None:
+            where_clauses.append("is_source = ?")
+            params.append(1 if is_source else 0)
+
+        where_clause = " AND ".join(where_clauses)
 
         sql = f"""
             SELECT
@@ -2028,7 +2040,7 @@ class SQLiteHandler:
                 folder_id,
                 brain_id
             FROM Memo
-            WHERE {where}
+            WHERE {where_clause}
             ORDER BY memo_date DESC
         """
         cursor.execute(sql, params)

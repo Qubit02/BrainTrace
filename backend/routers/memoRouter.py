@@ -199,7 +199,8 @@ async def set_memo_as_source(memo_id: int):
          # 기존 메모의 folder_id와 brain_id를 가져옴
         folder_id = memo.get("folder_id")
         brain_id = memo.get("brain_id")
-        updated = sqlite_handler.update_memo(
+        # 값이 None인 필드는 업데이트 하지 않음
+        updated = sqlite_handler.update_memo( 
             memo_id,
             memo_title=None,
             memo_text=None,
@@ -266,39 +267,36 @@ async def change_memo_folder(target_folder_id: int, memo_id: int):
     - **memo_id**: 이동할 메모의 ID
     """
     # 메모 존재 여부 확인
-    memo = sqlite_handler.get_memo(memo_id)
+    memo: dict | None = sqlite_handler.get_memo(memo_id)
     if not memo:
-        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="해당 메모를 찾을 수 없습니다.")
     
-    # 대상 폴더 존재 여부 확인
-    if target_folder_id is not None:  # None인 경우는 폴더에서 제거하는 경우
+    # 대상 폴더 존재 여부 확인 (None은 폴더 제거 의미)
+    if target_folder_id is not None:
         folder = sqlite_handler.get_folder(target_folder_id)
         if not folder:
-            raise HTTPException(status_code=404, detail="대상 폴더를 찾을 수 없습니다")
+            raise HTTPException(status_code=404, detail="대상 폴더를 찾을 수 없습니다.")
     
     try:
-         # 기존 메모의 folder_id와 brain_id를 가져옴
-        folder_id = memo.get("folder_id")
-        brain_id = memo.get("brain_id")
-        # 메모의 folder_id 업데이트
+        # 기존 브레인 ID 유지하며 폴더 ID만 업데이트
         updated = sqlite_handler.update_memo(
-            memo_id,
-            memo_title=None,  # 기존 값 유지
-            memo_text=None,   # 기존 값 유지
-            is_source=None,   # 기존 값 유지
+            memo_id=memo_id,
+            memo_title=None,
+            memo_text=None,
+            is_source=None,
             folder_id=target_folder_id,
             type=None,
-            brain_id=brain_id
+            brain_id=memo.get("brain_id")
         )
-        
+
         if not updated:
-            raise HTTPException(status_code=400, detail="폴더 변경 실패")
-            
-        updated_memo = sqlite_handler.get_memo(memo_id)
-        return updated_memo
+            raise HTTPException(status_code=400, detail="메모 폴더 이동에 실패했습니다.")
+
+        return sqlite_handler.get_memo(memo_id)
+
     except Exception as e:
-        logging.error("메모 폴더 변경 오류: %s", str(e))
-        raise HTTPException(status_code=500, detail="내부 서버 오류")
+        logging.error("메모 폴더 변경 중 오류 발생: %s", str(e))
+        raise HTTPException(status_code=500, detail="서버 내부 오류로 인해 폴더 변경에 실패했습니다.")
 
 @router.put("/MoveOutFolder/{memo_id}", response_model=MemoResponse,
            summary="메모를 폴더에서 제거",
@@ -354,4 +352,21 @@ async def get_memos_by_brain(
         return sqlite_handler.get_memos_by_brain_and_folder(brain_id, folder_id)
     except Exception as e:
         logging.error("메모 조회 오류: %s", e)
+        raise HTTPException(status_code=500, detail="서버 오류")
+
+@router.get(
+    "/source/brain/{brain_id}",
+    response_model=List[MemoResponse],
+    summary="소스 메모만 조회",
+    description="특정 Brain 내 is_source=True인 메모만 반환합니다."
+)
+async def get_source_memos_by_brain(brain_id: int):
+    """
+    is_source=True인 메모만 필터링해서 반환합니다:
+    - **brain_id**: 소속된 Brain의 ID
+    """
+    try:
+        return sqlite_handler.get_memos_by_brain_and_folder(brain_id, folder_id=None, is_source=True)
+    except Exception as e:
+        logging.error("소스 메모 조회 오류: %s", e)
         raise HTTPException(status_code=500, detail="서버 오류")
