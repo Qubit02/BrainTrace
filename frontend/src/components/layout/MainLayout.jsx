@@ -11,14 +11,14 @@ import './MainLayout.css';
 import ProjectPanel from '../panels/ProjectPanel';
 import SourcePanel from '../panels/SourcePanel';
 import ChatPanel from '../panels/ChatPanel';
-import MemoPanel from '../panels/MemoPanel';
+import InsightPanel from '../panels/InsightPanel';
 import { listBrains } from '../../../../backend/services/backend'
 
 // 패널 사이즈 상수
 const PANEL = {
   SOURCE: { DEFAULT: 18, MIN: 10, COLLAPSED: 5 },
   CHAT: { DEFAULT: 50, MIN: 30 },
-  MEMO: { DEFAULT: 40, MIN: 10, COLLAPSED: 5 },
+  INSIGHT: { DEFAULT: 40, MIN: 10, COLLAPSED: 5 },
 };
 
 // 리사이즈 핸들 컴포넌트
@@ -45,7 +45,7 @@ function MainLayout() {
 
   // 패널 접힘 상태
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
-  const [memoCollapsed, setMemoCollapsed] = useState(false);
+  const [insightCollapsed, setInsightCollapsed] = useState(false);
 
   // 그래프 연관 노드 상태
   const [referencedNodes, setReferencedNodes] = useState([]);  // 응답에 등장한 노드
@@ -69,13 +69,13 @@ function MainLayout() {
   // 각 패널 크기 조절을 위한 ref
   const sourcePanelRef = useRef(null);
   const chatPanelRef = useRef(null);
-  const memoPanelRef = useRef(null);
+  const InsightPanelRef = useRef(null);
   const firstPdfExpand = useRef(true);  // PDF 처음 열릴 때 한 번만 확장되도록
 
   // 패널 크기 상태
   const [sourcePanelSize, setSourcePanelSize] = useState(PANEL.SOURCE.DEFAULT);
   const [chatPanelSize, setChatPanelSize] = useState(PANEL.CHAT.DEFAULT);
-  const [memoPanelSize, setMemoPanelSize] = useState(PANEL.MEMO.DEFAULT);
+  const [insightPanelSize, setInsightPanelSize] = useState(PANEL.INSIGHT.DEFAULT);
 
   // PDF 열림 여부 상태
   const [isPDFOpen, setIsPDFOpen] = useState(false);
@@ -124,8 +124,8 @@ function MainLayout() {
   };
 
   const handleMemoResize = (size) => {
-    if (!memoCollapsed) {
-      setMemoPanelSize(size);
+    if (!insightCollapsed) {
+      setInsightPanelSize(size);
     }
   };
 
@@ -217,28 +217,28 @@ function MainLayout() {
 
   // 메모 패널 열림/접힘에 따른 크기 조절
   useEffect(() => {
-    if (!memoPanelRef.current) return;
-    if (memoCollapsed) {
-      memoPanelRef.current.resize(PANEL.MEMO.COLLAPSED);
+    if (!InsightPanelRef.current) return;
+    if (insightCollapsed) {
+      InsightPanelRef.current.resize(PANEL.INSIGHT.COLLAPSED);
     } else {
-      memoPanelRef.current.resize(
-        memoPanelSize === PANEL.MEMO.COLLAPSED ? PANEL.MEMO.DEFAULT : memoPanelSize
+      InsightPanelRef.current.resize(
+        insightPanelSize === PANEL.INSIGHT.COLLAPSED ? PANEL.INSIGHT.DEFAULT : insightPanelSize
       );
     }
-  }, [memoCollapsed]);
+  }, [insightCollapsed]);
 
   // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
   useEffect(() => {
-    if (!sourceCollapsed && !memoCollapsed) {
-      const total = sourcePanelSize + chatPanelSize + memoPanelSize;
+    if (!sourceCollapsed && !insightCollapsed) {
+      const total = sourcePanelSize + chatPanelSize + insightPanelSize;
       if (Math.abs(total - 100) >= 0.5) {
         const ratio = 100 / total;
         setSourcePanelSize(prev => +(prev * ratio).toFixed(1));
         setChatPanelSize(prev => +(prev * ratio).toFixed(1));
-        setMemoPanelSize(prev => +(prev * ratio).toFixed(1));
+        setInsightPanelSize(prev => +(prev * ratio).toFixed(1));
       }
     }
-  }, [sourceCollapsed, memoCollapsed]);
+  }, [sourceCollapsed, insightCollapsed]);
 
   // 전역 dragover 이벤트 핸들링 (기본 동작 방지)
   useEffect(() => {
@@ -260,7 +260,7 @@ function MainLayout() {
       {/* 중앙 패널 그룹: 소스 - 채팅 - 메모 */}
       <PanelGroup direction="horizontal" className="panels-container">
 
-        {/* 1. 소스 패널 */}
+        {/* 1. Source 패널 */}
         <Panel
           ref={sourcePanelRef}
           defaultSize={sourceCollapsed ? PANEL.SOURCE.COLLAPSED : PANEL.SOURCE.DEFAULT}
@@ -286,7 +286,7 @@ function MainLayout() {
 
         <ResizeHandle />
 
-        {/* 2. 채팅 패널 (ChatSidebar 없이 바로 ChatPanel 노출) */}
+        {/* 2. Chat 패널 */}
         <Panel
           ref={chatPanelRef}
           defaultSize={PANEL.CHAT.DEFAULT}
@@ -310,20 +310,20 @@ function MainLayout() {
 
         <ResizeHandle />
 
-        {/* 3. 메모 패널 */}
+        {/* 3. Insight 패널 */}
         <Panel
-          ref={memoPanelRef}
-          defaultSize={memoCollapsed ? PANEL.MEMO.COLLAPSED : PANEL.MEMO.DEFAULT}
-          minSize={memoCollapsed ? PANEL.MEMO.COLLAPSED : PANEL.MEMO.MIN}
+          ref={InsightPanelRef}
+          defaultSize={insightCollapsed ? PANEL.INSIGHT.COLLAPSED : PANEL.INSIGHT.DEFAULT}
+          minSize={insightCollapsed ? PANEL.INSIGHT.COLLAPSED : PANEL.INSIGHT.MIN}
           maxSize={100}
-          className={memoCollapsed ? 'panel-collapsed' : ''}
+          className={insightCollapsed ? 'panel-collapsed' : ''}
           onResize={handleMemoResize}
         >
-          <div className="layout-inner memo-inner">
-            <MemoPanel
+          <div className="layout-inner insight-inner">
+            <InsightPanel
               activeProject={Number(activeProject)}
-              collapsed={memoCollapsed}
-              setCollapsed={setMemoCollapsed}
+              collapsed={insightCollapsed}
+              setCollapsed={setInsightCollapsed}
               referencedNodes={referencedNodes}
               graphRefreshTrigger={graphRefreshTrigger}
               onGraphDataUpdate={handleGraphDataUpdate}

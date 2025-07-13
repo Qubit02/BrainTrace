@@ -40,6 +40,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 // 메모 텍스트를 그래프 지식으로 변환하는 함수
 async function processMemoTextAsGraph(content, sourceId, brainId) {
+  if (!content || content.trim() === "") {
+    console.warn("📭 메모 내용이 비어 있어 그래프를 생성하지 않습니다.");
+    return;
+  }
+
   try {
     const response = await processText(content, String(sourceId), String(brainId));
     console.log("✅ 그래프 생성 완료:", response);
@@ -47,6 +52,7 @@ async function processMemoTextAsGraph(content, sourceId, brainId) {
     console.error("❌ 그래프 생성 실패:", error);
   }
 }
+
 
 export default function FileView({
   brainId,
