@@ -47,5 +47,8 @@
 
 .viewer-pre {
     white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    user-select: text;
     padding: 12px;
 }

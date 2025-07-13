@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
 import HighlightPopup from './HighlightPopup';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+//import 'react-pdf/dist/esm/Page/TextLayer.css';
+//import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import { FaArrowLeftLong } from "react-icons/fa6";
 import { FaPlus } from "react-icons/fa6";
 import { FaMinus } from "react-icons/fa6";
 
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const PDFViewer = ({ file, containerWidth, onBack }) => {
@@ -168,7 +168,8 @@ const PDFViewer = ({ file, containerWidth, onBack }) => {
               <Page
                 pageNumber={index + 1}
                 scale={scale}
-                renderTextLayer={true}
+                renderTextLayer={false} // ✅ 텍스트 레이어 비활성화
+                renderAnnotationLayer={false} // ✅ 주석 레이어 비활성화
               />
               {highlights
                 .filter(h => h.page === index + 1)
