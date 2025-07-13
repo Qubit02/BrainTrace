@@ -5,8 +5,7 @@ import { IoCloudUploadOutline } from "react-icons/io5";
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import FileIcon from './FileIcon';
 import {
-  uploadPdfs, createTextFile,
-  createVoice, createTextToGraph
+  uploadPdfs, createTextFile, createTextToGraph
 } from '../../../../backend/services/backend';
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
@@ -54,13 +53,6 @@ function SourceUploadModal({ visible, onClose, onUpload, onGraphRefresh, folderI
         source_id: String(res.txt_id)
       });
       return { id: res.txt_id, filetype: 'txt', meta: res };
-    } else if (['mp3', 'wav', 'm4a'].includes(ext)) {
-      const res = await createVoice({
-        ...common,
-        voice_title: file.name,
-        voice_path: file.name
-      });
-      return { id: res.voice_id, filetype: 'voice', meta: res };
     } else {
       const res = await createTextFile({
         ...common,

@@ -1,14 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  listBrainFolders,
-  createFolder,
-  createMemo,
-  createPdf,
-  createTextFile,
-  createVoice,
   getPdfsByBrain,
   getTextfilesByBrain,
-  getVoicesByBrain,
   getSimilarSourceIds,
   getSourceMemosByBrain
 } from '../../../../backend/services/backend';
@@ -27,18 +20,7 @@ import './styles/Scrollbar.css';
 import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";
 import { IoMdSearch } from "react-icons/io";
-function normalizeApiTree(apiFolders = []) {
-  return apiFolders.map(folder => ({
-    type: 'folder',
-    folder_id: folder.folder_id,
-    name: folder.folder_name,
-    children: (folder.memos || []).map(memo => ({
-      type: 'file',
-      memo_id: memo.memo_id,
-      name: memo.memo_title
-    }))
-  }));
-}
+
 export default function SourcePanel({
   activeProject,
   collapsed,
@@ -56,7 +38,6 @@ export default function SourcePanel({
   const searchInputRef = useRef(null);                 // 검색 input 포커싱용
 
   const [panelWidth, setPanelWidth] = useState(0);     // 현재 패널 너비
-  const [folderTree, setFolderTree] = useState([]);    // 폴더 및 파일 트리 구조
   const [fileMap, setFileMap] = useState({});          // file_id → file 메타데이터 매핑
 
   // 열람 중인 파일 상태
@@ -64,13 +45,9 @@ export default function SourcePanel({
   const [openedTXT, setOpenedTXT] = useState(null);    // 열람 중인 텍스트
   const [openedMemo, setOpenedMemo] = useState(null);  // 열람 중인 메모 상태
 
-  // 폴더/소스 추가 관련
-  const [showAddFolderInput, setShowAddFolderInput] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  // 소스 관련 정보
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
-
-  // 소스 관련 정보
   const [sourceCount, setSourceCount] = useState(0);   // 총 소스 수
 
   // 검색 관련
@@ -83,11 +60,11 @@ export default function SourcePanel({
   const [localFocusSource, setLocalFocusSource] = useState(null);   // 클릭 포커스 대상
 
   // 반응형 UI 임계값 설정 (너비 기준 버튼 표시 여부)
-  const PANEL_WIDTH_THRESHOLD_FOLDER = 250;            // 폴더 버튼 텍스트/아이콘 기준
+  const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
   const PANEL_WIDTH_THRESHOLD_SOURCE = 220;            // 소스 버튼 텍스트/아이콘 기준
 
-  useEffect(() => { // 소스 카운트 재계산 (마운트 및 업로드 시점)
-    refreshSourceCount();
+  useEffect(() => {
+    refreshSourceCount(); // 소스 수 재계산
   }, [activeProject, uploadKey]);
 
   useEffect(() => { // 외부에서 특정 소스를 클릭했을 때 처리 (focusSource 업데이트 감지)
@@ -112,32 +89,33 @@ export default function SourcePanel({
     }
   }, [activeProject]);
 
-  useEffect(() => { // 프로젝트 변경 시 폴더/메모 트리 새로고침
-    refresh();
-  }, [activeProject]);
-
-  const loadAllFiles = async () => { // PDF, TXT, Memo 등 모든 소스 파일들을 로드하는 함수
+  // 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
+  const loadAllFiles = async () => {
     try {
       const [pdfs, txts, memos] = await Promise.all([
         getPdfsByBrain(activeProject),
         getTextfilesByBrain(activeProject),
         getSourceMemosByBrain(activeProject)
       ]);
+
       const merged = [
-        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title })),
-        ...txts.map(txt => ({ ...txt, title: txt.txt_title })),
-        ...memos.map(memo => ({ ...memo, title: memo.memo_title }))
+        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
+        ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt' })),
+        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo' }))
       ];
+
       setAllFiles(merged);
     } catch (e) {
-      console.error('파일 목록 로딩 실패', e);
+      console.error('❌ 파일 목록 로딩 실패:', e);
       setAllFiles([]);
     }
   };
 
-  useEffect(() => { // focusSource가 바뀌었을 때, 해당 파일 열기 (PDF, TXT, Memo 포함)
+  // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
+  useEffect(() => {
     if (focusSource) {
-      console.log("focusSource", focusSource)
+      console.log("📌 focusSource:", focusSource);
+
       const targetFile = allFiles.find(file => {
         if (file.type === 'pdf') return file.pdf_id == focusSource.id;
         if (file.type === 'txt') return file.txt_id == focusSource.id;
@@ -146,87 +124,35 @@ export default function SourcePanel({
       });
 
       if (targetFile) {
-        console.log("targetFile", targetFile)
-        if (targetFile.type === 'pdf') {
-          setOpenedPDF(targetFile);
-          setIsSourceOpen(true);
-        } else if (targetFile.type === 'txt') {
-          setOpenedTXT(targetFile);
-          setIsSourceOpen(true);
-        } else if (targetFile.type === 'memo') {
-          setOpenedMemo(targetFile);
-          setIsSourceOpen(true);
-        }
-        setLocalFocusSource(null);
+        console.log("✅ targetFile found:", targetFile);
+
+        if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
+        else if (targetFile.type === 'txt') setOpenedTXT(targetFile);
+        else if (targetFile.type === 'memo') setOpenedMemo(targetFile);
+
+        setIsSourceOpen(true);
+        setLocalFocusSource(null); // 포커스 초기화
       }
     }
   }, [localFocusSource]);
 
-  const refresh = async () => { // 폴더/메모 트리 데이터 로딩
-    if (!activeProject) return;
-    try {
-      const api = await listBrainFolders(activeProject);
-      setFolderTree(normalizeApiTree(Array.isArray(api) ? api : []));
-    } catch (e) {
-      console.error('폴더/메모 로드 실패', e);
-      setFolderTree([]);
-    }
-  };
-
-  // 소스(파일) 카운트 계산
+  // 소스 개수 계산
   const refreshSourceCount = async () => {
     if (!activeProject) return;
     try {
-      const [
-        pdfRoot, pdfNested,
-        txtRoot, txtNested,
-        memoRoot, memoNested,
-        voiceRoot, voiceNested
-      ] = await Promise.all([
-        // PDF
-        getPdfsByBrain(activeProject),        // 루트 PDF
-        getPdfsByBrain(activeProject, 1),     // 폴더 내 PDF
-
-        // TXT
-        getTextfilesByBrain(activeProject),   // 루트 TXT
-        getTextfilesByBrain(activeProject, 1),// 폴더 내 TXT
-
-        // MEMO
-        getSourceMemosByBrain(activeProject),      // 루트 메모
-        getSourceMemosByBrain(activeProject, 1),   // 폴더 내 메모
-
-        // VOICE
-        getVoicesByBrain(activeProject),      // 루트 음성
-        getVoicesByBrain(activeProject, 1)    // 폴더 내 음성
-
+      const [pdfs, txts, memos] = await Promise.all([
+        getPdfsByBrain(activeProject),
+        getTextfilesByBrain(activeProject),
+        getSourceMemosByBrain(activeProject),
       ]);
 
-      const totalCount =
-        pdfRoot.length + pdfNested.length +
-        txtRoot.length + txtNested.length +
-        memoRoot.length + memoNested.length +
-        voiceRoot.length + voiceNested.length;
+      const totalCount = pdfs.length + txts.length + memos.length;
 
       setSourceCount(totalCount);
-      onSourceCountChange?.(totalCount); // ✅ MainLayout로 전달
+      onSourceCountChange?.(totalCount);
     } catch (e) {
       console.error('소스 카운트 오류', e);
       setSourceCount(0);
-    }
-  };
-
-  const handleAddFolder = async e => { // 새 폴더 생성
-    e.preventDefault();
-    const name = newFolderName.trim();
-    if (!name) return;
-    try {
-      await createFolder(name, activeProject);
-      setNewFolderName('');
-      setShowAddFolderInput(false);
-      await refresh();
-      setUploadKey(k => k + 1);
-    } catch {
-      alert('폴더 생성 실패');
     }
   };
 
@@ -289,16 +215,6 @@ export default function SourcePanel({
             {/* 소스가 열려있지 않을 때만 표시 */}
             {(!openedPDF && !openedTXT && !openedMemo) && (
               <div className="action-buttons">
-                {/* 폴더 추가 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
-                <button
-                  className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_FOLDER ? 'icon-only' : ''}`}
-                  onClick={() => setShowAddFolderInput(true)}
-                >
-                  {panelWidth < 250
-                    ? <TbFolderPlus size={25} />
-                    : <>＋ 폴더</>}
-                </button>
-
                 {/* 소스 추가 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
                 <button
                   className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SOURCE ? 'icon-only' : ''}`}
@@ -307,6 +223,14 @@ export default function SourcePanel({
                   {panelWidth < 250
                     ? <TbCylinderPlus size={25} />
                     : <>＋ 소스</>}
+                </button>
+                {/* 탐색 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
+                <button
+                  className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SEARCH ? 'icon-only' : ''}`}
+                >
+                  {panelWidth < 250
+                    ? <TbFolderPlus size={25} />
+                    : <>＋ 탐색</>}
                 </button>
               </div>
             )}
@@ -359,28 +283,6 @@ export default function SourcePanel({
             </form>
           )}
 
-          {showAddFolderInput && (
-            <form className="add-form fancy-form" onSubmit={handleAddFolder}>
-              <input
-                autoFocus
-                placeholder="새 폴더 이름"
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-
-              />
-              <div className="form-buttons">
-                <button type="submit" className="primary">추가</button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setShowAddFolderInput(false)}
-                >
-                  취소
-                </button>
-              </div>
-            </form>
-          )}
-
           <div className="panel-content" style={{ flexGrow: 1, overflow: 'auto' }}>
             {openedPDF ? (
               // PDF 뷰어
@@ -407,8 +309,7 @@ export default function SourcePanel({
             ) : (
               <FileView
                 brainId={activeProject}
-                files={folderTree}
-                setFiles={setFolderTree}
+                files={allFiles}
                 onOpenPDF={file => {
                   setOpenedPDF(file);
                   setIsSourceOpen(true);
@@ -428,6 +329,8 @@ export default function SourcePanel({
                   onGraphRefresh?.();
                   // 소스 수 갱신
                   refreshSourceCount();
+                  // 파일 목록도 새로고침
+                  loadAllFiles();
                 }}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
                 filteredSourceIds={filteredSourceIds}
@@ -443,17 +346,17 @@ export default function SourcePanel({
         onClose={() => setShowUploadModal(false)}
         onUpload={async uploadedFiles => {
           try {
-            // 서버에 저장된 PDF 메타데이터로 목록만 갱신
-            await refresh();                    // getPdfsByBrain으로 새로고침
+            // PDF, TXT, Memo 전체 파일 새로 불러오기
+            await loadAllFiles();
             setUploadKey(k => k + 1);
 
-            // fileMap에 pdf_id → PdfResponse 매핑
+            // fileMap에 ID별 메타데이터 매핑
             setFileMap(prev => {
               const m = { ...prev };
               uploadedFiles.forEach(file => {
                 if (file.pdf_id) m[file.pdf_id] = file;
                 else if (file.txt_id) m[file.txt_id] = file;
-                else if (file.voice_id) m[file.voice_id] = file;
+                else if (file.memo_id) m[file.memo_id] = file;
               });
               return m;
             });
