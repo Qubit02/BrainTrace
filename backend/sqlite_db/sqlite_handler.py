@@ -151,6 +151,9 @@ class SQLiteHandler:
                 
                 logging.info("🧹 TextFile 테이블에서 brain_id=%s 삭제 시도", brain_id)
                 cursor.execute("DELETE FROM TextFile WHERE brain_id = ?", (brain_id,))
+
+                logging.info("🧹 Memo 테이블에서 brain_id=%s 삭제 시도", brain_id)
+                cursor.execute("DELETE FROM Memo WHERE brain_id = ?", (brain_id,))
                 
                 logging.info("🧹 Chat 테이블에서 brain_id=%s 삭제 시도", brain_id)
                 cursor.execute("DELETE FROM Chat WHERE brain_id = ?", (brain_id,))

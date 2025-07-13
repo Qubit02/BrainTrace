@@ -67,7 +67,8 @@ export default function FileView({
   const [editingId, setEditingId] = useState(null);
   const [tempName, setTempName] = useState('');
   const [fileToDelete, setFileToDelete] = useState(null);
-  const [uploadQueue, setUploadQueue] = useState([])
+  const [uploadQueue, setUploadQueue] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 보여줄 파일 리스트를 계산: filteredSourceIds가 존재하면 해당 ID만 필터링
   const displayedFiles = filteredSourceIds
@@ -530,11 +531,16 @@ export default function FileView({
       {fileToDelete && (
         <ConfirmDialog
           message={`"${fileToDelete.name}" 소스를 삭제하시겠습니까?`}
-          onCancel={() => setFileToDelete(null)}
-          onOk={async () => {
-            await handleDelete(fileToDelete);
-            setFileToDelete(null);
+          onCancel={() => {
+            if (!isDeleting) setFileToDelete(null);
           }}
+          onOk={async () => {
+            setIsDeleting(true); // 로딩 시작
+            await handleDelete(fileToDelete);
+            setIsDeleting(false); // 로딩 종료
+            setFileToDelete(null); // 모달 닫기
+          }}
+          isLoading={isDeleting}
         />
       )}
     </div>
