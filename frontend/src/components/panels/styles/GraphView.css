@@ -1,5 +1,6 @@
-/* GraphView.css - 다크모드 지원 추가 */
+/* GraphView.css - 그래프 뷰 전용 스타일 */
 
+/* ====== 그래프 메인 영역 ====== */
 .graph-area {
     width: 100%;
     height: 100%;
@@ -11,13 +12,15 @@
     background-color: #fafafa;
     transition: background-color 0.3s ease;
 }
-
-/* ✅ 다크모드 그래프 영역 */
+/* 다크모드 지원 */
 .graph-area.dark-mode {
     background-color: #0f172a;
 }
+.graph-area * {
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
 
-/* 로딩 오버레이 */
+/* ====== 로딩 오버레이 ====== */
 .graph-loading {
     position: absolute;
     top: 0;
@@ -35,8 +38,6 @@
     font-weight: 500;
     transition: all 0.3s ease;
 }
-
-/* 로딩 스피너 */
 .graph-loading-spinner {
     width: 40px;
     height: 40px;
@@ -47,13 +48,13 @@
     margin-bottom: 12px;
     transition: border-color 0.3s ease;
 }
-
 @keyframes spin {
     to {
         transform: rotate(360deg);
     }
 }
 
+/* ====== 에러 오버레이 ====== */
 .graph-error {
     position: absolute;
     top: 0;
@@ -66,9 +67,4 @@
     background-color: #fafafa;
     color: red;
     transition: all 0.3s ease;
-}
-
-/* ✅ 다크모드 전환 시 부드러운 애니메이션 */
-.graph-area * {
-    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
 }

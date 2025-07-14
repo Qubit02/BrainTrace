@@ -1,17 +1,17 @@
-/* SourcePanel.css - 소스 패널 및 파일 탐색기 관련 스타일 */
+/* SourcePanel.css - 소스 패널 및 파일 탐색기 전용 스타일 */
 
-/* 모던 파일 탐색기 스타일 */
+/* ====== 모던 파일 탐색기 ====== */
 .modern-explorer {
   font-size: 14px;
   padding: 0;
   background: #fafafa;
 }
 
+/* ====== 파일/폴더 리스트 ====== */
 .folder-container {
   width: 100%;
   margin-left: 5px;
 }
-
 .file-item {
   display: flex;
   align-items: center;
@@ -22,22 +22,22 @@
   border-radius: 4px;
   margin: 1px 0;
 }
-
 .file-item:hover {
   background-color: #f5f5f5;
 }
-
 .file-item.selected {
   background-color: #e6f2ff;
   color: gray;
 }
-
+.file-item.highlighted {
+  background-color: #f0f7ff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
 .file-icon {
   margin-right: 10px;
   font-size: 16px;
   flex-shrink: 0;
 }
-
 .file-name {
   white-space: nowrap;
   overflow: hidden;
@@ -45,32 +45,7 @@
   flex: 1;
 }
 
-.folder-contents {
-  margin-left: 0;
-}
-
-/* 중첩된 항목 스타일 */
-.sub-entry {
-  padding-left: 12px;
-}
-
-.sub-sub-entry {
-  padding-left: 24px;
-}
-
-/* 하이라이트된 파일 항목 */
-.file-item.highlighted {
-  background-color: #f0f7ff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-
-.special-item {
-  background-color: #f0f7ff;
-  border-radius: 4px;
-}
-
-/* 액션 버튼 스타일 */
+/* ====== 액션 버튼/추가 버튼 ====== */
 .action-buttons {
   background: #fafafa;
   display: flex;
@@ -82,8 +57,6 @@
   width: 100%;
   transition: all 0.3s ease;
 }
-
-/* 패널 크기에 따라 버튼 크기 조정 */
 .add-button {
   display: flex;
   align-items: center;
@@ -102,145 +75,10 @@
   text-align: center;
   white-space: nowrap;
 }
-
 .add-button:hover {
   background-color: #f5f5f5;
   border-color: #ddd;
 }
-
-/* 파일 추가 폼 스타일 */
-.add-form {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #f9f9f9;
-}
-
-.add-form input {
-  flex: 1;
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: white;
-}
-
-.add-form button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  background-color: #f0f0f0;
-  color: #333;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.add-form button[type="submit"] {
-  color: white;
-}
-
-.add-form button:hover {
-  opacity: 0.9;
-}
-
-/* 빈 상태 스타일 */
-.empty-state {
-  padding: 32px 16px;
-  text-align: center;
-  color: #888;
-  font-size: 14px;
-}
-
-/* 반응형 조정 */
-@media (max-width: 1200px) {
-  .layout.source-layout {
-    width: 220px;
-    min-width: 180px;
-  }
-}
-
-@media (max-width: 992px) {
-  .layout.source-layout {
-    width: 200px;
-    min-width: 160px;
-  }
-}
-
-@media (max-width: 768px) {
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .file-item {
-    padding: 10px 16px;
-  }
-}
-
-/* 확장된 버튼 스타일 - 화면 크기에 따라 조정 */
-@media (min-width: 768px) {
-  .add-button {
-    padding: 8px 16px;
-    font-size: 14px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .add-button {
-    padding: 10px 18px;
-    font-size: 15px;
-  }
-}
-
-/* 파일 익스플로러 스크롤 개선 */
-.file-explorer {
-  height: auto;
-  max-height: 100%;
-}
-
-/* Source 패널 특화 스타일 */
-.source-layout .panel-content,
-.source-layout .file-explorer {
-  height: auto;
-  max-height: 100%;
-}
-
-/* 버튼 아이콘 스타일 */
-.button-icon {
-  width: 25px;
-  height: 25px;
-}
-
-
-/* 아이콘 모드일 때 버튼 스타일 */
-button.add-button.icon-only {
-  min-width: 32px;
-  width: 32px;
-  padding: 4px;
-  border: none;
-  background-color: transparent;
-  box-shadow: none;
-  transition: background-color 0.2s ease;
-}
-
-/* 호버 효과를 위한 더 구체적인 선택자 사용 */
-button.add-button.icon-only:hover {
-  background-color: rgba(0, 0, 0, 0.1) !important;
-  /* !important로 우선순위 높임 */
-  border-radius: 4px;
-}
-
-/* 아이콘 컨테이너에도 직접 스타일 적용 */
-.action-buttons button.icon-only {
-  position: relative;
-  overflow: visible;
-}
-
-/* 활성 상태 표시를 위한 스타일 (선택 사항) */
-button.add-button.icon-only:active {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-}
-
 .pill-button {
   display: flex;
   align-items: center;
@@ -256,7 +94,6 @@ button.add-button.icon-only:active {
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 .pill-button:hover {
   background-color: #f9fafb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -264,27 +101,7 @@ button.add-button.icon-only:active {
   font-size: 14.5px;
 }
 
-.plus-icon {
-  font-size: 16px;
-}
-
-/* SourcePanel.css 또는 공통 CSS에 추가 */
-.back-button {
-  margin: 10px;
-  padding: 8px 12px;
-  background-color: #f5f5f5;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.expanded-panel {
-  transition: width 0.3s ease;
-  width: 360px;
-  /* PDF 열렸을 때 너비 */
-}
-
+/* ====== PDF 뷰어 영역 ====== */
 .pdf-viewer-wrapper {
   background: #fafafa;
   overflow-y: auto;
@@ -292,21 +109,7 @@ button.add-button.icon-only:active {
   padding: 8px;
 }
 
-.pdf-viewer-wrapper canvas {
-  transition: transform 0.2s ease;
-}
-
-.pdf-back-button {
-  background-color: white;
-  border: 1px solid #ccc;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  color: black;
-}
-
+/* ====== 검색 아이콘/입력 ====== */
 .search-icon-container {
   display: flex;
   align-items: center;
@@ -320,23 +123,7 @@ button.add-button.icon-only:active {
   transition: box-shadow 0.3s ease, background-color 0.3s ease;
   background-color: white;
 }
-
-
 .search-icon-container.active {
   background-color: #e7e7e7;
   color: #8f8d8d;
-
-}
-
-.search-input-wrapper {
-  position: relative;
-  z-index: 10;
-}
-
-.search-input-shadow {
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
-  padding: 10px 16px;
-  margin: 0 16px;
 }

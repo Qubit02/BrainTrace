@@ -7,10 +7,10 @@ import FileIcon from './FileIcon';
 import {
   uploadPdfs, createTextFile, createTextToGraph
 } from '../../../../backend/api/backend';
-import { pdfjs } from 'pdfjs-dist';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
+//import { pdfjs } from 'pdfjs-dist';
+//import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import SourceQuotaBar from './SourceQuotaBar';
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+//pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 /**
  * 소스 업로드 모달 컴포넌트
