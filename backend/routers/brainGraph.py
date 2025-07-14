@@ -3,7 +3,7 @@ from models.request_models import ProcessTextRequest, AnswerRequest, GraphRespon
 from services import ai_service, embedding_service
 from neo4j_db.Neo4jHandler import Neo4jHandler
 import logging
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 
 ###임시 질답용 임포트
 from LLM.basic_chat import basic_chat

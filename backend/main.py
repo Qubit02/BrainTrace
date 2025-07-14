@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from neo4j_db.utils import run_neo4j
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 
 # 기존 라우터
 from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter

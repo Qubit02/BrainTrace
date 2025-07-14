@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 import logging
 
 sqlite_handler = SQLiteHandler()

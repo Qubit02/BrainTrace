@@ -2,7 +2,7 @@ from fastapi import UploadFile, File, Form, APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 import logging, os, shutil, uuid, re
 
 # DB 핸들러 초기화

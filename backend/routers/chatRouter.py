@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 import logging
 
 router = APIRouter(
