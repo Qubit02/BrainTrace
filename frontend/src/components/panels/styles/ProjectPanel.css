@@ -13,6 +13,7 @@
   transition: width 0.3s ease;
   overflow: hidden;
 }
+
 .sidebar-container:hover {
   width: 180px;
 }
@@ -32,6 +33,7 @@
   padding-top: 14px;
   gap: 16px;
 }
+
 .sidebar-icon {
   width: 100%;
   height: 40px;
@@ -46,6 +48,7 @@
   overflow: hidden;
   white-space: nowrap;
 }
+
 .sidebar-icon span {
   opacity: 0;
   color: white;
@@ -53,13 +56,16 @@
   white-space: nowrap;
   transition: opacity 0.2s ease;
 }
+
 .sidebar-container:hover .sidebar-icon span {
   opacity: 1;
 }
+
 .sidebar-icon:hover {
   background-color: rgba(255, 255, 255, 0.1);
   cursor: pointer;
 }
+
 .add-icon {
   margin-top: auto;
   margin-left: 2px;
@@ -67,6 +73,7 @@
   font-weight: bold;
   color: white;
 }
+
 .add-icon:hover {
   background-color: rgba(255, 255, 255, 0.15) !important;
 }
@@ -78,6 +85,7 @@
     min-width: 45px;
   }
 }
+
 .sidebar-icon.home-icon {
   margin: 4px;
   cursor: pointer;
@@ -86,11 +94,13 @@
   transition: all 0.2s ease;
   margin-bottom: 10px;
 }
+
 .sidebar-icon.home-icon:hover {
   background-color: #444;
   border-color: #444;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
+
 .sidebar-icon img,
 .sidebar-icon svg {
   flex-shrink: 0;
