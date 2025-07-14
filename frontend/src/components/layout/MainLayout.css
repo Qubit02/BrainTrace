@@ -96,13 +96,13 @@
 }
 
 /* 메모 패널 스타일 */
-.memo-inner .header-bar {
+.insight-inner .header-bar {
   height: 45px;
   padding: 10px 16px;
 }
 
 /* 접힌 메모 패널 스타일 */
-.memo-inner .panel-container.collapsed .header-bar {
+.insight-inner .panel-container.collapsed .header-bar {
   justify-content: center;
 }
 

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict
 import logging
 from services import embedding_service
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 
 router = APIRouter(
     prefix="/search",

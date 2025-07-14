@@ -1,104 +1,113 @@
-/* 반투명 오버레이 */
+/* 모달 배경 오버레이 */
 .modal-back {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 999;
 }
 
-/* 카드 */
+/* 카드 스타일 */
 .modal-box {
-    width: 360px;
-    background: #ffffff;
-    /* 완전 흰색 카드 */
-    padding: 28px 32px;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    width: 400px;
+    max-width: 90%;
+    background: #fefefe;
+    padding: 32px 36px;
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    color: #363030;
-    /* 기본 글자색: 짙은 회색‑검정 */
+    gap: 24px;
+    color: #2e2e2e;
+    font-family: 'Segoe UI', sans-serif;
 }
 
+/* 모달 제목 */
 .modal-box h3 {
     margin: 0;
     text-align: center;
-    font-size: 1.25rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #222;
 }
 
-/* 입력 */
-.modal-box input {
-    padding: 12px;
-    background: #ffffff;
-    border: 1px solid #d6d6d6;
-    border-radius: 6px;
-    color: #363030;
+/* 설명 텍스트 */
+.modal-box p {
+    text-align: center;
     font-size: 0.95rem;
+    color: #666;
+    margin: 0;
+}
+
+/* 입력 필드 */
+.modal-box input {
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    color: #333;
+    font-size: 1rem;
+}
+
+.modal-box input::placeholder {
+    color: #aaa;
 }
 
 .modal-box input:focus {
     outline: none;
-    border-color: #363030;
-}
-
-/* 아이콘 그리드 */
-.icon-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-}
-
-.icon-cell {
-    padding: 12px 0;
-    border: 1px solid #d6d6d6;
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    color: #363030;
-}
-
-.icon-cell:hover {
-    background: #f5f5f5;
-}
-
-.icon-cell.active {
-    border-color: #363030;
-    background: #eaeaea;
+    border-color: #555;
 }
 
 /* 버튼 */
 .modal-box button {
-    padding: 12px;
+    padding: 13px;
     border: none;
-    border-radius: 6px;
-    cursor: pointer;
+    border-radius: 8px;
     font-weight: 600;
-    transition: background 0.15s;
-    font-size: 0.95rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
 .modal-box button[type="submit"] {
-    background: #363030;
-    /* 검은 계열 포인트 */
-    color: #fff;
+    background: #222;
+    color: white;
 }
 
 .modal-box button[type="submit"]:disabled {
-    background: #7b7b7b;
-    cursor: default;
+    background: #aaa;
+    cursor: not-allowed;
 }
 
 .modal-box .secondary {
-    background: #ffffff;
-    border: 1px solid #363030;
-    color: #363030;
+    background: white;
+    border: 1.5px solid #222;
+    color: #222;
 }
 
 .modal-box .secondary:hover {
-    background: #f5f5f5;
+    background: #f4f4f4;
+}
+
+/* 헤더 */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 닫기 버튼 */
+.close-button {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-right: -22px;
+}
+
+.close-button:hover {
+    color: #333;
 }

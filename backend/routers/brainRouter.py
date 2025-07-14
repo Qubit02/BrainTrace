@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 from neo4j_db.Neo4jHandler import Neo4jHandler
 import logging
 import sqlite3
@@ -19,28 +19,22 @@ router = APIRouter(
 # ───────── Pydantic 모델 ───────── #
 class BrainCreate(BaseModel):
     brain_name : str = Field(..., min_length=1, max_length=50)
-    user_id    : int
-    icon_key   : Optional[str]  = None        # 예: "BsGraphUp"
     created_at : Optional[str]  = None        # "2025-05-06" 등
 
 class BrainUpdate(BaseModel):
     brain_name : Optional[str]  = None
-    icon_key   : Optional[str]  = None
     created_at : Optional[str]  = None
 
 class BrainResponse(BaseModel):
     brain_id: int = Field(..., description="브레인 ID", example=1)
     brain_name: str = Field(..., description="브레인 이름", example="파이썬 학습")
-    user_id: int = Field(..., description="소유자 사용자 ID", example=1)
-    icon_key:   str | None = None        
     created_at: str | None = None
     
     class Config:
         json_schema_extra = {
             "example": {
                 "brain_id": 1,
-                "brain_name": "파이썬 학습",
-                "user_id": 1
+                "brain_name": "파이썬 학습"
             }
         }
 
@@ -58,8 +52,6 @@ async def create_brain(brain: BrainCreate):
     try:
         return sqlite_handler.create_brain(
             brain_name = brain.brain_name,
-            user_id    = brain.user_id,
-            icon_key   = brain.icon_key,
             created_at = date.today().isoformat()   # ← 오늘 날짜 자동 입력
         )
     except ValueError as e:
@@ -74,15 +66,6 @@ async def create_brain(brain: BrainCreate):
 )
 async def get_all_brains():
     return sqlite_handler.get_all_brains()
-
-@router.get(
-    "/user/{user_id}", response_model=List[BrainResponse],
-    summary="사용자 브레인 조회"
-)
-async def get_user_brains(user_id: int):
-    if not sqlite_handler.get_user(user_id):
-        raise HTTPException(404, "사용자를 찾을 수 없습니다")
-    return sqlite_handler.get_user_brains(user_id)
 
 @router.get(
     "/{brain_id}", response_model=BrainResponse,

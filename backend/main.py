@@ -10,11 +10,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from neo4j_db.utils import run_neo4j
-from sqlite_db.sqlite_handler import SQLiteHandler
+from sqlite_db import SQLiteHandler
 
 # 기존 라우터
-from routers import brainGraph, userRouter, brainRouter, folderRouter, memoRouter, pdfRouter, textFileRouter, voiceRouter, chatRouter, searchRouter
-# 새로 추가할 파일/텍스트/음성 라우터
+from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -25,7 +24,7 @@ logging.basicConfig(
 logging.getLogger("uvicorn").setLevel(logging.INFO)
 logging.getLogger("uvicorn.access").setLevel(logging.INFO)
 
-# ─── DB 핸들러 & 전역 변수 ──────────────────────────
+# ───── DB 핸들러 및 Neo4j 프로세스 ─────
 sqlite_handler = SQLiteHandler()
 neo4j_process = None
 
@@ -79,15 +78,13 @@ app.add_middleware(
 
 # ─── 라우터 등록 ────────────────────────────────────
 app.include_router(brainGraph.router)
-app.include_router(userRouter.router)
 app.include_router(brainRouter.router)
-app.include_router(folderRouter.router)
 app.include_router(memoRouter.router)
 app.include_router(pdfRouter.router)        
 app.include_router(textFileRouter.router)   
-app.include_router(voiceRouter.router)      
 app.include_router(chatRouter.router)
 app.include_router(searchRouter.router)
+app.include_router(voiceRouter.router)
 
 app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
 app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")

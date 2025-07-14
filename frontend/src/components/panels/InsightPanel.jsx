@@ -7,36 +7,43 @@ import './styles/Scrollbar.css';
 
 import MemoEditor from './MemoEditor';
 import MemoListPanel from './MemoListPanel';
+import GraphViewWithModal from './GraphViewWithModal';
 
 import toggleIcon from '../../assets/icons/toggle-view.png';
 import graphOnIcon from '../../assets/icons/graph-on.png';
 import graphOffIcon from '../../assets/icons/graph-off.png';
 import memoOnIcon from '../../assets/icons/memo-on.png';
 import memoOffIcon from '../../assets/icons/memo-off.png';
-import GraphViewWithModal from './GraphViewWithModal';
+
+import {
+  createMemo,
+  getMemosByBrain,
+  updateMemo,
+  deleteMemo
+} from '../../../../backend/api/backend';
 
 function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [] }) {
   const projectId = activeProject;
-  const MEMO_STORAGE_KEY = `brainTrace-memos-${projectId}`;
-  const DELETED_MEMO_STORAGE_KEY = `brainTrace-deleted-${projectId}`;
-
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
   const [memos, setMemos] = useState([]);
-  const [deletedMemos, setDeletedMemos] = useState([]);
   const [selectedMemoId, setSelectedMemoId] = useState(null);
   const [highlightedMemoId, setHighlightedMemoId] = useState(null);
   const [graphHeight, setGraphHeight] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(MEMO_STORAGE_KEY);
-    const deleted = localStorage.getItem(DELETED_MEMO_STORAGE_KEY);
-
-    setMemos(saved ? JSON.parse(saved) : []);
-    setDeletedMemos(deleted ? JSON.parse(deleted) : []);
-    setSelectedMemoId(null);
-  }, [MEMO_STORAGE_KEY, DELETED_MEMO_STORAGE_KEY]);
+    const fetch = async () => {
+      if (!projectId) return;
+      try {
+        const memos = await getMemosByBrain(projectId);
+        setMemos(memos);
+      } catch (err) {
+        console.error('메모/휴지통 불러오기 실패:', err);
+      }
+    };
+    fetch();
+  }, [projectId]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -59,74 +66,67 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
     };
   }, [isResizing]);
 
-  const selectedMemo = memos.find(m => m.id === selectedMemoId);
+  const selectedMemo = memos.find(m => m.memo_id === selectedMemoId) || null;
 
   const handleAddMemo = async (content) => {
-    const newId = Date.now();
+    try {
+      const newMemo = await createMemo({
+        memo_text: content,
+        memo_title: "",
+        is_source: false,
+        type: 'memo',
+        folder_id: null,
+        brain_id: projectId,
+      });
 
-    // 현재 시간 포맷
-    const now = new Date();
-    const timeString = now.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+      setMemos(prev => [newMemo, ...prev]);
 
-    // 메모 구성
-    const isEmpty = !content || content.trim().length === 0;
-    const newMemo = {
-      id: newId,
-      title: isEmpty ? '' : `녹음 메모 (${timeString})`,
-      content: isEmpty ? '' : content
-    };
-
-    const updated = [newMemo, ...memos];
-    setMemos(updated);
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
-    setHighlightedMemoId(newId);
-    setSelectedMemoId(null);
-    setTimeout(() => {
-      setSelectedMemoId(newId);
-      setHighlightedMemoId(null);
-    }, 1000);
-
-    return newId;  // ✅ onAdd가 메모 ID를 반환하도록!
-  };
-
-
-  const handleDeleteMemo = (id) => {
-    const target = memos.find(m => m.id === id);
-    const updated = memos.filter(m => m.id !== id);
-
-    if (!target) return;
-
-    setMemos(updated);
-    setDeletedMemos(prev => {
-      const next = [target, ...prev];
-      localStorage.setItem(DELETED_MEMO_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
-    if (selectedMemoId === id) {
+      setHighlightedMemoId(newMemo.memo_id);
       setSelectedMemoId(null);
+      setTimeout(() => {
+        setSelectedMemoId(newMemo.memo_id);
+        setHighlightedMemoId(null);
+      }, 1000);
+
+      return newMemo.memo_id;
+    } catch (e) {
+      console.error('메모 생성 오류:', e);
+      return null;
     }
   };
 
-  const handleRestoreMemo = (id) => {
-    const target = deletedMemos.find(m => m.id === id);
-    if (!target) return;
+  const handleSaveAndClose = async (updatedMemo) => {
+    try {
+      await updateMemo(updatedMemo.memo_id, {
+        memo_title: updatedMemo.title,
+        memo_text: updatedMemo.content,
+        brain_id: updatedMemo.brain_id,
+      });
+      console.log("updatedMemo.brain_id", updateMemo.brain_id)
+      // 메모 리스트 상태 갱신
+      setMemos(prev =>
+        prev.map(m =>
+          m.memo_id === updatedMemo.memo_id
+            ? { ...m, memo_title: updatedMemo.title, memo_text: updatedMemo.content }
+            : m
+        )
+      );
 
-    const updatedTrash = deletedMemos.filter(m => m.id !== id);
-    const updatedMemos = [target, ...memos];
+      setSelectedMemoId(null);
+    } catch (err) {
+      console.error('메모 저장 오류:', err);
+      alert('메모 저장에 실패했습니다.');
+    }
+  };
 
-    setDeletedMemos(updatedTrash);
-    setMemos(updatedMemos);
-
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updatedMemos));
-    localStorage.setItem(DELETED_MEMO_STORAGE_KEY, JSON.stringify(updatedTrash));
+  const handleDeleteMemo = async (id) => {
+    try {
+      await deleteMemo(id);
+      setMemos((prev) => prev.filter((m) => m.memo_id !== id));
+      if (selectedMemoId === id) setSelectedMemoId(null);
+    } catch (err) {
+      console.error('삭제 실패:', err);
+    }
   };
 
   return (
@@ -217,28 +217,19 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
               overflow: 'auto',
               borderTop: '1px solid #eaeaea',
             }}>
-              {selectedMemoId == null ? (
+              {selectedMemoId != null && selectedMemo ? (
+                <MemoEditor
+                  memo={selectedMemo}
+                  onSaveAndClose={handleSaveAndClose}
+                />
+              ) : (
                 <MemoListPanel
                   memos={memos}
-                  deletedMemos={deletedMemos}
                   selectedId={selectedMemoId}
                   highlightedId={highlightedMemoId}
                   onSelect={setSelectedMemoId}
                   onAdd={handleAddMemo}
                   onDelete={handleDeleteMemo}
-                  onRestore={handleRestoreMemo}
-                />
-              ) : (
-                <MemoEditor
-                  memo={selectedMemo}
-                  onSaveAndClose={(updatedMemo) => {
-                    const updatedList = memos.map(m =>
-                      m.id === updatedMemo.id ? updatedMemo : m
-                    );
-                    setMemos(updatedList);
-                    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updatedList));
-                    setSelectedMemoId(null);
-                  }}
                 />
               )}
             </div>

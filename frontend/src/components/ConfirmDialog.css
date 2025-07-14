@@ -3,7 +3,6 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
-    /* 살짝 어두운 오버레이 */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -15,9 +14,7 @@
     width: 320px;
     max-width: 88%;
     background: #ffffff;
-    /* 흰색 카드 */
     color: #111;
-    /* 본문 글자 – 짙은 회색 */
     border-radius: 12px;
     padding: 26px 28px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
@@ -40,26 +37,32 @@
 /* 기본 버튼 스타일 */
 .confirm-buttons button {
     flex: 1;
-    padding: 10px 0;
-    border: 1px solid #444;
-    border-radius: 6px;
-    background: #fff;
-    color: #111;
+    min-width: 100px;
+    text-align: center;
     font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
+    font-size: 14px;
+    padding: 10px 0;
 }
 
 .confirm-buttons button:hover {
     background: #f2f2f2;
 }
 
-/* 삭제(위험) 버튼 – outline만 변경 */
 .confirm-buttons .danger {
-    border-color: #e03131;
-    color: #e03131;
+    color: black;
+    background-color: #cccaca;
 }
 
 .confirm-buttons .danger:hover {
-    background: #ffe8e8;
+    color: black;
+    background: #797979;
+}
+
+.cancel-button:disabled,
+.delete-button:disabled {
+    background-color: #ccc !important;
+    color: #666 !important;
+    opacity: 0.6;
+    box-shadow: none;
+    transition: none;
 }

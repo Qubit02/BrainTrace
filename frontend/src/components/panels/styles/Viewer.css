@@ -1,0 +1,54 @@
+/* Viewer.css */
+.viewer-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: white;
+    padding: 10px 16px;
+    border-bottom: 1px solid #ddd;
+}
+
+.viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.viewer-button {
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    border-radius: 4px;
+    padding: 2px;
+    border: 1px solid #ccc;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-fontsize {
+    min-width: 45px;
+    text-align: center;
+    font-size: 15px;
+}
+
+.viewer-content {
+    position: relative;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.viewer-pre {
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    user-select: text;
+    padding: 12px;
+}
