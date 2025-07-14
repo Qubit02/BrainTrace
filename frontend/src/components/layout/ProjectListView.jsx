@@ -5,7 +5,7 @@ import {
     deleteBrain,
     renameBrain,
     createBrain
-} from '../../../../backend/services/backend';
+} from '../../../../backend/api/backend';
 
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';

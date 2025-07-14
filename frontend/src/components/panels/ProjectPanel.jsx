@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /* API ─ backend */
-import { listBrains } from '../../../../backend/services/backend';
+import { listBrains } from '../../../../backend/api/backend';
 
 /* style */
 import './styles/Common.css';

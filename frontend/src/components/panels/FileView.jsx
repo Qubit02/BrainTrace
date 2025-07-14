@@ -34,7 +34,7 @@ import {
   createTextToGraph,
   uploadTextfiles,
   getNodesBySourceId
-} from '../../../../backend/services/backend'
+} from '../../../../backend/api/backend'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 

@@ -12,7 +12,7 @@ import ProjectPanel from '../panels/ProjectPanel';
 import SourcePanel from '../panels/SourcePanel';
 import ChatPanel from '../panels/ChatPanel';
 import InsightPanel from '../panels/InsightPanel';
-import { listBrains } from '../../../../backend/services/backend'
+import { listBrains } from '../../../../backend/api/backend'
 
 // 패널 사이즈 상수
 const PANEL = {

@@ -4,7 +4,7 @@ import './styles/Scrollbar.css';
 import { requestAnswer } from '../../api/tmpAPI';
 import copyIcon from '../../assets/icons/copy.png';
 import graphIcon from '../../assets/icons/graph-off.png';
-import { getBrain, getReferencedNodes, getSourceIdsByNodeName } from '../../../../backend/services/backend';
+import { getBrain, getReferencedNodes, getSourceIdsByNodeName } from '../../../../backend/api/backend';
 import ConfirmDialog from '../ConfirmDialog';
 
 function ChatPanel({

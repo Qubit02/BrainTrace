@@ -6,7 +6,7 @@ import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import FileIcon from './FileIcon';
 import {
   uploadPdfs, createTextFile, createTextToGraph
-} from '../../../../backend/services/backend';
+} from '../../../../backend/api/backend';
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import SourceQuotaBar from './SourceQuotaBar';
