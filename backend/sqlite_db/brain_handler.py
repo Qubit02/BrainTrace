@@ -1,4 +1,5 @@
 import sqlite3, logging, datetime
+import os
 from typing import List, Dict
 from .base_handler import BaseHandler
 
@@ -36,6 +37,30 @@ class BrainHandler(BaseHandler):
     def delete_brain(self, brain_id: int) -> bool:
         """브레인과 관련된 모든 데이터 삭제"""
         try:
+            # 1. PDF/텍스트 파일 실제 파일 삭제
+            from .pdf_handler import PdfHandler
+            from .textfile_handler import TextFileHandler
+            pdf_handler = PdfHandler(self.db_path)
+            textfile_handler = TextFileHandler(self.db_path)
+            pdfs = pdf_handler.get_pdfs_by_brain(brain_id)
+            txts = textfile_handler.get_textfiles_by_brain(brain_id)
+            for pdf in pdfs:
+                file_path = pdf.get('pdf_path')
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        logging.info(f"✅ PDF 로컬 파일 삭제 완료: {file_path}")
+                    except Exception as e:
+                        logging.error(f"❌ PDF 파일 삭제 실패: {file_path}, {e}")
+            for txt in txts:
+                file_path = txt.get('txt_path')
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        logging.info(f"✅ TXT 로컬 파일 삭제 완료: {file_path}")
+                    except Exception as e:
+                        logging.error(f"❌ TXT 파일 삭제 실패: {file_path}, {e}")
+
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             

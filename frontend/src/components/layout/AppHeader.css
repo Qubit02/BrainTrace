@@ -1,3 +1,4 @@
+/* ───────── 헤더 전체 ───────── */
 .app-header {
     display: flex;
     align-items: center;
@@ -6,23 +7,23 @@
     border-bottom: 1px solid #eee;
 }
 
+/* ───────── 왼쪽 로고/이름 영역 ───────── */
 .header-left {
     display: flex;
     align-items: center;
 }
-
 .app-logo {
     width: 30px;
     height: 30px;
     margin-right: 10px;
 }
-
 .app-name {
     font-size: 26px;
     font-weight: bold;
     color: #333;
 }
 
+/* ───────── 오른쪽 영역 ───────── */
 .header-right {
     margin-left: auto;
     display: flex;
@@ -31,26 +32,20 @@
     padding-right: 10px;
 }
 
-/* 공유/설정 버튼 */
-.icon-button {
+/* ───────── 유저 정보 블록 ───────── */
+.user-info-block {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    border-radius: 9999px;
-    font-size: 15px;
-    cursor: pointer;
-    color: black;
+    gap: 12px;
+}
+.today-text {
+    font-size: 14px;
+    color: #777;
+    white-space: nowrap;
+    margin-right: 20px;
 }
 
-.icon-button:hover {
-    background-color: #f5f5f5;
-    border: 1px solid black;
-}
-
-/* 이름 버튼 */
+/* ───────── 이름(아바타) 버튼 ───────── */
 .avatar-round {
     min-width: 100px;
     height: 38px;
@@ -70,23 +65,21 @@
     transition: background-color 0.2s;
     position: relative;
 }
-
 .avatar-round:hover {
     background-color: #f2f2f2;
 }
 
-/* 연필 아이콘은 hover 시에만 보임 */
+/* ───────── 연필 아이콘(hover 시만 보임) ───────── */
 .edit-icon {
     opacity: 0;
     transition: opacity 0.2s;
     font-size: 14px;
 }
-
 .avatar-round:hover .edit-icon {
     opacity: 1;
 }
 
-/* 입력창 */
+/* ───────── 이름 입력창 ───────── */
 .username-input {
     padding: 6px 12px;
     border-radius: 8px;
@@ -94,24 +87,4 @@
     font-size: 14px;
     width: 140px;
     height: 36px;
-}
-
-/* wrapper만 유지 */
-.avatar-wrapper {
-    display: flex;
-    align-items: center;
-}
-
-.user-info-block {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* 날짜 텍스트 */
-.today-text {
-    font-size: 14px;
-    color: #777;
-    white-space: nowrap;
-    margin-right: 20px;
 }
