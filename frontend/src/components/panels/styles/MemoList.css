@@ -1,5 +1,6 @@
-/* ✅ src/components/panels/styles/MemoList.css */
+/* MemoList.css - 메모 리스트/목록 전용 스타일 */
 
+/* ====== 메모 리스트 전체 래퍼 ====== */
 .memo-list-wrapper {
     display: flex;
     flex-direction: column;
@@ -12,43 +13,38 @@
     background-color: #fafafa;
 }
 
+/* ====== 리스트 헤더 ====== */
 .memo-list-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding: 8px 12px;
 }
-
 .memo-list-header-left {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
-
 .memo-list-title-row {
     display: flex;
     align-items: center;
     gap: 3px;
 }
-
 .memo-title-icon {
     font-size: 21px;
     color: #444;
 }
-
 .memo-title-text {
     font-size: 22px;
     font-weight: 700;
     color: #222;
 }
-
 .memo-count {
     font-size: 14px;
     color: #777;
     margin-top: 4px;
     padding: 4px;
 }
-
 .memo-list-header-right {
     display: flex;
     align-items: center;
@@ -57,6 +53,7 @@
     padding-top: 4px;
 }
 
+/* ====== 마이크/음성 녹음 ====== */
 .mic-icon {
     width: 15px;
     height: 20px;
@@ -64,36 +61,26 @@
     transition: transform 0.2s;
     background: none;
 }
-
 .mic-icon:hover {
     transform: scale(1.08);
 }
-
 .mic-icon.disabled {
     opacity: 0.4;
     pointer-events: none;
     cursor: not-allowed;
 }
-
 .mic-wrapper {
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
-
 @keyframes blink {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
+/* ====== 메모 추가 버튼 ====== */
 .add-memo-button {
     background-color: #f1f1f1;
     border: none;
@@ -105,17 +92,16 @@
     transition: background 0.2s ease;
     color: black;
 }
-
 .add-memo-button:hover {
     background-color: #ddd;
 }
 
+/* ====== 메모 리스트 ====== */
 .memo-list {
     flex-grow: 1;
     overflow-y: auto;
     padding: 12px;
 }
-
 .memo-item {
     display: flex;
     align-items: flex-start;
@@ -128,57 +114,47 @@
     cursor: grab;
     transition: background-color 0.2s ease;
 }
-
-/* 일반 메모 hover 효과 */
 .memo-item:hover {
     background-color: rgba(148, 148, 148, 0.05);
     border: 1.5px dashed #ccc;
     transform: translateY(-3px);
 }
-
-/* 휴지통 메모는 hover 효과 제거 */
 .memo-item.trash:hover {
     background-color: transparent !important;
     border: 1px solid #ccc;
     transform: none !important;
     cursor: default;
-
 }
-
 .memo-item.active {
     background-color: #f0f6ff;
 }
-
 .memo-title {
     font-size: 15px;
     font-weight: 600;
     color: #222;
 }
-
 .memo-date {
     font-size: 12px;
     color: #888;
 }
-
 .memo-item-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
-
 .memo-title-line {
     display: flex;
     justify-content: space-between;
     font-size: 15px;
     font-weight: 600;
 }
-
 .memo-preview {
     font-size: 14px;
     color: #444;
 }
 
+/* ====== 삭제/복원 버튼 ====== */
 .delete-button {
     background: none;
     border: none;
@@ -188,16 +164,13 @@
     padding: 0;
     border-radius: 4px;
 }
-
 .delete-button:hover {
     background: #f0f0f0;
     color: #e53935;
 }
-
 .delete-button:active {
     outline: none;
 }
-
 .restore-button {
     background: none;
     border: none;
@@ -207,31 +180,20 @@
     padding: 0;
     border-radius: 4px;
 }
-
 .restore-button:hover {
     color: blue;
 }
 
-/* 메모 추가 시 하이라이팅 효과 */
+/* ====== 메모 추가/하이라이트/드래그 ====== */
 .memo-item.highlighted {
     animation: highlightGray 1s ease-in-out;
     background-color: #dcdcdc;
 }
-
 @keyframes highlightGray {
-    0% {
-        background-color: #dcdcdc;
-    }
-
-    50% {
-        background-color: #b0b0b0;
-    }
-
-    100% {
-        background-color: #dcdcdc;
-    }
+    0% { background-color: #dcdcdc; }
+    50% { background-color: #b0b0b0; }
+    100% { background-color: #dcdcdc; }
 }
-
 .memo-item.dragging {
     opacity: 0.6;
     border: 2px dashed gray;
@@ -239,6 +201,7 @@
     cursor: grabbing;
 }
 
+/* ====== 뷰 토글 바 ====== */
 .memo-toggle-bar {
     display: flex;
     justify-content: center;
@@ -247,7 +210,6 @@
     z-index: 1;
     background-color: white;
 }
-
 .memo-toggle-bar.full-width-toggle {
     display: flex;
     justify-content: space-between;
@@ -259,7 +221,6 @@
     margin-bottom: -12px;
     border-radius: 0 0 12px 12px;
 }
-
 .view-toggle-button {
     flex: 1;
     background-color: #ffffff;
@@ -271,47 +232,43 @@
     color: #444;
     transition: all 0.2s ease;
 }
-
 .view-toggle-button:hover {
     background-color: #eee;
     border: 1px solid white;
 }
-
 .view-toggle-button.active {
     background-color: gainsboro;
     color: black;
     border: none;
 }
 
+/* ====== 헤더 아이콘/툴팁 ====== */
 .memo-header-icons {
     display: flex;
     gap: 12px;
     padding-left: 12px;
     margin-left: 12px;
 }
-
 .header-icon {
     font-size: 20px;
     color: #c2c0c0;
     cursor: pointer;
     transition: color 0.2s ease;
 }
-
 .header-icon:hover {
     color: #111;
 }
-
 .header-icon.active {
     color: #111;
     font-weight: bold;
 }
-
 .icon-divider {
     width: 1px;
     height: 18px;
     background-color: #ccc;
 }
 
+/* ====== 푸터/카운트 ====== */
 .memo-footer {
     display: flex;
     justify-content: center;
@@ -323,19 +280,16 @@
     bottom: 0;
     z-index: 2;
 }
-
 .memo-count-footer {
     font-size: 14px;
     color: black;
     margin: 8px;
 }
-
 .memo-footer-icons {
     display: flex;
     justify-content: flex-end;
     align-items: center;
 }
-
 .footer-trash-icon {
     font-size: 19px;
     color: #666;
@@ -343,22 +297,20 @@
     transition: color 0.2s ease;
     padding-top: 20px;
 }
-
 .footer-trash-icon:hover {
     color: #111;
 }
-
 .footer-trash-icon.active {
     color: #111;
     font-weight: bold;
 }
 
+/* ====== 툴팁 ====== */
 .tooltip-container {
     position: relative;
     display: inline-block;
     cursor: pointer;
 }
-
 .tooltip-icon {
     font-weight: bold;
     background-color: #e0e0e0;
@@ -372,7 +324,6 @@
     font-size: 12px;
     color: #333;
 }
-
 .tooltip-text {
     visibility: hidden;
     width: 180px;
@@ -388,11 +339,11 @@
     font-size: 12px;
     white-space: nowrap;
 }
-
 .tooltip-container:hover .tooltip-text {
     visibility: visible;
 }
 
+/* ====== 비어있을 때 안내 ====== */
 .memo-empty-state {
     display: flex;
     flex-direction: column;
@@ -404,26 +355,23 @@
     height: 100%;
     margin-top: -30px;
 }
-
 .memo-empty-icon {
     font-size: 36px;
     margin-bottom: 16px;
     flex-shrink: 0;
-    /* 리사이즈 시 줄어들지 않도록 */
 }
-
 .memo-empty-text {
     font-size: 20px;
     font-weight: 500;
     margin-bottom: 8px;
 }
-
 .memo-empty-subtext {
     font-size: 18px;
     line-height: 1.5;
     color: #999;
 }
 
+/* ====== 볼륨/녹음 ====== */
 .volume-bar-wrapper {
     width: 60px;
     height: 6px;
@@ -432,8 +380,6 @@
     border-radius: 3px;
     overflow: hidden;
 }
-
-/* MemoList.css 또는 공통 스타일 파일에 추가 */
 .volume-bar-bg {
     width: 100px;
     height: 10px;
@@ -443,14 +389,11 @@
     position: relative;
     margin-right: 8px;
 }
-
 .volume-bar-fill {
     height: 100%;
     background: linear-gradient(to right, rgb(179, 181, 184), rgb(62, 87, 96));
     transition: width 0.1s ease-out;
-    /* 부드럽게 변화 */
 }
-
 .recording-indicator-timer {
     position: absolute;
     margin-left: 13px;
@@ -459,21 +402,11 @@
     font-size: 10.5px;
     font-weight: bold;
 }
-
 .transcribing-indicator {
     animation: blink 1.5s infinite;
 }
-
 @keyframes blink {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
-
-    100% {
-        opacity: 1;
-    }
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
 }

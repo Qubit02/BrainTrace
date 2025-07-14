@@ -1,12 +1,15 @@
+/* 폴더 컨테이너(루트) */
 .folder-container {
   position: relative;
 }
 
+/* 폴더 드래그 오버 시 배경 */
 .folder-drag-over {
   background-color: #ffffff;
   border-radius: 6px;
 }
 
+/* 폴더 드롭존 */
 .folder-drop-zone {
   margin: 8px;
   padding: 16px;
@@ -21,6 +24,7 @@
   background-color: #fafafa;
 }
 
+/* 드롭존 안내 메시지 */
 .drop-zone-message {
   display: flex;
   flex-direction: column;
@@ -33,7 +37,7 @@
   font-size: 24px;
 }
 
-/* 폴더/파일 라인 정렬 */
+/* 파일 리스트 아이템 */
 .file-item {
   display: flex;
   align-items: center;
@@ -54,29 +58,53 @@
   outline-offset: -2px;
 }
 
+/* 파일 아이콘 */
 .file-icon {
   margin-right: 8px;
   font-size: 16px;
+  width: 1rem;
+  height: 1rem;
+  color: #e0e0e0;
 }
 
+/* 파일명 텍스트 */
 .file-name {
   font-size: 14px;
 }
 
+/* 비어있을 때 안내 */
 .empty-state {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
   height: 100%;
+  border: 2px dashed #d0d0d0;
+  border-radius: 12px;
+  background-color: #fafafa;
+  color: #777;
+  transition: background-color 0.3s;
+  text-align: center;
+}
+
+.empty-state:hover {
+  background-color: #f0f0f0;
+}
+
+.empty-sub {
+  font-size: 13px;
   color: #666;
 }
 
+/* 루트 드래그 오버 시 배경 */
 .root-drag-over {
   background-color: #fff;
   border-radius: 8px;
   position: relative;
 }
 
+/* 업로드 힌트 아이콘 */
 .upload-hint-icon {
   position: absolute;
   top: 40%;
@@ -90,6 +118,7 @@
   user-select: none;
 }
 
+/* 파일 탐색기 전체 */
 .file-explorer {
   position: relative;
   width: 100%;
@@ -97,6 +126,7 @@
   padding: 10px;
 }
 
+/* 드롭 오버레이 */
 .drop-overlay {
   position: absolute;
   inset: 0;
@@ -115,13 +145,7 @@
   opacity: 0.6;
 }
 
-.file-icon {
-  width: 1rem;
-  height: 1rem;
-  color: #e0e0e0;
-  margin-right: 8px;
-}
-
+/* 트리 토글(폴더 열기/닫기) */
 .tree-toggle {
   width: 18px;
   height: 18px;
@@ -132,45 +156,37 @@
   margin: 0;
 }
 
-/* 트리 자식 영역에 세로선 추가 */
+/* 트리 자식 영역(들여쓰기) */
 .tree-children {
   border-left: 1px solid #ddd;
   margin-left: 9px;
   padding-left: 11px;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  padding: 80px 20px;
-  border: 2px dashed #d0d0d0;
-  border-radius: 12px;
-  background-color: #fafafa;
-  color: #777;
-  transition: background-color 0.3s;
-  text-align: center;
-}
-
-.empty-state:hover {
-  background-color: #f0f0f0;
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: #666;
-}
-
+/* 파일 메뉴(점3개) 버튼 */
 .file-menu-button {
   position: relative;
   padding: 0 8px;
   margin-left: auto;
   cursor: pointer;
   user-select: none;
+  visibility: hidden;
+  color: #999;
+  font-size: 18px;
+  transition: color 0.2s ease;
 }
 
+.file-item:hover .file-menu-button {
+  visibility: visible;
+}
+
+.file-menu-button:hover {
+  color: #333;
+  transform: scale(1.1);
+  transition: transform 0.15s ease;
+}
+
+/* 파일 메뉴 팝업 */
 .file-menu-popup {
   position: absolute;
   top: 24px;
@@ -183,28 +199,7 @@
   min-width: 150px;
 }
 
-/* 기본적으로 점점점 안 보이게 */
-.file-item .file-menu-button {
-  visibility: hidden;
-  cursor: pointer;
-  padding-left: 8px;
-  color: #999;
-  font-size: 18px;
-  transition: color 0.2s ease;
-}
-
-/* 파일 항목 hover 시 점점점 표시 */
-.file-item:hover .file-menu-button {
-  visibility: visible;
-}
-
-/* 점점점 hover 시 효과 */
-.file-menu-button:hover {
-  color: #333;
-  transform: scale(1.1);
-  transition: transform 0.15s ease;
-}
-
+/* 팝업 아이템 */
 .popup-item {
   padding: 8px 12px;
   font-size: 14px;
@@ -217,6 +212,7 @@
   background-color: #f2f2f2;
 }
 
+/* 파일명 변경 입력창 */
 .rename-input {
   border: none;
   background: transparent;
@@ -229,10 +225,12 @@
   color: inherit;
 }
 
+/* 업로드 중인 파일 */
 .file-item.uploading {
   opacity: 0.8;
 }
 
+/* 업로드 상태(로딩) */
 .upload-status {
   margin-left: auto;
   font-size: 12px;
@@ -245,15 +243,14 @@
   margin-left: 4px;
 }
 
-/* 원형 스피너 회전 애니메이션 */
+/* 스피너 애니메이션 */
 .loading-spinner {
   animation: spin 1s linear infinite;
-  margin-left: auto;
 }
 
 @keyframes spin {
   from {
-    transform: rotate(0deg);
+    transform: rotate(0);
   }
 
   to {

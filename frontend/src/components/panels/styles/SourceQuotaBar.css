@@ -1,3 +1,6 @@
+/* SourceQuotaBar.css - 소스 업로드 용량/개수 표시 바 전용 스타일 */
+
+/* ====== 전체 바 컨테이너 ====== */
 .source-quota-bar {
     display: flex;
     align-items: center;
@@ -10,6 +13,7 @@
     border-radius: 0px;
 }
 
+/* ====== 라벨 ====== */
 .quota-label {
     white-space: nowrap;
     display: flex;
@@ -19,6 +23,7 @@
     font-size: 15px;
 }
 
+/* ====== 프로그레스 바 ====== */
 .quota-progress-wrapper {
     flex: 1;
     height: 8px;
@@ -26,7 +31,6 @@
     border-radius: 5px;
     overflow: hidden;
 }
-
 .quota-progress {
     height: 100%;
     background-color: #363030;
@@ -34,6 +38,7 @@
     border-radius: 6px;
 }
 
+/* ====== 개수/용량 텍스트 ====== */
 .quota-count {
     white-space: nowrap;
     font-size: 13px;
