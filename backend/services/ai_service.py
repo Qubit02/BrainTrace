@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
 
-#BaseAIService << AIService 클래스들의 기능을 모아놓은 추상 클래스입니다.
+#BaseAIService : AIService 클래스들의 기능을 모아놓은 추상 클래스입니다.
 class BaseAIService(ABC):
     @abstractmethod
     def extract_graph_components(self, text: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:

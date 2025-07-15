@@ -15,7 +15,7 @@ pull(MODEL_NAME)
 
 class OllamaAIService(BaseAIService):
     def __init__(self):
-        # 모델이 로컬에 없으면 내려받기
+        # 최초에 모델이 로컬에 없으면 내려받습니다. location : C:\Users\<username>\.ollama\models
         try:
             pull(MODEL_NAME)
             logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
