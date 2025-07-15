@@ -11,10 +11,10 @@ from .chat_handler import ChatHandler
 from .search_handler import SearchHandler
 
 
-class SQLiteHandler(BaseHandler, BrainHandler, MemoHandler, PdfHandler, TextFileHandler, ChatHandler, SearchHandler):
+class SQLiteHandler(BrainHandler, MemoHandler, PdfHandler, TextFileHandler, ChatHandler, SearchHandler):
     """
     통합 SQLite 핸들러 클래스
     모든 도메인별 핸들러의 기능을 상속받아 제공합니다.
     """
     def __init__(self, db_path=None):
-        BaseHandler.__init__(self, db_path) 
+        super().__init__(db_path) 

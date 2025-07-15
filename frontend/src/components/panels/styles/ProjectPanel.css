@@ -1,9 +1,10 @@
-/* ProjectPanel.css - 다크 모드 스타일 */
+/* ProjectPanel.css - 프로젝트 사이드바/패널 전용 스타일 */
 
 :root {
   --sidebar-radius: 40%;
 }
 
+/* ====== 사이드바 컨테이너 ====== */
 .sidebar-container {
   background-color: #2c2929;
   padding: 0;
@@ -17,14 +18,14 @@
   width: 180px;
 }
 
+/* ====== 프로젝트 메시지 ====== */
 .project-message {
   color: #aaa;
-  /* 흐린 회색 */
   font-size: 14px;
   padding: 16px;
 }
 
-/* 사이드바 아이콘 스타일 */
+/* ====== 사이드바 아이콘/리스트 ====== */
 .sidebar-icons {
   display: flex;
   flex-direction: column;
@@ -40,7 +41,6 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  /* 아이콘 + 텍스트 정렬 */
   gap: 12px;
   padding: 0 12px;
   color: white;
@@ -57,7 +57,6 @@
   transition: opacity 0.2s ease;
 }
 
-/* 사이드바 hover 시 텍스트 표시 */
 .sidebar-container:hover .sidebar-icon span {
   opacity: 1;
 }
@@ -79,7 +78,7 @@
   background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
-/* 반응형 조정 */
+/* ====== 반응형/홈 아이콘 ====== */
 @media (max-width: 992px) {
   .layout.project-layout {
     width: 45px;
@@ -87,7 +86,6 @@
   }
 }
 
-/* 홈 아이콘 스타일 - 다크톤 */
 .sidebar-icon.home-icon {
   margin: 4px;
   cursor: pointer;
@@ -101,7 +99,6 @@
   background-color: #444;
   border-color: #444;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-
 }
 
 .sidebar-icon img,
@@ -109,9 +106,9 @@
   flex-shrink: 0;
 }
 
+/* ====== 프로젝트명 말줄임 처리 ====== */
 .brain-name-ellipsis {
   max-width: 150px;
-  /* 적절한 너비 설정 (화면 크기에 따라 조절 가능) */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

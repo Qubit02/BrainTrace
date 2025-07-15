@@ -26,6 +26,7 @@ export default function ProjectListView() {
     const [tempTitle, setTempTitle] = useState('');
     const [confirmId, setConfirmId] = useState(null);
     const [highlightId, setHighlightId] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false); // 삭제 로딩 상태
 
     /* ───────── 애니메이션 상태 ───────── */
     const [displayText, setDisplayText] = useState('');
@@ -364,14 +365,19 @@ export default function ProjectListView() {
             {confirmId !== null && (
                 <ConfirmDialog
                     message="이 프로젝트를 삭제하시겠습니까?"
-                    onCancel={() => setConfirmId(null)}
+                    onCancel={() => {
+                        if (!isDeleting) setConfirmId(null);
+                    }}
+                    isLoading={isDeleting}
                     onOk={async () => {
+                        setIsDeleting(true);
                         try {
                             await deleteBrain(confirmId);
                             setBrains(prev => prev.filter(b => b.brain_id !== confirmId));
                         } catch {
                             alert('삭제 실패');
                         }
+                        setIsDeleting(false);
                         setConfirmId(null);
                     }}
                 />
