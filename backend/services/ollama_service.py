@@ -10,7 +10,7 @@ from ollama import chat, pull  # Python Ollama SDK
 from .ai_service import BaseAIService
 from .chunk_service import chunk_text
 
-MODEL_NAME = "exaone3.5:7.8b"
+MODEL_NAME = "exaone3.5:2.4b"
 pull(MODEL_NAME)
 
 class OllamaAIService(BaseAIService):
@@ -188,3 +188,19 @@ class OllamaAIService(BaseAIService):
         ]
         schema.extend(standalone)
         return "\n".join(schema) or "스키마 정보가 없습니다."
+
+    def chat(self, message: str) -> str:
+        """
+        단일 프롬프트를 Ollama LLM에 보내고,
+        모델 응답 문자열만 리턴합니다.
+        """
+        try:
+            resp = chat(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": message}],
+                stream=False
+            )
+            return resp["message"]["content"].strip()
+        except Exception as e:
+            logging.error(f"chat 오류: {e}")
+            raise

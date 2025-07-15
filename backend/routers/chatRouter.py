@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.ai_service import BaseAIService
-from src.dependencies import get_ai_service
+from dependencies import get_ai_service
 
 router = APIRouter(prefix="", tags=["chat"])
 
@@ -21,5 +21,5 @@ async def chat_endpoint(
     if not req.question:
         raise HTTPException(400, "question을 입력해주세요.")
     # 여기서는 ai_service.chat() 또는 적절한 메서드를 호출
-    answer = ai_service.basic_chat(req.question)  
+    answer = ai_service.chat(req.question)  
     return ChatResponse(answer=answer)
