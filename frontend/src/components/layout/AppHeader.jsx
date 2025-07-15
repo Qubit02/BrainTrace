@@ -1,24 +1,40 @@
+// AppHeader.jsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './AppHeader.css';
 import logo from '../../assets/logo.png';
-import { FiShare2, FiSettings, FiLogOut } from 'react-icons/fi';
+import { FiEdit2 } from 'react-icons/fi';
+import { getOrCreateUserName, setUserName } from '../../utils/userName';
 
 export default function AppHeader() {
-    const [userName, setUserName] = useState('...');
-    const nav = useNavigate();
+    const [userName, setUserNameState] = useState('...');
+    const [editing, setEditing] = useState(false);
+    const [tempName, setTempName] = useState('');
+    const [today, setToday] = useState('');
 
+    // 날짜 초기화
     useEffect(() => {
-        const stored = localStorage.getItem('userName');
-        if (stored) setUserName(stored);
+        const date = new Date();
+        const formatted = date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short',
+        });
+        setToday(formatted);
     }, []);
 
-    /* 로그아웃 클릭 */
-    const handleLogout = () => {
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userName');
-        // 필요하다면 토큰·기타 항목도 같이 제거
-        window.location.href = '/login';   // 로그인 페이지로 이동
+    // 사용자 이름 초기화
+    useEffect(() => {
+        const name = getOrCreateUserName();
+        setUserNameState(name);
+        setTempName(name);
+    }, []);
+
+    const handleSave = () => {
+        const trimmed = tempName.trim() || 'user-default';
+        setUserName(trimmed);
+        setUserNameState(trimmed);
+        setEditing(false);
     };
 
     return (
@@ -29,22 +45,32 @@ export default function AppHeader() {
             </div>
 
             <div className="header-right">
-                <button className="icon-button">
-                    <FiShare2 className="icon" />
-                    공유
-                </button>
-                <button className="icon-button">
-                    <FiSettings className="icon" />
-                    설정
-                </button>
-                {/* 사용자 메뉴: 이름 표시 & 로그아웃 */}
-                <div className="avatar-wrapper">
-                    <button className="avatar-round">{userName}</button>
-                    <div className="avatar-dropdown">
-                        <span onClick={handleLogout}>
-                            <FiLogOut className="icon" /> 로그아웃
-                        </span>
-                    </div>
+                <div className="user-info-block">
+                    <div className="today-text">{today}</div>
+                    {editing ? (
+                        <input
+                            value={tempName}
+                            onChange={e => setTempName(e.target.value)}
+                            onBlur={handleSave}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') handleSave();
+                                if (e.key === 'Escape') {
+                                    setEditing(false);
+                                    setTempName(userName);
+                                }
+                            }}
+                            autoFocus
+                            className="username-input"
+                        />
+                    ) : (
+                        <button
+                            className="avatar-round"
+                            onClick={() => setEditing(true)}
+                        >
+                            {userName}
+                            <FiEdit2 className="edit-icon" />
+                        </button>
+                    )}
                 </div>
             </div>
         </header>

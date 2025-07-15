@@ -1,15 +1,12 @@
-/* src/components/layout/Footer.css */
-
+/* ───────── 푸터 전체 ───────── */
 .app-footer {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-
     background: #fafafa;
     border-top: 1px solid #e0e0e0;
     padding: 18px 10px;
-
     font-family: "Noto Sans KR", sans-serif;
     font-size: 13px;
     line-height: 1.4;
@@ -17,7 +14,7 @@
     z-index: 100;
 }
 
-/* 가운데 정렬 + 반응형 */
+/* ───────── 푸터 내부 컨테이너 ───────── */
 .footer-inner {
     max-width: 1280px;
     margin: 0 auto;
@@ -28,22 +25,24 @@
     gap: 6px;
 }
 
+/* ───────── 브랜드 텍스트 ───────── */
 .footer-inner .brand {
     font-weight: 600;
     color: #333;
 }
 
+/* ───────── 구분선(점) ───────── */
 .footer-inner .divider {
     color: #c0c0c0;
     font-size: 12px;
 }
 
+/* ───────── 링크 스타일 ───────── */
 .footer-inner a {
     text-decoration: none;
     color: #6b6b6b;
     transition: color 0.15s;
 }
-
 .footer-inner a:hover {
     color: #111;
 }

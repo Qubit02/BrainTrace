@@ -1,3 +1,4 @@
+/* 모달 전체 오버레이 */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -8,6 +9,7 @@
     z-index: 1000;
 }
 
+/* 업로드 모달 본체 */
 .upload-modal {
     background: #f9f9f9;
     border-radius: 12px;
@@ -18,6 +20,7 @@
     position: relative;
 }
 
+/* 설명 텍스트 */
 .description {
     padding-top: 10px;
     font-size: 12px;
@@ -25,6 +28,7 @@
     color: #444;
 }
 
+/* 드래그 앤 드롭 영역 */
 .drop-zone {
     border: 2px dashed #aaa;
     padding: 32px;
@@ -32,29 +36,32 @@
     border-radius: 10px;
     transition: background-color 0.3s;
 }
-
 .drop-zone.drag-over {
     background-color: rgba(0, 0, 0, 0.1);
     border-color: #222;
 }
 
+/* 업로드 아이콘 */
 .upload-icon {
     font-size: 32px;
     margin-bottom: 8px;
     color: #222;
 }
 
+/* 강조 텍스트 */
 .highlight {
     color: #222;
     font-weight: 500;
 }
 
+/* 지원 파일 형식 안내 */
 .file-types {
     font-size: 12px;
     color: #666;
     margin-top: 8px;
 }
 
+/* 소스 옵션 버튼 영역 */
 .source-options {
     display: flex;
     flex-wrap: wrap;
@@ -62,7 +69,6 @@
     gap: 10px;
     justify-content: space-between;
 }
-
 .source-button {
     background-color: #ececec;
     border: none;
@@ -75,6 +81,7 @@
     color: #333;
 }
 
+/* 하단 푸터(QuotaBar) */
 .footer {
     display: flex;
     justify-content: space-between;
@@ -82,150 +89,42 @@
     margin-top: 24px;
 }
 
-.limit-bar {
-    width: 80%;
-    height: 6px;
-    background: #e0e0e0;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.limit-bar .filled {
-    height: 100%;
-    background: #222;
-}
-
-.limit-label {
-    font-size: 13px;
-    color: #555;
-}
-
-.fancy-form {
-    background-color: #f2f2f2;
-    padding: 16px;
-    margin: 12px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    display: flex;
-    gap: 12px;
-    flex-direction: column;
-    border: 1px solid #d1d1d1;
-}
-
-.fancy-form input {
-    padding: 10px 14px;
-    font-size: 14px;
-    border-radius: 8px;
-    border: 1px solid #bbb;
-    outline: none;
-    transition: border-color 0.2s ease;
-}
-
-.fancy-form input:focus {
-    border-color: #222;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
-}
-
-.fancy-form .form-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.fancy-form button {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-}
-
-.fancy-form button.primary {
-    background-color: #222;
-    color: #fff;
-}
-
-.fancy-form button.primary:hover {
-    background-color: #000;
-}
-
-.fancy-form button.secondary {
-    background-color: #ddd;
-    color: #333;
-}
-
-.fancy-form button.secondary:hover {
-    background-color: #ccc;
-}
-
-.progress-list,
-.progress-item {
+/* 업로드 진행 리스트 */
+.progress-list {
     margin-top: 16px;
 }
-
 .progress-item {
     display: flex;
     align-items: center;
     padding: 8px;
 }
 
+/* 업로드 상태(로딩) */
 .upload-status {
     display: flex;
     align-items: center;
     margin-left: auto;
     font-size: 0.9em;
 }
-
 .loading-spinner {
     margin-right: 4px;
     animation: spin 1s linear infinite;
 }
-
 @keyframes spin {
-    from {
-        transform: rotate(0);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
+    from { transform: rotate(0); }
+    to { transform: rotate(360deg); }
 }
-
 .loading-text {
     color: #666;
 }
 
-.loading-done {
-    margin-left: auto;
-    color: #28a745;
-}
-
+/* 닫힘 애니메이션 오버레이 */
 .closing-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(255, 255, 255, 0.7);
     animation: fadeOut 0.3s forwards;
 }
-
 @keyframes fadeOut {
-    to {
-        opacity: 0;
-        visibility: hidden;
-    }
-}
-
-.source-quota-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    background: #f9f9f9;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    font-size: 14px;
-    width: 100%;
+    to { opacity: 0; visibility: hidden; }
 }
