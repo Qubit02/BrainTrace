@@ -2,16 +2,10 @@ fastapi==0.104.1
 uvicorn==0.24.0
 neo4j==5.14.1
 langchain==0.1.0
-
-
-#아마 업데이트해야함 이거거
 qdrant-client==1.7.0
-
 langchain==0.1.0
 openai==1.78.1
-
 sentence-transformers>=2.3.1
-#추가
 huggingface_hub>=0.30.0
 transformers
 librosa
