@@ -6,7 +6,7 @@ import logging
 from sqlite_db import SQLiteHandler
 
 ###임시 질답용 임포트
-from LLM.basic_chat import basic_chat
+#from LLM.basic_chat import basic_chat
 ###
 
 router = APIRouter(

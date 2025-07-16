@@ -1,13 +1,26 @@
+# 웹 서버 및 API
 fastapi==0.104.1
 uvicorn==0.24.0
+
+# 데이터베이스
 neo4j==5.14.1
-langchain==0.1.0
-qdrant-client==1.7.0
+
+# LLM 기반 처리
 langchain==0.1.0
 openai==1.78.1
 sentence-transformers>=2.3.1
+transformers>=4.40.0  # 명시적으로 버전 추가 추천
 huggingface_hub>=0.30.0
-transformers
-librosa
-torch
-soundfile
+
+# 벡터 검색
+qdrant-client==1.7.0
+
+# 오디오 처리
+librosa==0.10.1
+soundfile==0.12.1
+torch==2.2.2  # CUDA 사용 시 버전에 주의
+
+# 기타 필수 의존성
+numpy>=1.24.0
+scipy>=1.10.0
+tqdm

@@ -19,7 +19,6 @@ import './styles/Scrollbar.css';
 
 import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";
-import { IoMdSearch } from "react-icons/io";
 
 export default function SourcePanel({
   activeProject,
@@ -179,25 +178,7 @@ export default function SourcePanel({
 
         <div className="header-right-icons" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* 검색 버튼 토글 */}
-          <div
-            className={`search-icon-container ${showSearchInput ? 'active' : ''}`}
-            onClick={() => {
-              setShowSearchInput(prev => {
-                const next = !prev;
-                if (next) {
-                  setTimeout(() => {
-                    searchInputRef.current?.focus();
-                  }, 0);
-                } else {
-                  setFilteredSourceIds(null);
-                  setSearchText('');
-                }
-                return next;
-              });
-            }}
-          >
-            {!collapsed && (<IoMdSearch size={19} style={{ cursor: 'pointer' }} />)}
-          </div>
+          {/* 더 이상 클릭 이벤트 없음, active 클래스 제거 */}
 
           {/* 사이드패널 접기/펴기 버튼 */}
           <img
@@ -226,7 +207,21 @@ export default function SourcePanel({
                 </button>
                 {/* 탐색 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
                 <button
-                  className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SEARCH ? 'icon-only' : ''}`}
+                  className={`pill-button${showSearchInput ? ' active' : ''} ${panelWidth < PANEL_WIDTH_THRESHOLD_SEARCH ? 'icon-only' : ''}`}
+                  onClick={() => {
+                    setShowSearchInput(prev => {
+                      const next = !prev;
+                      if (next) {
+                        setTimeout(() => {
+                          searchInputRef.current?.focus();
+                        }, 0);
+                      } else {
+                        setFilteredSourceIds(null);
+                        setSearchText('');
+                      }
+                      return next;
+                    });
+                  }}
                 >
                   {panelWidth < 250
                     ? <TbFolderPlus size={25} />

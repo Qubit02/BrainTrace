@@ -100,6 +100,12 @@
   border: 1px solid black;
   font-size: 14.5px;
 }
+.pill-button.active {
+  background-color: #d9dada;
+  border: 2px solid #cacaca;
+  color: #000000;
+  font-weight: 600;
+}
 
 /* ====== PDF 뷰어 영역 ====== */
 .pdf-viewer-wrapper {
@@ -107,23 +113,4 @@
   overflow-y: auto;
   height: 100%;
   padding: 8px;
-}
-
-/* ====== 검색 아이콘/입력 ====== */
-.search-icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #7d7c7c;
-  cursor: pointer;
-  margin-top: 1px;
-  margin-right: -6px;
-  border-radius: 50%;
-  padding: 4px;
-  transition: box-shadow 0.3s ease, background-color 0.3s ease;
-  background-color: white;
-}
-.search-icon-container.active {
-  background-color: #e7e7e7;
-  color: #8f8d8d;
 }
