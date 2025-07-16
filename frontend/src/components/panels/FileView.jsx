@@ -35,6 +35,8 @@ import {
   uploadTextfiles,
   getNodesBySourceId
 } from '../../../../backend/api/backend'
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -355,6 +357,7 @@ export default function FileView({
       // 지원하지 않는 확장자는 무시
       if (!['pdf', 'txt', 'memo'].includes(ext)) {
         console.warn(`❌ 지원되지 않는 파일 형식: .${ext}`);
+        toast.error('지원되지 않는 파일 형식입니다. 소스를 추가할 수 없습니다.');
         return;
       }
 
@@ -549,6 +552,7 @@ export default function FileView({
           isLoading={isDeleting}
         />
       )}
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={true} />
     </div>
   )
 }
