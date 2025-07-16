@@ -11,7 +11,7 @@ import {
   getReferencedNodes,
   getSourceIdsByNodeName,
 } from '../../../../backend/api/backend';
-import ConfirmDialog from '../ConfirmDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 // ChatPanel 컴포넌트 정의
 function ChatPanel({
@@ -24,6 +24,7 @@ function ChatPanel({
   allNodeNames = [],
   onOpenSource,
   sourceCount = 0,
+  onReady,
 }) {
   // ===== 상태 선언부 =====
   const [brainName, setBrainName] = useState(''); // 브레인 이름
@@ -84,6 +85,12 @@ function ChatPanel({
 
   // ===== 메시지 추가 시 자동 스크롤 =====
   useEffect(scrollToBottom, [sessions, currentSessionId]);
+
+  // ===== 세션이 로드되면 준비 완료로 간주 =====
+  useEffect(() => {
+    // 세션이 로드되면 준비 완료로 간주
+    onReady?.();
+  }, [sessions]);
 
   // ===== 새 세션 생성 함수 =====
   const createNewSession = (firstMessageText) => {

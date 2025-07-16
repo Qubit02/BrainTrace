@@ -12,7 +12,7 @@ import { GoPencil } from 'react-icons/go';
 import { RiDeleteBinLine } from 'react-icons/ri';
 import { processText, deleteDB } from '../../api/graphApi';
 import { fetchGraphData } from '../../api/graphApi';
-import ConfirmDialog from '../ConfirmDialog'
+import ConfirmDialog from '../common/ConfirmDialog'
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
 import {

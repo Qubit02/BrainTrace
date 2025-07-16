@@ -22,7 +22,7 @@ import {
   deleteMemo
 } from '../../../../backend/api/backend';
 
-function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [] }) {
+function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onReady }) {
   const projectId = activeProject;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
@@ -38,8 +38,10 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
       try {
         const memos = await getMemosByBrain(projectId);
         setMemos(memos);
+        onReady?.();
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);
+        onReady?.(); // 실패해도 호출
       }
     };
     fetch();
