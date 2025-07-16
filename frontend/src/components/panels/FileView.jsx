@@ -147,13 +147,9 @@ export default function FileView({
     }
   };
 
-  // 파일을 업로드하고 그래프를 생성하는 함수
-  // PDF, TXT, MEMO만 처리하며, 그 외 확장자는 무시
-  const createFileByType = async (f) => {
-    const ext = f.name.split('.').pop().toLowerCase();  // 확장자 추출
-
-    // --- PDF ---
-    if (ext === 'pdf') {
+  // --- 파일 확장자별 처리 핸들러(전략 패턴) ---
+  const fileHandlers = {
+    pdf: async (f, brainId) => {
       // 1) PDF 파일 업로드
       const [meta] = await uploadPdfs([f], brainId);
 
@@ -175,30 +171,21 @@ export default function FileView({
       });
 
       return { id: meta.pdf_id, filetype: 'pdf', meta };
-    }
-
-    // --- TXT 파일 처리 ---
-    else if (ext === 'txt') {
-      // 1) 업로드 (pdf와 동일한 방식)
+    },
+    txt: async (f, brainId) => {
+      // 1) 업로드
       const [meta] = await uploadTextfiles([f], brainId);
-
       // 2) 파일 내용 추출 후 그래프 생성
       const content = await f.text();
-
       await createTextToGraph({
         text: content,
         brain_id: String(brainId),
         source_id: String(meta.txt_id),
       });
-
       return { id: meta.txt_id, filetype: 'txt', meta };
-
-    }
-
-    // --- MEMO 파일 처리 ---
-    else if (ext === 'memo') {
+    },
+    memo: async (f, brainId) => {
       const content = await f.text();
-
       // 예시: 메모 생성 API 호출 (FastAPI 기준)
       const res = await createMemo({
         memo_title: f.name.replace(/\.memo$/, ''),
@@ -207,18 +194,32 @@ export default function FileView({
         brain_id: brainId,
         type: 'memo',
       });
-
       return { id: res.memo_id, filetype: 'memo', meta: res };
-    }
+    },
+    // 새로운 파일 형식 추가 시 여기에 핸들러만 추가하면 됨
+  };
 
-    // --- 허용되지 않은 확장자: 무시 ---
-    else {
+  // 파일을 업로드하고 그래프를 생성하는 함수 (전략 패턴 적용)
+  const createFileByType = async (f) => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (fileHandlers[ext]) {
+      return await fileHandlers[ext](f, brainId);
+    } else {
       console.warn(`❌ 지원되지 않는 파일 형식: .${ext}`);
+      toast.error('지원되지 않는 파일 형식입니다. 소스를 추가할 수 없습니다.');
       return null;
     }
   }
 
-  // 소스를 삭제하는 함수 (PDF, TXT, MEMO 공통 처리)
+  // --- 파일 타입별 삭제 핸들러(전략 패턴) ---
+  const deleteHandlers = {
+    pdf: async (id) => await deletePdf(id),
+    txt: async (id) => await deleteTextFile(id),
+    memo: async (id) => { await setMemoAsNotSource(id); return true; },
+    // 새로운 파일 타입 추가 시 여기에만 함수 추가
+  };
+
+  // 소스를 삭제하는 함수 (전략 패턴 적용)
   const handleDelete = async f => {
     try {
       console.log('삭제할 파일 정보:', {
@@ -238,13 +239,10 @@ export default function FileView({
 
       // 2) 실제 파일 삭제 (파일 시스템 또는 DB에서)
       let deleted = false;
-      if (f.filetype === 'pdf') {
-        deleted = await deletePdf(f.id);
-      } else if (f.filetype === 'txt') {
-        deleted = await deleteTextFile(f.id);
-      } else if (f.filetype === 'memo') {
-        await setMemoAsNotSource(f.id);  // memo를 비소스로만 처리
-        deleted = true;
+      if (deleteHandlers[f.filetype]) {
+        deleted = await deleteHandlers[f.filetype](f.id);
+      } else {
+        throw new Error('지원하지 않는 파일 타입');
       }
 
       // 삭제 실패 시 에러 처리
@@ -265,7 +263,30 @@ export default function FileView({
     }
   };
 
-  // 소스 이름을 변경하는 함수 (PDF, TXT, MEMO 공통 처리)
+  // --- 파일 타입별 이름 변경 핸들러(전략 패턴) ---
+  const nameUpdateHandlers = {
+    pdf: async (id, newName, brainId) => {
+      await updatePdf(id, {
+        pdf_title: newName,
+        brain_id: brainId,
+      });
+    },
+    txt: async (id, newName, brainId) => {
+      await updateTextFile(id, {
+        txt_title: newName,
+        brain_id: brainId,
+      });
+    },
+    memo: async (id, newName, brainId) => {
+      await updateMemo(id, {
+        memo_title: newName,
+        brain_id: brainId,
+      });
+    },
+    // 새로운 파일 타입 추가 시 여기에만 함수 추가
+  };
+
+  // 소스 이름을 변경하는 함수 (전략 패턴 적용)
   const handleNameChange = async (f) => {
     const newName = tempName.trim();
     if (!newName || newName === f.name) {
@@ -274,24 +295,11 @@ export default function FileView({
     }
 
     try {
-      // 1) 파일 종류에 따라 이름 변경 API 호출
-      if (f.filetype === 'pdf') {
-        await updatePdf(f.id, {
-          pdf_title: newName,
-          brain_id: brainId,
-        });
-      } else if (f.filetype === 'txt') {
-        await updateTextFile(f.id, {
-          txt_title: newName,
-          brain_id: brainId,
-        });
-      } else if (f.filetype === 'memo') {
-        await updateMemo(f.id, {
-          memo_title: newName,
-          brain_id: brainId,
-        });
+      if (nameUpdateHandlers[f.filetype]) {
+        await nameUpdateHandlers[f.filetype](f.id, newName, brainId);
+      } else {
+        throw new Error('지원하지 않는 파일 타입');
       }
-
       // 2) 파일 목록 갱신
       await refresh();
     } catch (e) {
@@ -443,12 +451,14 @@ export default function FileView({
             }
             onClick={() => {
               setSelectedFile(f.id);
-              if (f.filetype === 'pdf' && fileMap[f.id]) {
-                onOpenPDF(fileMap[f.id]);
-              } else if (f.filetype === 'txt' && fileMap[f.id]) {
-                onOpenTXT(fileMap[f.id]);
-              } else if (f.filetype === 'memo' && fileMap[f.id]) {
-                onOpenMEMO(fileMap[f.id]);
+              // --- 파일 타입별 열기 핸들러(전략 패턴) ---
+              const openHandlers = {
+                pdf: onOpenPDF,
+                txt: onOpenTXT,
+                memo: onOpenMEMO,
+              };
+              if (openHandlers[f.filetype] && fileMap[f.id]) {
+                openHandlers[f.filetype](fileMap[f.id]);
               }
             }}
           >
