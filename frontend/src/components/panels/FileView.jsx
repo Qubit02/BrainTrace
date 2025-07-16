@@ -37,6 +37,10 @@ import {
 } from '../../../../backend/api/backend'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import fileHandlers from './fileHandlers/fileHandlers';
+import deleteHandlers from './fileHandlers/deleteHandlers';
+import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
+import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -87,31 +91,9 @@ export default function FileView({
     : files;
 
   // 파일 구조를 FileView에서 사용하는 형태로 변환
-  const processedFiles = displayedFiles.map(f => {
-    if (f.type === 'pdf') {
-      return {
-        id: f.pdf_id,
-        filetype: 'pdf',
-        name: f.pdf_title || f.title,
-        meta: f
-      };
-    } else if (f.type === 'txt') {
-      return {
-        id: f.txt_id,
-        filetype: 'txt',
-        name: f.txt_title || f.title,
-        meta: f
-      };
-    } else if (f.type === 'memo') {
-      return {
-        id: f.memo_id,
-        filetype: 'memo',
-        name: f.memo_title || f.title,
-        meta: f
-      };
-    }
-    return f;
-  });
+  const processedFiles = displayedFiles.map(f =>
+    fileMetaExtractors[f.type] ? fileMetaExtractors[f.type](f) : f
+  );
 
   useEffect(() => {
     refresh();
@@ -147,59 +129,7 @@ export default function FileView({
     }
   };
 
-  // --- 파일 확장자별 처리 핸들러(전략 패턴) ---
-  const fileHandlers = {
-    pdf: async (f, brainId) => {
-      // 1) PDF 파일 업로드
-      const [meta] = await uploadPdfs([f], brainId);
-
-      // 2) 텍스트 추출
-      const arrayBuffer = await f.arrayBuffer();
-      const pdfDoc = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      let content = '';
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
-        content += textContent.items.map(item => item.str).join(' ') + '\n\n';
-      }
-
-      // 3) 그래프 생성
-      await createTextToGraph({
-        text: content,
-        brain_id: String(brainId),
-        source_id: String(meta.pdf_id),
-      });
-
-      return { id: meta.pdf_id, filetype: 'pdf', meta };
-    },
-    txt: async (f, brainId) => {
-      // 1) 업로드
-      const [meta] = await uploadTextfiles([f], brainId);
-      // 2) 파일 내용 추출 후 그래프 생성
-      const content = await f.text();
-      await createTextToGraph({
-        text: content,
-        brain_id: String(brainId),
-        source_id: String(meta.txt_id),
-      });
-      return { id: meta.txt_id, filetype: 'txt', meta };
-    },
-    memo: async (f, brainId) => {
-      const content = await f.text();
-      // 예시: 메모 생성 API 호출 (FastAPI 기준)
-      const res = await createMemo({
-        memo_title: f.name.replace(/\.memo$/, ''),
-        memo_text: content,
-        is_source: true,
-        brain_id: brainId,
-        type: 'memo',
-      });
-      return { id: res.memo_id, filetype: 'memo', meta: res };
-    },
-    // 새로운 파일 형식 추가 시 여기에 핸들러만 추가하면 됨
-  };
-
-  // 파일을 업로드하고 그래프를 생성하는 함수 (전략 패턴 적용)
+  // 파일을 업로드하고 그래프를 생성하는 함수
   const createFileByType = async (f) => {
     const ext = f.name.split('.').pop().toLowerCase();
     if (fileHandlers[ext]) {
@@ -211,15 +141,7 @@ export default function FileView({
     }
   }
 
-  // --- 파일 타입별 삭제 핸들러(전략 패턴) ---
-  const deleteHandlers = {
-    pdf: async (id) => await deletePdf(id),
-    txt: async (id) => await deleteTextFile(id),
-    memo: async (id) => { await setMemoAsNotSource(id); return true; },
-    // 새로운 파일 타입 추가 시 여기에만 함수 추가
-  };
-
-  // 소스를 삭제하는 함수 (전략 패턴 적용)
+  // 소스를 삭제하는 함수
   const handleDelete = async f => {
     try {
       console.log('삭제할 파일 정보:', {
@@ -263,30 +185,7 @@ export default function FileView({
     }
   };
 
-  // --- 파일 타입별 이름 변경 핸들러(전략 패턴) ---
-  const nameUpdateHandlers = {
-    pdf: async (id, newName, brainId) => {
-      await updatePdf(id, {
-        pdf_title: newName,
-        brain_id: brainId,
-      });
-    },
-    txt: async (id, newName, brainId) => {
-      await updateTextFile(id, {
-        txt_title: newName,
-        brain_id: brainId,
-      });
-    },
-    memo: async (id, newName, brainId) => {
-      await updateMemo(id, {
-        memo_title: newName,
-        brain_id: brainId,
-      });
-    },
-    // 새로운 파일 타입 추가 시 여기에만 함수 추가
-  };
-
-  // 소스 이름을 변경하는 함수 (전략 패턴 적용)
+  // 소스 이름을 변경하는 함수
   const handleNameChange = async (f) => {
     const newName = tempName.trim();
     if (!newName || newName === f.name) {
@@ -451,7 +350,7 @@ export default function FileView({
             }
             onClick={() => {
               setSelectedFile(f.id);
-              // --- 파일 타입별 열기 핸들러(전략 패턴) ---
+              // --- 파일 타입별 열기 핸들러 ---
               const openHandlers = {
                 pdf: onOpenPDF,
                 txt: onOpenTXT,
