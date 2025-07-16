@@ -29,7 +29,8 @@ export default function SourcePanel({
   onGraphRefresh,
   onFocusNodeNamesUpdate,
   focusSource,
-  onSourceCountChange
+  onSourceCountChange,
+  onReady
 }) {
 
   // SourcePanel 상태 및 참조값
@@ -104,9 +105,11 @@ export default function SourcePanel({
       ];
 
       setAllFiles(merged);
+      onReady?.();
     } catch (e) {
       console.error('❌ 파일 목록 로딩 실패:', e);
       setAllFiles([]);
+      onReady?.(); // 실패해도 호출
     }
   };
 
