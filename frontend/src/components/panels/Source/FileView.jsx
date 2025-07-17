@@ -57,7 +57,8 @@ export default function FileView({
   refreshTrigger,
   onGraphRefresh,
   onFocusNodeNamesUpdate,
-  filteredSourceIds
+  filteredSourceIds,
+  searchText
 }) {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isRootDrag, setIsRootDrag] = useState(false)
@@ -416,7 +417,7 @@ export default function FileView({
       })}
 
       {/* 파일이 하나도 없을 때 */}
-      {processedFiles.length === 0 && (
+      {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && (
         <div className="empty-state">
           <p className="empty-sub">
             이 영역에 파일을 <strong>드래그해서 추가</strong>해보세요!

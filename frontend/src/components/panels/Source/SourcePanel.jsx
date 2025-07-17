@@ -331,6 +331,7 @@ export default function SourcePanel({
                 }}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
                 filteredSourceIds={filteredSourceIds}
+                searchText={searchText}
               />
             )
             }
