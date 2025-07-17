@@ -3,17 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /* API ─ backend */
-import { listBrains } from '../../../../backend/api/backend';
+import { listBrains } from '../../../../../backend/api/brains';
 
 /* style */
-import './styles/Common.css';
-import './styles/ProjectPanel.css';
-import './styles/Scrollbar.css';
+import '../../common/Common.css';
+import './ProjectPanel.css';
+import '../styles/Scrollbar.css';
 
 import { IoHomeOutline } from 'react-icons/io5';
 import { AiOutlinePlus } from 'react-icons/ai';
 
-import NewBrainModal from '../NewBrainModal';
+import NewBrainModal from './NewBrainModal';
 
 /**
  * 왼쪽 세로 사이드바 (프로젝트/브레인 아이콘 목록)

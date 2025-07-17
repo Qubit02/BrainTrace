@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import HighlightPopup from './HighlightPopup';
-import './styles/Viewer.css';
+import HighlightPopup from '../HighlightPopup';
+import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
 

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import GraphView from './GraphView';
 import { MdFullscreen, MdClose } from 'react-icons/md';
 import { PiMagicWand } from "react-icons/pi";
-import './styles/GraphViewWithModal.css';
+import './GraphViewWithModal.css';
 
 function GraphViewWithModal(props) {
     const [isFullscreen, setIsFullscreen] = useState(false);

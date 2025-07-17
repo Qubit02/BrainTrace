@@ -1,13 +1,13 @@
 // src/components/panels/MemoListPanel.jsx
 import React, { useState, useRef } from 'react';
-import './styles/MemoList.css';
+import './MemoList.css';
 import { CiMemoPad } from 'react-icons/ci';
-import micOff from '../../assets/icons/mic_off.png'
-import micOn from '../../assets/icons/mic_on.png'
+import micOff from '../../../../assets/icons/mic_off.png';
+import micOn from '../../../../assets/icons/mic_on.png';
 import { IoTrashBinOutline } from "react-icons/io5";
 import { CgNotes } from "react-icons/cg";
 
-import useAudioRecorder from '../../hooks/useAudioRecorder';
+import useAudioRecorder from '../hooks/useAudioRecorder'
 
 // 초 단위 시간을 mm:ss 포맷으로 변환하는 함수
 function formatTime(seconds) {

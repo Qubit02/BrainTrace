@@ -1,10 +1,10 @@
 // src/components/panels/MemoViewer.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import HighlightPopup from './HighlightPopup';
-import './styles/Viewer.css';
+import HighlightPopup from '../HighlightPopup';
+import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
-import { getMemo } from '../../../../backend/api/backend';
+import { getMemo } from '../../../../../../backend/api/memos';
 
 export default function MemoViewer({ memoId, onBack }) {
     const [content, setContent] = useState('');         // 텍스트 내용

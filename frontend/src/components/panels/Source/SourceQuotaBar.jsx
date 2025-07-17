@@ -1,7 +1,7 @@
 // src/components/SourceQuotaBar.jsx
 import React from 'react';
 import { MdUploadFile } from "react-icons/md";
-import './styles/SourceQuotaBar.css';
+import './SourceQuotaBar.css';
 
 function SourceQuotaBar({ current, max }) {
     const percentage = Math.min((current / max) * 100, 100);

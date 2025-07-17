@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
-import { fetchGraphData } from '../../api/graphApi';
+import { fetchGraphData } from '../../../../api/graphApi';
 import { easeCubicInOut } from 'd3-ease';
-import './styles/GraphView.css';
+import './GraphView.css';
 
 function GraphView({
   brainId = 'default-brain-id',
@@ -32,7 +32,7 @@ function GraphView({
   repelStrength = 50,     // 반발력
   linkDistance = 50,      // 링크 거리  
   linkStrength = 50,      // 링크 장력
-})  {
+}) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
@@ -101,7 +101,7 @@ function GraphView({
   const getInitialZoomScale = (nodeCount) => {
     // ✅ Modal용 줌 배율 (더 확대)
     const modalMultiplier = isFullscreen ? 5 : 1.5; // Modal일 때 1.5배 더 확대
-    
+
     let baseZoom;
     if (nodeCount >= 1000) baseZoom = 0.045;
     else if (nodeCount >= 500) baseZoom = 0.05;
@@ -113,7 +113,7 @@ function GraphView({
     else if (nodeCount >= 10) baseZoom = 0.4;
     else if (nodeCount >= 5) baseZoom = 0.8;
     else baseZoom = 1;
-    
+
     return Math.min(baseZoom * modalMultiplier, 5); // 최대 줌 제한
   };
   // 타임랩스 함수
@@ -199,24 +199,24 @@ function GraphView({
   };
 
   //슬라이더 물리 효과 조절
-// ✅ 3개 물리 설정만 처리하는 useEffect
-useEffect(() => {
-  if (fgRef.current) {
-    const fg = fgRef.current;
-    
+  // ✅ 3개 물리 설정만 처리하는 useEffect
+  useEffect(() => {
+    if (fgRef.current) {
+      const fg = fgRef.current;
+
       // ✅ 올바른 반발력 공식 (0% = 가까이 모임, 100% = 멀리 퍼짐)
       const repelForce = -10 - (repelStrength / 100) * 290;    // 0% = -10, 100% = -300
       const linkDist = 50 + (linkDistance / 100) * 250;        // 50 to 300
       const linkForce = 0.1 + (linkStrength / 100) * 0.9;      // 0.1 to 1.0
-    
-    // 해당 force만 업데이트
-    fg.d3Force("charge", d3.forceManyBody().strength(repelForce));
-    fg.d3Force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
 
-    // 시뮬레이션 재시작
-    fg.d3ReheatSimulation();
-  }
-}, [repelStrength, linkDistance, linkStrength]);
+      // 해당 force만 업데이트
+      fg.d3Force("charge", d3.forceManyBody().strength(repelForce));
+      fg.d3Force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
+
+      // 시뮬레이션 재시작
+      fg.d3ReheatSimulation();
+    }
+  }, [repelStrength, linkDistance, linkStrength]);
   //예찬 더블 클릭했을 때 줌인되게
   useEffect(() => {
     const container = containerRef.current;
@@ -693,13 +693,13 @@ useEffect(() => {
             // 기본 설정
             fg.force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
             fg.force("collide", d3.forceCollide(50));
-            
+
             // ✅ 3개 설정만 적용
             // const repelForce = -10 - (repelStrength / 100) * 290;
             const repelForce = -10 - (repelStrength / 100) * 290;  // 0% = -10, 100% = -300
             const linkDist = 50 + (linkDistance / 100) * 250;
             const linkForce = 0.1 + (linkStrength / 100) * 0.9;
-            
+
             fg.force("charge", d3.forceManyBody().strength(repelForce));
             fg.force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
           }}
