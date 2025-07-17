@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './styles/MemoEditor.css';
+import './MemoEditor.css';
 import { RiCollapseDiagonalFill } from "react-icons/ri";
 
 // 메모 에디터 컴포넌트

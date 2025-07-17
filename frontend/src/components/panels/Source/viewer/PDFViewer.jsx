@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FaArrowLeftLong, FaPlus, FaMinus } from "react-icons/fa6";
+import './Viewer.css';
 
 // PDF.js worker 설정
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';

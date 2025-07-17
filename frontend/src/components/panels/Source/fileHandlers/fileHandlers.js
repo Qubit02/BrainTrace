@@ -1,4 +1,4 @@
-import { uploadPdfs, uploadTextfiles, createMemo, createTextToGraph } from '../../../../../backend/api/backend';
+import { uploadPdfs, uploadTextfiles, createMemo, createTextToGraph } from '../../../../../../backend/api/backend';
 import { pdfjs } from 'react-pdf';
 
 const fileHandlers = {

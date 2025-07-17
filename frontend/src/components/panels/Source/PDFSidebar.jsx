@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import PDFViewer from './PDFViewer';
-import './styles/PDFSidebar.css';
+import './PDFSidebar.css';
 
 function PDFSidebar() {
   const [openedPDF, setOpenedPDF] = useState(null);

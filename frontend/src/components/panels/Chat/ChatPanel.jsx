@@ -1,17 +1,17 @@
 // React 및 필요한 모듈 import
 import React, { useState, useEffect, useRef } from 'react';
 // 스타일 및 API import
-import './styles/ChatPanel.css';
-import './styles/Scrollbar.css';
-import { requestAnswer } from '../../api/tmpAPI';
-import copyIcon from '../../assets/icons/copy.png';
-import graphIcon from '../../assets/icons/graph-off.png';
+import './ChatPanel.css';
+import '../styles/Scrollbar.css';
+import { requestAnswer } from '../../../api/tmpAPI';
+import copyIcon from '../../../assets/icons/copy.png';
+import graphIcon from '../../../assets/icons/graph-off.png';
 import {
   getBrain,
   getReferencedNodes,
   getSourceIdsByNodeName,
-} from '../../../../backend/api/backend';
-import ConfirmDialog from '../common/ConfirmDialog';
+} from '../../../../../backend/api/backend';
+import ConfirmDialog from '../../common/ConfirmDialog';
 
 // ChatPanel 컴포넌트 정의
 function ChatPanel({
@@ -220,9 +220,8 @@ function ChatPanel({
               return (
                 <div
                   key={i}
-                  className={`message-wrapper ${
-                    m.isUser ? 'user-message' : 'bot-message'
-                  }`}
+                  className={`message-wrapper ${m.isUser ? 'user-message' : 'bot-message'
+                    }`}
                   onMouseEnter={async () => {
                     setHoveredMessageIndex(i);
                     if (!m.isUser && m.chatId) {
@@ -245,7 +244,7 @@ function ChatPanel({
                         return (
                           <div key={i} className="referenced-line">
                             {allNodeNames.includes(cleanWord) &&
-                            isReferenced ? (
+                              isReferenced ? (
                               <div className="referenced-block">
                                 <div className="referenced-header">
                                   <span style={{ color: 'inherit' }}>-</span>
@@ -262,9 +261,8 @@ function ChatPanel({
                                     {cleanWord}
                                   </span>
                                   <button
-                                    className={`source-toggle-button ${
-                                      openSourceNodes[cleanWord] ? 'active' : ''
-                                    }`}
+                                    className={`source-toggle-button ${openSourceNodes[cleanWord] ? 'active' : ''
+                                      }`}
                                     onClick={() => toggleSourceList(cleanWord)}
                                     style={{ marginLeft: '3px' }}
                                   >

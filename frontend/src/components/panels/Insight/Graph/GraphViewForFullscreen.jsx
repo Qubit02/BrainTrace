@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import GraphView from './GraphView';
-import './styles/GraphViewForFullscreen.css';
+import './GraphViewForFullscreen.css';
 
 function GraphViewForFullscreen(props) {
     const [allNodes, setAllNodes] = useState([]);

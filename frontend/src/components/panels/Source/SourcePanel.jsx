@@ -4,18 +4,18 @@ import {
   getTextfilesByBrain,
   getSimilarSourceIds,
   getSourceMemosByBrain
-} from '../../../../backend/api/backend';
-import FileView from '../panels/FileView';
-import PDFViewer from '../panels/PDFViewer';
-import TxtViewer from '../panels/TxtViewer';
-import MemoViewer from '../panels/MemoViewer';
-import SourceUploadModal from '../panels/SourceUploadModal';
-import SourceQuotaBar from '../panels/SourceQuotaBar';
-import toggleIcon from '../../assets/icons/toggle-view.png';
-import './styles/Common.css';
-import './styles/SourcePanel.css';
-import './styles/PanelToggle.css';
-import './styles/Scrollbar.css';
+} from '../../../../../backend/api/backend';
+import FileView from './FileView';
+import PDFViewer from './viewer/PDFViewer';
+import TxtViewer from './viewer/TxtViewer';
+import MemoViewer from './viewer/MemoViewer';
+import SourceUploadModal from './SourceUploadModal';
+import SourceQuotaBar from './SourceQuotaBar';
+import toggleIcon from '../../../assets/icons/toggle-view.png';
+import '../../common/Common.css'
+import './SourcePanel.css';
+import '../styles/PanelToggle.css';
+import '../styles/Scrollbar.css';
 
 import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";

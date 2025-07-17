@@ -1,26 +1,26 @@
 // src/components/panels/MemoPanel.jsx
 import React, { useState, useEffect } from 'react';
-import './styles/Common.css';
-import './styles/MemoPanel.css';
-import './styles/PanelToggle.css';
-import './styles/Scrollbar.css';
+import '../../common/Common.css';
+import './Memo/MemoPanel.css';
+import '../styles/PanelToggle.css';
+import '../styles/Scrollbar.css';
 
-import MemoEditor from './MemoEditor';
-import MemoListPanel from './MemoListPanel';
-import GraphViewWithModal from './GraphViewWithModal';
+import MemoEditor from './Memo/MemoEditor';
+import MemoListPanel from './Memo/MemoListPanel';
+import GraphViewWithModal from './Graph/GraphViewWithModal';
 
-import toggleIcon from '../../assets/icons/toggle-view.png';
-import graphOnIcon from '../../assets/icons/graph-on.png';
-import graphOffIcon from '../../assets/icons/graph-off.png';
-import memoOnIcon from '../../assets/icons/memo-on.png';
-import memoOffIcon from '../../assets/icons/memo-off.png';
+import toggleIcon from '../../../assets/icons/toggle-view.png';
+import graphOnIcon from '../../../assets/icons/graph-on.png';
+import graphOffIcon from '../../../assets/icons/graph-off.png';
+import memoOnIcon from '../../../assets/icons/memo-on.png';
+import memoOffIcon from '../../../assets/icons/memo-off.png';
 
 import {
   createMemo,
   getMemosByBrain,
   updateMemo,
   deleteMemo
-} from '../../../../backend/api/backend';
+} from '../../../../../backend/api/backend';
 
 function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onReady }) {
   const projectId = activeProject;

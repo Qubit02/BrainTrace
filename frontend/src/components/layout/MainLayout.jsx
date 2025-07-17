@@ -8,10 +8,10 @@ import {
 } from 'react-resizable-panels';
 import './MainLayout.css';
 
-import ProjectPanel from '../panels/ProjectPanel';
-import SourcePanel from '../panels/SourcePanel';
-import ChatPanel from '../panels/ChatPanel';
-import InsightPanel from '../panels/InsightPanel';
+import ProjectPanel from '../panels/Project/ProjectPanel';
+import SourcePanel from '../panels/Source/SourcePanel';
+import ChatPanel from '../panels/Chat/ChatPanel';
+import InsightPanel from '../panels/Insight/InsightPanel';
 import { listBrains } from '../../../../backend/api/backend'
 import Spinner from '../common/Spinner';
 
