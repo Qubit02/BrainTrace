@@ -14,18 +14,8 @@ export const fetchGraphData = async (brainId) => {
   } catch (error) {
     console.error('그래프 데이터 가져오기 실패:', error);
 
-    // 샘플 데이터로 폴백
-    return {
-      nodes: [
-        { id: 'sample1', name: '샘플 노드 1', group: 1 },
-        { id: 'sample2', name: '샘플 노드 2', group: 2 },
-        { id: 'sample3', name: '샘플 노드 3', group: 3 }
-      ],
-      links: [
-        { source: 'sample1', target: 'sample2', relation: '관계 1' },
-        { source: 'sample2', target: 'sample3', relation: '관계 2' }
-      ]
-    };
+    // 더미 데이터로 폴백
+    return getDefaultGraphData();
   }
 };
 
