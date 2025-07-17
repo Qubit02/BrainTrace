@@ -8,7 +8,7 @@
 .spinner-circle {
   width: 48px;
   height: 48px;
-  border: 6px solid #e0e0e0;
+  border: 6px solid #c2c0c0;
   border-top: 6px solid #bcbcbd;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -34,7 +34,7 @@
 
 .spinner-react-icon {
   font-size: 54px;
-  color: #afafaf;
+  color: #a09f9f;
   margin-bottom: 12px;
   animation: spinner-rotate 1s linear infinite;
 }
@@ -52,7 +52,7 @@
 .spinner-brain-text {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #666666;
+  color: #454545;
   letter-spacing: 1px;
   margin-top: 2px;
 }
