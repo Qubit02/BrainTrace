@@ -25,11 +25,10 @@
 
 /* ───────── 오른쪽 영역 ───────── */
 .header-right {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
 }
 
 /* ───────── 유저 정보 블록 ───────── */
@@ -39,10 +38,25 @@
     gap: 12px;
 }
 .today-text {
-    font-size: 14px;
-    color: #777;
+    font-size: 1.2rem;
+    color: #333;
+    font-weight: 500;
     white-space: nowrap;
     margin-right: 20px;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.today-text.strong-date {
+  font-size: 1.0rem;
+  font-weight: bold;
+  color: #545454;
+  letter-spacing: 0.02em;
 }
 
 /* ───────── 이름(아바타) 버튼 ───────── */

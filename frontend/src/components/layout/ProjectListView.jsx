@@ -11,7 +11,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { RiDeleteBinLine } from "react-icons/ri";
 import { GoPencil } from "react-icons/go";
-import ConfirmDialog from '../ConfirmDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 import './ProjectListView.css';
 import { FaPlus } from "react-icons/fa";
 

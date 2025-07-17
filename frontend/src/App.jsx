@@ -4,7 +4,7 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProjectListView from './components/layout/ProjectListView';
 import MainLayout from './components/layout/MainLayout';
-import GraphViewStandalone from './components/panels/GraphViewStandalone';
+import GraphViewStandalone from './components/panels/Insight/Graph/GraphViewStandalone'
 
 function App() {
   return (

@@ -32,7 +32,6 @@ class TextFileHandler(BaseHandler):
                 "txt_date": txt_date,
                 "type": type,
                 "brain_id": brain_id
-
             }
         except ValueError as e:
             logging.error("텍스트 파일 생성 실패: %s", str(e))

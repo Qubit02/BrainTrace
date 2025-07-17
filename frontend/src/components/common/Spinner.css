@@ -1,0 +1,58 @@
+.spinner-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner-circle {
+  width: 48px;
+  height: 48px;
+  border: 6px solid #c2c0c0;
+  border-top: 6px solid #bcbcbd;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-brain-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner-react-icon {
+  font-size: 54px;
+  color: #a09f9f;
+  margin-bottom: 12px;
+  animation: spinner-rotate 1s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-brain-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #454545;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}

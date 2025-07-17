@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "pdfjs-dist": "^3.11.174",
-    "react-pdf": "^10.0.1",
-    "uuid": "^11.1.0"
-  }
-}
