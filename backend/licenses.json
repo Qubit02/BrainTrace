@@ -1,0 +1,560 @@
+[
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "Jinja2",
+    "Version": "3.1.6"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "MarkupSafe",
+    "Version": "3.0.2"
+  },
+  {
+    "Author": "Kirill Simonov",
+    "License": "MIT License",
+    "Name": "PyYAML",
+    "Version": "6.0.2"
+  },
+  {
+    "Author": "Mike Bayer",
+    "License": "MIT",
+    "Name": "SQLAlchemy",
+    "Version": "2.0.41"
+  },
+  {
+    "Author": "J. Nick Koston",
+    "License": "Python Software Foundation License",
+    "Name": "aiohappyeyeballs",
+    "Version": "2.6.1"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "Apache-2.0",
+    "Name": "aiohttp",
+    "Version": "3.12.14"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "Apache Software License",
+    "Name": "aiosignal",
+    "Version": "1.4.0"
+  },
+  {
+    "Author": "Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, Samuel Colvin <s@muelcolvin.com>, Zac Hatfield-Dodds <zac@zhd.dev>",
+    "License": "MIT License",
+    "Name": "annotated-types",
+    "Version": "0.7.0"
+  },
+  {
+    "Author": "Alex Gr\u00f6nholm <alex.gronholm@nextday.fi>",
+    "License": "MIT License",
+    "Name": "anyio",
+    "Version": "3.7.1"
+  },
+  {
+    "Author": "Hynek Schlawack <hs@ox.cx>",
+    "License": "UNKNOWN",
+    "Name": "attrs",
+    "Version": "25.3.0"
+  },
+  {
+    "Author": "Adrian Sampson <adrian@radbox.org>",
+    "License": "UNKNOWN",
+    "Name": "audioread",
+    "Version": "3.0.1"
+  },
+  {
+    "Author": "Kenneth Reitz",
+    "License": "Mozilla Public License 2.0 (MPL 2.0)",
+    "Name": "certifi",
+    "Version": "2025.7.9"
+  },
+  {
+    "Author": "Armin Rigo, Maciej Fijalkowski",
+    "License": "MIT License",
+    "Name": "cffi",
+    "Version": "1.17.1"
+  },
+  {
+    "Author": "\"Ahmed R. TAHRI\" <tahri.ahmed@proton.me>",
+    "License": "MIT License",
+    "Name": "charset-normalizer",
+    "Version": "3.4.2"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "UNKNOWN",
+    "Name": "click",
+    "Version": "8.2.1"
+  },
+  {
+    "Author": "Jonathan Hartley <tartley@tartley.com>",
+    "License": "BSD License",
+    "Name": "colorama",
+    "Version": "0.4.6"
+  },
+  {
+    "Author": "Charles Li",
+    "License": "MIT License",
+    "Name": "dataclasses-json",
+    "Version": "0.6.7"
+  },
+  {
+    "Author": "Michele Simionato <michele.simionato@gmail.com>",
+    "License": "BSD License",
+    "Name": "decorator",
+    "Version": "5.2.1"
+  },
+  {
+    "Author": "Nir Cohen",
+    "License": "Apache Software License",
+    "Name": "distro",
+    "Version": "1.9.0"
+  },
+  {
+    "Author": "Sebasti\u00e1n Ram\u00edrez <tiangolo@gmail.com>",
+    "License": "MIT License",
+    "Name": "fastapi",
+    "Version": "0.104.1"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "The Unlicense (Unlicense)",
+    "Name": "filelock",
+    "Version": "3.18.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "Apache-2.0",
+    "Name": "frozenlist",
+    "Version": "1.7.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "fsspec",
+    "Version": "2025.5.1"
+  },
+  {
+    "Author": "Alexey Borzenkov",
+    "License": "MIT AND Python-2.0",
+    "Name": "greenlet",
+    "Version": "3.2.3"
+  },
+  {
+    "Author": "The gRPC Authors",
+    "License": "Apache Software License",
+    "Name": "grpcio",
+    "Version": "1.73.1"
+  },
+  {
+    "Author": "The gRPC Authors",
+    "License": "Apache Software License",
+    "Name": "grpcio-tools",
+    "Version": "1.73.1"
+  },
+  {
+    "Author": "Nathaniel J. Smith",
+    "License": "MIT License",
+    "Name": "h11",
+    "Version": "0.16.0"
+  },
+  {
+    "Author": "Cory Benfield <cory@lukasa.co.uk>",
+    "License": "MIT License",
+    "Name": "h2",
+    "Version": "4.2.0"
+  },
+  {
+    "Author": "Cory Benfield <cory@lukasa.co.uk>",
+    "License": "MIT License",
+    "Name": "hpack",
+    "Version": "4.1.0"
+  },
+  {
+    "Author": "Tom Christie <tom@tomchristie.com>",
+    "License": "BSD License",
+    "Name": "httpcore",
+    "Version": "1.0.9"
+  },
+  {
+    "Author": "Tom Christie <tom@tomchristie.com>",
+    "License": "BSD License",
+    "Name": "httpx",
+    "Version": "0.28.1"
+  },
+  {
+    "Author": "Hugging Face, Inc.",
+    "License": "Apache Software License",
+    "Name": "huggingface-hub",
+    "Version": "0.33.2"
+  },
+  {
+    "Author": "Cory Benfield <cory@lukasa.co.uk>",
+    "License": "MIT License",
+    "Name": "hyperframe",
+    "Version": "6.1.0"
+  },
+  {
+    "Author": "Kim Davies <kim+pypi@gumleaf.org>",
+    "License": "BSD License",
+    "Name": "idna",
+    "Version": "3.10"
+  },
+  {
+    "Author": "Samuel Colvin <samuel@pydantic.dev>",
+    "License": "MIT License",
+    "Name": "jiter",
+    "Version": "0.10.0"
+  },
+  {
+    "Author": "Gael Varoquaux <gael.varoquaux@normalesup.org>",
+    "License": "BSD License",
+    "Name": "joblib",
+    "Version": "1.5.1"
+  },
+  {
+    "Author": "Stefan K\u00f6gl",
+    "License": "BSD License",
+    "Name": "jsonpatch",
+    "Version": "1.33"
+  },
+  {
+    "Author": "Stefan K\u00f6gl",
+    "License": "BSD License",
+    "Name": "jsonpointer",
+    "Version": "3.0.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "MIT License",
+    "Name": "langchain",
+    "Version": "0.1.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "MIT License",
+    "Name": "langchain-community",
+    "Version": "0.0.20"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "MIT License",
+    "Name": "langchain-core",
+    "Version": "0.1.23"
+  },
+  {
+    "Author": "LangChain",
+    "License": "MIT License",
+    "Name": "langsmith",
+    "Version": "0.0.87"
+  },
+  {
+    "Author": "Scientific Python Developers",
+    "License": "BSD License",
+    "Name": "lazy_loader",
+    "Version": "0.4"
+  },
+  {
+    "Author": "Brian McFee, librosa development team",
+    "License": "ISC License (ISCL)",
+    "Name": "librosa",
+    "Version": "0.11.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD",
+    "Name": "llvmlite",
+    "Version": "0.44.0"
+  },
+  {
+    "Author": "Steven Loria <sloria1@gmail.com>",
+    "License": "MIT License",
+    "Name": "marshmallow",
+    "Version": "3.26.1"
+  },
+  {
+    "Author": "Fredrik Johansson",
+    "License": "BSD License",
+    "Name": "mpmath",
+    "Version": "1.3.0"
+  },
+  {
+    "Author": "Inada Naoki <songofacandy@gmail.com>",
+    "License": "Apache 2.0",
+    "Name": "msgpack",
+    "Version": "1.1.1"
+  },
+  {
+    "Author": "Andrew Svetlov",
+    "License": "Apache License 2.0",
+    "Name": "multidict",
+    "Version": "6.6.3"
+  },
+  {
+    "Author": "The mypy developers <jukka.lehtosalo@iki.fi>",
+    "License": "UNKNOWN",
+    "Name": "mypy_extensions",
+    "Version": "1.1.0"
+  },
+  {
+    "Author": "\"Neo4j, Inc.\" <drivers@neo4j.com>",
+    "License": "Apache Software License",
+    "Name": "neo4j",
+    "Version": "5.14.1"
+  },
+  {
+    "Author": "Aric Hagberg <hagberg@lanl.gov>",
+    "License": "BSD License",
+    "Name": "networkx",
+    "Version": "3.5"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "numba",
+    "Version": "0.61.2"
+  },
+  {
+    "Author": "Travis E. Oliphant et al.",
+    "License": "BSD License",
+    "Name": "numpy",
+    "Version": "1.26.4"
+  },
+  {
+    "Author": "OpenAI <support@openai.com>",
+    "License": "Apache Software License",
+    "Name": "openai",
+    "Version": "1.78.1"
+  },
+  {
+    "Author": "Donald Stufft <donald@stufft.io>",
+    "License": "Apache Software License; BSD License",
+    "Name": "packaging",
+    "Version": "23.2"
+  },
+  {
+    "Author": "\"Jeffrey A. Clark\" <aclark@aclark.net>",
+    "License": "UNKNOWN",
+    "Name": "pillow",
+    "Version": "11.3.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "MIT License",
+    "Name": "platformdirs",
+    "Version": "4.3.8"
+  },
+  {
+    "Author": "The Pooch Developers <fatiandoaterra@protonmail.com>",
+    "License": "BSD License",
+    "Name": "pooch",
+    "Version": "1.8.2"
+  },
+  {
+    "Author": "Rick van Hattem <wolph@wol.ph>",
+    "License": "BSD License",
+    "Name": "portalocker",
+    "Version": "2.10.1"
+  },
+  {
+    "Author": "Andrew Svetlov",
+    "License": "Apache Software License",
+    "Name": "propcache",
+    "Version": "0.3.2"
+  },
+  {
+    "Author": "protobuf@googlegroups.com",
+    "License": "3-Clause BSD License",
+    "Name": "protobuf",
+    "Version": "6.31.1"
+  },
+  {
+    "Author": "Eli Bendersky",
+    "License": "BSD License",
+    "Name": "pycparser",
+    "Version": "2.22"
+  },
+  {
+    "Author": "Samuel Colvin <s@muelcolvin.com>, Eric Jolibois <em.jolibois@gmail.com>, Hasan Ramezani <hasan.r67@gmail.com>, Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, Terrence Dorsey <terry@pydantic.dev>, David Montague <david@pydantic.dev>, Serge Matveenko <lig@countzero.co>, Marcelo Trylesinski <marcelotryle@gmail.com>, Sydney Runkle <sydneymarierunkle@gmail.com>, David Hewitt <mail@davidhewitt.io>, Alex Hall <alex.mojaki@gmail.com>, Victorien Plot <contact@vctrn.dev>",
+    "License": "MIT License",
+    "Name": "pydantic",
+    "Version": "2.11.7"
+  },
+  {
+    "Author": "Samuel Colvin <s@muelcolvin.com>, Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, David Montague <david@pydantic.dev>, David Hewitt <mail@davidhewitt.dev>, Sydney Runkle <sydneymarierunkle@gmail.com>, Victorien Plot <contact@vctrn.dev>",
+    "License": "MIT License",
+    "Name": "pydantic_core",
+    "Version": "2.33.2"
+  },
+  {
+    "Author": "Saurabh Kumar",
+    "License": "BSD License",
+    "Name": "python-dotenv",
+    "Version": "1.1.1"
+  },
+  {
+    "Author": "Andrew Dunham <andrew@du.nham.ca>, Marcelo Trylesinski <marcelotryle@gmail.com>",
+    "License": "Apache Software License",
+    "Name": "python-multipart",
+    "Version": "0.0.20"
+  },
+  {
+    "Author": "Stuart Bishop",
+    "License": "MIT License",
+    "Name": "pytz",
+    "Version": "2025.2"
+  },
+  {
+    "Author": "Mark Hammond (et al)",
+    "License": "Python Software Foundation License",
+    "Name": "pywin32",
+    "Version": "310"
+  },
+  {
+    "Author": "Andrey Vasnetsov",
+    "License": "Apache Software License",
+    "Name": "qdrant-client",
+    "Version": "1.7.0"
+  },
+  {
+    "Author": "Matthew Barnett",
+    "License": "Apache Software License",
+    "Name": "regex",
+    "Version": "2024.11.6"
+  },
+  {
+    "Author": "Kenneth Reitz",
+    "License": "Apache Software License",
+    "Name": "requests",
+    "Version": "2.32.4"
+  },
+  {
+    "Author": "Nicolas Patry <patry.nicolas@protonmail.com>",
+    "License": "Apache Software License",
+    "Name": "safetensors",
+    "Version": "0.5.3"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "scikit-learn",
+    "Version": "1.7.0"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "BSD License",
+    "Name": "scipy",
+    "Version": "1.16.0"
+  },
+  {
+    "Author": "Nils Reimers <info@nils-reimers.de>, Tom Aarsen <tom.aarsen@huggingface.co>",
+    "License": "Apache Software License",
+    "Name": "sentence-transformers",
+    "Version": "5.0.0"
+  },
+  {
+    "Author": "\"Nathaniel J. Smith\" <njs@pobox.com>",
+    "License": "Apache Software License; MIT License",
+    "Name": "sniffio",
+    "Version": "1.3.1"
+  },
+  {
+    "Author": "Bastian Bechtold",
+    "License": "BSD License",
+    "Name": "soundfile",
+    "Version": "0.13.1"
+  },
+  {
+    "Author": "KEUM Myungchul",
+    "License": "GNU Lesser General Public License v2 or later (LGPLv2+)",
+    "Name": "soxr",
+    "Version": "0.5.0.post1"
+  },
+  {
+    "Author": "Tom Christie <tom@tomchristie.com>",
+    "License": "BSD License",
+    "Name": "starlette",
+    "Version": "0.27.0"
+  },
+  {
+    "Author": "SymPy development team",
+    "License": "BSD License",
+    "Name": "sympy",
+    "Version": "1.14.0"
+  },
+  {
+    "Author": "Julien Danjou",
+    "License": "Apache Software License",
+    "Name": "tenacity",
+    "Version": "8.5.0"
+  },
+  {
+    "Author": "Thomas Moreau",
+    "License": "BSD License",
+    "Name": "threadpoolctl",
+    "Version": "3.6.0"
+  },
+  {
+    "Author": "Anthony MOI <m.anthony.moi@gmail.com>",
+    "License": "Apache Software License",
+    "Name": "tokenizers",
+    "Version": "0.21.2"
+  },
+  {
+    "Author": "PyTorch Team",
+    "License": "BSD License",
+    "Name": "torch",
+    "Version": "2.7.1"
+  },
+  {
+    "Author": "UNKNOWN",
+    "License": "MIT License; Mozilla Public License 2.0 (MPL 2.0)",
+    "Name": "tqdm",
+    "Version": "4.67.1"
+  },
+  {
+    "Author": "The Hugging Face team (past and future) with the help of all our contributors (https://github.com/huggingface/transformers/graphs/contributors)",
+    "License": "Apache Software License",
+    "Name": "transformers",
+    "Version": "4.53.1"
+  },
+  {
+    "Author": "Ivan Levkivskyi",
+    "License": "MIT License",
+    "Name": "typing-inspect",
+    "Version": "0.9.0"
+  },
+  {
+    "Author": "Victorien Plot <contact@vctrn.dev>",
+    "License": "UNKNOWN",
+    "Name": "typing-inspection",
+    "Version": "0.4.1"
+  },
+  {
+    "Author": "\"Guido van Rossum, Jukka Lehtosalo, \u0141ukasz Langa, Michael Lee\" <levkivskyi@gmail.com>",
+    "License": "UNKNOWN",
+    "Name": "typing_extensions",
+    "Version": "4.14.1"
+  },
+  {
+    "Author": "Andrey Petrov",
+    "License": "MIT License",
+    "Name": "urllib3",
+    "Version": "1.26.20"
+  },
+  {
+    "Author": "Tom Christie <tom@tomchristie.com>",
+    "License": "BSD License",
+    "Name": "uvicorn",
+    "Version": "0.24.0"
+  },
+  {
+    "Author": "Andrew Svetlov",
+    "License": "Apache Software License",
+    "Name": "yarl",
+    "Version": "1.20.1"
+  }
+]

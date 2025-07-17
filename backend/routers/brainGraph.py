@@ -4,10 +4,10 @@ from services import ai_service, embedding_service
 from neo4j_db.Neo4jHandler import Neo4jHandler
 import logging
 from sqlite_db import SQLiteHandler
+from exceptions.custom_exceptions import Neo4jException,AppException, GraphDataNotFoundException, QdrantException
+from examples.error_examples import ErrorExamples
 
-###임시 질답용 임포트
-#from LLM.basic_chat import basic_chat
-###
+
 
 router = APIRouter(
     prefix="/brainGraph",
@@ -15,33 +15,17 @@ router = APIRouter(
     responses={404: {"description": "Not found"}}
 )
 
-# #임시 질답용 엔드포인트
-# @router.post("/basic_chat",
-#     summary="질문에 대한 답변 생성",
-#     description="사용자의 질문에 대해 답변을 생성합니다.",
-#     response_description="생성된 답변을 반환합니다. ")
-# async def basic_chat_endpoint(request_data: BasicChatRequest):
-#     text = request_data.question
-#     response = basic_chat(text)
-#     print("response: ", response)
-#     return response
-# #임시 질답용 엔드포인트 끝
-
-# #임시 질답용 엔드포인트
-# @router.post("/basic_chat",
-#     summary="질문에 대한 답변 생성",
-#     description="사용자의 질문에 대해 답변을 생성합니다.",
-#     response_description="생성된 답변을 반환합니다. ")
-# async def basic_chat_endpoint(request_data: BasicChatRequest):
-#     text = request_data.question
-#     response = basic_chat(text)
-#     print("response: ", response)
-#     return response
-# #임시 질답용 엔드포인트 끝
-
-@router.get("/getNodeEdge/{brain_id}", response_model=GraphResponse,
-           summary="브레인의 그래프 데이터 조회",
-           description="특정 브레인의 모든 노드와 엣지(관계) 정보를 반환합니다.")
+@router.get(
+    "/getNodeEdge/{brain_id}",
+    response_model=GraphResponse,
+    summary="브레인의 그래프 데이터 조회",
+    description="특정 브레인의 모든 노드와 엣지(관계) 정보를 반환합니다.",
+     responses={
+        404: ErrorExamples[40401],
+        500: ErrorExamples[50001]
+    }
+    
+)
 async def get_brain_graph(brain_id: str):
     """
     특정 브레인의 그래프 데이터를 반환합니다:
@@ -62,16 +46,24 @@ async def get_brain_graph(brain_id: str):
         
         if not graph_data['nodes'] and not graph_data['links']:
             logging.warning(f"brain_id {brain_id}에 대한 데이터가 없습니다")
+            raise GraphDataNotFoundException(brain_id)
         
         return graph_data
+    except AppException as ae:
+            raise ae
     except Exception as e:
         logging.error("그래프 데이터 조회 오류: %s", str(e))
-        raise HTTPException(status_code=500, detail=f"그래프 데이터 조회 중 오류가 발생했습니다: {str(e)}") 
+        raise Neo4jException(message=str(e))
+        
 
 @router.post("/process_text", 
     summary="텍스트 처리 및 그래프 생성",
     description="입력된 텍스트에서 노드와 엣지를 추출하여 Neo4j에 저장하고, 노드 정보를 벡터 DB에 임베딩합니다.",
-    response_description="처리된 노드와 엣지 정보를 반환합니다.")
+    response_description="처리된 노드와 엣지 정보를 반환합니다.",
+    responses={
+        500: ErrorExamples[50001]
+    }
+    )
 async def process_text_endpoint(request_data: ProcessTextRequest):
     """
     텍스트를 받아 노드/엣지 추출, Neo4j 저장, 벡터 DB 임베딩까지 전체 파이프라인 실행
@@ -117,7 +109,21 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
 @router.post("/answer",
     summary="질문에 대한 답변 생성",
     description="사용자의 질문에 대해 Neo4j에서 관련 정보를 찾아 답변을 생성합니다.",
-    response_description="생성된 답변을 반환합니다.")
+    response_description="생성된 답변을 반환합니다.",
+    responses={
+    500: {
+        "description": "서버 내부 오류 (50001, 50002 등)",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "50001": ErrorExamples[50001]["content"]["application/json"],
+                    "50002": ErrorExamples[50002]["content"]["application/json"]
+                }
+            }
+        }
+    }
+}
+)
 async def answer_endpoint(request_data: AnswerRequest):
     """
     사용자 질문을 받아 임베딩을 통해 유사한 노드를 찾고, 
@@ -149,7 +155,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색
         similar_nodes = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
-            raise Exception("질문과 유사한 노드를 찾지 못했습니다.")
+            raise QdrantException("질문과 유사한 노드를 찾지 못했습니다.")
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]
@@ -160,7 +166,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         neo4j_handler = Neo4jHandler()
         result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
         if not result:
-            raise Exception("스키마 조회 결과가 없습니다.")
+            raise Neo4jException("스키마 조회 결과가 없습니다.")
             
         logging.info("### Neo4j 조회 결과 전체: %s", result)
         
@@ -201,7 +207,11 @@ async def answer_endpoint(request_data: AnswerRequest):
 @router.get("/getSourceIds",
     summary="노드의 모든 source_id와 제목을 조회",
     description="특정 노드의 descriptions 배열에서 모든 source_id를 추출하여 반환합니다.",
-    response_description="source_id와 title을 포함하는 객체 리스트를 반환합니다.")
+    response_description="source_id와 title을 포함하는 객체 리스트를 반환합니다.",
+    responses={
+    500: ErrorExamples[50002]
+    }
+)
 async def get_source_ids(node_name: str, brain_id: str):
     """
     노드의 모든 source_id와 제목을 반환합니다:

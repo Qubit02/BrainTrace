@@ -4,16 +4,19 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import signal
 import logging
-import sqlite3
 import uvicorn
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from exceptions.custom_exceptions import AppException
+from schemas.error_response import ErrorResponse
+from fastapi.exceptions import RequestValidationError
 from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 
 # 기존 라우터
 from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter
+
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -66,6 +69,18 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# ─── Error핸들러 추가 ─────────────────────────────────
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            code=exc.code,
+            message=exc.message,
+            detail=str(request.url)
+        ).model_dump()
+    )
 
 # ─── CORS 설정 ──────────────────────────────────────
 app.add_middleware(
