@@ -19,7 +19,7 @@ import {
   getMemosByBrain,
   updateMemo,
   deleteMemo
-} from '../../../../../backend/api/backend';
+} from '../../../../api/backend';
 
 function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onReady }) {
   const projectId = activeProject;

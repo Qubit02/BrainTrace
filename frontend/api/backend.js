@@ -5,4 +5,6 @@ export * from './pdfs';
 export * from './textfiles';
 export * from './chat';
 export * from './graph';
-export * from './voice'; 
+export * from './voice';
+export * from './graphApi';
+export * from './tmpAPI';

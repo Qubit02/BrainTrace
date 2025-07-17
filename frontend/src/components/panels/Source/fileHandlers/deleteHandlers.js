@@ -1,4 +1,4 @@
-import { deletePdf, deleteTextFile, setMemoAsNotSource } from '../../../../../../backend/api/backend';
+import { deletePdf, deleteTextFile, setMemoAsNotSource } from '../../../../../api/backend';
 
 const deleteHandlers = {
   pdf: async (id) => await deletePdf(id),

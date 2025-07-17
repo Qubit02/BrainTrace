@@ -4,7 +4,7 @@ import HighlightPopup from '../HighlightPopup';
 import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
-import { getMemo } from '../../../../../../backend/api/memos';
+import { getMemo } from '../../../../../api/memos';
 
 export default function MemoViewer({ memoId, onBack }) {
     const [content, setContent] = useState('');         // 텍스트 내용

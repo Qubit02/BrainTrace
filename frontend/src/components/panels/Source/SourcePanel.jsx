@@ -4,7 +4,8 @@ import {
   getTextfilesByBrain,
   getSimilarSourceIds,
   getSourceMemosByBrain
-} from '../../../../../backend/api/backend';
+} from '../../../../api/backend';
+
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
 import TxtViewer from './viewer/TxtViewer';

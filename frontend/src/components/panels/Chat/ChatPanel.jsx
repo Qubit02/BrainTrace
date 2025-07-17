@@ -3,14 +3,16 @@ import React, { useState, useEffect, useRef } from 'react';
 // 스타일 및 API import
 import './ChatPanel.css';
 import '../styles/Scrollbar.css';
-import { requestAnswer } from '../../../api/tmpAPI';
+import { requestAnswer } from '../../../../api/tmpAPI';
 import copyIcon from '../../../assets/icons/copy.png';
 import graphIcon from '../../../assets/icons/graph-off.png';
 import {
   getBrain,
   getReferencedNodes,
   getSourceIdsByNodeName,
-} from '../../../../../backend/api/backend';
+} from '../../../../../frontend/api/backend'
+
+
 import ConfirmDialog from '../../common/ConfirmDialog';
 
 // ChatPanel 컴포넌트 정의

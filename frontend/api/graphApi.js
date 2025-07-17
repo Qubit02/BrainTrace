@@ -1,12 +1,9 @@
 // src/api/graphApi.js
-import axios from 'axios';
-
-// Vite에서는 process.env가 아닌 import.meta.env 사용
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { api } from '../api/api';
 
 export const fetchGraphData = async (brainId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/brainGraph/getNodeEdge/${brainId}`);
+    const response = await api.get(`/brainGraph/getNodeEdge/${brainId}`);
 
     // API 응답 데이터 로깅
     console.log('API 응답 데이터:', response.data);
@@ -157,15 +154,12 @@ function getDefaultGraphData() {
 
 export const processText = async (text, sourceId, brainId) => {
   try {
-    const response = await axios.post(
-      `${BASE_URL}/brainGraph/process_text`,
-      JSON.stringify({
+    const response = await api.post(
+      '/brainGraph/process_text',
+      {
         text,
         source_id: sourceId,
         brain_id: brainId
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' }
       }
     );
     return response.data;
@@ -177,7 +171,7 @@ export const processText = async (text, sourceId, brainId) => {
 
 export const getAnswer = async (question, brainId) => {
   try {
-    const response = await axios.post(`${BASE_URL}/brainGraph/answer`, {
+    const response = await api.post('/brainGraph/answer', {
       question,
       brain_id: brainId
     });
@@ -190,7 +184,7 @@ export const getAnswer = async (question, brainId) => {
 
 export const deleteDB = async (brainId, sourceId) => {
   try {
-    const response = await axios.delete(`${BASE_URL}/brains/${brainId}/deleteDB/${sourceId}`);
+    const response = await api.delete(`/brains/${brainId}/deleteDB/${sourceId}`);
     return response.data;
   } catch (error) {
     console.error('벡터 DB or 그래프 DB 삭제 실패:', error);

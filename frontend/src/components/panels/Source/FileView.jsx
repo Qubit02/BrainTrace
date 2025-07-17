@@ -9,8 +9,8 @@ import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
 import { RiDeleteBinLine } from 'react-icons/ri';
-import { processText, deleteDB } from '../../../api/graphApi';
-import { fetchGraphData } from '../../../api/graphApi';
+import { processText, deleteDB } from '../../../../api/graphApi';
+import { fetchGraphData } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
@@ -20,7 +20,8 @@ import {
   getMemosByBrain,
   setMemoAsSource,
   getNodesBySourceId
-} from '../../../../../backend/api/backend'
+} from '../../../../api/backend';
+
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import fileHandlers from './fileHandlers/fileHandlers';

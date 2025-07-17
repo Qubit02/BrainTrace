@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
-import { fetchGraphData } from '../../../../api/graphApi';
+import { fetchGraphData } from '../../../../../api/graphApi';
 import { easeCubicInOut } from 'd3-ease';
 import './GraphView.css';
 
