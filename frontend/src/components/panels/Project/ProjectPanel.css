@@ -12,6 +12,8 @@
   width: 53px;
   transition: width 0.3s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-container:hover {
@@ -93,6 +95,7 @@
   align-items: center;
   transition: all 0.2s ease;
   margin-bottom: 10px;
+  margin-top: auto;
 }
 
 .sidebar-icon.home-icon:hover {

@@ -1,6 +1,5 @@
 // src/components/panels/MemoPanel.jsx
 import React, { useState, useEffect } from 'react';
-import '../../common/Common.css';
 import './Memo/MemoPanel.css';
 import '../styles/PanelToggle.css';
 import '../styles/Scrollbar.css';

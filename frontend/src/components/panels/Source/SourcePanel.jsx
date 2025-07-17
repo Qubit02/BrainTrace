@@ -12,7 +12,6 @@ import MemoViewer from './viewer/MemoViewer';
 import SourceUploadModal from './SourceUploadModal';
 import SourceQuotaBar from './SourceQuotaBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
-import '../../common/Common.css'
 import './SourcePanel.css';
 import '../styles/PanelToggle.css';
 import '../styles/Scrollbar.css';

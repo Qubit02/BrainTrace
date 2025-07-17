@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { listBrains } from '../../../../../backend/api/brains';
 
 /* style */
-import '../../common/Common.css';
 import './ProjectPanel.css';
 import '../styles/Scrollbar.css';
 
@@ -75,7 +74,6 @@ export default function ProjectPanel({ activeProject, onProjectChange, onReady }
         <IoHomeOutline size={25} />
         <span>홈으로</span>
       </div>
-
       {showModal && (
         <NewBrainModal
           onClose={() => setShowModal(false)}
@@ -83,6 +81,5 @@ export default function ProjectPanel({ activeProject, onProjectChange, onReady }
         />
       )}
     </div>
-
   );
 }

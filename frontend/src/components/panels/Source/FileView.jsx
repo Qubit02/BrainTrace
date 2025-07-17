@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react'
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
-import '../../common/Common.css';
 import './SourcePanel.css';
 import '../styles/Scrollbar.css';
 import './FileView.css';
@@ -19,20 +18,7 @@ import {
   getPdfsByBrain,
   getTextfilesByBrain,
   getMemosByBrain,
-  getSourceMemosByBrain,
   setMemoAsSource,
-  uploadPdfs,
-  createPdf,
-  createTextFile,
-  createMemo,
-  setMemoAsNotSource,
-  deletePdf,
-  deleteTextFile,
-  updatePdf,
-  updateTextFile,
-  updateMemo,
-  createTextToGraph,
-  uploadTextfiles,
   getNodesBySourceId
 } from '../../../../../backend/api/backend'
 import { ToastContainer, toast } from 'react-toastify';
