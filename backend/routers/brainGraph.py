@@ -44,10 +44,13 @@ async def get_brain_graph(brain_id: str):
         graph_data = neo4j_handler.get_brain_graph(brain_id)
         logging.info(f"Neo4j에서 받은 데이터: nodes={len(graph_data['nodes'])}, links={len(graph_data['links'])}")
         
+        # if not graph_data['nodes'] and not graph_data['links']:
+        #     logging.warning(f"brain_id {brain_id}에 대한 데이터가 없습니다")
+        #     raise GraphDataNotFoundException(brain_id)
+        
         if not graph_data['nodes'] and not graph_data['links']:
             logging.warning(f"brain_id {brain_id}에 대한 데이터가 없습니다")
-            raise GraphDataNotFoundException(brain_id)
-        
+
         return graph_data
     except AppException as ae:
             raise ae
