@@ -1,5 +1,5 @@
 // src/components/panels/FileView.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import './SourcePanel.css';
@@ -59,7 +59,8 @@ export default function FileView({
   onGraphRefresh,
   onFocusNodeNamesUpdate,
   filteredSourceIds,
-  searchText
+  searchText,
+  onFileUploaded // 추가: 파일 업로드 완료 시 호출할 콜백
 }) {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isRootDrag, setIsRootDrag] = useState(false)
@@ -67,7 +68,8 @@ export default function FileView({
   const [editingId, setEditingId] = useState(null);
   const [tempName, setTempName] = useState('');
   const [fileToDelete, setFileToDelete] = useState(null);
-  const [uploadQueue, setUploadQueue] = useState([]);
+  const [uploadQueue, setUploadQueue] = useState([]); // 변환 대기 큐
+  const [isProcessing, setIsProcessing] = useState(false); // 변환 중 여부
   const [isDeleting, setIsDeleting] = useState(false);
 
   // 보여줄 파일 리스트를 계산: filteredSourceIds가 존재하면 해당 ID만 필터링
@@ -82,6 +84,58 @@ export default function FileView({
   const processedFiles = displayedFiles.map(f =>
     fileMetaExtractors[f.type] ? fileMetaExtractors[f.type](f) : f
   );
+
+  // 업로드 중인 파일의 고유 key 목록
+  const uploadingKeys = uploadQueue.map(item => item.key);
+  // processedFiles에 key를 임시로 부여 (name, size, type 기준으로 생성)
+  const processedFilesWithKey = processedFiles.map(f => {
+    const uploadKey = `${f.name}-${f.size || ''}-${f.type}`;
+    return { ...f, _uploadKey: uploadKey };
+  });
+  // 업로드 중인 파일의 key와 일치하는 파일은 목록에서 제외
+  const visibleFiles = processedFilesWithKey.filter(f => !uploadingKeys.includes(f._uploadKey));
+
+  // 변환 작업 함수: 큐에서 하나씩 꺼내서 처리
+  const processNextInQueue = async () => {
+    if (uploadQueue.length === 0) return;
+    setIsProcessing(true);
+    const file = uploadQueue[0];
+    try {
+      if (file.filetype === 'memo' && file.memoId && file.memoContent) {
+        // 메모를 소스로 변환
+        await setMemoAsSource(file.memoId);
+        await processMemoTextAsGraph(file.memoContent, file.memoId, brainId);
+        if (onGraphRefresh) onGraphRefresh();
+        if (onFileUploaded) await onFileUploaded();
+      } else {
+        // 실제 파일 업로드 및 그래프 생성
+        const ext = file.filetype;
+        const f = file.fileObj;
+        const result = await createFileByType(f);
+        if (!result) throw new Error('유효하지 않은 파일');
+        setFileMap(prev => ({
+          ...prev,
+          [result.id]: result.meta,
+        }));
+        if (onGraphRefresh) onGraphRefresh();
+        if (onFileUploaded) await onFileUploaded();
+      }
+    } catch (err) {
+      console.error('파일 업로드 실패:', err);
+    } finally {
+      // 큐에서 제거
+      setUploadQueue(q => q.slice(1));
+      setIsProcessing(false);
+    }
+  };
+
+  // 큐에 변화가 생길 때마다 자동으로 다음 파일 처리
+  useEffect(() => {
+    if (uploadQueue.length > 0 && !isProcessing) {
+      processNextInQueue();
+    }
+    // eslint-disable-next-line
+  }, [uploadQueue, isProcessing]);
 
   useEffect(() => {
     refresh();
@@ -119,6 +173,10 @@ export default function FileView({
 
   // 파일을 업로드하고 그래프를 생성하는 함수
   const createFileByType = async (f) => {
+    if (!f || !f.name) {
+      console.warn('createFileByType: 파일 객체가 유효하지 않습니다.', f);
+      return null;
+    }
     const ext = f.name.split('.').pop().toLowerCase();
     if (fileHandlers[ext]) {
       return await fileHandlers[ext](f, brainId);
@@ -212,32 +270,21 @@ export default function FileView({
     const memoData = e.dataTransfer.getData('application/json-memo');
     if (memoData) {
       const { id, name, content } = JSON.parse(memoData);
-      const key = `${name}-${Date.now()}`; // 업로드 큐에서 고유 키
-
-      // (1) 업로드 큐에 "그래프 변환 중" 표시 추가
-      setUploadQueue(q => [...q, {
-        key,
-        name,
-        filetype: 'memo',
-        status: 'processing'
-      }]);
-
-      try {
-        // (2) 메모를 소스로 설정 (is_source: true)
-        await setMemoAsSource(id);
-
-        // (3) 텍스트 → 지식 그래프 변환 처리
-        await processMemoTextAsGraph(content, id, brainId);
-
-        // (4) 완료 처리
-        setUploadQueue(q => q.filter(item => item.key !== key));
-        if (onGraphRefresh) onGraphRefresh();
-        await refresh();
-
-      } catch (err) {
-        console.error('메모 처리 실패', err);
-        setUploadQueue(q => q.filter(item => item.key !== key));
-      }
+      const key = `${name}-${content.length}-memo`;
+      // (1) 큐에 추가
+      setUploadQueue(q => [
+        ...q,
+        {
+          key,
+          name,
+          filetype: 'memo',
+          size: content.length,
+          status: 'processing',
+          memoId: id,
+          memoContent: content
+        }
+      ]);
+      // (2) 변환 작업은 큐 처리 로직에서 처리
       return;
     }
 
@@ -245,51 +292,24 @@ export default function FileView({
     const dropped = Array.from(e.dataTransfer.files); // 드래그한 파일 배열로 변환
     if (!dropped.length) return; // 비어 있으면 종료
 
-    dropped.forEach(file => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const key = `${file.name}-${Date.now()}`;
-
-      // 지원하지 않는 확장자는 무시
-      if (!['pdf', 'txt', 'memo'].includes(ext)) {
-        console.warn(`❌ 지원되지 않는 파일 형식: .${ext}`);
-        toast.error('지원되지 않는 파일 형식입니다. 소스를 추가할 수 없습니다.');
-        return;
-      }
-
-      // (1) UI 업로드 큐에 "처리중" 상태로 추가 → 사용자에게 진행 상황 표시
-      setUploadQueue(q => [
-        ...q,
-        {
-          key,
+    // dropped 파일들을 큐에 모두 추가 (fileObj 포함)
+    const newQueueItems = dropped
+      .filter(file => ['pdf', 'txt', 'memo'].includes(file.name.split('.').pop().toLowerCase()))
+      .map(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const uploadKey = `${file.name}-${file.size}-${ext}`;
+        return {
+          key: uploadKey,
           name: file.name,
           filetype: ext,
-          status: 'processing'
-        }
-      ]);
-
-      // (2) 실제 파일 업로드 및 그래프 생성
-      createFileByType(file)
-        .then(result => {
-          if (!result) throw new Error('유효하지 않은 파일');
-
-          // (2-1) 업로드 큐 제거
-          setUploadQueue(q => q.filter(item => item.key !== key));
-
-          // (2-2) 메타데이터 갱신
-          setFileMap(prev => ({
-            ...prev,
-            [result.id]: result.meta,
-          }));
-
-          // (2-3) 그래프 뷰 및 파일 목록 갱신
-          if (onGraphRefresh) onGraphRefresh();
-          refresh();
-        })
-        .catch(err => {
-          console.error('파일 업로드 실패:', err);
-          setUploadQueue(q => q.filter(item => item.key !== key));
-        });
-    });
+          size: file.size,
+          status: 'processing',
+          fileObj: file // 항상 fileObj 포함
+        };
+      });
+    if (newQueueItems.length > 0) {
+      setUploadQueue(q => [...q, ...newQueueItems]);
+    }
   }
 
   return (
@@ -324,7 +344,7 @@ export default function FileView({
       ))}
 
       {/* 루트 레벨 파일들 렌더링 */}
-      {processedFiles.map(f => {
+      {visibleFiles.map(f => {
         return (
           <div
             key={`${f.filetype}-${f.id}`}

@@ -19,6 +19,7 @@ import '../styles/Scrollbar.css';
 
 import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";
+import fileHandlers from './fileHandlers/fileHandlers';
 
 export default function SourcePanel({
   activeProject,
@@ -58,6 +59,8 @@ export default function SourcePanel({
   // 모든 파일 리스트 (파일/메모 클릭 시 참고용)
   const [allFiles, setAllFiles] = useState([]);
   const [localFocusSource, setLocalFocusSource] = useState(null);   // 클릭 포커스 대상
+  const [pendingFocusSource, setPendingFocusSource] = useState(null); // 업로드 후 포커스 대상
+  const [uploadQueue, setUploadQueue] = useState([]); // 업로드 진행상황 상태
 
   // 반응형 UI 임계값 설정 (너비 기준 버튼 표시 여부)
   const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
@@ -72,7 +75,11 @@ export default function SourcePanel({
       console.log("focusSource", focusSource)
       setLocalFocusSource(focusSource); // 최신 클릭 반영
     }
-  }, [focusSource]);
+    if (pendingFocusSource) {
+      setLocalFocusSource(pendingFocusSource);
+      setPendingFocusSource(null);
+    }
+  }, [focusSource, pendingFocusSource]);
 
   useEffect(() => { // 패널 너비 추적용 ResizeObserver 등록
     if (!panelRef.current) return;
@@ -105,11 +112,12 @@ export default function SourcePanel({
       ];
 
       setAllFiles(merged);
+      setUploadKey(k => k + 1); // ← 강제 리렌더링 트리거
       onReady?.();
     } catch (e) {
-      console.error('❌ 파일 목록 로딩 실패:', e);
       setAllFiles([]);
-      onReady?.(); // 실패해도 호출
+      setUploadKey(k => k + 1);
+      onReady?.();
     }
   };
 
@@ -325,14 +333,16 @@ export default function SourcePanel({
                 refreshTrigger={uploadKey}
                 onGraphRefresh={() => {
                   onGraphRefresh?.();
-                  // 소스 수 갱신
                   refreshSourceCount();
-                  // 파일 목록도 새로고침
                   loadAllFiles();
                 }}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
                 filteredSourceIds={filteredSourceIds}
                 searchText={searchText}
+                focusSource={localFocusSource}
+                uploadQueue={uploadQueue}
+                setUploadQueue={setUploadQueue}
+                onFileUploaded={loadAllFiles} // 파일 업로드 완료 시 목록 즉시 갱신
               />
             )
             }
@@ -343,13 +353,42 @@ export default function SourcePanel({
       <SourceUploadModal
         visible={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onUpload={async uploadedFiles => {
+        onUpload={async filePaths => {
           try {
-            // PDF, TXT, Memo 전체 파일 새로 불러오기
+            console.log('[소스업로드] 전달받은 파일 경로:', filePaths);
+            if (!filePaths || filePaths.length === 0) return;
+            let fileObjs = [];
+            if (window.api && window.api.readFilesAsBuffer) {
+              const filesData = await window.api.readFilesAsBuffer(filePaths);
+              console.log('[소스업로드] readFilesAsBuffer 결과:', filesData);
+              fileObjs = filesData.map(fd => new File([new Uint8Array(fd.buffer)], fd.name));
+              console.log('[소스업로드] File 객체:', fileObjs);
+            } else {
+              alert('Electron 파일 읽기 기능이 필요합니다.');
+              return;
+            }
+            const uploadedFiles = [];
+            for (const f of fileObjs) {
+              const ext = f.name.split('.').pop().toLowerCase();
+              if (!['pdf', 'txt', 'memo'].includes(ext)) continue;
+              const key = `${f.name}-${Date.now()}`;
+              setUploadQueue(q => [...q, { key, name: f.name, filetype: ext, status: 'processing' }]);
+              try {
+                console.log(`[소스업로드] fileHandlers[${ext}] 업로드 시작:`, f);
+                const result = await fileHandlers[ext](f, activeProject);
+                console.log(`[소스업로드] fileHandlers[${ext}] 업로드 결과:`, result);
+                if (result && result.meta) uploadedFiles.push(result.meta);
+              } catch (err) {
+                console.error(`[소스업로드] ${f.name} 업로드 실패:`, err);
+                alert(f.name + ' 업로드 실패: ' + err.message);
+              } finally {
+                setUploadQueue(q => q.filter(item => item.key !== key));
+              }
+            }
+            console.log('[소스업로드] 업로드된 파일 메타:', uploadedFiles);
+            // 업로드/그래프 변환이 끝나면 파일 목록, 그래프, fileMap, uploadKey 모두 즉시 갱신
             await loadAllFiles();
             setUploadKey(k => k + 1);
-
-            // fileMap에 ID별 메타데이터 매핑
             setFileMap(prev => {
               const m = { ...prev };
               uploadedFiles.forEach(file => {
@@ -359,10 +398,16 @@ export default function SourcePanel({
               });
               return m;
             });
-
+            onGraphRefresh?.();
+            if (uploadedFiles.length > 0) {
+              const last = uploadedFiles[uploadedFiles.length - 1];
+              if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });
+              else if (last.txt_id) setPendingFocusSource({ id: last.txt_id, type: 'txt' });
+              else if (last.memo_id) setPendingFocusSource({ id: last.memo_id, type: 'memo' });
+            }
             setShowUploadModal(false);
           } catch (e) {
-            console.error(e);
+            console.error('[소스업로드] 전체 업로드 실패:', e);
             alert('파일 업로드 실패');
           }
         }}
