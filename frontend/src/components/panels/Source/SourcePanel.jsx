@@ -12,7 +12,7 @@ import PDFViewer from './viewer/PDFViewer';
 import TxtViewer from './viewer/TxtViewer';
 import MemoViewer from './viewer/MemoViewer';
 import SourceUploadModal from './SourceUploadModal';
-import SourceQuotaBar from './SourceQuotaBar';
+import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
 import '../styles/PanelToggle.css';
@@ -464,11 +464,14 @@ export default function SourcePanel({
           }
         }}
       />
-      {!collapsed && <SourceQuotaBar
-        textLength={dataMetrics.textLength}
-        nodesCount={dataMetrics.nodesCount}
-        edgesCount={dataMetrics.edgesCount}
-      />}
+      {/* KnowledgeGraphStatusBar: 소스가 열려있지 않을 때만 표시 */}
+      {!collapsed && !openedPDF && !openedTXT && !openedMemo && (
+        <KnowledgeGraphStatusBar
+          textLength={dataMetrics.textLength}
+          nodesCount={dataMetrics.nodesCount}
+          edgesCount={dataMetrics.edgesCount}
+        />
+      )}
     </div >
   );
 }

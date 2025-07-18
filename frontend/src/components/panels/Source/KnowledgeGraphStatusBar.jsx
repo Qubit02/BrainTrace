@@ -1,7 +1,7 @@
-// src/components/SourceQuotaBar.jsx
+// src/components/KnowledgeGraphStatusBar.jsx
 import React, { useState } from 'react';
 import { MdExpandMore, MdExpandLess } from 'react-icons/md';
-import './SourceQuotaBar.css';
+import './KnowledgeGraphStatusBar.css';
 
 function Tooltip({ text }) {
     return <span className="custom-tooltip">{text}</span>;
@@ -13,7 +13,7 @@ function formatBytes(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + 'MB';
 }
 
-function SourceQuotaBar({ textLength, nodesCount, edgesCount }) {
+function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
     const [collapsed, setCollapsed] = useState(false);
     // 텍스트 점수: 1KB(1024B)당 1점, 최소 1점, 소수점 2자리
     const textScore = textLength > 0 ? Math.max((textLength / 1024), 1).toFixed(2) : '0.00';
@@ -82,4 +82,4 @@ function SourceQuotaBar({ textLength, nodesCount, edgesCount }) {
     );
 }
 
-export default SourceQuotaBar;
+export default KnowledgeGraphStatusBar;
