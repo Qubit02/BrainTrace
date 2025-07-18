@@ -1,7 +1,7 @@
 /* PanelToggle.css - 패널 접힘/펼침 관련 스타일 */
 
 /* 패널이 접힌 상태일 때 스타일 */
-.panel-container.collapsed {
+/* .panel-container.collapsed {
     width: 45px;
     min-width: 45px;
     max-width: 45px;
@@ -19,7 +19,7 @@
     display: none;
   }
   
-  /* 모던 패널 접힘 스타일 */
+  모던 패널 접힘 스타일
   .modern-panel.collapsed {
     width: 45px;
     min-width: 45px;
@@ -34,4 +34,4 @@
   .modern-panel.collapsed .header-title,
   .modern-panel.collapsed .header-controls {
     display: none;
-  }
+  } */

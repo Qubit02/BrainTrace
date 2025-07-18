@@ -160,7 +160,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
               <img
                 src={showMemo ? memoOnIcon : memoOffIcon}
                 alt="Memo View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer' }}
+                style={{ width: '19px', height: '19px', cursor: 'pointer', marginRight: '6px' }}
                 onClick={() => setShowMemo(prev => !prev)}
               />
             </>

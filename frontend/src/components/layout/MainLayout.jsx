@@ -17,7 +17,7 @@ import Spinner from '../common/Spinner';
 
 // 패널 사이즈 상수
 const PANEL = {
-  SOURCE: { DEFAULT: 18, MIN: 10, COLLAPSED: 5 },
+  SOURCE: { DEFAULT: 19, MIN: 10, COLLAPSED: 5 },
   CHAT: { DEFAULT: 50, MIN: 30 },
   INSIGHT: { DEFAULT: 40, MIN: 10, COLLAPSED: 5 },
 };

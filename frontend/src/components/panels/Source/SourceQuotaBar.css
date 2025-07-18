@@ -9,16 +9,14 @@
     color: #222;
     border-radius: 0 0 6px 6px;
     box-shadow: 0 1px 4px 0 rgba(60, 60, 60, 0.04);
-    border: 1px solid #e0e0e0;
     border-top: none;
     margin: 0;
     min-width: 200px;
     max-width: 100%;
-    font-family: 'Segoe UI', 'Pretendard', 'Roboto', sans-serif;
 }
 
 .source-quota-bar.technical.with-strong-border {
-    border: 1px solid #d1d5db;
+    border-top: 1px solid #e8e9eb;
 }
 
 .main-title {
@@ -27,14 +25,12 @@
     letter-spacing: 0.01em;
     color: #222;
     margin-bottom: 2px;
-    transition: background 0.18s, color 0.18s, border-color 0.18s;
 }
 
 .source-quota-bar .main-title {
     border-radius: 4px 4px 0 0;
     padding: 4px 0 4px 0;
     background: transparent;
-    transition: background 0.18s, color 0.18s, border-color 0.18s;
 }
 
 
@@ -73,7 +69,6 @@
     padding: 6px 10px 6px 8px;
     font-size: 0.98rem;
     border: 1px solid #e0e0e0;
-    transition: background 0.2s;
     position: relative;
 }
 
@@ -90,9 +85,8 @@
 }
 
 .metric-value {
-    font-family: 'Roboto Mono', 'Menlo', monospace;
     font-size: 1em;
-    font-weight: 700;
+    font-weight: 600;
     color: #111;
     margin-left: auto;
     margin-right: 0;
@@ -136,7 +130,6 @@
     border-radius: 50%;
     background: #f2f2f2;
     box-shadow: 0 1px 3px 0 rgba(120, 120, 120, 0.07);
-    transition: background 0.2s, color 0.2s;
 }
 
 .qmark-tooltip:hover {

@@ -17,9 +17,8 @@ import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
 import '../styles/PanelToggle.css';
 import '../styles/Scrollbar.css';
-
-import { TbCylinderPlus } from "react-icons/tb";
-import { TbFolderPlus } from "react-icons/tb";
+import { LuFolderPlus } from "react-icons/lu";
+import { LuFolderSearch2 } from "react-icons/lu";
 import fileHandlers from './fileHandlers/fileHandlers';
 
 /**
@@ -239,9 +238,6 @@ export default function SourcePanel({
         {!collapsed && <span className="header-title">Source</span>}
 
         <div className="header-right-icons" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* 검색 버튼 토글 */}
-          {/* 더 이상 클릭 이벤트 없음, active 클래스 제거 */}
-
           {/* 사이드패널 접기/펴기 버튼 */}
           <img
             src={toggleIcon}
@@ -264,7 +260,7 @@ export default function SourcePanel({
                   onClick={() => setShowUploadModal(true)}
                 >
                   {panelWidth < 250
-                    ? <TbCylinderPlus size={25} />
+                    ? <LuFolderPlus size={25} />
                     : <>＋ 소스</>}
                 </button>
                 {/* 탐색 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
@@ -286,7 +282,7 @@ export default function SourcePanel({
                   }}
                 >
                   {panelWidth < 250
-                    ? <TbFolderPlus size={25} />
+                    ? <LuFolderSearch2 size={25} />
                     : <>＋ 탐색</>}
                 </button>
               </div>
@@ -302,7 +298,7 @@ export default function SourcePanel({
                 if (!searchText.trim()) return;
                 try {
                   const res = await getSimilarSourceIds(searchText, activeProject);
-                  const ids = (res.source_ids || []).map(id => String(id)); // 문자열로 강제 변환
+                  const ids = (res.source_ids || []).map(id => String(id));
                   console.log("ids : ", ids);
                   setFilteredSourceIds(ids);
                 } catch (err) {
@@ -468,7 +464,7 @@ export default function SourcePanel({
           }
         }}
       />
-      {!collapsed && <SourceQuotaBar 
+      {!collapsed && <SourceQuotaBar
         textLength={dataMetrics.textLength}
         nodesCount={dataMetrics.nodesCount}
         edgesCount={dataMetrics.edgesCount}
