@@ -58,6 +58,26 @@ class ChatHandler(BaseHandler):
             logging.error(f"채팅 삭제 중 오류 발생: {str(e)}")
             return False
     
+    def delete_all_chats_by_brain(self, brain_id: int) -> bool:
+        """
+        특정 brain_id에 해당하는 모든 채팅을 삭제합니다.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Chat WHERE brain_id = ?", (brain_id,))
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            conn.close()
+            if deleted:
+                logging.info("모든 채팅 삭제 완료: brain_id=%s", brain_id)
+            else:
+                logging.warning("채팅 삭제 실패: 존재하지 않는 brain_id=%s", brain_id)
+            return deleted
+        except Exception as e:
+            logging.error(f"모든 채팅 삭제 중 오류 발생: {str(e)}")
+            return False
+    
     def get_referenced_nodes(self, chat_id: int) -> str | None:
         """
         특정 채팅 ID에 해당하는 대화의 참고 노드 목록을 조회합니다.
