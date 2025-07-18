@@ -26,7 +26,7 @@ import fileHandlers from './fileHandlers/fileHandlers';
  * 파일 목록 관리, 업로드, 검색, 뷰어 등을 담당하는 메인 패널
  */
 export default function SourcePanel({
-  activeProject,              // 현재 활성화된 프로젝트 ID
+  selectedBrainId,              // 현재 활성화된 프로젝트 ID
   collapsed,                  // 패널 접힘 상태
   setCollapsed,               // 패널 접힘 상태 설정 함수
   setIsSourceOpen,            // 소스 패널 열림 상태 설정 함수
@@ -81,7 +81,7 @@ export default function SourcePanel({
   useEffect(() => {
     refreshSourceCount();
     refreshDataMetrics();
-  }, [activeProject, uploadKey]);
+  }, [selectedBrainId, uploadKey]);
 
   // 외부에서 특정 소스를 클릭했을 때 처리 (focusSource 업데이트 감지)
   useEffect(() => {
@@ -107,10 +107,10 @@ export default function SourcePanel({
 
   // 프로젝트가 변경되면 모든 파일 로드 (PDF, TXT, Memo)
   useEffect(() => {
-    if (activeProject) {
+    if (selectedBrainId) {
       loadAllFiles();
     }
-  }, [activeProject]);
+  }, [selectedBrainId]);
 
   // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
   useEffect(() => {
@@ -145,9 +145,9 @@ export default function SourcePanel({
   const loadAllFiles = async () => {
     try {
       const [pdfs, txts, memos] = await Promise.all([
-        getPdfsByBrain(activeProject),
-        getTextfilesByBrain(activeProject),
-        getSourceMemosByBrain(activeProject)
+        getPdfsByBrain(selectedBrainId),
+        getTextfilesByBrain(selectedBrainId),
+        getSourceMemosByBrain(selectedBrainId)
       ]);
 
       const merged = [
@@ -171,12 +171,12 @@ export default function SourcePanel({
    * 현재 프로젝트의 총 소스 개수를 계산하여 상태 업데이트
    */
   const refreshSourceCount = async () => {
-    if (!activeProject) return;
+    if (!selectedBrainId) return;
     try {
       const [pdfs, txts, memos] = await Promise.all([
-        getPdfsByBrain(activeProject),
-        getTextfilesByBrain(activeProject),
-        getSourceMemosByBrain(activeProject),
+        getPdfsByBrain(selectedBrainId),
+        getTextfilesByBrain(selectedBrainId),
+        getSourceMemosByBrain(selectedBrainId),
       ]);
 
       const totalCount = pdfs.length + txts.length + memos.length;
@@ -194,9 +194,9 @@ export default function SourcePanel({
    * 현재 프로젝트의 텍스트 양과 그래프 데이터 양을 계산하여 상태 업데이트
    */
   const refreshDataMetrics = async () => {
-    if (!activeProject) return;
+    if (!selectedBrainId) return;
     try {
-      const metrics = await getSourceDataMetrics(activeProject);
+      const metrics = await getSourceDataMetrics(selectedBrainId);
       setDataMetrics({
         textLength: metrics.total_text_length || 0,
         nodesCount: metrics.total_nodes || 0,
@@ -297,7 +297,7 @@ export default function SourcePanel({
                 e.preventDefault();
                 if (!searchText.trim()) return;
                 try {
-                  const res = await getSimilarSourceIds(searchText, activeProject);
+                  const res = await getSimilarSourceIds(searchText, selectedBrainId);
                   const ids = (res.source_ids || []).map(id => String(id));
                   console.log("ids : ", ids);
                   setFilteredSourceIds(ids);
@@ -363,7 +363,7 @@ export default function SourcePanel({
             ) : (
               // 파일 목록 뷰 (FileView 컴포넌트)
               <FileView
-                brainId={activeProject}
+                brainId={selectedBrainId}
                 files={allFiles}
                 onOpenPDF={file => {
                   setOpenedPDF(file);
@@ -426,7 +426,7 @@ export default function SourcePanel({
               setUploadQueue(q => [...q, { key, name: f.name, filetype: ext, status: 'processing' }]);
               try {
                 console.log(`[소스업로드] fileHandlers[${ext}] 업로드 시작:`, f);
-                const result = await fileHandlers[ext](f, activeProject);
+                const result = await fileHandlers[ext](f, selectedBrainId);
                 console.log(`[소스업로드] fileHandlers[${ext}] 업로드 결과:`, result);
                 if (result && result.meta) uploadedFiles.push(result.meta);
               } catch (err) {

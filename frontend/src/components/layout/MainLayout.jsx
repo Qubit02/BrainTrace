@@ -1,6 +1,6 @@
 // src/components/layout/MainLayout.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Panel,
   PanelGroup,
@@ -12,7 +12,6 @@ import ProjectPanel from '../panels/Project/ProjectPanel';
 import SourcePanel from '../panels/Source/SourcePanel';
 import ChatPanel from '../panels/Chat/ChatPanel';
 import InsightPanel from '../panels/Insight/InsightPanel';
-import { listBrains } from '../../../api/brains';
 import Spinner from '../common/Spinner';
 
 // 패널 사이즈 상수
@@ -35,14 +34,9 @@ function MainLayout() {
 
   // 라우팅 관련 상태
   const { projectId } = useParams();
-  const navigate = useNavigate();
 
   // 프로젝트 및 세션 상태
-  const [hasProject, setHasProject] = useState(true);  // 존재하지 않는 projectId 방지용
-  const [activeProject, setActiveProject] = useState(projectId);  // 현재 brain_id
-  const lastSavedProjectRef = useRef(null); // 이전에 저장한 프로젝트 ID를 기억하기 위한 ref
-  const [sessions, setSessions] = useState([]);  // 채팅 세션 목록
-  const [currentSessionId, setCurrentSessionId] = useState(null);  // 현재 선택된 세션 ID
+  const [selectedBrainId, setSelectedBrainId] = useState(projectId);  // 현재 brain_id
 
   // 패널 접힘 상태
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
@@ -91,7 +85,7 @@ function MainLayout() {
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
     localStorage.setItem('graphStateSync', JSON.stringify({
-      brainId: activeProject,
+      brainId: selectedBrainId,
       timestamp: Date.now(),
       ...data
     }));
@@ -108,13 +102,8 @@ function MainLayout() {
 
   // 프로젝트 변경 시 상태 저장 및 라우팅 이동 처리
   const handleProjectChange = (projectId) => {
-    // 기존 세션을 localStorage에 저장
-    if (activeProject && sessions.length > 0) {
-      localStorage.setItem(`sessions-${activeProject}`, JSON.stringify(sessions));
-    }
-
     setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
-    setActiveProject(projectId);
+    setSelectedBrainId(projectId);
     setReferencedNodes([]);
   };
 
@@ -160,52 +149,10 @@ function MainLayout() {
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
-  // URL 변경(projectId 변경)에 따라 activeProject 상태 업데이트
+  // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
   useEffect(() => {
-    setActiveProject(projectId);
+    setSelectedBrainId(projectId);
   }, [projectId]);
-
-  // 세션 저장: 프로젝트 ID 또는 세션 목록이 바뀌었을 때 localStorage에 저장
-  useEffect(() => {
-    if (!activeProject) return;
-
-    const activeProjectStr = String(activeProject);
-    const projectIdStr = String(projectId);
-
-    if (
-      activeProjectStr === projectIdStr &&
-      lastSavedProjectRef.current !== activeProjectStr
-    ) {
-      localStorage.setItem(`sessions-${activeProjectStr}`, JSON.stringify(sessions));
-      lastSavedProjectRef.current = activeProjectStr;
-    }
-  }, [sessions, activeProject, projectId]);
-
-  // activeProject 변경 시 localStorage에서 세션 목록을 불러오고 초기 세션 설정
-  useEffect(() => {
-    if (!activeProject) return;
-    const saved = localStorage.getItem(`sessions-${activeProject}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setSessions(parsed);
-      setCurrentSessionId(parsed[0]?.id || null);
-    } else {
-      setSessions([]);
-      setCurrentSessionId(null);
-    }
-  }, [activeProject]);
-
-  // projectId가 유효한 brain인지 확인하고 존재하지 않으면 홈으로 이동
-  useEffect(() => {
-    if (!projectId) return;
-    listBrains()
-      .then(list => {
-        const exist = list.some(b => b.brain_id === Number(projectId));
-        if (!exist) navigate('/');
-        setHasProject(exist);
-      })
-      .catch(() => navigate('/'));
-  }, [projectId, navigate]);
 
   // PDF 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
   useEffect(() => {
@@ -263,7 +210,7 @@ function MainLayout() {
       {/* 좌측 프로젝트 선택 패널 */}
       <div className="layout project-layout">
         <ProjectPanel
-          activeProject={Number(activeProject)}
+          selectedBrainId={Number(selectedBrainId)}
           onProjectChange={handleProjectChange}
         />
       </div>
@@ -282,7 +229,7 @@ function MainLayout() {
         >
           <div className="layout-inner source-inner">
             <SourcePanel
-              activeProject={Number(activeProject)}
+              selectedBrainId={Number(selectedBrainId)}
               collapsed={sourceCollapsed}
               setCollapsed={setSourceCollapsed}
               setIsSourceOpen={setIsPDFOpen}
@@ -291,7 +238,7 @@ function MainLayout() {
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
               onSourceCountChange={setSourceCount}
-              onReady={() => setSourcePanelReady(true)}
+              onSourcePanelReady={() => setSourcePanelReady(true)}
             />
           </div>
         </Panel>
@@ -307,12 +254,8 @@ function MainLayout() {
         >
           <div className="layout-inner chat-inner">
             <ChatPanel
-              activeProject={activeProject}
+              selectedBrainId={selectedBrainId}
               onReferencedNodesUpdate={onReferencedNodesUpdate}
-              sessions={sessions}
-              setSessions={setSessions}
-              currentSessionId={currentSessionId}
-              setCurrentSessionId={setCurrentSessionId}
               allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
               sourceCount={sourceCount}
@@ -333,7 +276,7 @@ function MainLayout() {
         >
           <div className="layout-inner insight-inner">
             <InsightPanel
-              activeProject={Number(activeProject)}
+              selectedBrainId={Number(selectedBrainId)}
               collapsed={insightCollapsed}
               setCollapsed={setInsightCollapsed}
               referencedNodes={referencedNodes}
