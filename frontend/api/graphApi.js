@@ -192,3 +192,7 @@ export const getSourceDataMetrics = async (brainId) => {
     throw error;
   }
 };
+
+// 해당 brain의 모든 소스 개수 조회
+export const getSourceCountByBrain = brain_id =>
+  api.get(`/brainGraph/sourceCount/${brain_id}`).then(r => r.data); 

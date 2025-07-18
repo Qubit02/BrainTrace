@@ -433,3 +433,23 @@ async def get_source_data_metrics(brain_id: str):
     except Exception as e:
         logging.error("소스 데이터 메트릭 조회 오류: %s", str(e))
         raise Neo4jException(message=str(e))
+
+@router.get("/sourceCount/{brain_id}", summary="브레인별 전체 소스 개수 조회", description="특정 브레인에 속한 PDF, TXT, MEMO 소스의 개수를 반환합니다.")
+async def get_source_count(brain_id: int):
+    """
+    해당 brain_id에 속한 모든 소스(PDF, TXT, MEMO) 개수를 반환합니다.
+    """
+    db = SQLiteHandler()
+    try:
+        pdfs = db.get_pdfs_by_brain(brain_id)
+        txts = db.get_textfiles_by_brain(brain_id)
+        memos = db.get_memos_by_brain(brain_id)
+        total_count = len(pdfs) + len(txts) + len(memos)
+        return {
+            "pdf_count": len(pdfs),
+            "txt_count": len(txts),
+            "memo_count": len(memos),
+            "total_count": total_count
+        }
+    except Exception as e:
+        raise HTTPException(500, f"소스 개수 조회 중 오류: {str(e)}")
