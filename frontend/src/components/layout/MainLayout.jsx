@@ -75,9 +75,6 @@ function MainLayout() {
   // PDF 열림 여부 상태
   const [isPDFOpen, setIsPDFOpen] = useState(false);
 
-  // 현재 소스 개수 상태 (상단 표시용 등)
-  const [sourceCount, setSourceCount] = useState(0);
-
   // 패널 데이터 준비 상태
   const [isSourcePanelReady, setSourcePanelReady] = useState(false); // SourcePanel 준비 상태
   const allReady = isSourcePanelReady;
@@ -237,7 +234,6 @@ function MainLayout() {
               onGraphRefresh={handleGraphRefresh}
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
-              onSourceCountChange={setSourceCount}
               onSourcePanelReady={() => setSourcePanelReady(true)}
             />
           </div>
@@ -258,7 +254,6 @@ function MainLayout() {
               onReferencedNodesUpdate={onReferencedNodesUpdate}
               allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
-              sourceCount={sourceCount}
             />
           </div>
         </Panel>
