@@ -1,212 +1,83 @@
 // src/components/panels/SourceUploadModal.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './SourceUploadModal.css';
 import { IoCloudUploadOutline } from "react-icons/io5";
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import FileIcon from './FileIcon';
-import {
-  uploadPdfs, createTextFile, createTextToGraph
-} from '../../../../api/backend';
 
-//import { pdfjs } from 'pdfjs-dist';
-//import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
-import SourceQuotaBar from './SourceQuotaBar';
-//pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-
-/**
- * 소스 업로드 모달 컴포넌트
- * @param {boolean} visible - 모달 표시 여부
- * @param {function} onClose - 모달 닫기 콜백
- * @param {function} onUpload - 업로드 완료 콜백
- * @param {function} onGraphRefresh - 그래프 새로고침 콜백
- * @param {string|null} brainId - 브레인 ID
- * @param {number} currentCount - 현재 업로드된 소스 개수
- */
 function SourceUploadModal({ visible, onClose, onUpload, onGraphRefresh, brainId = null, currentCount = 0 }) {
-  // 상태 관리
-  const [dragOver, setDragOver] = useState(false); // 드래그 상태
-  const [uploadQueue, setUploadQueue] = useState([]); // 업로드 대기열
-  const [closing, setClosing] = useState(false); // 모달 닫힘 애니메이션
-  const fileInputRef = useRef(); // 파일 input ref
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (visible) setClosing(false);
+  }, [visible]);
 
   if (!visible) return null;
 
-  /**
-   * 파일 확장자에 따라 업로드 및 그래프 변환 처리
-   * @param {File} file - 업로드할 파일
-   * @param {string|null} folderId - 폴더 ID
-   * @returns {Promise<{id, filetype, meta}>}
-   */
-  const createFileByType = async (file, folderId) => {
-    const ext = file.name.split('.').pop().toLowerCase();
-    const common = { folder_id: folderId, type: ext, brain_id: brainId };
-
-    if (ext === 'pdf') {
-      // PDF 업로드 및 텍스트 추출 후 그래프 변환
-      const [meta] = await uploadPdfs([file], folderId, brainId);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      let content = '';
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
-        content += textContent.items.map(item => item.str).join(' ') + '\n\n';
+  // Electron 파일 탐색기 호출
+  const handleLocalFileSelect = async () => {
+    if (window.api && window.api.openFileDialog) {
+      const filePaths = await window.api.openFileDialog();
+      if (filePaths && filePaths.length > 0) {
+        setSelectedFiles(filePaths);
       }
-      await createTextToGraph({
-        text: content,
-        brain_id: String(brainId),
-        source_id: String(meta.pdf_id)
-      });
-      return { id: meta.pdf_id, filetype: 'pdf', meta };
-    } else if (ext === 'txt') {
-      // 텍스트 파일 업로드 및 그래프 변환
-      const res = await createTextFile({
-        ...common,
-        txt_title: file.name,
-        txt_path: file.name
-      });
-      const content = await file.text();
-      await createTextToGraph({
-        text: content,
-        brain_id: String(brainId),
-        source_id: String(res.txt_id)
-      });
-      return { id: res.txt_id, filetype: 'txt', meta: res };
     } else {
-      // 기타 파일은 업로드 불가 처리
-      throw new Error('지원하지 않는 파일 형식입니다. (PDF, TXT만 가능)');
+      alert('Electron 환경이 아닙니다.');
     }
   };
 
-  /**
-   * 여러 파일 업로드 및 그래프 변환 처리
-   * @param {File[]} files
-   */
-  const uploadFiles = files => {
-    // 업로드 대기열 생성
-    const queue = files.map(f => ({
-      key: `${f.name}-${Date.now()}`,
-      file: f,
-      status: 'processing'
-    }));
-    setUploadQueue(queue);
-
-    const results = [];
-
-    // 각 파일별 업로드 및 변환 처리
-    const promises = queue.map(async item => {
-      try {
-        const res = await createFileByType(item.file, folderId);
-        results.push(res.meta); // 메타 저장
-        setUploadQueue(q =>
-          q.map(x => x.key === item.key ? { ...x, status: 'done' } : x)
-        );
-      } catch (err) {
-        // 업로드 실패 시 상태 및 알림 처리
-        setUploadQueue(q =>
-          q.map(x => x.key === item.key ? { ...x, status: 'error', error: err.message } : x)
-        );
-        alert(err.message);
-      }
-    });
-
-    // 모든 업로드 완료 후 콜백 및 상태 초기화
-    Promise.all(promises).then(() => {
-      onGraphRefresh && onGraphRefresh();
-      onUpload && onUpload(results);
+  // 업로드 버튼 클릭 시 파일 경로만 onUpload로 넘김
+  const handleUpload = async () => {
+    setUploading(true);
+    try {
+      onUpload && onUpload(selectedFiles);
       setClosing(true);
       setTimeout(() => {
-        setUploadQueue([]);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = null; // 동일한 파일 다시 선택 가능하게
-        }
+        setSelectedFiles([]);
+        setUploading(false);
         onClose();
       }, 300);
-    });
+    } catch (e) {
+      alert('업로드 중 오류 발생: ' + e.message);
+      setUploading(false);
+    }
   };
 
-  // 드래그 앤 드롭 파일 업로드 처리
-  const handleDrop = e => {
-    e.preventDefault();
-    setDragOver(false);
-    uploadFiles(Array.from(e.dataTransfer.files));
-  };
-
-  // 파일 선택 업로드 처리
-  const handleSelect = e => {
-    uploadFiles(Array.from(e.target.files));
-  };
-
-  // UI 렌더링
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="upload-modal" onClick={e => e.stopPropagation()}>
-        <h2>소스 추가</h2>
+      <div className="upload-modal local-only" onClick={e => e.stopPropagation()}>
+        <h2>로컬 파일에서 소스 추가</h2>
         <p className="description">
-          소스를 추가하면 지식그래프에 자동 연결되어, 문맥을 이해하는 답변을 받을 수 있어요.
+          PDF, TXT 파일을 선택해 지식그래프에 연결하세요.<br/>
+          <span className="sub">(여러 파일을 한 번에 선택할 수 있습니다.)</span>
         </p>
-
-        {/* 업로드 진행 상태 표시 */}
-        {uploadQueue.length > 0 ? (
-          <div className="progress-list">
-            {uploadQueue.map(item => (
-              <div key={item.key} className="progress-item">
-                <FileIcon fileName={item.file.name} />
-                <span className="file-name">{item.file.name}</span>
-                {item.status === 'processing' && (
-                  <span className="upload-status">
-                    <span className="loading-text">그래프 변환 중</span>
-                    <AiOutlineLoading3Quarters className="loading-spinner" />
-                  </span>
-                )}
+        <div className="center-upload-area">
+          <div className="upload-icon-large">
+            <IoCloudUploadOutline size={64} />
+          </div>
+          <button className="select-file-btn" onClick={handleLocalFileSelect} disabled={uploading}>
+            파일 선택
+          </button>
+        </div>
+        {selectedFiles.length > 0 && (
+          <div className="selected-file-list">
+            {selectedFiles.map((file, idx) => (
+              <div key={file} className="selected-file-item">
+                <FileIcon fileName={file} />
+                <span className="file-name">{file.split(/[\\/]/).pop()}</span>
               </div>
             ))}
           </div>
-        ) : (
-          <>
-            {/* 파일 선택/드래그 앤 드롭 영역 */}
-            <input
-              type="file"
-              multiple
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleSelect}
-            />
-            <div
-              className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
-              onClick={() => fileInputRef.current.click()}
-              onDragOver={e => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-            >
-              <div className="upload-icon">
-                <IoCloudUploadOutline />
-              </div>
-              <p>
-                업로드할 <span className="highlight">파일을 선택</span>하거나 드래그 앤 드롭하세요.
-              </p>
-              <p className="file-types">
-                지원 형식: PDF, TXT, 오디오(mp3)
-              </p>
-            </div>
-            {/* 기타 소스 옵션 버튼 */}
-            <div className="source-options">
-              <button className="source-button">Google Docs</button>
-              <button className="source-button">Google Slides</button>
-              <button className="source-button">웹사이트</button>
-              <button className="source-button">YouTube</button>
-              <button className="source-button">복사된 텍스트</button>
-            </div>
-            <div className="footer">
-              <SourceQuotaBar current={uploadQueue.length + currentCount} max={50} />
-            </div>
-          </>
         )}
-
-        {/* 닫힘 애니메이션 오버레이 */}
+        {selectedFiles.length > 0 && (
+          <button className="upload-btn" onClick={handleUpload} disabled={uploading}>
+            {uploading ? (
+              <><AiOutlineLoading3Quarters className="loading-spinner" /> 업로드 중...</>
+            ) : '업로드'}
+          </button>
+        )}
         {closing && <div className="closing-overlay" />}
       </div>
     </div>
