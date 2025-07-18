@@ -143,7 +143,7 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
       >
         {!collapsed && (
           <div className="header-actions2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="header-title" style={{ fontSize: '17px' }}>Insight</span>
+            <span className="header-title">Insight</span>
           </div>
         )}
         <div className="header-actions">

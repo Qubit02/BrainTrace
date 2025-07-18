@@ -35,7 +35,6 @@ export default function SourcePanel({
   onGraphRefresh,             // 그래프 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
-  onSourceCountChange,        // 소스 개수 변경 콜백
   onSourcePanelReady          // SourcePanel 준비 완료 콜백
 }) {
 
@@ -55,7 +54,6 @@ export default function SourcePanel({
   // === 소스 관련 상태 ===
   const [showUploadModal, setShowUploadModal] = useState(false);  // 업로드 모달 표시 여부
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
-  const [sourceCount, setSourceCount] = useState(0);   // 총 소스 수
   const [dataMetrics, setDataMetrics] = useState({     // 데이터 메트릭
     textLength: 0,
     nodesCount: 0,
@@ -78,9 +76,8 @@ export default function SourcePanel({
   const PANEL_WIDTH_THRESHOLD_SOURCE = 220;            // 소스 버튼 텍스트/아이콘 기준
 
   // === useEffect 훅들 ===
-  // 소스 개수 재계산 (프로젝트 변경 시)
+  // 데이터 메트릭 재계산 (프로젝트 변경 시)
   useEffect(() => {
-    refreshSourceCount();
     refreshDataMetrics();
   }, [selectedBrainId, uploadKey]);
 
@@ -167,28 +164,6 @@ export default function SourcePanel({
     }
   };
 
-  /**
-   * 소스 개수 계산 함수
-   * 현재 프로젝트의 총 소스 개수를 계산하여 상태 업데이트
-   */
-  const refreshSourceCount = async () => {
-    if (!selectedBrainId) return;
-    try {
-      const [pdfs, txts, memos] = await Promise.all([
-        getPdfsByBrain(selectedBrainId),
-        getTextfilesByBrain(selectedBrainId),
-        getSourceMemosByBrain(selectedBrainId),
-      ]);
-
-      const totalCount = pdfs.length + txts.length + memos.length;
-
-      setSourceCount(totalCount);
-      onSourceCountChange?.(totalCount);
-    } catch (e) {
-      console.error('소스 카운트 오류', e);
-      setSourceCount(0);
-    }
-  };
 
   /**
    * 데이터 메트릭 계산 함수
@@ -389,7 +364,6 @@ export default function SourcePanel({
                 refreshTrigger={uploadKey}
                 onGraphRefresh={() => {
                   onGraphRefresh?.();
-                  refreshSourceCount();
                   refreshDataMetrics();
                   loadAllFiles();
                 }}
