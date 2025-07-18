@@ -181,3 +181,14 @@ export const deleteDB = async (brainId, sourceId) => {
     throw error;
   }
 };
+
+// 소스별 데이터 메트릭 조회
+export const getSourceDataMetrics = async (brainId) => {
+  try {
+    const response = await api.get(`/brainGraph/getSourceDataMetrics/${brainId}`);
+    return response.data;
+  } catch (error) {
+    console.error('소스 데이터 메트릭 조회 실패:', error);
+    throw error;
+  }
+};
