@@ -21,56 +21,64 @@ import { TbCylinderPlus } from "react-icons/tb";
 import { TbFolderPlus } from "react-icons/tb";
 import fileHandlers from './fileHandlers/fileHandlers';
 
+/**
+ * 소스 패널 컴포넌트
+ * 파일 목록 관리, 업로드, 검색, 뷰어 등을 담당하는 메인 패널
+ */
 export default function SourcePanel({
-  activeProject,
-  collapsed,
-  setCollapsed,
-  setIsSourceOpen,
-  onBackFromPDF,
-  onGraphRefresh,
-  onFocusNodeNamesUpdate,
-  focusSource,
-  onSourceCountChange,
-  onReady
+  activeProject,              // 현재 활성화된 프로젝트 ID
+  collapsed,                  // 패널 접힘 상태
+  setCollapsed,               // 패널 접힘 상태 설정 함수
+  setIsSourceOpen,            // 소스 패널 열림 상태 설정 함수
+  onBackFromPDF,              // PDF에서 뒤로가기 콜백
+  onGraphRefresh,             // 그래프 새로고침 콜백
+  onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
+  focusSource,                // 포커스할 소스 정보
+  onSourceCountChange,        // 소스 개수 변경 콜백
+  onReady                     // 준비 완료 콜백
 }) {
 
-  // SourcePanel 상태 및 참조값
+  // === DOM 참조 ===
   const panelRef = useRef();                           // 패널 DOM 참조 (리사이징 감지용)
   const searchInputRef = useRef(null);                 // 검색 input 포커싱용
 
+  // === 기본 상태 관리 ===
   const [panelWidth, setPanelWidth] = useState(0);     // 현재 패널 너비
   const [fileMap, setFileMap] = useState({});          // file_id → file 메타데이터 매핑
 
-  // 열람 중인 파일 상태
+  // === 파일 뷰어 상태 ===
   const [openedPDF, setOpenedPDF] = useState(null);    // 열람 중인 PDF
   const [openedTXT, setOpenedTXT] = useState(null);    // 열람 중인 텍스트
   const [openedMemo, setOpenedMemo] = useState(null);  // 열람 중인 메모 상태
 
-  // 소스 관련 정보
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  // === 소스 관련 상태 ===
+  const [showUploadModal, setShowUploadModal] = useState(false);  // 업로드 모달 표시 여부
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
   const [sourceCount, setSourceCount] = useState(0);   // 총 소스 수
 
-  // 검색 관련
-  const [showSearchInput, setShowSearchInput] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  // === 검색 관련 상태 ===
+  const [showSearchInput, setShowSearchInput] = useState(false);  // 검색창 표시 여부
+  const [searchText, setSearchText] = useState('');               // 검색 텍스트
   const [filteredSourceIds, setFilteredSourceIds] = useState(null); // 검색 필터링된 id 리스트
 
-  // 모든 파일 리스트 (파일/메모 클릭 시 참고용)
-  const [allFiles, setAllFiles] = useState([]);
-  const [localFocusSource, setLocalFocusSource] = useState(null);   // 클릭 포커스 대상
+  // === 파일 목록 및 포커스 상태 ===
+  const [allFiles, setAllFiles] = useState([]);                    // 모든 파일 리스트 (PDF, TXT, MEMO)
+  const [localFocusSource, setLocalFocusSource] = useState(null);  // 클릭 포커스 대상
   const [pendingFocusSource, setPendingFocusSource] = useState(null); // 업로드 후 포커스 대상
-  const [uploadQueue, setUploadQueue] = useState([]); // 업로드 진행상황 상태
+  const [uploadQueue, setUploadQueue] = useState([]);              // 업로드 진행상황 상태
 
-  // 반응형 UI 임계값 설정 (너비 기준 버튼 표시 여부)
+  // === 반응형 UI 설정 ===
   const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
   const PANEL_WIDTH_THRESHOLD_SOURCE = 220;            // 소스 버튼 텍스트/아이콘 기준
 
+  // === useEffect 훅들 ===
+  // 소스 개수 재계산 (프로젝트 변경 시)
   useEffect(() => {
-    refreshSourceCount(); // 소스 수 재계산
+    refreshSourceCount();
   }, [activeProject, uploadKey]);
 
-  useEffect(() => { // 외부에서 특정 소스를 클릭했을 때 처리 (focusSource 업데이트 감지)
+  // 외부에서 특정 소스를 클릭했을 때 처리 (focusSource 업데이트 감지)
+  useEffect(() => {
     if (focusSource) {
       console.log("focusSource", focusSource)
       setLocalFocusSource(focusSource); // 최신 클릭 반영
@@ -81,7 +89,8 @@ export default function SourcePanel({
     }
   }, [focusSource, pendingFocusSource]);
 
-  useEffect(() => { // 패널 너비 추적용 ResizeObserver 등록
+  // 패널 너비 추적용 ResizeObserver 등록
+  useEffect(() => {
     if (!panelRef.current) return;
     const ro = new ResizeObserver(() => {
       setPanelWidth(panelRef.current.offsetWidth);
@@ -90,36 +99,12 @@ export default function SourcePanel({
     return () => ro.disconnect();
   }, []);
 
-  useEffect(() => { // 프로젝트가 변경되면 모든 파일 로드 (PDF, TXT, Memo)
+  // 프로젝트가 변경되면 모든 파일 로드 (PDF, TXT, Memo)
+  useEffect(() => {
     if (activeProject) {
       loadAllFiles();
     }
   }, [activeProject]);
-
-  // 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
-  const loadAllFiles = async () => {
-    try {
-      const [pdfs, txts, memos] = await Promise.all([
-        getPdfsByBrain(activeProject),
-        getTextfilesByBrain(activeProject),
-        getSourceMemosByBrain(activeProject)
-      ]);
-
-      const merged = [
-        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
-        ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt' })),
-        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo' }))
-      ];
-
-      setAllFiles(merged);
-      setUploadKey(k => k + 1); // ← 강제 리렌더링 트리거
-      onReady?.();
-    } catch (e) {
-      setAllFiles([]);
-      setUploadKey(k => k + 1);
-      onReady?.();
-    }
-  };
 
   // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
   useEffect(() => {
@@ -146,7 +131,39 @@ export default function SourcePanel({
     }
   }, [localFocusSource]);
 
-  // 소스 개수 계산
+  // === 핵심 함수들 ===
+  /**
+   * 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
+   * 서버에서 파일 목록을 가져와서 allFiles 상태를 업데이트
+   */
+  const loadAllFiles = async () => {
+    try {
+      const [pdfs, txts, memos] = await Promise.all([
+        getPdfsByBrain(activeProject),
+        getTextfilesByBrain(activeProject),
+        getSourceMemosByBrain(activeProject)
+      ]);
+
+      const merged = [
+        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
+        ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt' })),
+        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo' }))
+      ];
+
+      setAllFiles(merged);
+      setUploadKey(k => k + 1); // 강제 리렌더링 트리거
+      onReady?.();
+    } catch (e) {
+      setAllFiles([]);
+      setUploadKey(k => k + 1);
+      onReady?.();
+    }
+  };
+
+  /**
+   * 소스 개수 계산 함수
+   * 현재 프로젝트의 총 소스 개수를 계산하여 상태 업데이트
+   */
   const refreshSourceCount = async () => {
     if (!activeProject) return;
     try {
@@ -166,6 +183,10 @@ export default function SourcePanel({
     }
   };
 
+  /**
+   * 열린 파일 뷰어를 닫는 함수
+   * 모든 뷰어 상태를 초기화하고 소스 패널을 닫음
+   */
   const closeSource = () => {
     setOpenedPDF(null);
     setOpenedTXT(null);
@@ -289,6 +310,7 @@ export default function SourcePanel({
             </form>
           )}
 
+          {/* === 메인 콘텐츠 영역 === */}
           <div className="panel-content" style={{ flexGrow: 1, overflow: 'auto' }}>
             {openedPDF ? (
               // PDF 뷰어
@@ -313,6 +335,7 @@ export default function SourcePanel({
                 <MemoViewer memoId={openedMemo.memo_id} onBack={closeSource} />
               </div>
             ) : (
+              // 파일 목록 뷰 (FileView 컴포넌트)
               <FileView
                 brainId={activeProject}
                 files={allFiles}
@@ -350,6 +373,7 @@ export default function SourcePanel({
         </>
       )}
 
+      {/* === 소스 업로드 모달 === */}
       <SourceUploadModal
         visible={showUploadModal}
         onClose={() => setShowUploadModal(false)}
@@ -411,9 +435,6 @@ export default function SourcePanel({
             alert('파일 업로드 실패');
           }
         }}
-        onGraphRefresh={onGraphRefresh}
-        brainId={activeProject}
-        currentCount={sourceCount}
       />
       {!collapsed && <SourceQuotaBar current={sourceCount} max={50} />}
     </div >

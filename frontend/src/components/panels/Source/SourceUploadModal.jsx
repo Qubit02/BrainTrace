@@ -5,7 +5,7 @@ import { IoCloudUploadOutline } from "react-icons/io5";
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import FileIcon from './FileIcon';
 
-function SourceUploadModal({ visible, onClose, onUpload, onGraphRefresh, brainId = null, currentCount = 0 }) {
+function SourceUploadModal({ visible, onClose, onUpload }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -50,7 +50,7 @@ function SourceUploadModal({ visible, onClose, onUpload, onGraphRefresh, brainId
       <div className="upload-modal local-only" onClick={e => e.stopPropagation()}>
         <h2>로컬 파일에서 소스 추가</h2>
         <p className="description">
-          PDF, TXT 파일을 선택해 지식그래프에 연결하세요.<br/>
+          PDF, TXT 파일을 선택해 지식그래프에 연결하세요.<br />
           <span className="sub">(여러 파일을 한 번에 선택할 수 있습니다.)</span>
         </p>
         <div className="center-upload-area">
