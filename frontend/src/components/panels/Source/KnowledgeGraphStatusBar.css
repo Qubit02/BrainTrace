@@ -5,7 +5,7 @@
     flex-direction: column;
     gap: 10px;
     padding: 14px 12px 10px 12px;
-    background: #fff;
+    background: #fafafa;
     color: #222;
     border-radius: 0 0 6px 6px;
     box-shadow: 0 1px 4px 0 rgba(60, 60, 60, 0.04);
@@ -25,6 +25,7 @@
     letter-spacing: 0.01em;
     color: #222;
     margin-bottom: 2px;
+    margin-left: 2px;
 }
 
 .source-quota-bar .main-title {
