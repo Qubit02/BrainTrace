@@ -6,6 +6,7 @@ import {
     renameBrain,
     createBrain
 } from '../../../api/backend';
+import { getSourceCountByBrain } from '../../../api/graphApi';
 
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
@@ -110,6 +111,28 @@ export default function ProjectListView() {
         }
         return arr;
     }, [brains, sortOption]);
+
+    /* 소스 개수 상태 */
+    const [sourceCounts, setSourceCounts] = useState({}); // {brain_id: count}
+
+    // 모든 브레인 소스 개수 fetch
+    useEffect(() => {
+        if (!brains.length) return;
+        let cancelled = false;
+        (async () => {
+            const counts = {};
+            await Promise.all(brains.map(async (b) => {
+                try {
+                    const res = await getSourceCountByBrain(b.brain_id);
+                    counts[b.brain_id] = res.total_count;
+                } catch {
+                    counts[b.brain_id] = 0;
+                }
+            }));
+            if (!cancelled) setSourceCounts(counts);
+        })();
+        return () => { cancelled = true; };
+    }, [brains]);
 
     /* ───────── 제목 저장 함수 ───────── */
     async function handleSaveTitle(brain) {
@@ -256,6 +279,9 @@ export default function ProjectListView() {
                                 {/* 생성일자 */}
                                 <div className="project-date">
                                     {p.created_at ?? '날짜 없음'}
+                                    <span style={{ marginLeft: 8, color: '#888', fontSize: '1em', fontWeight: 600 }}>
+                                        (소스  {sourceCounts[p.brain_id] ?? 0}개)
+                                    </span>
                                 </div>
 
                                 {/* ⋮ 메뉴 */}

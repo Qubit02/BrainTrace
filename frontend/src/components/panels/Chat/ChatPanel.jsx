@@ -13,6 +13,7 @@ import {
 } from '../../../../../frontend/api/backend'
 
 import { fetchChatHistoryByBrain, deleteAllChatsByBrain, saveChatToBrain } from '../../../../api/chat';
+import { getSourceCountByBrain } from '../../../../api/graphApi';
 
 import ConfirmDialog from '../../common/ConfirmDialog';
 
@@ -32,7 +33,6 @@ function ChatPanel({
   onReferencedNodesUpdate,
   allNodeNames = [],
   onOpenSource,
-  sourceCount = 0
 }) {
   // ===== 상태 선언부 =====
   const [brainName, setBrainName] = useState(''); // 브레인 이름
@@ -44,6 +44,16 @@ function ChatPanel({
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 노드별 출처 열림 상태
   const [showConfirm, setShowConfirm] = useState(false); // 대화 초기화 확인창
   const [chatHistory, setChatHistory] = useState([]); // DB 기반 채팅 내역
+  // 소스 개수 상태
+  const [sourceCount, setSourceCount] = useState(0);
+
+  // selectedBrainId 변경 시 소스 개수 fetch
+  useEffect(() => {
+    if (!selectedBrainId) return;
+    getSourceCountByBrain(selectedBrainId)
+      .then(res => setSourceCount(res.total_count ?? 0))
+      .catch(() => setSourceCount(0));
+  }, [selectedBrainId]);
 
   // ===== 브레인 이름 불러오기 (프로젝트 변경 시) =====
   useEffect(() => {
