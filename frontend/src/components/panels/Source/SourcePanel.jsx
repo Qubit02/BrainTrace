@@ -5,6 +5,7 @@ import {
   getSimilarSourceIds,
   getSourceMemosByBrain
 } from '../../../../api/backend';
+import { getSourceDataMetrics } from '../../../../api/graphApi';
 
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
@@ -55,6 +56,11 @@ export default function SourcePanel({
   const [showUploadModal, setShowUploadModal] = useState(false);  // 업로드 모달 표시 여부
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
   const [sourceCount, setSourceCount] = useState(0);   // 총 소스 수
+  const [dataMetrics, setDataMetrics] = useState({     // 데이터 메트릭
+    textLength: 0,
+    nodesCount: 0,
+    edgesCount: 0
+  });
 
   // === 검색 관련 상태 ===
   const [showSearchInput, setShowSearchInput] = useState(false);  // 검색창 표시 여부
@@ -75,6 +81,7 @@ export default function SourcePanel({
   // 소스 개수 재계산 (프로젝트 변경 시)
   useEffect(() => {
     refreshSourceCount();
+    refreshDataMetrics();
   }, [activeProject, uploadKey]);
 
   // 외부에서 특정 소스를 클릭했을 때 처리 (focusSource 업데이트 감지)
@@ -180,6 +187,29 @@ export default function SourcePanel({
     } catch (e) {
       console.error('소스 카운트 오류', e);
       setSourceCount(0);
+    }
+  };
+
+  /**
+   * 데이터 메트릭 계산 함수
+   * 현재 프로젝트의 텍스트 양과 그래프 데이터 양을 계산하여 상태 업데이트
+   */
+  const refreshDataMetrics = async () => {
+    if (!activeProject) return;
+    try {
+      const metrics = await getSourceDataMetrics(activeProject);
+      setDataMetrics({
+        textLength: metrics.total_text_length || 0,
+        nodesCount: metrics.total_nodes || 0,
+        edgesCount: metrics.total_edges || 0
+      });
+    } catch (e) {
+      console.error('데이터 메트릭 오류', e);
+      setDataMetrics({
+        textLength: 0,
+        nodesCount: 0,
+        edgesCount: 0
+      });
     }
   };
 
@@ -357,6 +387,7 @@ export default function SourcePanel({
                 onGraphRefresh={() => {
                   onGraphRefresh?.();
                   refreshSourceCount();
+                  refreshDataMetrics();
                   loadAllFiles();
                 }}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
@@ -413,6 +444,7 @@ export default function SourcePanel({
             // 업로드/그래프 변환이 끝나면 파일 목록, 그래프, fileMap, uploadKey 모두 즉시 갱신
             await loadAllFiles();
             setUploadKey(k => k + 1);
+            await refreshDataMetrics();
             setFileMap(prev => {
               const m = { ...prev };
               uploadedFiles.forEach(file => {
@@ -436,7 +468,11 @@ export default function SourcePanel({
           }
         }}
       />
-      {!collapsed && <SourceQuotaBar current={sourceCount} max={50} />}
+      {!collapsed && <SourceQuotaBar 
+        textLength={dataMetrics.textLength}
+        nodesCount={dataMetrics.nodesCount}
+        edgesCount={dataMetrics.edgesCount}
+      />}
     </div >
   );
 }
