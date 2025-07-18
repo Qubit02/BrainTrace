@@ -263,7 +263,7 @@ export default function SourcePanel({
                   {panelWidth < 250
                     ? <MdOutlineDriveFolderUpload size={25} />
                     : <>
-                      <span style={{ fontSize: '1.1em', fontWeight: 600, verticalAlign: 'middle' }}>＋</span>
+                      <span style={{ fontSize: '1.1em', fontWeight: 600, verticalAlign: 'middle', marginTop: '1px' }}>＋</span>
                       <span style={{ fontSize: '1.08em', fontWeight: 600, verticalAlign: 'middle' }}>소스</span>
                     </>}
                 </button>
