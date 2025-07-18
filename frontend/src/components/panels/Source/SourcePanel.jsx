@@ -35,7 +35,7 @@ export default function SourcePanel({
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
   onSourceCountChange,        // 소스 개수 변경 콜백
-  onReady                     // 준비 완료 콜백
+  onSourcePanelReady          // SourcePanel 준비 완료 콜백
 }) {
 
   // === DOM 참조 ===
@@ -158,11 +158,11 @@ export default function SourcePanel({
 
       setAllFiles(merged);
       setUploadKey(k => k + 1); // 강제 리렌더링 트리거
-      onReady?.();
+      onSourcePanelReady?.(); // SourcePanel 준비 완료 시 콜백 호출
     } catch (e) {
       setAllFiles([]);
       setUploadKey(k => k + 1);
-      onReady?.();
+      onSourcePanelReady?.(); // SourcePanel 준비 완료 시 콜백 호출 (에러 케이스)
     }
   };
 

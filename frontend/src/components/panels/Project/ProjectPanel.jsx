@@ -19,7 +19,7 @@ import NewBrainModal from './NewBrainModal';
  * @param {number}   activeProject   – 현재 열린 브레인 id
  * @param {function} onProjectChange – 상위 컴포넌트로 id 전파
  */
-export default function ProjectPanel({ activeProject, onProjectChange, onReady }) {
+export default function ProjectPanel({ activeProject, onProjectChange }) {
   const nav = useNavigate();
   const [brains, setBrains] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -29,7 +29,6 @@ export default function ProjectPanel({ activeProject, onProjectChange, onReady }
     listBrains()
       .then(data => {
         setBrains(data);
-        onReady?.();
       })
       .catch(console.error);
   }, [activeProject]);

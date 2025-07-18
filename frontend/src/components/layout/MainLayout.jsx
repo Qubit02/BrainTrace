@@ -85,11 +85,8 @@ function MainLayout() {
   const [sourceCount, setSourceCount] = useState(0);
 
   // 패널 데이터 준비 상태
-  const [isProjectReady, setProjectReady] = useState(false);
-  const [isSourceReady, setSourceReady] = useState(false);
-  const [isChatReady, setChatReady] = useState(false);
-  const [isInsightReady, setInsightReady] = useState(false);
-  const allReady = isProjectReady && isSourceReady && isChatReady && isInsightReady;
+  const [isSourcePanelReady, setSourcePanelReady] = useState(false); // SourcePanel 준비 상태
+  const allReady = isSourcePanelReady;
 
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
@@ -116,10 +113,7 @@ function MainLayout() {
       localStorage.setItem(`sessions-${activeProject}`, JSON.stringify(sessions));
     }
 
-    setProjectReady(false);
-    setSourceReady(false);
-    setChatReady(false);
-    setInsightReady(false);
+    setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
     setActiveProject(projectId);
     setReferencedNodes([]);
   };
@@ -271,7 +265,6 @@ function MainLayout() {
         <ProjectPanel
           activeProject={Number(activeProject)}
           onProjectChange={handleProjectChange}
-          onReady={() => setProjectReady(true)}
         />
       </div>
 
@@ -298,7 +291,7 @@ function MainLayout() {
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
               onSourceCountChange={setSourceCount}
-              onReady={() => setSourceReady(true)}
+              onReady={() => setSourcePanelReady(true)}
             />
           </div>
         </Panel>
@@ -323,7 +316,6 @@ function MainLayout() {
               allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
               sourceCount={sourceCount}
-              onReady={() => setChatReady(true)}
             />
           </div>
         </Panel>
@@ -348,7 +340,6 @@ function MainLayout() {
               graphRefreshTrigger={graphRefreshTrigger}
               onGraphDataUpdate={handleGraphDataUpdate}
               focusNodeNames={focusNodeNames}
-              onReady={() => setInsightReady(true)}
             />
           </div>
         </Panel>
