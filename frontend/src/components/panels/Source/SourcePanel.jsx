@@ -18,8 +18,9 @@ import './SourcePanel.css';
 import '../styles/PanelToggle.css';
 import '../styles/Scrollbar.css';
 import { LuFolderPlus } from "react-icons/lu";
-import { LuFolderSearch2 } from "react-icons/lu";
+import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
+import { MdOutlineDriveFolderUpload } from "react-icons/md";
 
 /**
  * 소스 패널 컴포넌트
@@ -254,16 +255,19 @@ export default function SourcePanel({
             {/* 소스가 열려있지 않을 때만 표시 */}
             {(!openedPDF && !openedTXT && !openedMemo) && (
               <div className="action-buttons">
-                {/* 소스 추가 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
+                {/* 소스 추가 버튼 (아이콘/텍스트 토글) */}
                 <button
                   className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SOURCE ? 'icon-only' : ''}`}
                   onClick={() => setShowUploadModal(true)}
                 >
                   {panelWidth < 250
-                    ? <LuFolderPlus size={25} />
-                    : <>＋ 소스</>}
+                    ? <MdOutlineDriveFolderUpload size={25} />
+                    : <>
+                      <span style={{ fontSize: '1.1em', fontWeight: 600, verticalAlign: 'middle' }}>＋</span>
+                      <span style={{ fontSize: '1.08em', fontWeight: 600, verticalAlign: 'middle' }}>소스</span>
+                    </>}
                 </button>
-                {/* 탐색 버튼 (화면 너비에 따라 아이콘/텍스트 토글) */}
+                {/* 탐색 버튼 (panelWidth < 250이면 아이콘만, 아니면 아이콘+텍스트) */}
                 <button
                   className={`pill-button${showSearchInput ? ' active' : ''} ${panelWidth < PANEL_WIDTH_THRESHOLD_SEARCH ? 'icon-only' : ''}`}
                   onClick={() => {
@@ -282,8 +286,11 @@ export default function SourcePanel({
                   }}
                 >
                   {panelWidth < 250
-                    ? <LuFolderSearch2 size={25} />
-                    : <>＋ 탐색</>}
+                    ? <MdSearch size={25} style={{ verticalAlign: 'middle' }} />
+                    : <>
+                      <MdSearch size={15} style={{ verticalAlign: 'middle', marginTop: '1px', color: 'black' }} />
+                      <span style={{ fontSize: '1.08em', fontWeight: 600, verticalAlign: 'middle' }}>탐색</span>
+                    </>}
                 </button>
               </div>
             )}
