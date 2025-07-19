@@ -18,7 +18,8 @@ import {
   getTextfilesByBrain,
   getMemosByBrain,
   setMemoAsSource,
-  getNodesBySourceId
+  getNodesBySourceId,
+  getMDFilesByBrain
 } from '../../../../api/backend';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -27,6 +28,7 @@ import fileHandlers from './fileHandlers/fileHandlers';
 import deleteHandlers from './fileHandlers/deleteHandlers';
 import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
 import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
+// import GenericViewer from './viewer/GenericViewer'; // 더 이상 사용하지 않으므로 주석처리
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -41,7 +43,6 @@ async function processMemoTextAsGraph(content, sourceId, brainId) {
     console.warn("📭 메모 내용이 비어 있어 그래프를 생성하지 않습니다.");
     return;
   }
-
   try {
     const response = await processText(content, String(sourceId), String(brainId));
     console.log("✅ 그래프 생성 완료:", response);
@@ -57,10 +58,7 @@ async function processMemoTextAsGraph(content, sourceId, brainId) {
 export default function FileView({
   brainId,                    // 현재 브레인 ID
   files = [],                 // 파일 목록 (PDF, TXT, MEMO)
-  onOpenPDF,                  // PDF 파일 열기 콜백
-  onOpenTXT,                  // TXT 파일 열기 콜백
-  onOpenMEMO,                 // MEMO 파일 열기 콜백
-  fileMap = {},               // 파일 ID → 파일 메타데이터 매핑
+  onOpenFile = () => { },     // 파일 열기 콜백
   setFileMap = () => { },     // fileMap 상태 업데이트 함수
   refreshTrigger,             // 파일 목록 새로고침 트리거
   onGraphRefresh,             // 그래프 새로고침 콜백
@@ -84,7 +82,7 @@ export default function FileView({
   // 검색 필터링된 파일 목록 계산
   const displayedFiles = filteredSourceIds
     ? files.filter(f => {
-      const id = f.memo_id || f.pdf_id || f.txt_id;
+      const id = f.memo_id || f.pdf_id || f.txt_id || f.md_id;
       return filteredSourceIds.includes(String(id));
     })
     : files;
@@ -173,21 +171,21 @@ export default function FileView({
     if (!brainId) return;
     try {
       // 1) 브레인 기준 전체 파일 조회
-      const [pdfs, txts, memos] = await Promise.all([
+      const [pdfs, txts, memos, mds] = await Promise.all([
         getPdfsByBrain(brainId),
         getTextfilesByBrain(brainId),
         getMemosByBrain(brainId),
+        getMDFilesByBrain(brainId),
       ]);
-
       // 2) fileMap 갱신 - 각 파일 ID를 키로 하여 메타데이터를 빠르게 참조 가능하게 구성
       setFileMap(prev => {
         const m = { ...prev };
         pdfs.forEach(p => { m[p.pdf_id] = p; });
         txts.forEach(t => { m[t.txt_id] = t; });
         memos.forEach(memo => { m[memo.memo_id] = memo; });
+        mds.forEach(md => { m[md.md_id] = md; });
         return m;
       });
-
     } catch (err) {
       console.error('파일 목록 로딩 실패:', err);
     }
@@ -219,13 +217,7 @@ export default function FileView({
    */
   const handleDelete = async f => {
     try {
-      console.log('삭제할 파일 정보:', {
-        brainId,
-        fileId: f.id,
-        fileType: f.filetype,
-        fileName: f.name
-      });
-
+      // 삭제할 파일 정보 로그는 개발 시에만 필요하므로 제거
       // 1) 벡터 DB 및 지식 그래프 DB에서 해당 소스 삭제
       try {
         await deleteDB(brainId, f.id);
@@ -241,17 +233,14 @@ export default function FileView({
       } else {
         throw new Error('지원하지 않는 파일 타입');
       }
-
       // 삭제 실패 시 에러 처리
       if (!deleted) {
         throw new Error(`${f.filetype} 파일 삭제 실패`);
       }
-
       // 3) 그래프 뷰 새로고침
       if (onGraphRefresh) {
         onGraphRefresh();
       }
-
       // 4) 파일 목록 다시 로드
       await refresh();
     } catch (e) {
@@ -270,7 +259,6 @@ export default function FileView({
       setEditingId(null);
       return;
     }
-
     try {
       if (nameUpdateHandlers[f.filetype]) {
         await nameUpdateHandlers[f.filetype](f.id, newName, brainId);
@@ -304,7 +292,6 @@ export default function FileView({
     e.preventDefault();
     e.stopPropagation();
     setIsDrag(false); // 드래그 상태 해제
-
     // 메모 드래그 처리 (메모 → 소스로 전환)
     const memoData = e.dataTransfer.getData('application/json-memo');
     if (memoData) {
@@ -326,14 +313,12 @@ export default function FileView({
       // (2) 변환 작업은 큐 처리 로직에서 처리
       return;
     }
-
-    // 외부 파일 드래그 앤 드롭 (pdf, txt만 허용)
+    // 외부 파일 드래그 앤 드롭 (pdf, txt, md 허용)
     const dropped = Array.from(e.dataTransfer.files); // 드래그한 파일 배열로 변환
     if (!dropped.length) return; // 비어 있으면 종료
-
     // dropped 파일들을 큐에 모두 추가 (fileObj 포함)
     const newQueueItems = dropped
-      .filter(file => ['pdf', 'txt'].includes(file.name.split('.').pop().toLowerCase()))
+      .filter(file => ['pdf', 'txt', 'md'].includes(file.name.split('.').pop().toLowerCase()))
       .map(file => {
         const ext = file.name.split('.').pop().toLowerCase();
         const uploadKey = `${file.name}-${file.size}-${ext}`;
@@ -351,6 +336,7 @@ export default function FileView({
     }
   }
 
+  // === 기존 목록/업로드 UI ===
   return (
     <div
       className={`file-explorer modern-explorer${isDrag ? ' drag-over' : ''}`}
@@ -367,7 +353,6 @@ export default function FileView({
           </div>
         </div>
       )}
-
       {/* 업로드 진행 표시 */}
       {uploadQueue.map(item => (
         <div key={item.key} className="file-item uploading">
@@ -381,7 +366,6 @@ export default function FileView({
           )}
         </div>
       ))}
-
       {/* 소스패널에 파일들 렌더링 */}
       {visibleFiles.map(f => {
         return (
@@ -397,19 +381,10 @@ export default function FileView({
             }
             onClick={() => {
               setSelectedFile(f.id);
-              // --- 파일 타입별 열기 핸들러 ---
-              const openHandlers = {
-                pdf: onOpenPDF,
-                txt: onOpenTXT,
-                memo: onOpenMEMO,
-              };
-              if (openHandlers[f.filetype] && fileMap[f.id]) {
-                openHandlers[f.filetype](fileMap[f.id]);
-              }
+              onOpenFile(f.id, f.filetype);
             }}
           >
             <FileIcon fileName={f.name} />
-
             {/* ✏️ 이름 변경 입력창 */}
             {editingId === f.id ? (
               <input
@@ -426,7 +401,6 @@ export default function FileView({
             ) : (
               <span className="file-name">{f.name}</span>
             )}
-
             {/* ⋮ 메뉴 버튼 */}
             <div
               className="file-menu-button"
@@ -475,7 +449,6 @@ export default function FileView({
           </div>
         );
       })}
-
       {/* 파일이 하나도 없을 때 */}
       {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && (
         <div className="empty-state">
@@ -484,14 +457,12 @@ export default function FileView({
           </p>
         </div>
       )}
-
       {/* 검색 결과가 없을 때 */}
       {filteredSourceIds && processedFiles.length === 0 && (
         <div className="empty-state">
           <p className="empty-sub">검색 결과가 없습니다.</p>
         </div>
       )}
-
       {/* 삭제 확인 모달 */}
       {fileToDelete && (
         <ConfirmDialog

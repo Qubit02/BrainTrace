@@ -200,18 +200,6 @@
     transition: all 0.2s ease;
 }
 
-.project-name:hover {
-    transform: translateX(5px);
-    color: #007bff;
-    cursor: default !important;
-    pointer-events: none;
-}
-
-.project-name:hover::after {
-    opacity: 1;
-    transition: opacity 0.2s ease;
-}
-
 .project-name.editing:empty:before {
     content: attr(data-placeholder);
     color: #aaa;
