@@ -19,10 +19,10 @@ import {
   getMemosByBrain,
   updateMemo,
   deleteMemo
-} from '../../../../../backend/api/backend';
+} from '../../../../api/backend';
 
-function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onReady }) {
-  const projectId = activeProject;
+function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady }) {
+  const projectId = selectedBrainId;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
   const [memos, setMemos] = useState([]);
@@ -37,10 +37,8 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
       try {
         const memos = await getMemosByBrain(projectId);
         setMemos(memos);
-        onReady?.();
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);
-        onReady?.(); // 실패해도 호출
       }
     };
     fetch();
@@ -145,7 +143,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
       >
         {!collapsed && (
           <div className="header-actions2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="header-title" style={{ fontSize: '17px' }}>Insight</span>
+            <span className="header-title">Insight</span>
           </div>
         )}
         <div className="header-actions">
@@ -160,7 +158,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
               <img
                 src={showMemo ? memoOnIcon : memoOffIcon}
                 alt="Memo View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer' }}
+                style={{ width: '19px', height: '19px', cursor: 'pointer', marginRight: '6px' }}
                 onClick={() => setShowMemo(prev => !prev)}
               />
             </>
@@ -195,6 +193,7 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
                 focusNodeNames={focusNodeNames}
                 graphRefreshTrigger={graphRefreshTrigger}
                 onGraphDataUpdate={onGraphDataUpdate}
+                onGraphReady={onGraphReady}
               />
             </div>
           )}

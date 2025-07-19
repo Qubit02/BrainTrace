@@ -52,3 +52,128 @@
     user-select: text;
     padding: 12px;
 }
+
+/* MD 파일 뷰어 스타일 */
+.md-content {
+    padding: 16px;
+    line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4,
+.md-content h5,
+.md-content h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.md-content h1 {
+    font-size: 2em;
+    border-bottom: 1px solid #eaecef;
+    padding-bottom: 0.3em;
+}
+
+.md-content h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid #eaecef;
+    padding-bottom: 0.3em;
+}
+
+.md-content h3 {
+    font-size: 1.25em;
+}
+
+.md-content p {
+    margin-bottom: 16px;
+}
+
+.md-content code {
+    background-color: #f6f8fa;
+    border-radius: 3px;
+    font-size: 85%;
+    margin: 0;
+    padding: 0.2em 0.4em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.md-content pre {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    font-size: 85%;
+    line-height: 1.45;
+    overflow: auto;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.md-content pre code {
+    background-color: transparent;
+    border: 0;
+    display: inline;
+    line-height: inherit;
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+    word-wrap: normal;
+}
+
+.md-content blockquote {
+    border-left: 4px solid #dfe2e5;
+    color: #6a737d;
+    margin: 0 0 16px 0;
+    padding: 0 16px;
+}
+
+.md-content ul,
+.md-content ol {
+    margin-bottom: 16px;
+    padding-left: 2em;
+}
+
+.md-content li {
+    margin-bottom: 0.25em;
+}
+
+.md-content table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.md-content th,
+.md-content td {
+    border: 1px solid #dfe2e5;
+    padding: 6px 13px;
+}
+
+.md-content th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}
+
+.md-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #666;
+}
+
+.error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #d73a49;
+}

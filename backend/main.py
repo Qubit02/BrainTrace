@@ -15,7 +15,7 @@ from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 
 # 기존 라우터
-from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter
+from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter, mdRouter
 
 
 # ─── 로깅 설정 ─────────────────────────────────────
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="BrainTrace API",
     description="지식 그래프 기반 질의응답 시스템 API",
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
@@ -97,12 +97,15 @@ app.include_router(brainRouter.router)
 app.include_router(memoRouter.router)
 app.include_router(pdfRouter.router)        
 app.include_router(textFileRouter.router)   
+app.include_router(mdRouter.router)
 app.include_router(chatRouter.router)
 app.include_router(searchRouter.router)
 app.include_router(voiceRouter.router)
+app.include_router(mdRouter.router)
 
 app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
 app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")
+app.mount("/uploaded_mds", StaticFiles(directory="uploaded_mds"), name="uploaded_mds")
 
 
 # ─── 서버 실행 ──────────────────────────────────────

@@ -1,12 +1,9 @@
 // src/api/graphApi.js
-import axios from 'axios';
-
-// Vite에서는 process.env가 아닌 import.meta.env 사용
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { api } from '../api/api';
 
 export const fetchGraphData = async (brainId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/brainGraph/getNodeEdge/${brainId}`);
+    const response = await api.get(`/brainGraph/getNodeEdge/${brainId}`);
 
     // API 응답 데이터 로깅
     console.log('API 응답 데이터:', response.data);
@@ -17,18 +14,8 @@ export const fetchGraphData = async (brainId) => {
   } catch (error) {
     console.error('그래프 데이터 가져오기 실패:', error);
 
-    // 샘플 데이터로 폴백
-    return {
-      nodes: [
-        { id: 'sample1', name: '샘플 노드 1', group: 1 },
-        { id: 'sample2', name: '샘플 노드 2', group: 2 },
-        { id: 'sample3', name: '샘플 노드 3', group: 3 }
-      ],
-      links: [
-        { source: 'sample1', target: 'sample2', relation: '관계 1' },
-        { source: 'sample2', target: 'sample3', relation: '관계 2' }
-      ]
-    };
+    // 더미 데이터로 폴백
+    return getDefaultGraphData();
   }
 };
 
@@ -157,15 +144,12 @@ function getDefaultGraphData() {
 
 export const processText = async (text, sourceId, brainId) => {
   try {
-    const response = await axios.post(
-      `${BASE_URL}/brainGraph/process_text`,
-      JSON.stringify({
+    const response = await api.post(
+      '/brainGraph/process_text',
+      {
         text,
         source_id: sourceId,
         brain_id: brainId
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' }
       }
     );
     return response.data;
@@ -177,7 +161,7 @@ export const processText = async (text, sourceId, brainId) => {
 
 export const getAnswer = async (question, brainId) => {
   try {
-    const response = await axios.post(`${BASE_URL}/brainGraph/answer`, {
+    const response = await api.post('/brainGraph/answer', {
       question,
       brain_id: brainId
     });
@@ -190,10 +174,25 @@ export const getAnswer = async (question, brainId) => {
 
 export const deleteDB = async (brainId, sourceId) => {
   try {
-    const response = await axios.delete(`${BASE_URL}/brains/${brainId}/deleteDB/${sourceId}`);
+    const response = await api.delete(`/brains/${brainId}/deleteDB/${sourceId}`);
     return response.data;
   } catch (error) {
     console.error('벡터 DB or 그래프 DB 삭제 실패:', error);
     throw error;
   }
 };
+
+// 소스별 데이터 메트릭 조회
+export const getSourceDataMetrics = async (brainId) => {
+  try {
+    const response = await api.get(`/brainGraph/getSourceDataMetrics/${brainId}`);
+    return response.data;
+  } catch (error) {
+    console.error('소스 데이터 메트릭 조회 실패:', error);
+    throw error;
+  }
+};
+
+// 해당 brain의 모든 소스 개수 조회
+export const getSourceCountByBrain = brain_id =>
+  api.get(`/brainGraph/sourceCount/${brain_id}`).then(r => r.data); 

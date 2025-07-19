@@ -44,10 +44,13 @@ async def get_brain_graph(brain_id: str):
         graph_data = neo4j_handler.get_brain_graph(brain_id)
         logging.info(f"Neo4j에서 받은 데이터: nodes={len(graph_data['nodes'])}, links={len(graph_data['links'])}")
         
+        # if not graph_data['nodes'] and not graph_data['links']:
+        #     logging.warning(f"brain_id {brain_id}에 대한 데이터가 없습니다")
+        #     raise GraphDataNotFoundException(brain_id)
+        
         if not graph_data['nodes'] and not graph_data['links']:
             logging.warning(f"brain_id {brain_id}에 대한 데이터가 없습니다")
-            raise GraphDataNotFoundException(brain_id)
-        
+
         return graph_data
     except AppException as ae:
             raise ae
@@ -294,3 +297,162 @@ async def get_nodes_by_source_id(source_id: str, brain_id: str):
     except Exception as e:
         logging.error("노드 조회 오류: %s", str(e))
         raise HTTPException(status_code=500, detail=f"노드 조회 중 오류가 발생했습니다: {str(e)}")
+
+@router.get("/getSourceDataMetrics/{brain_id}",
+    summary="브레인의 소스별 데이터 메트릭 조회",
+    description="특정 브레인의 모든 소스에 대한 텍스트 양과 그래프 데이터 양을 계산하여 반환합니다.",
+    response_description="소스별 텍스트 양과 그래프 데이터 양 정보를 반환합니다.",
+    responses={
+        404: ErrorExamples[40401],
+        500: ErrorExamples[50001]
+    }
+)
+async def get_source_data_metrics(brain_id: str):
+    """
+    특정 브레인의 모든 소스에 대한 데이터 메트릭을 반환합니다:
+    
+    - **brain_id**: 메트릭을 조회할 브레인 ID
+    
+    반환값:
+    - **total_text_length**: 전체 텍스트 길이
+    - **total_nodes**: 전체 노드 수
+    - **total_edges**: 전체 엣지 수
+    - **source_metrics**: 소스별 상세 메트릭
+    """
+    logging.info(f"getSourceDataMetrics 엔드포인트 호출됨 - brain_id: {brain_id}")
+    try:
+        neo4j_handler = Neo4jHandler()
+        db_handler = SQLiteHandler()
+        
+        # 1. Neo4j에서 그래프 데이터 조회
+        graph_data = neo4j_handler.get_brain_graph(brain_id)
+        total_nodes = len(graph_data.get('nodes', []))
+        total_edges = len(graph_data.get('links', []))
+        
+        # 2. SQLite에서 소스별 텍스트 길이 계산
+        source_metrics = []
+        total_text_length = 0
+        
+        # PDF 소스들 조회
+        pdfs = db_handler.get_pdfs_by_brain(brain_id)
+        for pdf in pdfs:
+            try:
+                # PDF 파일에서 텍스트 추출 (간단한 추정)
+                # 실제로는 PDF 파싱이 필요하지만, 여기서는 파일 크기로 추정
+                import os
+                if os.path.exists(pdf['pdf_path']):
+                    file_size = os.path.getsize(pdf['pdf_path'])
+                    # PDF 파일 크기를 텍스트 길이로 추정 (대략적인 계산)
+                    estimated_text_length = int(file_size * 0.1)  # PDF의 약 10%가 텍스트라고 가정
+                else:
+                    estimated_text_length = 0
+                
+                # 이 PDF에서 생성된 노드 수 계산
+                pdf_nodes = neo4j_handler.get_nodes_by_source_id(pdf['pdf_id'], brain_id)
+                pdf_edges = neo4j_handler.get_edges_by_source_id(pdf['pdf_id'], brain_id)
+                
+                source_metrics.append({
+                    "source_id": pdf['pdf_id'],
+                    "source_type": "pdf",
+                    "title": pdf['pdf_title'],
+                    "text_length": estimated_text_length,
+                    "nodes_count": len(pdf_nodes),
+                    "edges_count": len(pdf_edges)
+                })
+                
+                total_text_length += estimated_text_length
+                
+            except Exception as e:
+                logging.error(f"PDF 메트릭 계산 오류 (ID: {pdf['pdf_id']}): {str(e)}")
+        
+        # TXT 소스들 조회
+        txts = db_handler.get_textfiles_by_brain(brain_id)
+        for txt in txts:
+            try:
+                # TXT 파일에서 실제 텍스트 길이 계산
+                import os
+                if os.path.exists(txt['txt_path']):
+                    with open(txt['txt_path'], 'r', encoding='utf-8') as f:
+                        text_content = f.read()
+                        text_length = len(text_content)
+                else:
+                    text_length = 0
+                
+                # 이 TXT에서 생성된 노드 수 계산
+                txt_nodes = neo4j_handler.get_nodes_by_source_id(txt['txt_id'], brain_id)
+                txt_edges = neo4j_handler.get_edges_by_source_id(txt['txt_id'], brain_id)
+                
+                source_metrics.append({
+                    "source_id": txt['txt_id'],
+                    "source_type": "txt",
+                    "title": txt['txt_title'],
+                    "text_length": text_length,
+                    "nodes_count": len(txt_nodes),
+                    "edges_count": len(txt_edges)
+                })
+                
+                total_text_length += text_length
+                
+            except Exception as e:
+                logging.error(f"TXT 메트릭 계산 오류 (ID: {txt['txt_id']}): {str(e)}")
+        
+        # MEMO 소스들 조회
+        memos = db_handler.get_memos_by_brain(brain_id, is_source=True)
+        for memo in memos:
+            try:
+                # 메모 텍스트 길이 계산
+                text_length = len(memo['memo_text'] or '')
+                
+                # 이 메모에서 생성된 노드 수 계산
+                memo_nodes = neo4j_handler.get_nodes_by_source_id(memo['memo_id'], brain_id)
+                memo_edges = neo4j_handler.get_edges_by_source_id(memo['memo_id'], brain_id)
+                
+                source_metrics.append({
+                    "source_id": memo['memo_id'],
+                    "source_type": "memo",
+                    "title": memo['memo_title'],
+                    "text_length": text_length,
+                    "nodes_count": len(memo_nodes),
+                    "edges_count": len(memo_edges)
+                })
+                
+                total_text_length += text_length
+                
+            except Exception as e:
+                logging.error(f"MEMO 메트릭 계산 오류 (ID: {memo['memo_id']}): {str(e)}")
+        
+        return {
+            "total_text_length": total_text_length,
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "source_metrics": source_metrics
+        }
+        
+    except AppException as ae:
+        raise ae
+    except Exception as e:
+        logging.error("소스 데이터 메트릭 조회 오류: %s", str(e))
+        raise Neo4jException(message=str(e))
+
+@router.get("/sourceCount/{brain_id}", summary="브레인별 전체 소스 개수 조회", description="특정 브레인에 속한 PDF, TXT, MD, MEMO 소스의 개수를 반환합니다.")
+async def get_source_count(brain_id: int):
+    """
+    해당 brain_id에 속한 모든 소스(PDF, TXT, MD, MEMO) 개수를 반환합니다.
+    is_source가 true인 메모만 소스로 계산합니다.
+    """
+    db = SQLiteHandler()
+    try:
+        pdfs = db.get_pdfs_by_brain(brain_id)
+        txts = db.get_textfiles_by_brain(brain_id)
+        mds = db.get_mds_by_brain(brain_id)
+        memos = db.get_memos_by_brain(brain_id, is_source=True)  # is_source가 True인 메모만 조회
+        total_count = len(pdfs) + len(txts) + len(mds) + len(memos)
+        return {
+            "pdf_count": len(pdfs),
+            "txt_count": len(txts),
+            "md_count": len(mds),
+            "memo_count": len(memos),
+            "total_count": total_count
+        }
+    except Exception as e:
+        raise HTTPException(500, f"소스 개수 조회 중 오류: {str(e)}")

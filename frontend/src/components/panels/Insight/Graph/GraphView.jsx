@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
-import { fetchGraphData } from '../../../../api/graphApi';
+import { fetchGraphData } from '../../../../../api/graphApi';
 import { easeCubicInOut } from 'd3-ease';
 import './GraphView.css';
+import { startTimelapse } from './graphTimelapse';
 
 function GraphView({
   brainId = 'default-brain-id',
@@ -17,7 +18,7 @@ function GraphView({
   onTimelapse,
   showPopups = true,
   onNewlyAddedNodes,
-  onGraphViewReady,
+  onGraphReady,
   externalShowReferenced,
   externalShowFocus,
   externalShowNewlyAdded,
@@ -52,10 +53,7 @@ function GraphView({
   const [refPulseStartTime, setRefPulseStartTime] = useState(null);
   const lastClickRef = useRef({ node: null, time: 0 });
   const clickTimeoutRef = useRef();
-
-  // ✅ 콜백 등록 상태 추적
-  const callbacksRegisteredRef = useRef(false);
-  const prevNewlyAddedRef = useRef([]);
+  const [graphReady, setGraphReady] = useState(false); // 그래프 준비 상태
 
   // 색상 팔레트
   // ✅ 다크모드용 색상 팔레트 추가
@@ -71,7 +69,6 @@ function GraphView({
   // ✅ 현재 팔레트 선택
   const colorPalette = isDarkMode ? darkColorPalette : lightColorPalette;
 
-
   // 컨테이너 사이즈 계산
   const updateDimensions = () => {
     if (!containerRef.current) return;
@@ -86,18 +83,6 @@ function GraphView({
     setDimensions({ width, height: calcHeight });
   };
 
-  // const getInitialZoomScale = (nodeCount) => {
-  //   if (nodeCount >= 1000) return 0.045;
-  //   else if (nodeCount >= 500) return 0.05;
-  //   else if (nodeCount >= 100) return 0.07;
-  //   else if (nodeCount >= 50) return 0.15;
-  //   else if (nodeCount >= 40) return 0.2;
-  //   else if (nodeCount >= 30) return 0.25;
-  //   else if (nodeCount >= 20) return 0.3;
-  //   else if (nodeCount >= 10) return 0.4;
-  //   else if (nodeCount >= 5) return 0.8;
-  //   return 1;
-  // };
   const getInitialZoomScale = (nodeCount) => {
     // ✅ Modal용 줌 배율 (더 확대)
     const modalMultiplier = isFullscreen ? 5 : 1.5; // Modal일 때 1.5배 더 확대
@@ -117,66 +102,6 @@ function GraphView({
     return Math.min(baseZoom * modalMultiplier, 5); // 최대 줌 제한
   };
   // 타임랩스 함수
-  const startTimelapse = () => {
-    const nodes = [...graphData.nodes];
-    const links = [...graphData.links];
-    const N = nodes.length;
-    if (N === 0) return;
-
-    const totalDuration = Math.min(6000, 800 + N * 80);
-    const fadeDuration = Math.max(200, Math.min(800, N * 10));
-
-    const shuffledNodes = d3.shuffle(nodes);
-    const appearTimes = shuffledNodes.map((_, i) =>
-      (i / (N - 1)) * (totalDuration - fadeDuration)
-    );
-
-    setIsAnimating(true);
-    setVisibleNodes([]);
-    setVisibleLinks([]);
-
-    if (fgRef.current) {
-      const currentZoom = fgRef.current.zoom();
-      fgRef.current.zoom(currentZoom, 0);
-    }
-
-    const startTime = performance.now();
-
-    const tick = now => {
-      const t = now - startTime;
-      const idx = Math.min(
-        N - 1,
-        Math.floor((t / (totalDuration - fadeDuration)) * (N - 1))
-      );
-
-      const visible = shuffledNodes.slice(0, idx + 1).map((n, i) => {
-        const dt = t - appearTimes[i];
-        const alpha = dt <= 0
-          ? 0
-          : dt >= fadeDuration
-            ? 1
-            : easeCubicInOut(dt / fadeDuration);
-        return { ...n, __opacity: alpha };
-      });
-
-      const visibleIds = new Set(visible.map(n => n.id));
-      const visibleLinks = links.filter(l =>
-        visibleIds.has(l.source) && visibleIds.has(l.target)
-      );
-
-      setVisibleNodes(visible);
-      setVisibleLinks(visibleLinks);
-
-      if (t < totalDuration) {
-        requestAnimationFrame(tick);
-      } else {
-        setIsAnimating(false);
-      }
-    };
-
-    requestAnimationFrame(tick);
-  };
-
   // 노드 클릭 핸들러
   const handleNodeClick = (node) => {
     const now = Date.now();
@@ -199,12 +124,12 @@ function GraphView({
   };
 
   //슬라이더 물리 효과 조절
-  // ✅ 3개 물리 설정만 처리하는 useEffect
+  // 3개 물리 설정만 처리하는 useEffect
   useEffect(() => {
     if (fgRef.current) {
       const fg = fgRef.current;
 
-      // ✅ 올바른 반발력 공식 (0% = 가까이 모임, 100% = 멀리 퍼짐)
+      // 반발력 공식 (0% = 가까이 모임, 100% = 멀리 퍼짐)
       const repelForce = -10 - (repelStrength / 100) * 290;    // 0% = -10, 100% = -300
       const linkDist = 50 + (linkDistance / 100) * 250;        // 50 to 300
       const linkForce = 0.1 + (linkStrength / 100) * 0.9;      // 0.1 to 1.0
@@ -217,7 +142,8 @@ function GraphView({
       fg.d3ReheatSimulation();
     }
   }, [repelStrength, linkDistance, linkStrength]);
-  //예찬 더블 클릭했을 때 줌인되게
+
+  // 더블 클릭했을 때 줌인되게
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !fgRef.current) return;
@@ -280,50 +206,20 @@ function GraphView({
     }
   }, [externalShowNewlyAdded]);
 
-  // ✅ 콜백 등록 - 한 번만 실행되도록 완전히 수정
-  useEffect(() => {
-    if (onGraphViewReady && !callbacksRegisteredRef.current) {
-      console.log('📡 GraphView 콜백 등록 (최초 1회만)');
-
-      // setState 함수들을 직접 전달하지 않고 래퍼 함수로 전달
-      const callbacks = {
-        setShowReferenced: (value) => {
-          console.log('🔄 setShowReferenced 호출:', value);
-          setShowReferenced(value);
-        },
-        setShowFocus: (value) => {
-          console.log('🔄 setShowFocus 호출:', value);
-          setShowFocus(value);
-        },
-        setShowNewlyAdded: (value) => {
-          console.log('🔄 setShowNewlyAdded 호출:', value);
-          setShowNewlyAdded(value);
-        },
-        setNewlyAddedNodeNames: (value) => {
-          console.log('🔄 setNewlyAddedNodeNames 호출:', value);
-          setNewlyAddedNodeNames(value);
-        }
-      };
-
-      onGraphViewReady(callbacks);
-      callbacksRegisteredRef.current = true;
-    }
-  }, []); // ✅ 의존성 배열 완전히 비움
-
   // ✅ 새로 추가된 노드 알림 - 중복 방지 로직 추가
   useEffect(() => {
     if (!onNewlyAddedNodes || newlyAddedNodeNames.length === 0) return;
 
     // 이전 값과 비교해서 실제로 변경된 경우만 알림
-    const prevNodes = prevNewlyAddedRef.current;
+    const prevNodes = prevGraphDataRef.current.nodes.map(n => n.name);
     const isChanged = JSON.stringify(prevNodes) !== JSON.stringify(newlyAddedNodeNames);
 
     if (isChanged) {
       console.log('🆕 새로 추가된 노드 외부 알림:', newlyAddedNodeNames);
       onNewlyAddedNodes(newlyAddedNodeNames);
-      prevNewlyAddedRef.current = [...newlyAddedNodeNames];
+      prevGraphDataRef.current = { ...prevGraphDataRef.current, nodes: [...prevGraphDataRef.current.nodes, ...graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name))] };
     }
-  }, [newlyAddedNodeNames]); // ✅ onNewlyAddedNodes 의존성 제거
+  }, [newlyAddedNodeNames, graphData.nodes]); // ✅ onNewlyAddedNodes 의존성 제거
 
   // 나머지 useEffect들은 그대로 유지...
   useEffect(() => {
@@ -402,6 +298,7 @@ function GraphView({
   useEffect(() => {
     if (initialGraphData) {
       processGraphData(initialGraphData);
+      setGraphReady(true);
       return;
     }
 
@@ -410,14 +307,21 @@ function GraphView({
         setLoading(true);
         const data = await fetchGraphData(brainId);
         processGraphData(data);
+        setGraphReady(true);
       } catch (err) {
         setError('그래프 데이터를 불러오는 데 실패했습니다.');
         setLoading(false);
+        setGraphReady(false);
       }
     };
 
     loadGraphData();
   }, [brainId, initialGraphData]);
+
+  // graphReady가 바뀔 때마다 부모에 전달
+  useEffect(() => {
+    if (onGraphReady) onGraphReady(graphReady);
+  }, [graphReady, onGraphReady]);
 
   // 그래프 새로고침
   useEffect(() => {
@@ -606,7 +510,7 @@ function GraphView({
 
   // 외부에서 팝업 데이터에 접근할 수 있도록 노출
   React.useImperativeHandle(onTimelapse, () => ({
-    startTimelapse,
+    startTimelapse: () => startTimelapse({ graphData, setIsAnimating, setVisibleNodes, setVisibleLinks, fgRef }),
     getPopupData: () => ({
       showNewlyAdded,
       newlyAddedNodeNames,
@@ -621,13 +525,6 @@ function GraphView({
     })
   }));
 
-  // ✅ 컴포넌트 언마운트 시 정리
-  useEffect(() => {
-    return () => {
-      callbacksRegisteredRef.current = false;
-      prevNewlyAddedRef.current = [];
-    };
-  }, []);
 
   return (
     <div

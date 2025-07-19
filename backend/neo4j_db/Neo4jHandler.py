@@ -376,5 +376,37 @@ class Neo4jHandler:
             logging.error(f"❌ source_id로 노드 조회 실패: {str(e)}")
             raise Neo4jException(f"source_id로 노드 조회 실패: {str(e)}")
 
+    def get_edges_by_source_id(self, source_id: str, brain_id: str) -> List[Dict]:
+        """
+        특정 source_id가 descriptions에 포함된 노드들 간의 엣지를 반환합니다.
+        
+        Args:
+            source_id: 찾을 source_id
+            brain_id: 브레인 ID
+            
+        Returns:
+            List[Dict]: 엣지 목록 (source, target, relation 포함)
+        """
+        try:
+            query = """
+            MATCH (source:Node {brain_id: $brain_id})-[r:REL {brain_id: $brain_id}]->(target:Node {brain_id: $brain_id})
+            WHERE ANY(desc IN source.descriptions WHERE desc CONTAINS $source_id)
+               OR ANY(desc IN target.descriptions WHERE desc CONTAINS $source_id)
+            RETURN source.name as source, target.name as target, r.relation as relation
+            """
+            result = self._execute_with_retry(query, {"source_id": source_id, "brain_id": brain_id})
+            return [
+                {
+                    "source": record["source"],
+                    "target": record["target"],
+                    "relation": record["relation"]
+                }
+                for record in result
+            ]
+            
+        except Exception as e:
+            logging.error(f"❌ source_id로 엣지 조회 실패: {str(e)}")
+            raise Neo4jException(f"source_id로 엣지 조회 실패: {str(e)}")
+
     def __del__(self):
         self.close()

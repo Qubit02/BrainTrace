@@ -11,4 +11,4 @@ export const updateBrain = (id, body) => api.put(`/brains/${id}`, body).then(r =
 // 브레인 삭제
 export const deleteBrain = id => api.delete(`/brains/${id}`);
 // 브레인 이름 변경
-export const renameBrain = (id, brain_name) => api.patch(`/brains/${id}/rename`, { brain_name }).then(r => r.data); 
+export const renameBrain = (id, brain_name) => api.patch(`/brains/${id}/rename`, { brain_name }).then(r => r.data);

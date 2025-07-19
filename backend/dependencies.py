@@ -4,12 +4,13 @@
 from fastapi import Depends
 from services.ai_service import BaseAIService
 from services.ollama_service import OllamaAIService
+from services.openai_service import OpenAIService
 # from services.embedding_service import EmbeddingService
 from neo4j_db.Neo4jHandler import Neo4jHandler
 from sqlite_db.sqlite_handler import SQLiteHandler
 
 def get_ai_service() -> BaseAIService:
-    return OllamaAIService()
+    return OpenAIService()
 
 # 나중에 임베딩 서비스 쪽도 OCP 만족하도록 수정해야할듯
 # def get_embedding_service() -> EmbeddingService:

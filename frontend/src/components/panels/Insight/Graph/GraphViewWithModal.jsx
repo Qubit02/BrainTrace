@@ -4,7 +4,15 @@ import { MdFullscreen, MdClose } from 'react-icons/md';
 import { PiMagicWand } from "react-icons/pi";
 import './GraphViewWithModal.css';
 
-function GraphViewWithModal(props) {
+export default function GraphViewWithModal({
+  brainId,
+  height,
+  referencedNodes,
+  focusNodeNames,
+  graphRefreshTrigger,
+  onGraphDataUpdate,
+  onGraphReady
+}) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const modalRef = useRef(null);
     const offset = useRef({ x: 0, y: 0 });
@@ -22,43 +30,28 @@ function GraphViewWithModal(props) {
     // GraphView의 상태 감지를 위한 useEffect들
     useEffect(() => {
         // graphRefreshTrigger 변화 감지하여 새로 추가된 노드 표시
-        if (props.graphRefreshTrigger) {
+        if (graphRefreshTrigger) {
             // 이 로직은 GraphView 내부에서 처리되므로 여기서는 기본 설정만
             setShowNewlyAdded(false);
             setNewlyAddedNodeNames([]);
         }
-    }, [props.graphRefreshTrigger]);
+    }, [graphRefreshTrigger]);
 
     useEffect(() => {
         // referencedNodes 변화 감지
-        if (props.referencedNodes && props.referencedNodes.length > 0) {
+        if (referencedNodes && referencedNodes.length > 0) {
             setShowReferenced(true);
         }
-    }, [props.referencedNodes]);
+    }, [referencedNodes]);
 
     // ✅ 수정: focusNodeNames 변화 감지 - 안전한 의존성 배열 사용
     useEffect(() => {
-        console.log('🎯 focusNodeNames 변화 감지:', props.focusNodeNames);
-        if (props.focusNodeNames && props.focusNodeNames.length > 0) {
+        console.log('🎯 focusNodeNames 변화 감지:', focusNodeNames);
+        if (focusNodeNames && focusNodeNames.length > 0) {
             console.log('✅ showFocus를 true로 설정');
             setShowFocus(true);
         }
-    }, [props.focusNodeNames]);
-
-    // ✅ 수정: 디버깅 로그를 별도 useEffect로 분리하고 조건부 실행
-    useEffect(() => {
-        // 개발 모드에서만 로그 출력
-        if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 GraphViewWithModal 상태:', {
-                showFocus,
-                focusNodeNamesLength: props.focusNodeNames?.length || 0,
-                showReferenced,
-                referencedNodesLength: props.referencedNodes?.length || 0,
-                showNewlyAdded,
-                newlyAddedNodesLength: newlyAddedNodeNames?.length || 0
-            });
-        }
-    }, []);
+    }, [focusNodeNames]);
 
     // ESC로 닫기
     useEffect(() => {
@@ -69,90 +62,22 @@ function GraphViewWithModal(props) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // 모달 바깥 클릭 시 닫기
-    const handleBackdropClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            setIsFullscreen(false);
-        }
-    };
-
-    // 모달 드래그
-    const handleMouseDown = (e) => {
-        const modal = modalRef.current;
-        if (!modal) return;
-
-        const rect = modal.getBoundingClientRect();
-        offset.current = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-        };
-
-        modal.style.transform = 'none';
-        modal.style.left = `${rect.left}px`;
-        modal.style.top = `${rect.top}px`;
-
-        const onMouseMove = (e) => {
-            const newLeft = e.clientX - offset.current.x;
-            const newTop = e.clientY - offset.current.y;
-            modal.style.left = `${newLeft}px`;
-            modal.style.top = `${newTop}px`;
-        };
-
-        const onMouseUp = () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('mouseup', onMouseUp);
-        };
-
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-    };
-
-    // 리사이즈
-    const handleResizeMouseDown = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const modal = modalRef.current;
-        if (!modal) return;
-
-        const startWidth = modal.offsetWidth;
-        const startHeight = modal.offsetHeight;
-        const startX = e.clientX;
-        const startY = e.clientY;
-
-        const onMouseMove = (e) => {
-            const newWidth = Math.max(400, startWidth + (e.clientX - startX));
-            const newHeight = Math.max(300, startHeight + (e.clientY - startY));
-            modal.style.width = `${newWidth}px`;
-            modal.style.height = `${newHeight}px`;
-        };
-
-        const onMouseUp = () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('mouseup', onMouseUp);
-        };
-
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-    };
-
     // 외부 창 열기 함수 개선
     const openExternalGraphWindow = () => {
-        const brainId = props.brainId || 'default-brain-id';
-
         const params = new URLSearchParams({
             brainId: brainId
         });
 
-        if (props.referencedNodes && props.referencedNodes.length > 0) {
-            params.set('referencedNodes', encodeURIComponent(JSON.stringify(props.referencedNodes)));
+        if (referencedNodes && referencedNodes.length > 0) {
+            params.set('referencedNodes', encodeURIComponent(JSON.stringify(referencedNodes)));
         }
 
-        if (props.focusNodeNames && props.focusNodeNames.length > 0) {
-            params.set('focusNodeNames', encodeURIComponent(JSON.stringify(props.focusNodeNames)));
+        if (focusNodeNames && focusNodeNames.length > 0) {
+            params.set('focusNodeNames', encodeURIComponent(JSON.stringify(focusNodeNames)));
         }
 
-        if (props.graphData) {
-            params.set('nodeCount', props.graphData.nodes?.length || 0);
+        if (onGraphDataUpdate) {
+            params.set('nodeCount', onGraphDataUpdate.nodes?.length || 0);
         }
 
         const url = `${window.location.origin}/graph-view?${params.toString()}`;
@@ -205,17 +130,19 @@ function GraphViewWithModal(props) {
         <div className="graph-view-wrapper">
             <div className="graph-with-button">
                 <GraphView
-                    {...props}
-                    isFullscreen={isFullscreen}
-                    referencedNodes={props.referencedNodes}
-                    focusNodeNames={props.focusNodeNames}
+                    brainId={brainId}
+                    height={height}
+                    referencedNodes={referencedNodes}
+                    focusNodeNames={focusNodeNames}
                     onTimelapse={timelapseFunctionRef}
-                    // ✅ 외부에서 제어할 수 있도록 상태 전달
+                    graphRefreshTrigger={graphRefreshTrigger}
+                    onGraphDataUpdate={onGraphDataUpdate}
+                    onGraphReady={onGraphReady}
+                    isFullscreen={isFullscreen}
                     externalShowReferenced={showReferenced}
                     externalShowFocus={showFocus}
                     externalShowNewlyAdded={showNewlyAdded}
                     onGraphViewReady={handleGraphViewReady}
-                    // ✅ 새로 추가된 노드 정보를 받는 콜백 추가
                     onNewlyAddedNodes={handleNewlyAddedNodes}
                 />
 
@@ -256,9 +183,9 @@ function GraphViewWithModal(props) {
                 )}
 
                 {/* 참고된 노드가 있을 때 정보 표시 */}
-                {showReferenced && props.referencedNodes && props.referencedNodes.length > 0 && (
+                {showReferenced && referencedNodes && referencedNodes.length > 0 && (
                     <div className="graph-popup">
-                        <span>참고된 노드: {props.referencedNodes.join(', ')}</span>
+                        <span>참고된 노드: {referencedNodes.join(', ')}</span>
                         <span className="close-x" onClick={() => {
                             console.log('🔥 참고된 노드 강조 해제');
                             setShowReferenced(false);
@@ -271,9 +198,9 @@ function GraphViewWithModal(props) {
                 )}
 
                 {/* ✅ 수정: 포커스 노드 팝업 - console.log 제거 */}
-                {showFocus && Array.isArray(props.focusNodeNames) && props.focusNodeNames.length > 0 && (
+                {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
                     <div className="graph-popup">
-                        <span>소스로 생성된 노드: {props.focusNodeNames.join(', ')}</span>
+                        <span>소스로 생성된 노드: {focusNodeNames.join(', ')}</span>
                         <span
                             className="close-x"
                             onClick={() => {
@@ -293,5 +220,3 @@ function GraphViewWithModal(props) {
         </div>
     );
 }
-
-export default GraphViewWithModal;

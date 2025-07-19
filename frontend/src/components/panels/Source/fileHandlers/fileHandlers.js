@@ -1,4 +1,4 @@
-import { uploadPdfs, uploadTextfiles, createMemo, createTextToGraph } from '../../../../../../backend/api/backend';
+import { uploadPdfs, uploadTextfiles, createMemo, uploadMDFiles, createTextToGraph } from '../../../../../api/backend';
 import { pdfjs } from 'react-pdf';
 
 const fileHandlers = {
@@ -39,6 +39,16 @@ const fileHandlers = {
       type: 'memo',
     });
     return { id: res.memo_id, filetype: 'memo', meta: res };
+  },
+  md: async (f, brainId) => {
+    const [meta] = await uploadMDFiles([f], brainId);
+    const content = await f.text();
+    await createTextToGraph({
+      text: content,
+      brain_id: String(brainId),
+      source_id: String(meta.md_id),
+    });
+    return { id: meta.md_id, filetype: 'md', meta };
   },
 };
 
