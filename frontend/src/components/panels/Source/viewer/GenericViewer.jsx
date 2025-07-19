@@ -1,4 +1,3 @@
-// src/components/panels/MemoViewer.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import HighlightPopup from '../HighlightPopup';
 import './Viewer.css';
@@ -6,52 +5,48 @@ import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
 import { getMemo } from '../../../../../api/memos';
 
-export default function MemoViewer({ memoId, onBack }) {
-    const [content, setContent] = useState('');         // 텍스트 내용
-    const [popup, setPopup] = useState(null);           // 팝업 정보
-    const [fontSize, setFontSize] = useState(16);       // 폰트 크기
-    const [highlights, setHighlights] = useState([]);   // 하이라이트 목록
-    const containerRef = useRef(null);                  // 텍스트 컨테이너 ref
+export default function GenericViewer({ type, fileUrl, memoId, onBack }) {
+    const [content, setContent] = useState('');
+    const [popup, setPopup] = useState(null);
+    const [fontSize, setFontSize] = useState(16);
+    const [highlights, setHighlights] = useState([]);
+    const containerRef = useRef(null);
 
-    // 겹치는 범위 판별 함수
+    // 범위 겹침 여부 판별 함수
     const isOverlapping = (start1, end1, start2, end2) => {
         return Math.max(start1, start2) < Math.min(end1, end2);
     };
 
-    // 1. 메모 내용과 하이라이트 불러오기
+    // 파일/메모 불러오기 및 하이라이트 불러오기
     useEffect(() => {
-        const fetchMemo = async () => {
-            try {
-                const memo = await getMemo(memoId);
-                setContent(memo.memo_text);
-                const saved = localStorage.getItem(`highlight:memo:${memoId}`);
-                if (saved) {
-                    setHighlights(JSON.parse(saved));
-                }
-            } catch (err) {
-                console.error("메모 불러오기 실패", err);
-                setContent('[메모를 불러올 수 없습니다]');
-            }
-        };
-        fetchMemo();
-    }, [memoId]);
+        if (type === 'memo') {
+            getMemo(memoId)
+                .then(memo => setContent(memo.memo_text))
+                .catch(() => setContent('[메모를 불러올 수 없습니다]'));
+            const saved = localStorage.getItem(`highlight:memo:${memoId}`);
+            if (saved) setHighlights(JSON.parse(saved));
+        } else {
+            fetch(fileUrl)
+                .then(res => res.text())
+                .then(text => setContent(text))
+                .catch(() => setContent('[파일을 불러올 수 없습니다]'));
+            const saved = localStorage.getItem(`highlight:${fileUrl}`);
+            if (saved) setHighlights(JSON.parse(saved));
+        }
+    }, [type, fileUrl, memoId]);
 
-    // 2. 텍스트 선택 시 팝업 표시
+    // 텍스트 선택 시 팝업 표시
     const onTextSelection = () => {
         const selection = window.getSelection();
         if (!selection.rangeCount || !selection.toString()) return;
-
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-
         const preRange = range.cloneRange();
         preRange.selectNodeContents(containerRef.current);
         preRange.setEnd(range.startContainer, range.startOffset);
-
         const rawStart = preRange.toString().length;
-        const start = Math.max(0, rawStart - 2);  // 선택 위치 보정
+        const start = Math.max(0, rawStart - 2);
         const end = start + selection.toString().length;
-
         setPopup({
             position: { x: rect.left + window.scrollX, y: rect.bottom + window.scrollY },
             range,
@@ -61,13 +56,11 @@ export default function MemoViewer({ memoId, onBack }) {
         });
     };
 
-    // 3. 하이라이트 추가 및 중복 제거
+    // 하이라이트 추가 및 기존 겹침 제거 후 저장
     const addHighlight = (color) => {
         if (!popup) return;
         const { text, start, end } = popup;
-
         const filtered = highlights.filter(h => !isOverlapping(start, end, h.start, h.end));
-
         const newHighlight = {
             id: Date.now(),
             start,
@@ -77,35 +70,38 @@ export default function MemoViewer({ memoId, onBack }) {
         };
         const updated = [...filtered, newHighlight];
         setHighlights(updated);
-        localStorage.setItem(`highlight:memo:${memoId}`, JSON.stringify(updated));
+        if (type === 'memo') {
+            localStorage.setItem(`highlight:memo:${memoId}`, JSON.stringify(updated));
+        } else {
+            localStorage.setItem(`highlight:${fileUrl}`, JSON.stringify(updated));
+        }
         setPopup(null);
     };
 
-    // 4. 하이라이트 개별 삭제
+    // 하이라이트 개별 삭제
     const deleteHighlight = (idToDelete) => {
         const updated = highlights.filter(h => h.id !== idToDelete);
         setHighlights(updated);
-        localStorage.setItem(`highlight:memo:${memoId}`, JSON.stringify(updated));
+        if (type === 'memo') {
+            localStorage.setItem(`highlight:memo:${memoId}`, JSON.stringify(updated));
+        } else {
+            localStorage.setItem(`highlight:${fileUrl}`, JSON.stringify(updated));
+        }
         setPopup(null);
     };
 
-    // 5. 하이라이트 렌더링
+    // 하이라이트 렌더링
     const renderHighlightedContent = () => {
         if (!highlights.length) return content;
-
         const elements = [];
         let lastIndex = 0;
-
         const sorted = [...highlights].sort((a, b) => a.start - b.start);
         sorted.forEach((h, i) => {
             if (lastIndex < h.start) {
                 elements.push(
-                    <span key={`plain-${i}`}>
-                        {content.slice(lastIndex, h.start)}
-                    </span>
+                    <span key={`plain-${i}`}>{content.slice(lastIndex, h.start)}</span>
                 );
             }
-
             elements.push(
                 <span
                     key={`highlight-${i}`}
@@ -131,17 +127,15 @@ export default function MemoViewer({ memoId, onBack }) {
             );
             lastIndex = h.end;
         });
-
         if (lastIndex < content.length) {
             elements.push(
                 <span key="last">{content.slice(lastIndex)}</span>
             );
         }
-
         return elements;
     };
 
-    // 6. 복사 기능
+    // 선택 텍스트 복사
     const copyText = () => {
         if (popup) {
             navigator.clipboard.writeText(popup.text);
@@ -150,15 +144,19 @@ export default function MemoViewer({ memoId, onBack }) {
         }
     };
 
-    // 7. 전체 하이라이트 초기화
+    // 전체 하이라이트 초기화
     const clearHighlights = () => {
         setHighlights([]);
-        localStorage.removeItem(`highlight:memo:${memoId}`);
+        if (type === 'memo') {
+            localStorage.removeItem(`highlight:memo:${memoId}`);
+        } else {
+            localStorage.removeItem(`highlight:${fileUrl}`);
+        }
     };
 
     return (
         <div className="viewer-container">
-            {/* 상단 컨트롤바 */}
+            {/* 상단 바: 뒤로가기, 글꼴 크기 조절, 초기화 */}
             <div className="viewer-header">
                 <FaArrowLeftLong onClick={onBack} style={{ cursor: 'pointer', fontSize: '18px', color: '#333' }} />
                 <div className="viewer-controls">
@@ -169,8 +167,9 @@ export default function MemoViewer({ memoId, onBack }) {
                 </div>
             </div>
 
-            {/* 본문 렌더링 */}
+            {/* 텍스트 콘텐츠 영역 */}
             <div className="viewer-content" ref={containerRef} onMouseUp={onTextSelection}>
+                {/* 하이라이트 팝업 표시 */}
                 {popup && (
                     <HighlightPopup
                         position={popup.position}
@@ -186,6 +185,7 @@ export default function MemoViewer({ memoId, onBack }) {
                     />
                 )}
 
+                {/* 텍스트 본문 렌더링 */}
                 <div
                     className="viewer-pre"
                     style={{
@@ -200,4 +200,4 @@ export default function MemoViewer({ memoId, onBack }) {
             </div>
         </div>
     );
-}
+} 

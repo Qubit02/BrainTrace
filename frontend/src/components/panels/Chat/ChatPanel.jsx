@@ -300,6 +300,15 @@ function ChatPanel({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={isLoading}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isLoading && inputText.trim()) {
+                      setInputText('');
+                      handleSubmit(e);
+                    }
+                  }
+                }}
               />
               <div className="source-count-text">소스 {sourceCount}개</div>
               <button
@@ -341,6 +350,15 @@ function ChatPanel({
                   placeholder="무엇이든 물어보세요"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (inputText.trim()) {
+                        setInputText('');
+                        handleSubmit(e);
+                      }
+                    }
+                  }}
                 />
                 <div className="source-count-text">소스 {sourceCount}개</div>
                 <button
