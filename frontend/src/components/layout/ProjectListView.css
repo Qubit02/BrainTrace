@@ -201,6 +201,9 @@
 }
 
 .project-name:hover {
+    transform: translateX(5px);
+    color: #007bff;
+    cursor: default !important;
     pointer-events: none;
 }
 

@@ -17,7 +17,6 @@ import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
 import '../styles/PanelToggle.css';
 import '../styles/Scrollbar.css';
-import { LuFolderPlus } from "react-icons/lu";
 import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
@@ -238,7 +237,7 @@ export default function SourcePanel({
                   {panelWidth < 250
                     ? <MdOutlineDriveFolderUpload size={25} />
                     : <>
-                      <span style={{ fontSize: '1.1em', fontWeight: 600, verticalAlign: 'middle', marginTop: '1px' }}>＋</span>
+                      <span style={{ fontSize: '1.2em', fontWeight: 500, verticalAlign: 'middle', marginTop: '1px' }}>＋</span>
                       <span style={{ fontSize: '1.08em', fontWeight: 600, verticalAlign: 'middle' }}>소스</span>
                     </>}
                 </button>

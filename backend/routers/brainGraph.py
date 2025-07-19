@@ -438,12 +438,13 @@ async def get_source_data_metrics(brain_id: str):
 async def get_source_count(brain_id: int):
     """
     해당 brain_id에 속한 모든 소스(PDF, TXT, MEMO) 개수를 반환합니다.
+    is_source가 true인 메모만 소스로 계산합니다.
     """
     db = SQLiteHandler()
     try:
         pdfs = db.get_pdfs_by_brain(brain_id)
         txts = db.get_textfiles_by_brain(brain_id)
-        memos = db.get_memos_by_brain(brain_id)
+        memos = db.get_memos_by_brain(brain_id, is_source=True)  # is_source가 True인 메모만 조회
         total_count = len(pdfs) + len(txts) + len(memos)
         return {
             "pdf_count": len(pdfs),
