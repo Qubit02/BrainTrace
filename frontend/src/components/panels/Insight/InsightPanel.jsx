@@ -21,7 +21,7 @@ import {
   deleteMemo
 } from '../../../../api/backend';
 
-function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [] }) {
+function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady }) {
   const projectId = selectedBrainId;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
@@ -193,6 +193,7 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
                 focusNodeNames={focusNodeNames}
                 graphRefreshTrigger={graphRefreshTrigger}
                 onGraphDataUpdate={onGraphDataUpdate}
+                onGraphReady={onGraphReady}
               />
             </div>
           )}

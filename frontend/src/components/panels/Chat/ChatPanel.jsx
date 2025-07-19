@@ -33,6 +33,7 @@ function ChatPanel({
   onReferencedNodesUpdate,
   allNodeNames = [],
   onOpenSource,
+  onChatReady
 }) {
   // ===== 상태 선언부 =====
   const [brainName, setBrainName] = useState(''); // 브레인 이름
@@ -69,7 +70,14 @@ function ChatPanel({
   // ===== 채팅 내역 불러오기 (프로젝트 변경 시) =====
   useEffect(() => {
     if (!selectedBrainId) return;
-    fetchChatHistory(selectedBrainId).then(setChatHistory);
+    fetchChatHistory(selectedBrainId)
+      .then(history => {
+        setChatHistory(history);
+        if (onChatReady) onChatReady(true);
+      })
+      .catch(() => {
+        if (onChatReady) onChatReady(false);
+      });
   }, [selectedBrainId]);
 
   // ===== 스크롤을 맨 아래로 내리는 함수 =====
@@ -300,15 +308,6 @@ function ChatPanel({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={isLoading}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!isLoading && inputText.trim()) {
-                      setInputText('');
-                      handleSubmit(e);
-                    }
-                  }
-                }}
               />
               <div className="source-count-text">소스 {sourceCount}개</div>
               <button
@@ -350,15 +349,6 @@ function ChatPanel({
                   placeholder="무엇이든 물어보세요"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (inputText.trim()) {
-                        setInputText('');
-                        handleSubmit(e);
-                      }
-                    }
-                  }}
                 />
                 <div className="source-count-text">소스 {sourceCount}개</div>
                 <button

@@ -77,7 +77,9 @@ function MainLayout() {
 
   // 패널 데이터 준비 상태
   const [isSourcePanelReady, setSourcePanelReady] = useState(false); // SourcePanel 준비 상태
-  const allReady = isSourcePanelReady;
+  const [isGraphReady, setGraphReady] = useState(false);
+  const [isChatReady, setChatReady] = useState(false); // ChatPanel 준비 상태
+  const allReady = isSourcePanelReady && isGraphReady && isChatReady;
 
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
@@ -254,6 +256,7 @@ function MainLayout() {
               onReferencedNodesUpdate={onReferencedNodesUpdate}
               allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
+              onChatReady={setChatReady}
             />
           </div>
         </Panel>
@@ -278,6 +281,7 @@ function MainLayout() {
               graphRefreshTrigger={graphRefreshTrigger}
               onGraphDataUpdate={handleGraphDataUpdate}
               focusNodeNames={focusNodeNames}
+              onGraphReady={setGraphReady}
             />
           </div>
         </Panel>
