@@ -146,6 +146,19 @@ function MainLayout() {
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
+  // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
+  useEffect(() => {
+    if (!sourceCollapsed && !insightCollapsed) {
+      const total = sourcePanelSize + chatPanelSize + insightPanelSize;
+      if (Math.abs(total - 100) >= 0.5) {
+        const ratio = 100 / total;
+        setSourcePanelSize(prev => +(prev * ratio).toFixed(1));
+        setChatPanelSize(prev => +(prev * ratio).toFixed(1));
+        setInsightPanelSize(prev => +(prev * ratio).toFixed(1));
+      }
+    }
+  }, [sourceCollapsed, insightCollapsed]);
+
   // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
   useEffect(() => {
     setSelectedBrainId(projectId);
@@ -177,25 +190,12 @@ function MainLayout() {
     }
   }, [insightCollapsed]);
 
-  // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
-  useEffect(() => {
-    if (!sourceCollapsed && !insightCollapsed) {
-      const total = sourcePanelSize + chatPanelSize + insightPanelSize;
-      if (Math.abs(total - 100) >= 0.5) {
-        const ratio = 100 / total;
-        setSourcePanelSize(prev => +(prev * ratio).toFixed(1));
-        setChatPanelSize(prev => +(prev * ratio).toFixed(1));
-        setInsightPanelSize(prev => +(prev * ratio).toFixed(1));
-      }
-    }
-  }, [sourceCollapsed, insightCollapsed]);
-
   // 전역 dragover 이벤트 핸들링 (기본 동작 방지)
-  useEffect(() => {
-    const handleDragOver = (e) => e.preventDefault();
-    window.addEventListener('dragover', handleDragOver);
-    return () => window.removeEventListener('dragover', handleDragOver);
-  }, []);
+  // useEffect(() => {
+  //   const handleDragOver = (e) => e.preventDefault();
+  //   window.addEventListener('dragover', handleDragOver);
+  //   return () => window.removeEventListener('dragover', handleDragOver);
+  // }, []);
 
   return (
     <div className="main-container" style={{ position: 'relative' }}>

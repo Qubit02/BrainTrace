@@ -14,7 +14,7 @@ function formatBytes(bytes) {
 }
 
 function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
     // 텍스트 점수: 1KB(1024B)당 1점, 최소 1점, 소수점 2자리
     const textScore = textLength > 0 ? Math.max((textLength / 1024), 1).toFixed(2) : '0.00';
     const nodeScore = (nodesCount * 2).toFixed(2);

@@ -275,12 +275,11 @@ export default function ProjectListView() {
                                     )
                                 }
 
-
-                                {/* 생성일자 */}
-                                <div className="project-date">
-                                    {p.created_at ?? '날짜 없음'}
-                                    <span style={{ marginLeft: 8, color: '#888', fontSize: '1em', fontWeight: 600 }}>
-                                        (소스  {sourceCounts[p.brain_id] ?? 0}개)
+                                {/* 생성일자 + 소스 개수 (오른쪽 고정) */}
+                                <div className="project-date" style={{ display: 'flex', alignItems: 'center' }}>
+                                    <span>{p.created_at ?? '날짜 없음'}</span>
+                                    <span style={{ marginLeft: 'auto', color: '#888', fontSize: '1.02em', fontWeight: 550 }}>
+                                        (소스 {sourceCounts[p.brain_id] ?? 0}개)
                                     </span>
                                 </div>
 
