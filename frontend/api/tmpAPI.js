@@ -33,20 +33,37 @@ export const requestBasicChat = async (text) => {
   }
 };
 
+// Ollama모델 사용 시 응답 엔드포인트인데, 프론트에서도 선택 모델만 수정하면 동일한 API로 요청 될지 알아봐야할듯  
+// export const requestAnswer = async (question, brain_id) => {
+//   try {
+//     const response = await axios.post(
+//       `${API_BASE_URL}/chat`, // 변경된 엔드포인트
+//       { question } // 백엔드에서는 brain_id 필요 없으면 제거
+//     );
+//     // { answer } 형태로 반환된다고 가정
+//     return {
+//       answer: response.data.answer,
+//       chat_id: response.data.chat_id, // chat_id 필요하면
+//       referenced_nodes: response.data.nodes, // referenced_nodes 필요하면
+//     };
+//   } catch (error) {
+//     console.error('Answer 요청 중 에러 발생:', error);
+//     throw error;
+//   }
+// };
+
 export const requestAnswer = async (question, brain_id) => {
   try {
-    const response = await axios.post(
-      `${API_BASE_URL}/chat`, // 변경된 엔드포인트
-      { question } // 백엔드에서는 brain_id 필요 없으면 제거
-    );
-    // { answer } 형태로 반환된다고 가정
-    return {
-      answer: response.data.answer,
-      chat_id: response.data.chat_id, // chat_id 필요하면
-      referenced_nodes: response.data.nodes, // referenced_nodes 필요하면
-    };
+      const response = await axios.post(
+          `${API_BASE_URL}/brainGraph/answer`,
+          {
+              question: question,
+              brain_id: brain_id,
+          },
+      );
+      return response.data;
   } catch (error) {
-    console.error('Answer 요청 중 에러 발생:', error);
-    throw error;
+      console.error('Answer 요청 중 에러 발생:', error);
+      throw error;
   }
 };
