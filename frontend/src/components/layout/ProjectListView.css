@@ -197,6 +197,16 @@
     color: #222;
     font-weight: 600;
     white-space: pre-wrap;
+    transition: all 0.2s ease;
+}
+
+.project-name:hover {
+    pointer-events: none;
+}
+
+.project-name:hover::after {
+    opacity: 1;
+    transition: opacity 0.2s ease;
 }
 
 .project-name.editing:empty:before {
@@ -208,6 +218,13 @@
 .project-name[contenteditable="true"] {
     border-bottom: 1px dashed #666;
     outline: none;
+}
+
+/* ====== 카드명 비어있을 때 플레이스홀더 ====== */
+.project-name:empty:before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    pointer-events: none;
 }
 
 .editable-placeholder {
@@ -295,13 +312,6 @@
 .project-file-count {
     color: #666;
     font-size: 13px;
-}
-
-/* ====== 카드명 비어있을 때 플레이스홀더 ====== */
-.project-name:empty:before {
-    content: attr(data-placeholder);
-    color: #aaa;
-    pointer-events: none;
 }
 
 .project-card:active {
