@@ -55,6 +55,12 @@ function MainLayout() {
     syncToStandaloneWindow({ action: 'refresh' });
   };
 
+  // 소스 개수 새로고침 트리거
+  const [sourceCountRefreshTrigger, setSourceCountRefreshTrigger] = useState(0);
+  const handleSourceCountRefresh = () => {
+    setSourceCountRefreshTrigger(prev => prev + 1);
+  };
+
   // 그래프 데이터 변경 시 전체 노드명 업데이트
   const handleGraphDataUpdate = (graphData) => {
     const nodeNames = graphData?.nodes?.map(n => n.name) || [];
@@ -234,6 +240,7 @@ function MainLayout() {
               setIsSourceOpen={setIsPDFOpen}
               onBackFromPDF={handleBackFromPDF}
               onGraphRefresh={handleGraphRefresh}
+              onSourceCountRefresh={handleSourceCountRefresh}
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
               onSourcePanelReady={() => setSourcePanelReady(true)}
@@ -257,6 +264,7 @@ function MainLayout() {
               allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
               onChatReady={setChatReady}
+              sourceCountRefreshTrigger={sourceCountRefreshTrigger}
             />
           </div>
         </Panel>
