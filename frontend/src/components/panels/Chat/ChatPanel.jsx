@@ -1,8 +1,6 @@
 // React 및 필요한 모듈 import
 import React, { useState, useEffect, useRef } from 'react';
-// 스타일 및 API import
 import './ChatPanel.css';
-import '../styles/Scrollbar.css';
 import { requestAnswer } from '../../../../api/tmpAPI';
 import copyIcon from '../../../assets/icons/copy.png';
 import graphIcon from '../../../assets/icons/graph-off.png';
@@ -17,7 +15,7 @@ import { getSourceCountByBrain } from '../../../../api/graphApi';
 
 import ConfirmDialog from '../../common/ConfirmDialog';
 
-// === 추가: 채팅 내역 불러오기 함수 ===
+// === 채팅 내역 불러오기 함수 ===
 async function fetchChatHistory(brainId) {
   try {
     return await fetchChatHistoryByBrain(brainId);
@@ -27,7 +25,6 @@ async function fetchChatHistory(brainId) {
   }
 }
 
-// ChatPanel 컴포넌트 정의
 function ChatPanel({
   selectedBrainId,
   onReferencedNodesUpdate,
@@ -35,7 +32,7 @@ function ChatPanel({
   onOpenSource,
   onChatReady
 }) {
-  // ===== 상태 선언부 =====
+
   const [brainName, setBrainName] = useState(''); // 브레인 이름
   const [inputText, setInputText] = useState(''); // 입력창 텍스트
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태
@@ -45,8 +42,7 @@ function ChatPanel({
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 노드별 출처 열림 상태
   const [showConfirm, setShowConfirm] = useState(false); // 대화 초기화 확인창
   const [chatHistory, setChatHistory] = useState([]); // DB 기반 채팅 내역
-  // 소스 개수 상태
-  const [sourceCount, setSourceCount] = useState(0);
+  const [sourceCount, setSourceCount] = useState(0); // 소스 개수 상태
 
   // selectedBrainId 변경 시 소스 개수 fetch
   useEffect(() => {

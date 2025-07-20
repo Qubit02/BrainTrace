@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import './SourcePanel.css';
-import '../styles/Scrollbar.css';
 import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'

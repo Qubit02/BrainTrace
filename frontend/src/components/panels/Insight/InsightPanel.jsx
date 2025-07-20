@@ -1,8 +1,6 @@
 // src/components/panels/MemoPanel.jsx
 import React, { useState, useEffect } from 'react';
 import './Memo/MemoPanel.css';
-import '../styles/PanelToggle.css';
-import '../styles/Scrollbar.css';
 
 import MemoEditor from './Memo/MemoEditor';
 import MemoListPanel from './Memo/MemoListPanel';

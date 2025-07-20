@@ -15,8 +15,6 @@ import SourceUploadModal from './SourceUploadModal';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
-import '../styles/PanelToggle.css';
-import '../styles/Scrollbar.css';
 import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
