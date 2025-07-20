@@ -335,6 +335,7 @@ export default function SourcePanel({
                   file={`http://localhost:8000/${openedPDF.pdf_path}`}
                   containerWidth={panelWidth}
                   onBack={closeSource}
+                  title={openedPDF.title}
                 />
               </div>
             ) : openedFile ? (
@@ -349,6 +350,7 @@ export default function SourcePanel({
                   }
                   memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
                   onBack={closeSource}
+                  title={openedFile.title}
                 />
               </div>
             ) : (

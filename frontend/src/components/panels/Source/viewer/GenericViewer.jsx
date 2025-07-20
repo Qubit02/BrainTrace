@@ -5,7 +5,7 @@ import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
 import { getMemo } from '../../../../../api/memos';
 
-export default function GenericViewer({ type, fileUrl, memoId, onBack }) {
+export default function GenericViewer({ type, fileUrl, memoId, onBack, title }) {
     const [content, setContent] = useState('');
     const [popup, setPopup] = useState(null);
     const [fontSize, setFontSize] = useState(16);
@@ -156,10 +156,11 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack }) {
 
     return (
         <div className="viewer-container">
-            {/* 상단 바: 뒤로가기, 글꼴 크기 조절, 초기화 */}
-            <div className="viewer-header">
-                <FaArrowLeftLong onClick={onBack} style={{ cursor: 'pointer', fontSize: '18px', color: '#333' }} />
-                <div className="viewer-controls">
+            {/* 상단 바: 뒤로가기, 파일명, 글꼴 크기 조절, 초기화 */}
+            <div className="viewer-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 48 }}>
+                <FaArrowLeftLong onClick={onBack} style={{ cursor: 'pointer', fontSize: '18px', color: '#333', position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }} />
+                <span className="viewer-title" style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontWeight: 600, fontSize: 20, color: '#222', pointerEvents: 'none' }}>{title}</span>
+                <div className="viewer-controls" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                     <FaMinus className="viewer-button" onClick={() => setFontSize(prev => Math.max(prev - 2, 12))} />
                     <FaPlus className="viewer-button" onClick={() => setFontSize(prev => Math.min(prev + 2, 48))} />
                     <span className="viewer-fontsize">{fontSize}px</span>

@@ -7,7 +7,7 @@ import './Viewer.css';
 // import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 // pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
-const PDFViewer = ({ file, containerWidth, onBack }) => {
+const PDFViewer = ({ file, containerWidth, onBack, title }) => {
   const [numPages, setNumPages] = useState(null);         // 총 페이지 수
   const [scale, setScale] = useState(1.5);                // PDF 확대 비율
   const viewerRef = useRef(null);                         // 뷰어 DOM 참조
@@ -43,10 +43,11 @@ const PDFViewer = ({ file, containerWidth, onBack }) => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           backgroundColor: 'white',
           padding: '10px 16px',
-          borderBottom: '1px solid #ddd'
+          borderBottom: '1px solid #ddd',
+          position: 'relative',
         }}
       >
         <FaArrowLeftLong
@@ -54,10 +55,15 @@ const PDFViewer = ({ file, containerWidth, onBack }) => {
           style={{
             cursor: 'pointer',
             fontSize: '18px',
-            color: '#333'
+            color: '#333',
+            position: 'absolute',
+            left: 16,
+            top: '50%',
+            transform: 'translateY(-50%)'
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <span style={{ fontWeight: 600, fontSize: 20, color: '#222', textAlign: 'center', flex: 1 }}>{title}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}>
           <FaMinus onClick={handleZoomOut} style={iconStyle} />
           <FaPlus onClick={handleZoomIn} style={iconStyle} />
           <span style={{ fontSize: '14px', minWidth: '40px', textAlign: 'center' }}>
