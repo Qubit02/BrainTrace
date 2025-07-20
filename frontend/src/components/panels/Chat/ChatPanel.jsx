@@ -30,7 +30,8 @@ function ChatPanel({
   onReferencedNodesUpdate,
   allNodeNames = [],
   onOpenSource,
-  onChatReady
+  onChatReady,
+  sourceCountRefreshTrigger
 }) {
 
   const [brainName, setBrainName] = useState(''); // 브레인 이름
@@ -50,7 +51,7 @@ function ChatPanel({
     getSourceCountByBrain(selectedBrainId)
       .then(res => setSourceCount(res.total_count ?? 0))
       .catch(() => setSourceCount(0));
-  }, [selectedBrainId]);
+  }, [selectedBrainId, sourceCountRefreshTrigger]);
 
   // ===== 브레인 이름 불러오기 (프로젝트 변경 시) =====
   useEffect(() => {
