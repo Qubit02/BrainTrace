@@ -5,13 +5,16 @@ import { PiMagicWand } from "react-icons/pi";
 import './GraphViewWithModal.css';
 
 export default function GraphViewWithModal({
-  brainId,
-  height,
-  referencedNodes,
-  focusNodeNames,
-  graphRefreshTrigger,
-  onGraphDataUpdate,
-  onGraphReady
+    brainId,
+    height,
+    referencedNodes,
+    focusNodeNames,
+    graphRefreshTrigger,
+    onGraphDataUpdate,
+    onGraphReady,
+    onClearReferencedNodes,
+    onClearFocusNodes,
+    onClearNewlyAddedNodes
 }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const modalRef = useRef(null);
@@ -27,6 +30,9 @@ export default function GraphViewWithModal({
     // ✅ GraphView 내부 상태를 제어하기 위한 콜백 함수들
     const [graphViewCallbacks, setGraphViewCallbacks] = useState({});
 
+    // referencedNodes를 state로 관리
+    const [referencedNodesState, setReferencedNodesState] = useState(referencedNodes || []);
+
     // GraphView의 상태 감지를 위한 useEffect들
     useEffect(() => {
         // graphRefreshTrigger 변화 감지하여 새로 추가된 노드 표시
@@ -34,14 +40,15 @@ export default function GraphViewWithModal({
             // 이 로직은 GraphView 내부에서 처리되므로 여기서는 기본 설정만
             setShowNewlyAdded(false);
             setNewlyAddedNodeNames([]);
+
+            setShowReferenced(false);
+            setReferencedNodesState([]);
+            setShowFocus(false);
         }
     }, [graphRefreshTrigger]);
 
     useEffect(() => {
-        // referencedNodes 변화 감지
-        if (referencedNodes && referencedNodes.length > 0) {
-            setShowReferenced(true);
-        }
+        setReferencedNodesState(referencedNodes || []);
     }, [referencedNodes]);
 
     // ✅ 수정: focusNodeNames 변화 감지 - 안전한 의존성 배열 사용
@@ -132,7 +139,7 @@ export default function GraphViewWithModal({
                 <GraphView
                     brainId={brainId}
                     height={height}
-                    referencedNodes={referencedNodes}
+                    referencedNodes={referencedNodesState}
                     focusNodeNames={focusNodeNames}
                     onTimelapse={timelapseFunctionRef}
                     graphRefreshTrigger={graphRefreshTrigger}
@@ -144,6 +151,9 @@ export default function GraphViewWithModal({
                     externalShowNewlyAdded={showNewlyAdded}
                     onGraphViewReady={handleGraphViewReady}
                     onNewlyAddedNodes={handleNewlyAddedNodes}
+                    onClearReferencedNodes={onClearReferencedNodes}
+                    onClearFocusNodes={onClearFocusNodes}
+                    onClearNewlyAddedNodes={onClearNewlyAddedNodes}
                 />
 
                 {/* 타임랩스 버튼 */}
@@ -161,61 +171,6 @@ export default function GraphViewWithModal({
                 <button className="fullscreen-btn" onClick={openExternalGraphWindow}>
                     {!isFullscreen && (<MdFullscreen size={22} color='black' title='전체화면' />)}
                 </button>
-
-                {/* 팝업들 */}
-                {/* 추가된 노드 UI 표시 */}
-                {showNewlyAdded && newlyAddedNodeNames.length > 0 && (
-                    <div className="graph-popup">
-                        <span>추가된 노드: {newlyAddedNodeNames.join(', ')}</span>
-                        <span className="close-x" onClick={() => {
-                            setShowNewlyAdded(false);
-                            setNewlyAddedNodeNames([]);
-                            // ✅ GraphView 내부 상태도 동기화
-                            if (graphViewCallbacks.setShowNewlyAdded) {
-                                graphViewCallbacks.setShowNewlyAdded(false);
-                            }
-                            // ✅ 추가: GraphView 내부의 newlyAddedNodeNames도 초기화
-                            if (graphViewCallbacks.setNewlyAddedNodeNames) {
-                                graphViewCallbacks.setNewlyAddedNodeNames([]);
-                            }
-                        }}>×</span>
-                    </div>
-                )}
-
-                {/* 참고된 노드가 있을 때 정보 표시 */}
-                {showReferenced && referencedNodes && referencedNodes.length > 0 && (
-                    <div className="graph-popup">
-                        <span>참고된 노드: {referencedNodes.join(', ')}</span>
-                        <span className="close-x" onClick={() => {
-                            console.log('🔥 참고된 노드 강조 해제');
-                            setShowReferenced(false);
-                            // ✅ GraphView 내부 상태도 동기화
-                            if (graphViewCallbacks.setShowReferenced) {
-                                graphViewCallbacks.setShowReferenced(false);
-                            }
-                        }}>×</span>
-                    </div>
-                )}
-
-                {/* ✅ 수정: 포커스 노드 팝업 - console.log 제거 */}
-                {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
-                    <div className="graph-popup">
-                        <span>소스로 생성된 노드: {focusNodeNames.join(', ')}</span>
-                        <span
-                            className="close-x"
-                            onClick={() => {
-                                console.log('🔥 포커스 노드 강조 해제');
-                                setShowFocus(false);
-                                // ✅ GraphView 내부 상태도 동기화
-                                if (graphViewCallbacks.setShowFocus) {
-                                    graphViewCallbacks.setShowFocus(false);
-                                }
-                            }}
-                        >
-                            ×
-                        </span>
-                    </div>
-                )}
             </div>
         </div>
     );

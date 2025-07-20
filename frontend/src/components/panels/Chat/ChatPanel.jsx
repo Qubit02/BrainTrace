@@ -2,18 +2,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './ChatPanel.css';
 import { requestAnswer } from '../../../../api/tmpAPI';
-import copyIcon from '../../../assets/icons/copy.png';
-import graphIcon from '../../../assets/icons/graph-off.png';
 import {
   getBrain,
   getReferencedNodes,
   getSourceIdsByNodeName,
+  getChatMessageById
 } from '../../../../../frontend/api/backend'
+
+import { PiGraph } from "react-icons/pi";
+import { IoCopyOutline } from "react-icons/io5";
+import { MdSource } from "react-icons/md";
 
 import { fetchChatHistoryByBrain, deleteAllChatsByBrain, saveChatToBrain } from '../../../../api/chat';
 import { getSourceCountByBrain } from '../../../../api/graphApi';
-
 import ConfirmDialog from '../../common/ConfirmDialog';
+import { TbSourceCode } from "react-icons/tb";
+import { VscOpenPreview } from "react-icons/vsc";
 
 // === 채팅 내역 불러오기 함수 ===
 async function fetchChatHistory(brainId) {
@@ -28,7 +32,6 @@ async function fetchChatHistory(brainId) {
 function ChatPanel({
   selectedBrainId,
   onReferencedNodesUpdate,
-  allNodeNames = [],
   onOpenSource,
   onChatReady,
   sourceCountRefreshTrigger
@@ -38,8 +41,6 @@ function ChatPanel({
   const [inputText, setInputText] = useState(''); // 입력창 텍스트
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태
   const messagesEndRef = useRef(null); // 메시지 끝 ref (스크롤)
-  const [hoveredMessageIndex, setHoveredMessageIndex] = useState(null); // hover된 메시지 인덱스
-  const [hoveredChatId, setHoveredChatId] = useState(null); // hover된 메시지의 chatId
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 노드별 출처 열림 상태
   const [showConfirm, setShowConfirm] = useState(false); // 대화 초기화 확인창
   const [chatHistory, setChatHistory] = useState([]); // DB 기반 채팅 내역
@@ -100,6 +101,8 @@ function ChatPanel({
       referenced_nodes: []
     };
     setChatHistory(prev => [...prev, tempQuestion]);
+    // 입력창 즉시 비우기
+    setInputText('');
     // DB에 질문 저장 (is_ai=0)
     saveChatToBrain(selectedBrainId, { is_ai: 0, message: inputText, referenced_nodes: [] })
       .catch(err => console.error('질문 DB 저장 실패:', err));
@@ -116,7 +119,10 @@ function ChatPanel({
         referenced_nodes: res?.referenced_nodes || []
       };
       setChatHistory(prev => [...prev, tempAnswer]);
-      setInputText('');
+      // === 답변에 referenced_nodes가 있으면 콜백 호출 ===
+      if (res?.referenced_nodes && res.referenced_nodes.length > 0 && typeof onReferencedNodesUpdate === 'function') {
+        onReferencedNodesUpdate(res.referenced_nodes);
+      }
       // DB에 답변 저장 (is_ai=1)
       saveChatToBrain(selectedBrainId, {
         is_ai: 1,
@@ -147,34 +153,24 @@ function ChatPanel({
   };
 
   // ===== 출처(소스) 토글 함수 =====
-  const toggleSourceList = async (nodeName) => {
-    if (openSourceNodes[nodeName]) {
-      // 이미 열려있으면 닫기
+  const toggleSourceList = async (chatId, nodeName) => {
+    const key = `${chatId}_${nodeName}`;
+    if (openSourceNodes[key]) {
       setOpenSourceNodes((prev) => {
         const copy = { ...prev };
-        delete copy[nodeName];
+        delete copy[key];
         return copy;
       });
     } else {
-      // 닫혀있으면 열기 (API로 소스 목록 조회)
       try {
         const res = await getSourceIdsByNodeName(nodeName, selectedBrainId);
         setOpenSourceNodes((prev) => ({
           ...prev,
-          [nodeName]: res.sources,
+          [key]: res.sources,
         }));
       } catch (err) {
-        console.error('소스 조회 실패:', err);
+        setOpenSourceNodes((prev) => ({ ...prev, [key]: [] }));
       }
-    }
-  };
-
-  // ===== 텍스트 복사 함수 =====
-  const copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      console.error('복사 실패:', err);
     }
   };
 
@@ -206,39 +202,56 @@ function ChatPanel({
               <div
                 key={m.chat_id}
                 className={`message-wrapper ${m.is_ai ? 'bot-message' : 'user-message'}`}
-                onMouseEnter={async () => {
-                  setHoveredMessageIndex(i);
-                  if (m.is_ai && m.chat_id) setHoveredChatId(m.chat_id);
-                }}
-                onMouseLeave={() => setHoveredMessageIndex(null)}
               >
                 <div className="message">
                   {/* 메시지 본문 및 참고 노드/출처 표시 */}
+
                   <div className="message-body">
                     {m.message.split('\n').map((line, idx) => {
                       const trimmed = line.trim();
                       const isReferenced = trimmed.startsWith('-');
-                      const cleanWord = isReferenced ? trimmed.replace(/^-\t*/, '') : trimmed;
+                      const nodeName = isReferenced ? trimmed.replace(/^-	*/, '').trim() : trimmed.trim();
                       return (
                         <div key={idx} className="referenced-line">
-                          {allNodeNames.includes(cleanWord) && isReferenced ? (
+                          {isReferenced ? (
                             <div className="referenced-block">
                               <div className="referenced-header">
                                 <span style={{ color: 'inherit' }}>-</span>
                                 <span
                                   className="referenced-node-text"
-                                  onClick={() => onReferencedNodesUpdate([cleanWord])}
+                                  onClick={() => {
+                                    console.log('클릭됨:', nodeName);
+                                    if (typeof onReferencedNodesUpdate === 'function') {
+                                      onReferencedNodesUpdate([nodeName]);
+                                    }
+                                  }}
                                 >
-                                  {cleanWord}
+                                  {nodeName}
                                 </span>
                                 <button
-                                  className={`source-toggle-button ${openSourceNodes[cleanWord] ? 'active' : ''}`}
-                                  onClick={() => {/* 출처 토글 생략 */ }}
-                                  style={{ marginLeft: '3px' }}
+                                  className={`modern-source-btn${openSourceNodes[`${m.chat_id}_${nodeName}`] ? ' active' : ''}`}
+                                  onClick={() => toggleSourceList(m.chat_id, nodeName)}
+                                  style={{ marginLeft: '6px' }}
                                 >
-                                  (출처보기)
+                                  <VscOpenPreview  size={15} style={{ verticalAlign: 'middle', marginRight: '2px' }} />
+                                  <span>출처보기</span>
                                 </button>
                               </div>
+                              {/* 출처 목록 표시 */}
+                              {openSourceNodes[`${m.chat_id}_${nodeName}`] && (
+                                <ul className="source-title-list">
+                                  {openSourceNodes[`${m.chat_id}_${nodeName}`].map((source, sourceIndex) => (
+                                    <li key={sourceIndex} className="source-title-item">
+                                      <span
+                                        className="source-title-content"
+                                        onClick={() => onOpenSource(source.id)}
+                                      >
+                                        {source.source_title || source.title || `소스 ${source.id}`}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           ) : (
                             trimmed
@@ -252,12 +265,26 @@ function ChatPanel({
                     <button
                       className="copy-button"
                       title="복사"
-                      onClick={() => navigator.clipboard.writeText(m.message)}
+                      onClick={async () => {
+                        try {
+                          // chat_id가 있으면 서버에서 message를 받아서 복사
+                          if (m.chat_id) {
+                            const message = await getChatMessageById(m.chat_id);
+                            console.log('message:', message);
+                            await navigator.clipboard.writeText(message);
+                          } else {
+                            // fallback: 현재 메시지 그대로 복사
+                            await navigator.clipboard.writeText(m.message);
+                          }
+                        } catch (err) {
+                          console.error('복사 실패:', err);
+                        }
+                      }}
                     >
-                      <img src={copyIcon} alt="복사" className="copy-icon" />
+                      <IoCopyOutline size={18} />
                     </button>
                     {/* bot 메시지에만 그래프 버튼 표시 */}
-                    {m.is_ai && hoveredMessageIndex === i && (
+                    {m.is_ai && (
                       <button
                         className="graph-button"
                         title="그래프 보기"
@@ -273,7 +300,7 @@ function ChatPanel({
                           }
                         }}
                       >
-                        <img src={graphIcon} alt="그래프" className="graph-icon" />
+                        <PiGraph size={19} />
                       </button>
                     )}
                   </div>
@@ -304,6 +331,14 @@ function ChatPanel({
                 placeholder="무엇이든 물어보세요"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (inputText.trim() && !isLoading) {
+                      handleSubmit(e);
+                    }
+                  }
+                }}
                 disabled={isLoading}
               />
               <div className="source-count-text">소스 {sourceCount}개</div>
@@ -346,6 +381,14 @@ function ChatPanel({
                   placeholder="무엇이든 물어보세요"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (inputText.trim() && !isLoading) {
+                        handleSubmit(e);
+                      }
+                    }
+                  }}
                 />
                 <div className="source-count-text">소스 {sourceCount}개</div>
                 <button

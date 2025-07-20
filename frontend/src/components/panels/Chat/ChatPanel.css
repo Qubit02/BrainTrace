@@ -4,10 +4,10 @@
 .chat-content {
   display: flex;
   flex-direction: column;
-  padding: 10px;
+  padding: 20px;
   background-color: #FFFFFF;
   height: 90%;
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -28,10 +28,10 @@
 }
 
 .hero-title {
-  font-size: 32px;
+  font-size: 35px;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 70px;
   letter-spacing: -0.02em;
 }
 
@@ -43,26 +43,32 @@
   flex: 1;
   width: 100%;
   flex-direction: column;
+  margin: 0 auto;
 }
 
 .input-wrapper {
-  width: 100%;
-  max-width: 750px;
-  padding: 24px;
+  width: 100% !important;
+  max-width: 600px !important;
+  padding: 4px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 
 .input-with-button {
   position: relative;
-  width: 100%;
+  width: 100% !important;
+  max-width: 700px !important;
   display: flex;
   align-items: center;
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 32px;
-  padding: 16px 20px;
+  padding: 20px 15px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   min-height: 56px;
+  margin: 0 auto !important;
 }
 
 .input-with-button.rounded {
@@ -213,8 +219,8 @@
 }
 
 .copy-button {
-  width: 26px;
-  height: 26px;
+  width: 25px;
+  height: 25px;
   border-radius: 6px;
   background: white;
   border: 1px solid #e2e8f0;
@@ -226,9 +232,14 @@
 }
 
 .copy-button:hover {
-  background-color: #f3f4f6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+  background: #cecdcd;
+  color: #111;
+  box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.13);
+}
+
+.copy-button:active {
+  background: #929191;
+  color: #222;
 }
 
 .copy-icon {
@@ -239,8 +250,8 @@
 
 /* ====== 그래프/출처/참조 노드 ====== */
 .graph-button {
-  width: 26px;
-  height: 26px;
+  width: 25px;
+  height: 25px;
   border-radius: 6px;
   background: white;
   border: 1px solid #e2e8f0;
@@ -249,12 +260,29 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease-in-out;
+  padding: 0;
+  margin: 0;
+}
+
+.graph-button+.graph-button {
+  margin-left: -1px;
+  /* border가 겹치지 않게 */
+}
+
+.graph-button.active {
+  background: #e0e7ff;
+  border-color: #6366f1;
 }
 
 .graph-button:hover {
-  background-color: #f3f4f6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+  background: #cecdcd;
+  color: #111;
+  box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.13);
+}
+
+.graph-button:active {
+  background: #929191;
+  color: #222;
 }
 
 .graph-icon {
@@ -280,66 +308,57 @@
 }
 
 .referenced-node-text {
-  color: #7f7e7e;
+  color: #6b7280;
   text-decoration: underline;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
 }
 
 .referenced-node-text:hover {
-  font-weight: bold;
-  color: #3d3d3e;
-}
-
-.source-toggle-button {
-  color: #7f7e7e;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  transition: color 0.2s, transform 0.1s;
-  padding: 1px;
-  font-size: 12px;
-  align-items: center;
-  justify-content: center;
-  background-color: white;
-}
-
-.source-toggle-button:hover {
-  color: #1a1a1a;
-  transform: scale(1.02);
-  background-color: white;
-}
-
-.source-toggle-button.active {
-  background-color: white;
-  color: #000000;
+  font-weight: 600;
+  color: #1f2937;
+  background-color: #f3f4f6;
 }
 
 .source-title-list {
-  margin-top: 6px;
+  margin-top: 8px;
   padding-left: 20px;
-  font-size: 14px;
-  list-style-type: circle;
+  font-size: 13px;
+  list-style-type: none;
+  border-left: 2px solid #e5e7eb;
+  padding-left: 12px;
 }
 
 .source-title-item {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .source-title-content {
   display: inline-block;
-  padding: 6px 10px;
-  background-color: #f8f8f8;
-  transition: background-color 0.2s, transform 0.1s;
-  text-decoration: underline;
+  padding: 4px 8px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: #374151;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
 }
 
 .source-title-content:hover {
-  transform: scale(1.02);
+  background-color: #e5e7eb;
+  color: #1f2937;
   cursor: pointer;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .source-title-content:active {
-  transform: scale(0.98);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* ====== 하단 안내/디스클레이머 ====== */
@@ -476,4 +495,33 @@
 .chat-refresh-btn:active {
   background: #929191;
   color: #222;
+}
+
+/* 출처보기 modern badge/button 스타일 */
+.modern-source-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 16px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #2b2a2a;
+  font-weight: 500;
+  font-size: 12px;
+  box-shadow: none;
+  transition: all 0.18s;
+  cursor: pointer;
+}
+
+.modern-source-btn.active,
+.modern-source-btn:hover {
+  background: #e0e7ff;
+  box-shadow: 0 2px 8px rgba(60, 60, 60, 0.10);
+  border-color: #6366f1;
+}
+
+.modern-source-btn:active {
+  background: #c7d2fe;
+  color: #000000;
 }
