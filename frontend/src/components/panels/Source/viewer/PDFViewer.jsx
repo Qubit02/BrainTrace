@@ -4,8 +4,8 @@ import { FaArrowLeftLong, FaPlus, FaMinus } from "react-icons/fa6";
 import './Viewer.css';
 
 // PDF.js worker 설정
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+// import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
+// pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const PDFViewer = ({ file, containerWidth, onBack }) => {
   const [numPages, setNumPages] = useState(null);         // 총 페이지 수

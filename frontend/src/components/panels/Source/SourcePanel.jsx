@@ -31,6 +31,7 @@ export default function SourcePanel({
   setIsSourceOpen,            // 소스 패널 열림 상태 설정 함수
   onBackFromPDF,              // PDF에서 뒤로가기 콜백
   onGraphRefresh,             // 그래프 새로고침 콜백
+  onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
   onSourcePanelReady          // SourcePanel 준비 완료 콜백
@@ -343,6 +344,7 @@ export default function SourcePanel({
                   refreshDataMetrics();
                   loadAllFiles();
                 }}
+                onSourceCountRefresh={onSourceCountRefresh}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
                 filteredSourceIds={filteredSourceIds}
                 searchText={searchText}
@@ -394,6 +396,7 @@ export default function SourcePanel({
               return m;
             });
             onGraphRefresh?.();
+            onSourceCountRefresh?.();
             if (uploadedFiles.length > 0) {
               const last = uploadedFiles[uploadedFiles.length - 1];
               if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });
