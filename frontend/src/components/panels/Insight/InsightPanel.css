@@ -18,11 +18,13 @@
   border-radius: 6px;
   overflow: hidden;
 }
+
 .editor-toolbar {
   padding: 8px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
 }
+
 .toolbar-button {
   margin-right: 8px;
   padding: 4px 8px;
@@ -33,9 +35,11 @@
   color: #333;
   font-size: 12px;
 }
+
 .toolbar-button:hover {
   background-color: #e0e0e0;
 }
+
 .editor-textarea {
   flex: 1;
   border: none;
@@ -44,6 +48,7 @@
   resize: none;
   color: #333;
 }
+
 .editor-textarea:focus {
   outline: none;
 }
@@ -54,6 +59,7 @@
   margin-bottom: 16px;
   background-color: #fff;
 }
+
 .memo-content h3 {
   margin-top: 0;
   margin-bottom: 16px;
@@ -61,6 +67,7 @@
   font-weight: 600;
   color: #333;
 }
+
 .memo-content h4 {
   margin-top: 16px;
   margin-bottom: 12px;
@@ -68,10 +75,12 @@
   font-weight: 600;
   color: #444;
 }
+
 .memo-content p {
   margin-bottom: 12px;
   line-height: 1.6;
 }
+
 .code-block {
   background-color: #f5f5f5;
   padding: 12px;
@@ -92,6 +101,7 @@
   font-size: 12px;
   color: #666;
 }
+
 .save-button {
   padding: 4px 12px;
   color: white;
@@ -99,4 +109,36 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+}
+
+/* ====== 그래프/메모 토글 버튼 ====== */
+.insight-toggle-btn {
+  width: 25px;
+  height: 25px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #292929;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+}
+
+.insight-toggle-btn.active {
+  background: #bdbcbc56;
+  border-color: #797979;
+  color: #111;
+}
+
+.insight-toggle-btn:hover {
+  background: #929292;
+  color: #111;
+  box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.13);
+  cursor: pointer;
+}
+
+.insight-toggle-btn:active {
+  background: #929191;
+  color: #222;
 }

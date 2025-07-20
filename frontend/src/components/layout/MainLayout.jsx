@@ -67,19 +67,22 @@ function MainLayout() {
     setAllNodeNames(nodeNames);
   };
 
+  // 추가된 노드 상태
+  const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]);
+
   // 각 패널 크기 조절을 위한 ref
   const sourcePanelRef = useRef(null);
   const chatPanelRef = useRef(null);
   const InsightPanelRef = useRef(null);
-  const firstPdfExpand = useRef(true);  // PDF 처음 열릴 때 한 번만 확장되도록
+  const firstSourceExpand = useRef(true);  // 소스 처음 열릴 때 한 번만 확장되도록
 
   // 패널 크기 상태
   const [sourcePanelSize, setSourcePanelSize] = useState(PANEL.SOURCE.DEFAULT);
   const [chatPanelSize, setChatPanelSize] = useState(PANEL.CHAT.DEFAULT);
   const [insightPanelSize, setInsightPanelSize] = useState(PANEL.INSIGHT.DEFAULT);
 
-  // PDF 열림 여부 상태
-  const [isPDFOpen, setIsPDFOpen] = useState(false);
+  // 소스 열림 여부 상태
+  const [isSourceOpen, setIsSourceOpen] = useState(false);
 
   // 패널 데이터 준비 상태
   const [isSourcePanelReady, setSourcePanelReady] = useState(false); // SourcePanel 준비 상태
@@ -96,10 +99,10 @@ function MainLayout() {
     }));
   };
 
-  // PDF 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
-  const handleBackFromPDF = () => {
-    setIsPDFOpen(false);
-    firstPdfExpand.current = true;
+  // 소스 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
+  const handleBackFromSource = () => {
+    setIsSourceOpen(false);
+    firstSourceExpand.current = true;
     if (sourcePanelRef.current) {
       sourcePanelRef.current.resize(PANEL.SOURCE.DEFAULT);
     }
@@ -110,6 +113,13 @@ function MainLayout() {
     setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
     setSelectedBrainId(projectId);
     setReferencedNodes([]);
+    setOpenSourceId(null);
+    setFocusSourceId(null);
+    firstSourceExpand.current = true;
+    setIsSourceOpen(false);
+    setSourcePanelSize(PANEL.SOURCE.DEFAULT);
+    setChatPanelSize(PANEL.CHAT.DEFAULT);
+    setInsightPanelSize(PANEL.INSIGHT.DEFAULT);
   };
 
   // 패널 리사이즈 핸들러들 (사용자 리사이즈 반영용)
@@ -150,7 +160,10 @@ function MainLayout() {
   };
 
   // 특정 소스를 열 때 포커스 ID와 타임스탬프를 기록
+  const [openSourceId, setOpenSourceId] = useState(null);
+  
   const handleOpenSource = (sourceId) => {
+    setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
@@ -172,19 +185,19 @@ function MainLayout() {
     setSelectedBrainId(projectId);
   }, [projectId]);
 
-  // PDF 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
+  // 소스 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
   useEffect(() => {
     if (!sourcePanelRef.current) return;
 
     if (sourceCollapsed) {
       sourcePanelRef.current.resize(PANEL.SOURCE.COLLAPSED);
-    } else if (isPDFOpen && firstPdfExpand.current) {
+    } else if (isSourceOpen && firstSourceExpand.current) {
       sourcePanelRef.current.resize(40);
-      firstPdfExpand.current = false;
+      firstSourceExpand.current = false;
     } else {
       sourcePanelRef.current.resize(sourcePanelSize);
     }
-  }, [isPDFOpen, sourceCollapsed, sourcePanelSize]);
+  }, [isSourceOpen, sourceCollapsed, sourcePanelSize]);
 
   // 메모 패널 열림/접힘에 따른 크기 조절
   useEffect(() => {
@@ -237,12 +250,13 @@ function MainLayout() {
               selectedBrainId={Number(selectedBrainId)}
               collapsed={sourceCollapsed}
               setCollapsed={setSourceCollapsed}
-              setIsSourceOpen={setIsPDFOpen}
-              onBackFromPDF={handleBackFromPDF}
+              setIsSourceOpen={setIsSourceOpen}
+              onBackFromSource={handleBackFromSource}
               onGraphRefresh={handleGraphRefresh}
               onSourceCountRefresh={handleSourceCountRefresh}
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
+              openSourceId={openSourceId}
               onSourcePanelReady={() => setSourcePanelReady(true)}
             />
           </div>
@@ -261,7 +275,6 @@ function MainLayout() {
             <ChatPanel
               selectedBrainId={selectedBrainId}
               onReferencedNodesUpdate={onReferencedNodesUpdate}
-              allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
               onChatReady={setChatReady}
               sourceCountRefreshTrigger={sourceCountRefreshTrigger}
@@ -290,6 +303,9 @@ function MainLayout() {
               onGraphDataUpdate={handleGraphDataUpdate}
               focusNodeNames={focusNodeNames}
               onGraphReady={setGraphReady}
+              setReferencedNodes={setReferencedNodes}
+              setFocusNodeNames={setFocusNodeNames}
+              setNewlyAddedNodeNames={setNewlyAddedNodeNames}
             />
           </div>
         </Panel>
