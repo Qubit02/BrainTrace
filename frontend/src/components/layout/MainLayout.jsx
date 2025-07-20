@@ -90,6 +90,9 @@ function MainLayout() {
   const [isChatReady, setChatReady] = useState(false); // ChatPanel 준비 상태
   const allReady = isSourcePanelReady && isGraphReady && isChatReady;
 
+  // 프로젝트 이동 중 로딩 상태
+  const [isProjectLoading, setIsProjectLoading] = useState(false);
+
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
     localStorage.setItem('graphStateSync', JSON.stringify({
@@ -110,6 +113,7 @@ function MainLayout() {
 
   // 프로젝트 변경 시 상태 저장 및 라우팅 이동 처리
   const handleProjectChange = (projectId) => {
+    setIsProjectLoading(true);
     setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
     setSelectedBrainId(projectId);
     setReferencedNodes([]);
@@ -180,11 +184,6 @@ function MainLayout() {
     }
   }, [sourceCollapsed, insightCollapsed]);
 
-  // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
-  useEffect(() => {
-    setSelectedBrainId(projectId);
-  }, [projectId]);
-
   // 소스 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
   useEffect(() => {
     if (!sourcePanelRef.current) return;
@@ -210,17 +209,21 @@ function MainLayout() {
       );
     }
   }, [insightCollapsed]);
+  
+  // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
+  useEffect(() => {
+    setSelectedBrainId(projectId);
+    setIsProjectLoading(true);
+  }, [projectId]);
 
-  // 전역 dragover 이벤트 핸들링 (기본 동작 방지)
-  // useEffect(() => {
-  //   const handleDragOver = (e) => e.preventDefault();
-  //   window.addEventListener('dragover', handleDragOver);
-  //   return () => window.removeEventListener('dragover', handleDragOver);
-  // }, []);
+  useEffect(() => {
+    if (isProjectLoading && allReady) setIsProjectLoading(false);
+    // projectId가 바뀔 때만 검사
+  }, [allReady, isProjectLoading, projectId]);
 
   return (
     <div className="main-container" style={{ position: 'relative' }}>
-      {!allReady && (
+      {isProjectLoading && (
         <div className="loading-overlay">
           <Spinner />
         </div>
