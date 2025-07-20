@@ -141,3 +141,25 @@ class ChatHandler(BaseHandler):
         except Exception as e:
             logging.error(f"채팅 목록 조회 중 오류 발생: {str(e)}")
             return None 
+
+    def get_chat_by_id(self, chat_id: int) -> dict | None:
+        """
+        특정 chat_id에 해당하는 채팅 정보를 반환합니다.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT chat_id, is_ai, message, referenced_nodes FROM Chat WHERE chat_id = ?", (chat_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                return {
+                    "chat_id": row[0],
+                    "is_ai": bool(row[1]),
+                    "message": row[2],
+                    "referenced_nodes": [node.strip().strip('\"') for node in row[3].split(",")] if row[3] else []
+                }
+            return None
+        except Exception as e:
+            logging.error(f"chat_id로 채팅 조회 중 오류 발생: {str(e)}")
+            return None 
