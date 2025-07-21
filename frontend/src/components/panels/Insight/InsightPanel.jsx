@@ -1,18 +1,14 @@
 // src/components/panels/MemoPanel.jsx
 import React, { useState, useEffect } from 'react';
-import './Memo/MemoPanel.css';
-import '../styles/PanelToggle.css';
-import '../styles/Scrollbar.css';
+import './InsightPanel.css';
 
 import MemoEditor from './Memo/MemoEditor';
 import MemoListPanel from './Memo/MemoListPanel';
 import GraphViewWithModal from './Graph/GraphViewWithModal';
-
 import toggleIcon from '../../../assets/icons/toggle-view.png';
-import graphOnIcon from '../../../assets/icons/graph-on.png';
-import graphOffIcon from '../../../assets/icons/graph-off.png';
-import memoOnIcon from '../../../assets/icons/memo-on.png';
-import memoOffIcon from '../../../assets/icons/memo-off.png';
+
+import { PiGraphLight } from "react-icons/pi";
+import { CiStickyNote } from "react-icons/ci";
 
 import {
   createMemo,
@@ -21,7 +17,7 @@ import {
   deleteMemo
 } from '../../../../api/backend';
 
-function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady }) {
+function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady, setReferencedNodes, setFocusNodeNames, setNewlyAddedNodeNames }) {
   const projectId = selectedBrainId;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
@@ -128,6 +124,18 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
     }
   };
 
+  // 팝업 닫기 콜백 정의
+  const handleClearReferencedNodes = () => {
+    if (setReferencedNodes) setReferencedNodes([]);
+  };
+  const handleClearFocusNodes = () => {
+    if (setFocusNodeNames) setFocusNodeNames([]);
+  };
+  const handleClearNewlyAddedNodes = () => {
+    if (setNewlyAddedNodeNames) setNewlyAddedNodeNames([]);
+  };
+  // 추가노드 콜백은 필요시 구현
+
   return (
     <div className={`panel-container ${collapsed ? 'collapsed' : ''}`}>
       <div
@@ -148,20 +156,24 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
         )}
         <div className="header-actions">
           {!collapsed && (
-            <>
-              <img
-                src={showGraph ? graphOnIcon : graphOffIcon}
-                alt="Graph View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer' }}
+            <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: '6px' }}>
+              <button
+                className={`insight-toggle-btn${showGraph ? ' active' : ''}`}
+                title="그래프 보기 토글"
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                 onClick={() => setShowGraph(prev => !prev)}
-              />
-              <img
-                src={showMemo ? memoOnIcon : memoOffIcon}
-                alt="Memo View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer', marginRight: '6px' }}
+              >
+                <PiGraphLight size={19} color={'black'} />
+              </button>
+              <button
+                className={`insight-toggle-btn${showMemo ? ' active' : ''}`}
+                title="메모 보기 토글"
+                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                 onClick={() => setShowMemo(prev => !prev)}
-              />
-            </>
+              >
+                <CiStickyNote size={19} color={'black'} />
+              </button>
+            </div>
           )}
           <img
             src={toggleIcon}
@@ -194,6 +206,9 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
                 graphRefreshTrigger={graphRefreshTrigger}
                 onGraphDataUpdate={onGraphDataUpdate}
                 onGraphReady={onGraphReady}
+                onClearReferencedNodes={handleClearReferencedNodes}
+                onClearFocusNodes={handleClearFocusNodes}
+                onClearNewlyAddedNodes={handleClearNewlyAddedNodes}
               />
             </div>
           )}

@@ -15,8 +15,6 @@ import SourceUploadModal from './SourceUploadModal';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
-import '../styles/PanelToggle.css';
-import '../styles/Scrollbar.css';
 import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
@@ -31,11 +29,13 @@ export default function SourcePanel({
   collapsed,                  // 패널 접힘 상태
   setCollapsed,               // 패널 접힘 상태 설정 함수
   setIsSourceOpen,            // 소스 패널 열림 상태 설정 함수
-  onBackFromPDF,              // PDF에서 뒤로가기 콜백
+  onBackFromSource,           // 소스에서 뒤로가기 콜백
   onGraphRefresh,             // 그래프 새로고침 콜백
+  onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
-  onSourcePanelReady          // SourcePanel 준비 완료 콜백
+  onSourcePanelReady,          // SourcePanel 준비 완료 콜백
+  openSourceId
 }) {
   // === DOM 참조 ===
   const panelRef = useRef();                           // 패널 DOM 참조 (리사이징 감지용)
@@ -101,6 +101,8 @@ export default function SourcePanel({
     if (selectedBrainId) {
       loadAllFiles();
     }
+    setOpenedPDF(null);
+    setOpenedFile(null);
   }, [selectedBrainId]);
 
   // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
@@ -123,6 +125,23 @@ export default function SourcePanel({
       }
     }
   }, [localFocusSource]);
+
+  // openSourceId가 변경될 때 해당 소스를 자동으로 연다
+  useEffect(() => {
+    if (!openSourceId || !allFiles.length) return;
+    const targetFile = allFiles.find(file => {
+      if (file.type === 'pdf') return String(file.pdf_id) === String(openSourceId);
+      if (file.type === 'txt') return String(file.txt_id) === String(openSourceId);
+      if (file.type === 'md') return String(file.md_id) === String(openSourceId);
+      if (file.type === 'memo') return String(file.memo_id) === String(openSourceId);
+      return false;
+    });
+    if (targetFile) {
+      if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
+      else setOpenedFile(targetFile);
+      setIsSourceOpen(true);
+    }
+  }, [openSourceId, allFiles]);
 
   /**
    * 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
@@ -179,7 +198,7 @@ export default function SourcePanel({
     setOpenedPDF(null);
     setOpenedFile(null); // 통합 변수로 변경
     setIsSourceOpen(false);
-    onBackFromPDF?.();
+    onBackFromSource?.();
   };
 
   // 파일 열기 핸들러: pdf는 그대로, 나머지는 모두 openedFile로
@@ -316,6 +335,7 @@ export default function SourcePanel({
                   file={`http://localhost:8000/${openedPDF.pdf_path}`}
                   containerWidth={panelWidth}
                   onBack={closeSource}
+                  title={openedPDF.title}
                 />
               </div>
             ) : openedFile ? (
@@ -330,6 +350,7 @@ export default function SourcePanel({
                   }
                   memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
                   onBack={closeSource}
+                  title={openedFile.title}
                 />
               </div>
             ) : (
@@ -345,6 +366,7 @@ export default function SourcePanel({
                   refreshDataMetrics();
                   loadAllFiles();
                 }}
+                onSourceCountRefresh={onSourceCountRefresh}
                 onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
                 filteredSourceIds={filteredSourceIds}
                 searchText={searchText}
@@ -396,6 +418,7 @@ export default function SourcePanel({
               return m;
             });
             onGraphRefresh?.();
+            onSourceCountRefresh?.();
             if (uploadedFiles.length > 0) {
               const last = uploadedFiles[uploadedFiles.length - 1];
               if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });

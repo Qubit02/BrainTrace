@@ -1,8 +1,13 @@
+// === GraphView: 지식 그래프 2D Force-Directed 시각화 메인 컴포넌트 ===
+// - 노드/링크 데이터 렌더링
+// - 노드 하이라이트, 포커스, 신규 노드 애니메이션 등 다양한 UX 제공
+// - 외부 상태(참고노드, 포커스노드 등)와 동기화
+// - 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 조정 지원
+
 import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
 import { fetchGraphData } from '../../../../../api/graphApi';
-import { easeCubicInOut } from 'd3-ease';
 import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
 
@@ -16,7 +21,6 @@ function GraphView({
   isFullscreen = false,
   onGraphDataUpdate,
   onTimelapse,
-  showPopups = true,
   onNewlyAddedNodes,
   onGraphReady,
   externalShowReferenced,
@@ -26,37 +30,52 @@ function GraphView({
   isDarkMode = false,
   customNodeSize = 5,
   customLinkWidth = 1,
-  // textDisplayZoomThreshold = 0.5,
   textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1, // ✅ Modal에서는 더 낮은 임계값
 
-  // ✅ 3개 물리 설정만 (0-100 범위)
+  // 3개 물리 설정 (0-100 범위)
   repelStrength = 50,     // 반발력
   linkDistance = 50,      // 링크 거리  
   linkStrength = 50,      // 링크 장력
+  onClearReferencedNodes,
+  onClearFocusNodes,
+  onClearNewlyAddedNodes,
 }) {
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [referencedSet, setReferencedSet] = useState(new Set());
-  const [showReferenced, setShowReferenced] = useState(true);
-  const [showFocus, setShowFocus] = useState(true);
-  const fgRef = useRef();
-  const [visibleNodes, setVisibleNodes] = useState([]);
-  const [visibleLinks, setVisibleLinks] = useState([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]);
-  const [showNewlyAdded, setShowNewlyAdded] = useState(false);
-  const prevGraphDataRef = useRef({ nodes: [], links: [] });
-  const [pulseStartTime, setPulseStartTime] = useState(null);
-  const [refPulseStartTime, setRefPulseStartTime] = useState(null);
-  const lastClickRef = useRef({ node: null, time: 0 });
-  const clickTimeoutRef = useRef();
+
+  // === 그래프 컨테이너/크기 관련 ===
+  const containerRef = useRef(null); // 그래프 컨테이너 DOM 참조
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 }); // 그래프 영역 크기
+
+  // === 그래프 데이터/로딩/에러 관련 ===
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] }); // 현재 그래프 데이터
+  const [loading, setLoading] = useState(true); // 데이터 로딩 상태
+  const [error, setError] = useState(null); // 에러 상태
+  const prevGraphDataRef = useRef({ nodes: [], links: [] }); // 이전 그래프 데이터(신규노드 감지용)
+
+  // === ForceGraph2D 및 애니메이션 관련 ===
+  const fgRef = useRef(); // ForceGraph2D ref
+  const [visibleNodes, setVisibleNodes] = useState([]); // 애니메이션 등에서 보여지는 노드 목록
+  const [visibleLinks, setVisibleLinks] = useState([]); // 애니메이션 등에서 보여지는 링크 목록
+  const [isAnimating, setIsAnimating] = useState(false); // 타임랩스 등 애니메이션 동작 여부
+  const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
+  const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
+
+  // === 하이라이트/포커스/신규노드 관련 ===
+  const [referencedSet, setReferencedSet] = useState(new Set()); // 참고노드 집합(빠른 lookup용)
+  const [showReferenced, setShowReferenced] = useState(() => !localStorage.getItem('참고노드팝업닫힘')); // 참고노드 하이라이트 표시 여부
+  const [showFocus, setShowFocus] = useState(() => !localStorage.getItem('포커스노드팝업닫힘')); // 포커스노드 하이라이트 표시 여부
+  const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]); // 새로 추가된 노드 이름 목록
+  const [showNewlyAdded, setShowNewlyAdded] = useState(() => !localStorage.getItem('추가노드팝업닫힘')); // 신규노드 하이라이트 표시 여부
+  const [referencedNodesState, setReferencedNodesState] = useState(referencedNodes || []); // referencedNodes를 state로 관리
+
+  // === 더블클릭/이벤트 관련 ===
+  const lastClickRef = useRef({ node: null, time: 0 }); // 노드 더블클릭 감지용
+  const clickTimeoutRef = useRef(); // 더블클릭 타이머 ref
+
+  // === 그래프 준비 상태 ===
   const [graphReady, setGraphReady] = useState(false); // 그래프 준비 상태
 
-  // 색상 팔레트
-  // ✅ 다크모드용 색상 팔레트 추가
+  // === 색상 팔레트 및 다크모드 대응 ===
+  // 다크모드용 색상 팔레트 추가
   const lightColorPalette = [
     '#444444', '#666666', '#888888', '#aaaaaa', '#3366bb',
     '#333333', '#777777', '#999999', '#5588cc', '#555555',
@@ -66,10 +85,12 @@ function GraphView({
     '#e2e8f0', '#cbd5e1', '#94a3b8', '#64748b', '#60a5fa',
     '#f1f5f9', '#d1d5db', '#9ca3af', '#3b82f6', '#e5e7eb',
   ];
-  // ✅ 현재 팔레트 선택
+
+  // 현재 팔레트 선택
   const colorPalette = isDarkMode ? darkColorPalette : lightColorPalette;
 
-  // 컨테이너 사이즈 계산
+  // === 컨테이너 크기 계산 및 반응형 처리 ===
+  // 창 크기 변화에 따라 그래프 영역 크기 자동 조정
   const updateDimensions = () => {
     if (!containerRef.current) return;
     const width = containerRef.current.clientWidth;
@@ -83,8 +104,10 @@ function GraphView({
     setDimensions({ width, height: calcHeight });
   };
 
+  // === 그래프 초기 줌/중심 위치 계산 ===
+  // 노드 개수에 따라 적절한 줌 배율 계산
   const getInitialZoomScale = (nodeCount) => {
-    // ✅ Modal용 줌 배율 (더 확대)
+    // Modal용 줌 배율 (더 확대)
     const modalMultiplier = isFullscreen ? 5 : 1.5; // Modal일 때 1.5배 더 확대
 
     let baseZoom;
@@ -101,7 +124,10 @@ function GraphView({
 
     return Math.min(baseZoom * modalMultiplier, 5); // 최대 줌 제한
   };
-  // 타임랩스 함수
+
+  // === 노드 클릭/더블클릭 핸들러 ===
+  // - 단일 클릭: nothing
+  // - 더블 클릭: 해당 노드로 카메라 이동 및 확대
   // 노드 클릭 핸들러
   const handleNodeClick = (node) => {
     const now = Date.now();
@@ -123,6 +149,8 @@ function GraphView({
     }
   };
 
+  // === 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 적용 ===
+  // 슬라이더 등으로 조정된 값이 바로 반영되도록 d3Force 설정
   //슬라이더 물리 효과 조절
   // 3개 물리 설정만 처리하는 useEffect
   useEffect(() => {
@@ -143,7 +171,8 @@ function GraphView({
     }
   }, [repelStrength, linkDistance, linkStrength]);
 
-  // 더블 클릭했을 때 줌인되게
+  // === 더블클릭 시 그래프 줌인 ===
+  // 노드가 아닌 곳 더블클릭 시 해당 위치로 카메라 이동 및 확대
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !fgRef.current) return;
@@ -169,7 +198,7 @@ function GraphView({
       container.removeEventListener('dblclick', handleDoubleClick);
     };
   }, [dimensions]);
-  //
+
   useEffect(() => {
     if (clearTrigger > 0) {
       console.log('🧹 GraphView에서 하이라이팅 해제 트리거 감지:', clearTrigger);
@@ -186,8 +215,8 @@ function GraphView({
     }
   }, [clearTrigger]);
 
-
-  // ✅ 외부에서 제어되는 상태들과 동기화
+  // === 외부에서 하이라이트/포커스/신규노드 상태 제어 동기화 ===
+  // 외부 props로 showReferenced, showFocus, showNewlyAdded 등 제어
   useEffect(() => {
     if (typeof externalShowReferenced === 'boolean') {
       setShowReferenced(externalShowReferenced);
@@ -206,7 +235,9 @@ function GraphView({
     }
   }, [externalShowNewlyAdded]);
 
-  // ✅ 새로 추가된 노드 알림 - 중복 방지 로직 추가
+  // === 신규 노드 추가 감지 및 콜백 ===
+  // 그래프 데이터 변경 시 신규 노드 감지, 콜백 호출
+  // 새로 추가된 노드 알림 - 중복 방지 로직 추가
   useEffect(() => {
     if (!onNewlyAddedNodes || newlyAddedNodeNames.length === 0) return;
 
@@ -221,7 +252,6 @@ function GraphView({
     }
   }, [newlyAddedNodeNames, graphData.nodes]); // ✅ onNewlyAddedNodes 의존성 제거
 
-  // 나머지 useEffect들은 그대로 유지...
   useEffect(() => {
     updateDimensions();
     const resizeObserver = new ResizeObserver(updateDimensions);
@@ -249,6 +279,85 @@ function GraphView({
     }
   }, [focusNodeNames]);
 
+  // 그래프 데이터 로딩
+  useEffect(() => {
+    if (initialGraphData) {
+      processGraphData(initialGraphData);
+      setGraphReady(true);
+      return;
+    }
+
+    const loadGraphData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchGraphData(brainId);
+        processGraphData(data);
+        setGraphReady(true);
+      } catch (err) {
+        setError('그래프 데이터를 불러오는 데 실패했습니다.');
+        setLoading(false);
+        setGraphReady(false);
+      }
+    };
+
+    loadGraphData();
+  }, [brainId, initialGraphData]);
+
+  // === 그래프 준비 완료 시 콜백 ===
+  // graphReady가 바뀔 때마다 부모에 전달
+  useEffect(() => {
+    if (onGraphReady) onGraphReady(graphReady);
+  }, [graphReady, onGraphReady]);
+
+  // === 그래프 새로고침 트리거 처리 ===
+  // - 새로고침 시 신규 노드 감지 및 하이라이트
+  useEffect(() => {
+    if (!graphRefreshTrigger) return;
+
+    const loadAndDetect = async () => {
+      try {
+        setLoading(true);
+
+        const data = await fetchGraphData(brainId);
+
+        const prevNames = new Set(prevGraphDataRef.current.nodes.map(n => n.name));
+        const added = data.nodes
+          .map(n => n.name)
+          .filter(name => !prevNames.has(name));
+
+        setNewlyAddedNodeNames(added);
+        setShowNewlyAdded(added.length > 0);
+        if (added.length > 0) {
+          setPulseStartTime(Date.now());
+        }
+
+        processGraphData(data);
+
+      } catch (err) {
+        console.error('그래프 새로고침 실패:', err);
+        setError('그래프 데이터를 불러오는 데 실패했습니다.');
+        setLoading(false);
+      }
+    };
+
+    loadAndDetect();
+  }, [graphRefreshTrigger, brainId]);
+
+  useEffect(() => {
+    setReferencedNodesState(referencedNodes || []);
+  }, [referencedNodes]);
+
+  // === 참고노드(referencedNodes) 하이라이트 처리 ===
+  useEffect(() => {
+    console.log('referencedNodes:', referencedNodesState);
+    setReferencedSet(new Set(referencedNodesState));
+    if (referencedNodesState.length > 0) {
+      setRefPulseStartTime(Date.now());
+      setShowReferenced(true);
+    }
+  }, [referencedNodesState]);
+
+  // === 포커스노드(focusNodeNames) 하이라이트 및 카메라 이동 ===
   // 포커스 노드 카메라 이동
   useEffect(() => {
     if (!focusNodeNames || !focusNodeNames.length || !graphData.nodes.length) return;
@@ -294,81 +403,10 @@ function GraphView({
     }, 900);
   }, [focusNodeNames, graphData.nodes]);
 
-  // 그래프 데이터 로딩
-  useEffect(() => {
-    if (initialGraphData) {
-      processGraphData(initialGraphData);
-      setGraphReady(true);
-      return;
-    }
-
-    const loadGraphData = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchGraphData(brainId);
-        processGraphData(data);
-        setGraphReady(true);
-      } catch (err) {
-        setError('그래프 데이터를 불러오는 데 실패했습니다.');
-        setLoading(false);
-        setGraphReady(false);
-      }
-    };
-
-    loadGraphData();
-  }, [brainId, initialGraphData]);
-
-  // graphReady가 바뀔 때마다 부모에 전달
-  useEffect(() => {
-    if (onGraphReady) onGraphReady(graphReady);
-  }, [graphReady, onGraphReady]);
-
-  // 그래프 새로고침
-  useEffect(() => {
-    if (!graphRefreshTrigger) return;
-
-    const loadAndDetect = async () => {
-      try {
-        setLoading(true);
-
-        const data = await fetchGraphData(brainId);
-
-        const prevNames = new Set(prevGraphDataRef.current.nodes.map(n => n.name));
-        const added = data.nodes
-          .map(n => n.name)
-          .filter(name => !prevNames.has(name));
-
-        setNewlyAddedNodeNames(added);
-        setShowNewlyAdded(added.length > 0);
-        if (added.length > 0) {
-          setPulseStartTime(Date.now());
-        }
-
-        processGraphData(data);
-
-      } catch (err) {
-        console.error('그래프 새로고침 실패:', err);
-        setError('그래프 데이터를 불러오는 데 실패했습니다.');
-        setLoading(false);
-      }
-    };
-
-    loadAndDetect();
-  }, [graphRefreshTrigger, brainId]);
-
-  // referencedNodes 처리
-  useEffect(() => {
-    console.log('referencedNodes:', referencedNodes);
-    setReferencedSet(new Set(referencedNodes));
-    if (referencedNodes.length > 0) {
-      setRefPulseStartTime(Date.now());
-      setShowReferenced(true);
-    }
-  }, [referencedNodes]);
-
+  // === 참고노드 카메라 이동 ===
   // 참고된 노드 카메라 이동
   useEffect(() => {
-    if (!showReferenced || referencedNodes.length === 0 || !graphData.nodes.length) return;
+    if (!showReferenced || referencedNodesState.length === 0 || !graphData.nodes.length) return;
 
     const referenced = graphData.nodes.filter(n => referencedSet.has(n.name));
     if (referenced.length === 0) return;
@@ -409,8 +447,9 @@ function GraphView({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [showReferenced, referencedNodes, graphData, referencedSet]);
+  }, [showReferenced, referencedNodesState, graphData, referencedSet]);
 
+  // === 신규노드 카메라 이동 ===
   // 새로 추가된 노드 카메라 이동
   useEffect(() => {
     if (!newlyAddedNodeNames.length || !graphData.nodes.length) return;
@@ -456,7 +495,9 @@ function GraphView({
     return () => clearTimeout(timer);
   }, [newlyAddedNodeNames, graphData]);
 
-  // 그래프 데이터 처리 함수
+  // === 그래프 데이터 처리 함수 ===
+  // - 노드/링크별 색상, 연결수 등 가공
+  // - onGraphDataUpdate 콜백 호출
   const processGraphData = (data) => {
     const linkCounts = {};
     data.links.forEach(link => {
@@ -508,6 +549,7 @@ function GraphView({
     }
   };
 
+  // === 타임랩스/팝업 등 외부 제어용 ref 노출 ===
   // 외부에서 팝업 데이터에 접근할 수 있도록 노출
   React.useImperativeHandle(onTimelapse, () => ({
     startTimelapse: () => startTimelapse({ graphData, setIsAnimating, setVisibleNodes, setVisibleLinks, fgRef }),
@@ -525,7 +567,6 @@ function GraphView({
     })
   }));
 
-
   return (
     <div
       className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
@@ -534,7 +575,39 @@ function GraphView({
         backgroundColor: isDarkMode ? '#0f172a' : '#fafafa'
       }}
     >
-      {/* 로딩 및 에러 처리 */}
+      {/* 팝업들 */}
+      {/* 추가된 노드 UI 표시 */}
+      {showNewlyAdded && newlyAddedNodeNames.length > 0 && (
+        <div className="graph-popup">
+          <span>추가된 노드: {newlyAddedNodeNames.join(', ')}</span>
+          <span className="close-x" onClick={() => {
+            setShowNewlyAdded(false);
+            setNewlyAddedNodeNames([]);
+            if (onClearNewlyAddedNodes) onClearNewlyAddedNodes();
+          }}>×</span>
+        </div>
+      )}
+      {/* 참고된 노드가 있을 때 정보 표시 */}
+      {showReferenced && referencedNodesState && referencedNodesState.length > 0 && (
+        <div className="graph-popup">
+          <span>참고된 노드: {referencedNodesState.join(', ')}</span>
+          <span className="close-x" onClick={() => {
+            setShowReferenced(false);
+            setReferencedNodesState([]);
+            if (onClearReferencedNodes) onClearReferencedNodes();
+          }}>×</span>
+        </div>
+      )}
+      {/* 포커스 노드 팝업 */}
+      {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
+        <div className="graph-popup">
+          <span>소스로 생성된 노드: {focusNodeNames.join(', ')}</span>
+          <span className="close-x" onClick={() => {
+            setShowFocus(false);
+            if (onClearFocusNodes) onClearFocusNodes();
+          }}>×</span>
+        </div>
+      )}
       {loading && (
         <div className="graph-loading" style={{
           backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.8)',
@@ -585,15 +658,11 @@ function GraphView({
           linkDirectionalArrowRelPos={1}
           cooldownTime={5000}
           d3VelocityDecay={0.2}
-          // ✅ 옵시디언 스타일 d3Force 설정
           d3Force={fg => {
-            // 기본 설정
             fg.force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
             fg.force("collide", d3.forceCollide(50));
 
-            // ✅ 3개 설정만 적용
-            // const repelForce = -10 - (repelStrength / 100) * 290;
-            const repelForce = -10 - (repelStrength / 100) * 290;  // 0% = -10, 100% = -300
+            const repelForce = -10 - (repelStrength / 100) * 290;
             const linkDist = 50 + (linkDistance / 100) * 250;
             const linkForce = 0.1 + (linkStrength / 100) * 0.9;
 
@@ -611,15 +680,14 @@ function GraphView({
             const isRef = showReferenced && referencedSet.has(label);
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
-            // const baseSize = 5;
-            const baseSize = customNodeSize; // ✅ 기존: const baseSize = 5;
+            const baseSize = customNodeSize; // 기존: const baseSize = 5;
             const sizeFactor = Math.min(node.linkCount * 0.5, 3);
             const nodeSize = baseSize + sizeFactor;
             const nodeRadius = nodeSize / globalScale;
             const pulseScale = 1.8;
             const pulseDuration = 1000;
 
-            // ✅ 다크모드에 따라 실시간으로 노드 색상 결정
+            // 다크모드에 따라 실시간으로 노드 색상 결정
             let nodeColor;
             if (node.linkCount >= 3) {
               nodeColor = isDarkMode ? '#60a5fa' : '#3366bb';
@@ -631,7 +699,7 @@ function GraphView({
 
             ctx.beginPath();
             ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
-            ctx.fillStyle = nodeColor; // ✅ 계산된 색상 사용
+            ctx.fillStyle = nodeColor;
             ctx.fill();
 
             const fontSize = (isReferenced || isNewlyAdded || isFocus) ? 13 / globalScale : 9 / globalScale;
@@ -640,7 +708,7 @@ function GraphView({
               ? `bold ${fontSize}px Sans-Serif`
               : `${fontSize}px Sans-Serif`;
 
-            // 펄스 효과들...
+            // 펄스 효과
             if ((isNewlyAdded || isFocus) && pulseStartTime) {
               const elapsed = (Date.now() - pulseStartTime) % pulseDuration;
               const t = elapsed / pulseDuration;
@@ -692,12 +760,6 @@ function GraphView({
               ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#f1f5f9' : '#cbd5e1')
               : ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#222' : '#555');
 
-            // ctx.textAlign = 'center';
-            // ctx.textBaseline = 'top';
-            // ctx.fillStyle = textColor;
-            // ctx.fillText(label, node.x, node.y + nodeRadius + 1);
-            // ✅ 이렇게 수정:
-
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
               ctx.textAlign = 'center';
@@ -708,13 +770,7 @@ function GraphView({
             node.__bckgDimensions = [nodeRadius * 2, fontSize].map(n => n + fontSize * 0.2);
 
             ctx.restore();
-          }
-
-
-
-          }
-
-
+          }}
           enableNodeDrag={true}
           enableZoomPanInteraction={true}
           minZoom={0.01}

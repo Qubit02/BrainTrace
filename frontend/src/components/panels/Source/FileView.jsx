@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import './SourcePanel.css';
-import '../styles/Scrollbar.css';
 import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
@@ -62,6 +61,7 @@ export default function FileView({
   setFileMap = () => { },     // fileMap 상태 업데이트 함수
   refreshTrigger,             // 파일 목록 새로고침 트리거
   onGraphRefresh,             // 그래프 새로고침 콜백
+  onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   filteredSourceIds,          // 검색 필터링된 소스 ID 목록
   searchText,                 // 검색 텍스트
@@ -120,6 +120,7 @@ export default function FileView({
         await setMemoAsSource(file.memoId);
         await processMemoTextAsGraph(file.memoContent, file.memoId, brainId);
         if (onGraphRefresh) onGraphRefresh();
+        if (onSourceCountRefresh) onSourceCountRefresh();
         if (onFileUploaded) await onFileUploaded();
       } else {
         // 실제 파일 업로드 및 그래프 생성
@@ -132,6 +133,7 @@ export default function FileView({
           [result.id]: result.meta,
         }));
         if (onGraphRefresh) onGraphRefresh();
+        if (onSourceCountRefresh) onSourceCountRefresh();
         if (onFileUploaded) await onFileUploaded();
       }
     } catch (err) {
@@ -241,7 +243,11 @@ export default function FileView({
       if (onGraphRefresh) {
         onGraphRefresh();
       }
-      // 4) 파일 목록 다시 로드
+      // 4) 소스 개수 새로고침
+      if (onSourceCountRefresh) {
+        onSourceCountRefresh();
+      }
+      // 5) 파일 목록 다시 로드
       await refresh();
     } catch (e) {
       console.error('❌ 삭제 실패:', e);

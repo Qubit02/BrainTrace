@@ -7,7 +7,6 @@ import { listBrains } from '../../../../api/brains';
 
 /* style */
 import './ProjectPanel.css';
-import '../styles/Scrollbar.css';
 
 import { IoHomeOutline } from 'react-icons/io5';
 import { AiOutlinePlus } from 'react-icons/ai';

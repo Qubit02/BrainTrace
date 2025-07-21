@@ -45,7 +45,7 @@ function MemoEditor({ memo, onSaveAndClose }) {
     <div className="notion-editor">
       {/* 뒤로가기 버튼 */}
       <button className="back-button small-top-left" onClick={handleBack}>
-        <RiCollapseDiagonalFill size={27} />
+        <RiCollapseDiagonalFill size={28} color='black' />
       </button>
 
       {/* 제목 입력창 */}
