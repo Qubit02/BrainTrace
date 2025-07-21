@@ -309,28 +309,23 @@ function GraphViewForFullscreen(props) {
                                         <span className="fullscreen-slider-value">{graphSettings.linkWidth}</span>
                                     </div>
 
-                                    {/* 텍스트 투명도 */}
+                                    {/* 텍스트 표시 */}
                                     <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">텍스트 투명도</span>
+                                        <span className="fullscreen-slider-label">텍스트 표시</span>
                                         <input
                                             type="range"
                                             min="0.05"
                                             max="2"
                                             step="0.1"
                                             value={graphSettings.textZoomThreshold}
-                                            onChange={(e) =>
-                                                setGraphSettings((prev) => ({
-                                                    ...prev,
-                                                    textZoomThreshold: parseFloat(e.target.value),
-                                                }))
-                                            }
+                                            onChange={(e) => setGraphSettings(prev => ({
+                                                ...prev,
+                                                textZoomThreshold: parseFloat(e.target.value)
+                                            }))}
                                             className="fullscreen-slider"
                                         />
-                                        <span className="fullscreen-slider-value">
-                                            {Math.round((graphSettings.textZoomThreshold / 2) * 100)}%
-                                        </span>
+                                        <span className="fullscreen-slider-value">{graphSettings.textZoomThreshold}</span>
                                     </div>
-
                                 </div>
                             </div>
 
@@ -394,7 +389,7 @@ function GraphViewForFullscreen(props) {
                                 </div>
                             </div>
 
-
+                        
                         </div>
                     </div>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import GraphView from './GraphView';
-import { MdFullscreen, MdClose } from 'react-icons/md';
+import { MdFullscreen, MdClose, MdOutlineSearch } from 'react-icons/md';
 import { PiMagicWand } from "react-icons/pi";
 import './GraphViewWithModal.css';
 
@@ -26,6 +26,7 @@ export default function GraphViewWithModal({
     const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]);
     const [showReferenced, setShowReferenced] = useState(true);
     const [showFocus, setShowFocus] = useState(true);
+    const [showSearch, setShowSearch] = useState(false);
 
     // ✅ GraphView 내부 상태를 제어하기 위한 콜백 함수들
     const [graphViewCallbacks, setGraphViewCallbacks] = useState({});
@@ -154,10 +155,20 @@ export default function GraphViewWithModal({
                     onClearReferencedNodes={onClearReferencedNodes}
                     onClearFocusNodes={onClearFocusNodes}
                     onClearNewlyAddedNodes={onClearNewlyAddedNodes}
+                    showSearch={showSearch}
                 />
 
                 {/* 타임랩스 버튼 */}
-                <div className="timelapse-button-container">
+                <div className="timelapse-button-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                    {/* 검색 아이콘 - 타임랩스  */}
+                    <button
+                        className={`graph-search-toggle-btn${showSearch ? ' active' : ''}`}
+                        onClick={() => setShowSearch(v => !v)}
+                        title="노드 검색"
+                    >
+                        <MdOutlineSearch size={21} color="#222" />
+                    </button>
+
                     <div
                         className="timelapse-button"
                         onClick={handleTimelapse}
