@@ -45,7 +45,6 @@ function MemoListPanel({
                 <div className="memo-list-header-left">
                     {/* 메모 아이콘 + Note 텍스트 */}
                     <div className="memo-list-title-row">
-                        <CiMemoPad className="memo-title-icon" />
                         <span className="memo-title-text">Note</span>
                     </div>
                 </div>

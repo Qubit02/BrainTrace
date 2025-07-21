@@ -1,7 +1,5 @@
 // src/components/panels/FileView.jsx
 import React, { useState, useEffect, useRef } from 'react'
-import { pdfjs } from 'react-pdf';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
 import './SourcePanel.css';
 import './FileView.css';
 import FileIcon from './FileIcon'
@@ -27,9 +25,6 @@ import fileHandlers from './fileHandlers/fileHandlers';
 import deleteHandlers from './fileHandlers/deleteHandlers';
 import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
 import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
-// import GenericViewer from './viewer/GenericViewer'; // 더 이상 사용하지 않으므로 주석처리
-
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 /**
  * 메모 텍스트를 그래프 지식으로 변환하는 함수
@@ -145,7 +140,6 @@ export default function FileView({
     }
   };
 
-  // === useEffect 훅들 ===
   // 큐에 변화가 생길 때마다 자동으로 다음 파일 처리
   useEffect(() => {
     if (uploadQueue.length > 0 && !isProcessing) {
