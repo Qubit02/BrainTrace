@@ -89,7 +89,8 @@
   flex: 1;
   border: none;
   outline: none;
-  padding: 12px 0;
+  padding: 13px 0;
+  margin-left: 10px;
   font-size: 14px;
   color: #1f2937;
   background: transparent;

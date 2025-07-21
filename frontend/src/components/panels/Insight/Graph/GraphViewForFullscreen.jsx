@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GraphView from './GraphView';
 import './GraphViewForFullscreen.css';
+import { FiSearch, FiX, FiSun, FiMoon, FiSettings, FiRefreshCw, FiMapPin } from 'react-icons/fi';
 
 function GraphViewForFullscreen(props) {
+    const { isFullscreen = true, ...restProps } = props;
     const [allNodes, setAllNodes] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [localReferencedNodes, setLocalReferencedNodes] = useState(props.referencedNodes || []);
@@ -18,6 +20,9 @@ function GraphViewForFullscreen(props) {
         const saved = localStorage.getItem('graphDarkMode');
         return saved ? JSON.parse(saved) : false;
     });
+
+    // 상단에 색상 변수 선언
+    const ICON_COLOR = isDarkMode ? 'white' : 'black';
 
     // ✅ 핵심 커스터마이징 + 3개 물리 설정
     const [graphSettings, setGraphSettings] = useState(() => {
@@ -136,8 +141,9 @@ function GraphViewForFullscreen(props) {
     return (
         <div className={`graph-fullscreen-container ${isDarkMode ? 'dark-mode' : ''}`}>
             <GraphView
-                {...props}
-                isFullscreen={true}
+                {...restProps}
+                isFullscreen={isFullscreen}
+                fromFullscreen={true}
                 referencedNodes={localReferencedNodes}
                 onGraphDataUpdate={handleGraphDataUpdate}
                 onNewlyAddedNodes={handleNewlyAddedNodes}
@@ -161,7 +167,7 @@ function GraphViewForFullscreen(props) {
                     <div className="toolbar-left">
                         <div className="fullscreen-search-container">
                             <div className="fullscreen-search-input-wrapper">
-                                <span className="fullscreen-search-icon">🔍</span>
+                                <FiSearch style={{ marginRight: 4, fontSize: 18, verticalAlign: 'middle', color: ICON_COLOR }} />
                                 <input
                                     id="fullscreen-node-search"
                                     type="text"
@@ -175,8 +181,9 @@ function GraphViewForFullscreen(props) {
                                         onClick={clearSearch}
                                         className="fullscreen-clear-search-btn"
                                         title="검색 초기화"
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
-                                        ✕
+                                        <FiX color={ICON_COLOR} />
                                     </button>
                                 )}
                             </div>
@@ -195,7 +202,7 @@ function GraphViewForFullscreen(props) {
                             title={`${isDarkMode ? '라이트' : '다크'}모드 (⌘D)`}
                         >
                             <span className="fullscreen-btn-icon">
-                                {isDarkMode ? '☀️' : '🌙'}
+                                {isDarkMode ? <FiSun color={ICON_COLOR} /> : <FiMoon color={ICON_COLOR} />}
                             </span>
                             <span className="btn-text">
                                 {isDarkMode ? '라이트' : '다크'}
@@ -207,13 +214,12 @@ function GraphViewForFullscreen(props) {
                             className={`fullscreen-control-btn advanced-toggle ${showAdvancedControls ? 'active' : ''}`}
                             title="고급 컨트롤 토글 (⌘K)"
                         >
-                            <span className="fullscreen-btn-icon">⚙️</span>
+                            <span className="fullscreen-btn-icon"><FiSettings color={ICON_COLOR} /></span>
                             <span className="btn-text">고급</span>
                         </button>
 
                         <button
                             onClick={() => {
-                                console.log('🔄 새로고침 버튼 클릭됨');
                                 if (props.onRefresh) {
                                     props.onRefresh();
                                 } else {
@@ -227,7 +233,7 @@ function GraphViewForFullscreen(props) {
                             className="fullscreen-control-btn refresh-btn"
                             title="그래프 새로고침"
                         >
-                            <span className="fullscreen-btn-icon">🔄</span>
+                            <span className="fullscreen-btn-icon"><FiRefreshCw color={ICON_COLOR} /></span>
                             <span className="btn-text">새로고침</span>
                         </button>
 
@@ -239,7 +245,7 @@ function GraphViewForFullscreen(props) {
                                     className="fullscreen-control-btn fullscreen-clear-btn"
                                     title="하이라이트 해제"
                                 >
-                                    <span className="fullscreen-btn-icon">✕</span>
+                                    <span className="fullscreen-btn-icon"><FiX color={ICON_COLOR} /></span>
                                     <span className="btn-text">해제</span>
                                 </button>
                             )}
@@ -446,7 +452,7 @@ function GraphViewForFullscreen(props) {
                     <div className="fullscreen-status-left">
                         {(localReferencedNodes.length > 0 || newlyAddedNodes.length > 0) && (
                             <div className="fullscreen-highlighted-nodes">
-                                <span className="fullscreen-status-icon">📍</span>
+                                <span className="fullscreen-status-icon"><FiMapPin color={ICON_COLOR} /></span>
                                 <span className="fullscreen-status-text">
                                     {props.focusNodeNames && props.focusNodeNames.length > 0 ? '포커스' :
                                         newlyAddedNodes.length > 0 ? '새로 추가' : '하이라이트'}:

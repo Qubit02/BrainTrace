@@ -39,6 +39,7 @@ function GraphView({
   onClearReferencedNodes,
   onClearFocusNodes,
   onClearNewlyAddedNodes,
+  fromFullscreen = false,
 }) {
 
   // === 그래프 컨테이너/크기 관련 ===
@@ -648,7 +649,7 @@ function GraphView({
         </div>
       )}
       {/* 참고된 노드가 있을 때 정보 표시 */}
-      {showReferenced && referencedNodesState && referencedNodesState.length > 0 && (
+      {(!fromFullscreen) && showReferenced && referencedNodesState && referencedNodesState.length > 0 && (
         <div className="graph-popup">
           <span>참고된 노드: {referencedNodesState.join(', ')}</span>
           <span className="close-x" onClick={() => {
@@ -687,7 +688,7 @@ function GraphView({
             transform: 'translate(12px, 8px)'
           }}
         >
-          노드 : {hoveredNode.name} <span style={{fontWeight:400, fontSize:13}}>(연결: {hoveredNode.linkCount})</span>
+          노드 : {hoveredNode.name} <span style={{ fontWeight: 400, fontSize: 13 }}>(연결: {hoveredNode.linkCount})</span>
         </div>
       )}
       {hoveredLink && (
@@ -701,15 +702,15 @@ function GraphView({
             color: '#6d28d9',
             borderRadius: 8,
             padding: '3px 10px',
-            fontSize: 16,
-            fontWeight: 600,
+            fontSize: 15,
+            fontWeight: 500,
             boxShadow: '0 2px 16px 0 #d6bbfc',
             zIndex: 1000,
             transform: 'translate(12px, 8px)'
           }}
         >
           <div>{hoveredLink.source?.name || hoveredLink.source} → {hoveredLink.target?.name || hoveredLink.target}</div>
-          <div style={{fontWeight:500, fontSize:14}}>관계 : {hoveredLink.relation || '관계'}</div>
+          <div style={{ fontWeight: 400, fontSize: 13 }}>관계 : {hoveredLink.relation || '관계'}</div>
         </div>
       )}
       {loading && (
@@ -850,7 +851,7 @@ function GraphView({
             // 테두리 색상
             if (isHovered) {
               ctx.strokeStyle = '#d6bbfc'; // 완전 연한 보라색 테두리
-              ctx.lineWidth = 9 / globalScale;
+              ctx.lineWidth = 7 / globalScale;
             } else if (isNewlyAdded || isFocus) {
               ctx.strokeStyle = isDarkMode ? '#60a5fa' : '#2196f3';
               ctx.lineWidth = 4 / globalScale;
