@@ -1,9 +1,15 @@
+"""
+openai_service.py
+BaseAIService 인터페이스를 구현하여,
+
+OpenAI에 대해 요청을 처리해주는 클래스입니다.
+"""
 
 import logging
 from openai import OpenAI           # OpenAI 클라이언트 임포트
 import json
 from .chunk_service import chunk_text
-from .ai_service import BaseAIService
+from .base_ai_service import BaseAIService
 from typing import List
 
 import os
