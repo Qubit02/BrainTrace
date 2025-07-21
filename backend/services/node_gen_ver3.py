@@ -1,3 +1,10 @@
+"""
+평균 벡터를 기반으로 토픽 키워드 추출을 시도합니다.
+평균 벡터와 가까운 상위 10개의 키워드를 출력합니다.
+각 명사구를 임베딩할 때 첫 등장한 문장의 context만을 반영하는 문제점을 수정합니다
+각 명사구가 등장한 모든 문장의 임베딩 벡터의 평균값이 해당 명사구의 context vector가 됩니다
+"""
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 
@@ -11,9 +18,7 @@ from typing import List, Dict
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
-from tqdm import tqdm
 from collections import Counter
 
 MODEL_NAME = "nlpai-lab/KoE5"
@@ -41,10 +46,35 @@ def is_pronoun_like_phrase(tokens: list[str]) -> bool:
             return True
     return False
 
+
+def sliding_windows(sentences: list[str], window_size: int =2, stride: int = 1) -> list[str]:
+    """
+    문장 리스트에서 슬라이딩 윈도우 방식으로 문맥 창을 만듭니다.
+    
+    Args:
+        sentences (list[str]): 분리된 문장 리스트
+        window_size (int): 한 윈도우에 포함될 문장 수
+        stride (int): 다음 윈도우로 이동할 문장 수
+
+    Returns:
+        list[str]: 슬라이딩 윈도우 형태로 묶인 텍스트 리스트
+    """
+    windows = []
+    for i in range(0, len(sentences) - window_size + 1, stride):
+        window = sentences[i:i + window_size+1]
+        windows.append(window)
+    return windows
+
 def extract_noun_phrases(text: str) -> list:
     """
-    명사구를 추출합니다.
+    명사구를 추출하고, 지시어(대명사성) 명사구 여부를 판별해 반환합니다.
 
+    Returns:
+        List of dicts like:
+        [
+            {"phrase": "RAG 검색 시스템", "is_pronoun_like": False},
+            {"phrase": "이 시스템", "is_pronoun_like": True}
+        ]
     """
     words = okt.pos(text, norm=True, stem=True)
     phrases=[]
@@ -70,49 +100,51 @@ def extract_noun_phrases(text: str) -> list:
 
     return phrases
 
-# 한 phrase의 임베딩을 계산하는 병렬 처리용 함수
-def compute_phrase_embedding(phrase: str, indices: List[int], sentences: List[str], total_sentences: int) -> tuple:
-    highlighted_texts = [sentences[idx].replace(phrase, f"[{phrase}]") for idx in indices]
-    embeddings = get_embeddings_batch(highlighted_texts)
-    avg_emb = np.mean(embeddings, axis=0)
-    tf = len(indices) / total_sentences
-    return phrase, (tf, avg_emb)
 
-def get_embeddings_batch(texts: List[str]) -> np.ndarray:
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+def get_embedding(text: str) -> np.ndarray:
+    """
+    KoE5 모델로 입력 텍스트 임베딩을 추출합니다. ([CLS] 벡터 사용)
+    """
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
     with torch.no_grad():
         outputs = model(**inputs)
-    cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰 임베딩
-    return cls_embeddings.cpu().numpy()
+    cls_embedding = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰의 벡터
+    return cls_embedding.squeeze().cpu().numpy()
 
 def compute_scores(
     phrase_info: List[dict], 
-    sentences: List[str]
+    windows: List[List[str]]
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
 
     scores = {}
     phrase_to_indices = defaultdict(set)
 
-    # 각 phrase가 등장한 sentence 인덱스를 수집
+    # 각 phrase가 등장한 window 인덱스를 수집
     for info in phrase_info:
-        phrase_to_indices[info["phrase"]].add(info["sentence_index"])
+        phrase_to_indices[info["phrase"]].add(info["window_index"])
 
-    total_sentences = len(sentences)
+    total_windows = len(windows)
 
     phrase_embeddings = {}
     central_vecs = []
 
-        # phrase별 평균 임베딩 계산
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
-            for phrase, indices in phrase_to_indices.items()
-        ]
+    # phrase별 평균 임베딩 계산
+    for phrase, indices in phrase_to_indices.items():
+        emb_list = []
 
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
-            phrase, (tf, avg_emb) = future.result()
-            phrase_embeddings[phrase] = (tf, avg_emb)
-            central_vecs.append(avg_emb)
+        for idx in indices:
+            context = " ".join(windows[idx])
+            highlighted = context.replace(phrase, f"[{phrase}]")
+
+            # get_embedding이 느리므로 캐싱하거나 병렬 처리 고려 가능
+            emb = get_embedding(highlighted)
+            emb_list.append(emb)
+
+        avg_emb = np.mean(emb_list, axis=0)
+        tf = len(indices) / total_windows
+
+        phrase_embeddings[phrase] = (tf, avg_emb)
+        central_vecs.append(avg_emb)
 
     # 중심 벡터 계산
     central_vec = np.mean(central_vecs, axis=0)
@@ -182,17 +214,28 @@ def normalize_coreferences(text: str) -> str:
     phrase_info=[]
     sentences = re.split(r'(?<=[.!?])\s+|(?<=[다요죠오])\s*$|\n', text.strip(), flags=re.MULTILINE)
     sentences=[s.strip() for s in sentences if s.strip()]
+    windows = sliding_windows(sentences, window_size=2, stride=1)
+
 
     # 각 문장에서 명사구 추출
-    for s_idx, sentence in enumerate(sentences):
-        phrases=extract_noun_phrases(sentence)
+    for w_idx, window in enumerate(windows):
+        
+        if w_idx==0:
+            phrases=extract_noun_phrases(window[0])
+            s_idx=0
+        else:
+            phrases=extract_noun_phrases(window[1])
+            s_idx=1
+        s_idx += w_idx
+
         for p in phrases:
             phrase_info.append({
+                "window_index": w_idx,
                 "sentence_index": s_idx,
                 "phrase": p
             })
  
-    phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, sentences)
+    phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, windows)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     print(topic)
