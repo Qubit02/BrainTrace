@@ -85,7 +85,7 @@ class BaseHandler:
             # MDFile 테이블 생성
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS MDFile (
-                md_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                md_id INTEGER PRIMARY KEY,
                 md_title TEXT NOT NULL,
                 md_path TEXT NOT NULL,
                 md_date DATETIME DEFAULT CURRENT_TIMESTAMP,
