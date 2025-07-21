@@ -1,3 +1,7 @@
+"""
+성능 개선을 위해 gpu 연산을 도입하고, 임베딩을 병렬적으로 처리하도록 수정했습니다.
+"""
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 
@@ -11,7 +15,9 @@ from typing import List, Dict
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
+from tqdm import tqdm
 from collections import Counter
 
 MODEL_NAME = "nlpai-lab/KoE5"
@@ -41,14 +47,8 @@ def is_pronoun_like_phrase(tokens: list[str]) -> bool:
 
 def extract_noun_phrases(text: str) -> list:
     """
-    명사구를 추출하고, 지시어(대명사성) 명사구 여부를 판별해 반환합니다.
+    명사구를 추출합니다.
 
-    Returns:
-        List of dicts like:
-        [
-            {"phrase": "RAG 검색 시스템", "is_pronoun_like": False},
-            {"phrase": "이 시스템", "is_pronoun_like": True}
-        ]
     """
     words = okt.pos(text, norm=True, stem=True)
     phrases=[]
@@ -74,16 +74,20 @@ def extract_noun_phrases(text: str) -> list:
 
     return phrases
 
+# 한 phrase의 임베딩을 계산하는 병렬 처리용 함수
+def compute_phrase_embedding(phrase: str, indices: List[int], sentences: List[str], total_sentences: int) -> tuple:
+    highlighted_texts = [sentences[idx].replace(phrase, f"[{phrase}]") for idx in indices]
+    embeddings = get_embeddings_batch(highlighted_texts)
+    avg_emb = np.mean(embeddings, axis=0)
+    tf = len(indices) / total_sentences
+    return phrase, (tf, avg_emb)
 
-def get_embedding(text: str) -> np.ndarray:
-    """
-    KoE5 모델로 입력 텍스트 임베딩을 추출합니다. ([CLS] 벡터 사용)
-    """
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+def get_embeddings_batch(texts: List[str]) -> np.ndarray:
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
     with torch.no_grad():
         outputs = model(**inputs)
-    cls_embedding = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰의 벡터
-    return cls_embedding.squeeze().cpu().numpy()
+    cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰 임베딩
+    return cls_embeddings.cpu().numpy()
 
 def compute_scores(
     phrase_info: List[dict], 
@@ -102,22 +106,17 @@ def compute_scores(
     phrase_embeddings = {}
     central_vecs = []
 
-    # phrase별 평균 임베딩 계산
-    for phrase, indices in phrase_to_indices.items():
-        emb_list = []
+        # phrase별 평균 임베딩 계산
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
+            for phrase, indices in phrase_to_indices.items()
+        ]
 
-        for idx in indices:
-            highlighted = sentences[idx].replace(phrase, f"[{phrase}]")
-
-            # get_embedding이 느리므로 캐싱하거나 병렬 처리 고려 가능
-            emb = get_embedding(highlighted)
-            emb_list.append(emb)
-
-        avg_emb = np.mean(emb_list, axis=0)
-        tf = len(indices) / total_sentences
-
-        phrase_embeddings[phrase] = (tf, avg_emb)
-        central_vecs.append(avg_emb)
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
+            phrase, (tf, avg_emb) = future.result()
+            phrase_embeddings[phrase] = (tf, avg_emb)
+            central_vecs.append(avg_emb)
 
     # 중심 벡터 계산
     central_vec = np.mean(central_vecs, axis=0)

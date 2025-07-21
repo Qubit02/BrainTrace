@@ -1,3 +1,10 @@
+"""embedding 모델을 KoE5로 변경하고 대명사성 명사구 flag를 통해서 
+conference resolution을 시도합니다.
+유사한 명사구들 중 가장 길이가 긴 명사구가 대표 명사구가 됩니다.
+sliding window 방식을 사용하며, 
+각 noun phrase가 첫 등장한 문장의 context만 반영하는 오류가 존재합니다."""
+
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 
@@ -137,35 +144,6 @@ def compute_similarity_matrix(
 
     return sim_matrix, labels
 
-def group_phrases_and_replace(
-    text: str,
-    phrase_info: List[Dict],
-    sim_matrix: np.ndarray,
-    threshold: float = 0.98
-) -> tuple[str, List[Dict]]:
-    """
-    유사한 명사구끼리 그룹으로 묶고, 대표 명사구로 텍스트를 치환함.
-
-    Args:
-        text (str): 원본 텍스트
-        phrase_info (List[Dict]): 명사구 정보 리스트 (phrase, sentence_index, etc.)
-        sim_matrix (np.ndarray): 명사구 간 유사도 행렬
-        threshold (float): 유사도 임계값 (default 0.7)
-
-    Returns:
-        replaced_text (str): 치환된 텍스트
-        groups (List[Dict]): 그룹 정보 (대표 명사구와 하위 명사구들)
-    """
-def group_phrases_and_replace(
-    text: str,
-    phrase_info: List[Dict],
-    sim_matrix: np.ndarray,
-    threshold: float = 0.98
-) -> tuple[str, List[Dict]]:
-    """
-    유사한 명사구끼리 그룹으로 묶고, 대표 명사구로 텍스트를 치환함.
-    유사도 기준으로 가장 높은 매칭만 남김.
-    """
 def group_phrases_and_replace(
     text: str,
     phrase_info: List[Dict],

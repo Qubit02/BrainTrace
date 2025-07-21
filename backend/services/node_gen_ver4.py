@@ -1,3 +1,11 @@
+"""
+sliding window 방식을 폐지하고 sentence 단위로 임베딩합니다.
+토픽을 추출할 때 중심 벡터와의 거리 뿐만 아니라 텍스트 내 등장 빈도를 구하여
+곱한 score로 키워드의 중요성을 평가합니다.
+유사한 명사구 그룹의 대표 명사구를 score를 기준으로 지정하도록 변경됐습니다.
+"""
+
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 
@@ -38,25 +46,6 @@ def is_pronoun_like_phrase(tokens: list[str]) -> bool:
         if tokens[i] in pronouns:
             return True
     return False
-
-
-def sliding_windows(sentences: list[str], window_size: int =2, stride: int = 1) -> list[str]:
-    """
-    문장 리스트에서 슬라이딩 윈도우 방식으로 문맥 창을 만듭니다.
-    
-    Args:
-        sentences (list[str]): 분리된 문장 리스트
-        window_size (int): 한 윈도우에 포함될 문장 수
-        stride (int): 다음 윈도우로 이동할 문장 수
-
-    Returns:
-        list[str]: 슬라이딩 윈도우 형태로 묶인 텍스트 리스트
-    """
-    windows = []
-    for i in range(0, len(sentences) - window_size + 1, stride):
-        window = sentences[i:i + window_size+1]
-        windows.append(window)
-    return windows
 
 def extract_noun_phrases(text: str) -> list:
     """
@@ -106,17 +95,17 @@ def get_embedding(text: str) -> np.ndarray:
 
 def compute_scores(
     phrase_info: List[dict], 
-    windows: List[List[str]]
+    sentences: List[str]
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
 
     scores = {}
     phrase_to_indices = defaultdict(set)
 
-    # 각 phrase가 등장한 window 인덱스를 수집
+    # 각 phrase가 등장한 sentence 인덱스를 수집
     for info in phrase_info:
-        phrase_to_indices[info["phrase"]].add(info["window_index"])
+        phrase_to_indices[info["phrase"]].add(info["sentence_index"])
 
-    total_windows = len(windows)
+    total_sentences = len(sentences)
 
     phrase_embeddings = {}
     central_vecs = []
@@ -126,15 +115,14 @@ def compute_scores(
         emb_list = []
 
         for idx in indices:
-            context = " ".join(windows[idx])
-            highlighted = context.replace(phrase, f"[{phrase}]")
+            highlighted = sentences[idx].replace(phrase, f"[{phrase}]")
 
             # get_embedding이 느리므로 캐싱하거나 병렬 처리 고려 가능
             emb = get_embedding(highlighted)
             emb_list.append(emb)
 
         avg_emb = np.mean(emb_list, axis=0)
-        tf = len(indices) / total_windows
+        tf = len(indices) / total_sentences
 
         phrase_embeddings[phrase] = (tf, avg_emb)
         central_vecs.append(avg_emb)
@@ -207,28 +195,17 @@ def normalize_coreferences(text: str) -> str:
     phrase_info=[]
     sentences = re.split(r'(?<=[.!?])\s+|(?<=[다요죠오])\s*$|\n', text.strip(), flags=re.MULTILINE)
     sentences=[s.strip() for s in sentences if s.strip()]
-    windows = sliding_windows(sentences, window_size=2, stride=1)
-
 
     # 각 문장에서 명사구 추출
-    for w_idx, window in enumerate(windows):
-        
-        if w_idx==0:
-            phrases=extract_noun_phrases(window[0])
-            s_idx=0
-        else:
-            phrases=extract_noun_phrases(window[1])
-            s_idx=1
-        s_idx += w_idx
-
+    for s_idx, sentence in enumerate(sentences):
+        phrases=extract_noun_phrases(sentence)
         for p in phrases:
             phrase_info.append({
-                "window_index": w_idx,
                 "sentence_index": s_idx,
                 "phrase": p
             })
  
-    phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, windows)
+    phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     print(topic)
