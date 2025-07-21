@@ -59,6 +59,65 @@ function GraphView({
   const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
   const [hoveredNode, setHoveredNode] = useState(null); // ⭐️ hover된 노드 상태 추가
+  const [hoveredLink, setHoveredLink] = useState(null); // ⭐️ hover된 링크 상태 추가
+
+  // ⭐️ 자석 효과: 마우스 근처 노드 자동 hover
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!fgRef.current || loading) return;
+      window._lastMouseX = e.clientX;
+      window._lastMouseY = e.clientY;
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const { x, y } = fgRef.current.screen2GraphCoords(mouseX, mouseY);
+      const nodes = (isAnimating ? visibleNodes : graphData.nodes) || [];
+      let minDist = Infinity;
+      let nearest = null;
+      for (const node of nodes) {
+        if (typeof node.x !== 'number' || typeof node.y !== 'number') continue;
+        const dx = node.x - x;
+        const dy = node.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = node;
+        }
+      }
+      if (nearest && minDist < 40) {
+        setHoveredNode(nearest);
+        document.body.style.cursor = 'pointer';
+      } else {
+        setHoveredNode(null);
+        document.body.style.cursor = 'default';
+      }
+    };
+    const handleMouseLeave = () => {
+      setHoveredNode(null);
+      setHoveredLink(null);
+      document.body.style.cursor = 'default';
+    };
+    // ⭐️ 자석 hover 더블클릭 시 해당 노드로 이동
+    const handleDblClick = (e) => {
+      if (!fgRef.current || !hoveredNode) return;
+      // 노드 중심으로 카메라 이동 및 확대
+      fgRef.current.centerAt(hoveredNode.x, hoveredNode.y, 800);
+      fgRef.current.zoom(2, 800);
+    };
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('mouseleave', handleMouseLeave);
+      container.addEventListener('dblclick', handleDblClick);
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseleave', handleMouseLeave);
+        container.removeEventListener('dblclick', handleDblClick);
+      }
+    };
+  }, [fgRef, containerRef, graphData, visibleNodes, isAnimating, loading, hoveredNode]);
 
   // === 하이라이트/포커스/신규노드 관련 ===
   const [referencedSet, setReferencedSet] = useState(new Set()); // 참고노드 집합(빠른 lookup용)
@@ -609,6 +668,50 @@ function GraphView({
           }}>×</span>
         </div>
       )}
+      {/* ⭐️ 자석 hover 툴팁 */}
+      {hoveredNode && !hoveredLink && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${window._lastMouseX || 0}px`,
+            top: `${window._lastMouseY || 0}px`,
+            pointerEvents: 'none',
+            background: 'rgba(243,232,255,0.97)', // 완전 연한 보라색
+            color: '#6d28d9',
+            borderRadius: 8,
+            padding: '3px 10px',
+            fontSize: 15,
+            fontWeight: 500,
+            boxShadow: '0 2px 16px 0 #d6bbfc',
+            zIndex: 1000,
+            transform: 'translate(12px, 8px)'
+          }}
+        >
+          노드 : {hoveredNode.name} <span style={{fontWeight:400, fontSize:13}}>(연결: {hoveredNode.linkCount})</span>
+        </div>
+      )}
+      {hoveredLink && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${window._lastMouseX || 0}px`,
+            top: `${window._lastMouseY || 0}px`,
+            pointerEvents: 'none',
+            background: 'rgba(243,232,255,0.97)', // 완전 연한 보라색
+            color: '#6d28d9',
+            borderRadius: 8,
+            padding: '3px 10px',
+            fontSize: 16,
+            fontWeight: 600,
+            boxShadow: '0 2px 16px 0 #d6bbfc',
+            zIndex: 1000,
+            transform: 'translate(12px, 8px)'
+          }}
+        >
+          <div>{hoveredLink.source?.name || hoveredLink.source} → {hoveredLink.target?.name || hoveredLink.target}</div>
+          <div style={{fontWeight:500, fontSize:14}}>관계 : {hoveredLink.relation || '관계'}</div>
+        </div>
+      )}
       {loading && (
         <div className="graph-loading" style={{
           backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.8)',
@@ -647,11 +750,11 @@ function GraphView({
           } : graphData}
           onNodeClick={handleNodeClick}
           nodeLabel={node => {
-            const baseLabel = `${node.name} (연결: ${node.linkCount})`;
-            const isReferenced = showReferenced && referencedSet.has(node.name);
-            return isReferenced ? `${baseLabel} - 참고됨` : baseLabel;
+            // const baseLabel = `${node.name} (연결: ${node.linkCount})`;
+            // const isReferenced = showReferenced && referencedSet.has(node.name);
+            // return isReferenced ? `${baseLabel} - 참고됨` : baseLabel;
           }}
-          linkLabel={link => link.relation}
+          //linkLabel={link => link.relation}
           nodeRelSize={customNodeSize}
           linkColor={() => isDarkMode ? "#64748b" : "#dedede"}
           linkWidth={customLinkWidth}
@@ -701,8 +804,9 @@ function GraphView({
             // ⭐️ hover 효과: glow 및 테두리 강조
             const isHovered = hoveredNode && hoveredNode.id === node.id;
             if (isHovered) {
-              ctx.shadowColor = '#b983ff'; // 연한 보라색 glow
-              ctx.shadowBlur = 24;
+              ctx.shadowColor = '#d6bbfc'; // 연한 연보라색 glow
+              ctx.shadowBlur = 16;
+              ctx.fillStyle = '#c084fc'; // 진한 연보라색으로 꽉 채움
             }
 
             ctx.beginPath();
@@ -745,8 +849,8 @@ function GraphView({
 
             // 테두리 색상
             if (isHovered) {
-              ctx.strokeStyle = '#b983ff'; // 연한 보라색 테두리
-              ctx.lineWidth = 6 / globalScale;
+              ctx.strokeStyle = '#d6bbfc'; // 완전 연한 보라색 테두리
+              ctx.lineWidth = 9 / globalScale;
             } else if (isNewlyAdded || isFocus) {
               ctx.strokeStyle = isDarkMode ? '#60a5fa' : '#2196f3';
               ctx.lineWidth = 4 / globalScale;
@@ -793,6 +897,27 @@ function GraphView({
           onNodeHover={node => {
             setHoveredNode(node); // ⭐️ hover 상태 업데이트
             document.body.style.cursor = node ? 'pointer' : 'default';
+          }}
+          linkCanvasObjectMode={() => 'after'}
+          linkCanvasObject={(link, ctx, globalScale) => {
+            // ⭐️ 링크 hover 효과: 보라색 glow 및 강조
+            const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target);
+            if (isHovered) {
+              ctx.save();
+              ctx.globalAlpha = 1;
+              ctx.strokeStyle = '#d6bbfc'; // 완전 연한 보라색
+              ctx.shadowColor = '#f3e8ff'; // 완전 연한 보라색 glow
+              ctx.shadowBlur = 16;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(link.source.x, link.source.y);
+              ctx.lineTo(link.target.x, link.target.y);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }}
+          onLinkHover={link => {
+            setHoveredLink(link);
           }}
         />
       )}
