@@ -278,12 +278,18 @@ async def get_source_ids(node_name: str, brain_id: str):
                     # PDF와 TextFile 테이블에서 모두 조회
                     pdf = db.get_pdf(int(source_id))
                     textfile = db.get_textfile(int(source_id))
+                    memo = db.get_memo(int(source_id))
+                    md = db.get_mdfile(int(source_id))
                     
                     title = None
                     if pdf:
                         title = pdf['pdf_title']
                     elif textfile:
                         title = textfile['txt_title']
+                    elif memo:
+                        title = memo['memo_title']
+                    elif md:
+                        title = md['md_title']
                     
                     if title:
                         sources.append({
