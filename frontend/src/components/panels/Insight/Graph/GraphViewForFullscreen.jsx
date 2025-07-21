@@ -16,38 +16,25 @@ function GraphViewForFullscreen(props) {
     const [clearTrigger, setClearTrigger] = useState(0);
 
     // 다크모드 상태
-    const [isDarkMode, setIsDarkMode] = useState(() => {
-        const saved = localStorage.getItem('graphDarkMode');
-        return saved ? JSON.parse(saved) : false;
-    });
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     // 상단에 색상 변수 선언
     const ICON_COLOR = isDarkMode ? 'white' : 'black';
 
     // ✅ 핵심 커스터마이징 + 3개 물리 설정
-    const [graphSettings, setGraphSettings] = useState(() => {
-        const saved = localStorage.getItem('graphSettings_fullscreen');
-        return saved ? JSON.parse(saved) : {
-            nodeSize: 6,                // 노드 크기
-            linkWidth: 1,               // 링크 두께
-            textZoomThreshold: 0.5,     // 텍스트 표시 시작점
-            // ✅ 3개 물리 설정 (0-100 범위)
-            repelStrength: 50,          // 반발력
-            linkDistance: 50,           // 링크 거리
-            linkStrength: 50,           // 링크 장력
-        };
+    const [graphSettings, setGraphSettings] = useState({
+        nodeSize: 6,                // 노드 크기
+        linkWidth: 1,               // 링크 두께
+        textZoomThreshold: 0.5,     // 텍스트 표시 시작점
+        // ✅ 3개 물리 설정 (0-100 범위)
+        repelStrength: 50,          // 반발력
+        linkDistance: 50,           // 링크 거리
+        linkStrength: 50,           // 링크 장력
     });
-
-    // 설정 변경 시 localStorage에 저장
-    useEffect(() => {
-        localStorage.setItem('graphSettings_fullscreen', JSON.stringify(graphSettings));
-    }, [graphSettings]);
 
     // 다크모드 토글 함수
     const toggleDarkMode = () => {
-        const newMode = !isDarkMode;
-        setIsDarkMode(newMode);
-        localStorage.setItem('graphDarkMode', JSON.stringify(newMode));
+        setIsDarkMode(prev => !prev);
     };
 
     // GraphView에서 그래프 데이터 업데이트 시 처리
@@ -322,23 +309,28 @@ function GraphViewForFullscreen(props) {
                                         <span className="fullscreen-slider-value">{graphSettings.linkWidth}</span>
                                     </div>
 
-                                    {/* 텍스트 표시 */}
+                                    {/* 텍스트 투명도 */}
                                     <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">텍스트 표시</span>
+                                        <span className="fullscreen-slider-label">텍스트 투명도</span>
                                         <input
                                             type="range"
                                             min="0.05"
                                             max="2"
                                             step="0.1"
                                             value={graphSettings.textZoomThreshold}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                textZoomThreshold: parseFloat(e.target.value)
-                                            }))}
+                                            onChange={(e) =>
+                                                setGraphSettings((prev) => ({
+                                                    ...prev,
+                                                    textZoomThreshold: parseFloat(e.target.value),
+                                                }))
+                                            }
                                             className="fullscreen-slider"
                                         />
-                                        <span className="fullscreen-slider-value">{graphSettings.textZoomThreshold}x</span>
+                                        <span className="fullscreen-slider-value">
+                                            {Math.round((graphSettings.textZoomThreshold / 2) * 100)}%
+                                        </span>
                                     </div>
+
                                 </div>
                             </div>
 
@@ -402,48 +394,7 @@ function GraphViewForFullscreen(props) {
                                 </div>
                             </div>
 
-                            <div className="fullscreen-control-group">
-                                <label>테마 설정</label>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={toggleDarkMode}
-                                        className="fullscreen-control-btn darkmode-toggle"
-                                        style={{ fontSize: '12px', padding: '6px 12px' }}
-                                    >
-                                        {isDarkMode ? '☀️ 라이트모드' : '🌙 다크모드'}
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="fullscreen-control-group">
-                                <label>빠른 액션</label>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={() => {
-                                            console.log('🔄 고급 패널에서 새로고침');
-                                            if (props.onRefresh) {
-                                                props.onRefresh();
-                                            }
-                                        }}
-                                        className="fullscreen-control-btn"
-                                        style={{ fontSize: '12px', padding: '6px 12px' }}
-                                    >
-                                        🔄 새로고침
-                                    </button>
-
-                                    {(localReferencedNodes.length > 0 ||
-                                        (props.focusNodeNames && props.focusNodeNames.length > 0) ||
-                                        newlyAddedNodes.length > 0) && (
-                                            <button
-                                                onClick={clearSearch}
-                                                className="fullscreen-control-btn fullscreen-clear-btn"
-                                                style={{ fontSize: '12px', padding: '6px 12px' }}
-                                            >
-                                                ✕ 해제
-                                            </button>
-                                        )}
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -464,7 +415,7 @@ function GraphViewForFullscreen(props) {
                         )}
                     </div>
 
-                    <div className="fullscreen-status-right">
+                    {/* <div className="fullscreen-status-right">
                         <div className="fullscreen-keyboard-shortcuts">
                             <span className="fullscreen-shortcut">⌘F</span>
                             <span className="fullscreen-shortcut">⌘D</span>
@@ -472,7 +423,7 @@ function GraphViewForFullscreen(props) {
                             <span className="fullscreen-shortcut">ESC</span>
                             <span className="fullscreen-shortcut-desc">더블클릭으로 이동</span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </div>
