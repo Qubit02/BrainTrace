@@ -1,25 +1,33 @@
 # src/routers/chatRouter.py
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from services.ai_service import BaseAIService
-from dependencies import get_ai_service
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from dependencies import get_ai_service_GPT
+from dependencies import get_ai_service_Ollama
 from sqlite_db import SQLiteHandler
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(..., description="질문 내용")
+    model: str = Field("ollama", description="사용할 모델 (gpt 또는 ollama)")
 
 class ChatResponse(BaseModel):
-    answer: str
+    answer: str = Field(..., description="AI가 생성한 답변")
 
 # === 기존 채팅 생성 (AI 답변) ===
-@router.post("/", response_model=ChatResponse)
+@router.post("/", 
+    response_model=ChatResponse,
+    summary="AI 챗봇 응답 생성",
+    description="사용자의 질문에 대해 GPT 또는 Ollama 모델을 사용하여 AI 답변을 생성합니다.<br> ollama 사용-> (model: ollama), gpt사용-> (model: ollama)",
+    response_description="AI가 생성한 답변을 반환합니다.")
 async def chat_endpoint(
-    req: ChatRequest,
-    ai_service: BaseAIService = Depends(get_ai_service),
+    req: ChatRequest
 ):
+    if req.model == "gpt":
+        ai_service = get_ai_service_GPT()
+    elif req.model == "ollama":
+        ai_service = get_ai_service_Ollama()
     if not req.question:
         raise HTTPException(400, "question을 입력해주세요.")
     answer = ai_service.chat(req.question)  
