@@ -19,7 +19,11 @@ class ChatResponse(BaseModel):
 @router.post("/", 
     response_model=ChatResponse,
     summary="AI 챗봇 응답 생성",
-    description="사용자의 질문에 대해 GPT 또는 Ollama 모델을 사용하여 AI 답변을 생성합니다.<br> ollama 사용-> (model: ollama), gpt사용-> (model: ollama)",
+    description="""
+        사용자의 질문에 대해 GPT 또는 Ollama 모델을 사용하여 AI 답변을 생성합니다.
+        <br>Ollama 사용 → (model: "ollama")
+        <br>GPT 사용 → (model: "gpt")
+        """,
     response_description="AI가 생성한 답변을 반환합니다.")
 async def chat_endpoint(
     req: ChatRequest
