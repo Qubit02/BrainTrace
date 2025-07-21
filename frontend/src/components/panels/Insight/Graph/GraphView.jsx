@@ -58,6 +58,7 @@ function GraphView({
   const [isAnimating, setIsAnimating] = useState(false); // 타임랩스 등 애니메이션 동작 여부
   const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
+  const [hoveredNode, setHoveredNode] = useState(null); // ⭐️ hover된 노드 상태 추가
 
   // === 하이라이트/포커스/신규노드 관련 ===
   const [referencedSet, setReferencedSet] = useState(new Set()); // 참고노드 집합(빠른 lookup용)
@@ -697,6 +698,13 @@ function GraphView({
               nodeColor = isDarkMode ? '#94a3b8' : '#888888';
             }
 
+            // ⭐️ hover 효과: glow 및 테두리 강조
+            const isHovered = hoveredNode && hoveredNode.id === node.id;
+            if (isHovered) {
+              ctx.shadowColor = '#b983ff'; // 연한 보라색 glow
+              ctx.shadowBlur = 24;
+            }
+
             ctx.beginPath();
             ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
             ctx.fillStyle = nodeColor;
@@ -736,7 +744,10 @@ function GraphView({
             }
 
             // 테두리 색상
-            if (isNewlyAdded || isFocus) {
+            if (isHovered) {
+              ctx.strokeStyle = '#b983ff'; // 연한 보라색 테두리
+              ctx.lineWidth = 6 / globalScale;
+            } else if (isNewlyAdded || isFocus) {
               ctx.strokeStyle = isDarkMode ? '#60a5fa' : '#2196f3';
               ctx.lineWidth = 4 / globalScale;
               ctx.shadowColor = isDarkMode ? '#3b82f6' : '#90caf9';
@@ -780,6 +791,7 @@ function GraphView({
             delete node.fy;
           }}
           onNodeHover={node => {
+            setHoveredNode(node); // ⭐️ hover 상태 업데이트
             document.body.style.cursor = node ? 'pointer' : 'default';
           }}
         />
