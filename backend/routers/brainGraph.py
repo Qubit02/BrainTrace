@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from models.request_models import ProcessTextRequest, AnswerRequest, GraphResponse
-from services import ai_service, embedding_service
+from services import embedding_service
 from neo4j_db.Neo4jHandler import Neo4jHandler
 import logging
 from sqlite_db import SQLiteHandler
-from exceptions.custom_exceptions import Neo4jException,AppException, GraphDataNotFoundException, QdrantException
+from exceptions.custom_exceptions import Neo4jException,AppException, QdrantException
 from examples.error_examples import ErrorExamples
-
+from dependencies import get_ai_service_GPT
+from dependencies import get_ai_service_Ollama
 
 
 router = APIRouter(
@@ -61,7 +62,11 @@ async def get_brain_graph(brain_id: str):
 
 @router.post("/process_text", 
     summary="텍스트 처리 및 그래프 생성",
-    description="입력된 텍스트에서 노드와 엣지를 추출하여 Neo4j에 저장하고, 노드 정보를 벡터 DB에 임베딩합니다.",
+    description= """
+    텍스트를 받아 노드/엣지 추출, Neo4j 저장, 벡터 DB 임베딩까지 전체 파이프라인 실행
+    <br> Ollama 사용 → (model: "ollama")  
+    <br> GPT 사용 → (model: "gpt")
+    """,
     response_description="처리된 노드와 엣지 정보를 반환합니다.",
     responses={
         500: ErrorExamples[50001]
@@ -70,10 +75,13 @@ async def get_brain_graph(brain_id: str):
 async def process_text_endpoint(request_data: ProcessTextRequest):
     """
     텍스트를 받아 노드/엣지 추출, Neo4j 저장, 벡터 DB 임베딩까지 전체 파이프라인 실행
+    <br> Ollama 사용 → (model: "ollama")  
+    <br> GPT 사용 → (model: "gpt")
     """
     text = request_data.text
     source_id = request_data.source_id
     brain_id = request_data.brain_id
+    model = request_data.model
     
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
@@ -84,6 +92,12 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     
     logging.info("사용자 입력 텍스트: %s, source_id: %s, brain_id: %s", text, source_id, brain_id)
     
+    # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
+    if model == "gpt":
+        ai_service = get_ai_service_GPT()
+    elif model == "ollama":
+        ai_service = get_ai_service_Ollama()
+
     # Step 1: 텍스트에서 노드/엣지 추출 (AI 서비스)
     nodes, edges = ai_service.extract_graph_components(text, source_id)
     logging.info("추출된 노드: %s", nodes)
@@ -100,7 +114,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
         embedding_service.initialize_collection(brain_id)
     
     # 노드 정보 임베딩 및 저장
-    embeddings = embedding_service.update_index_and_get_embeddings(nodes, brain_id)
+    embedding_service.update_index_and_get_embeddings(nodes, brain_id)
     logging.info("벡터 DB에 노드 임베딩 저장 완료")
 
     return {
@@ -111,7 +125,12 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
 
 @router.post("/answer",
     summary="질문에 대한 답변 생성",
-    description="사용자의 질문에 대해 Neo4j에서 관련 정보를 찾아 답변을 생성합니다.",
+    description="""
+    사용자 질문을 받아 임베딩을 통해 유사한 노드를 찾고, 
+    해당 노드들의 2단계 깊이 스키마를 추출 후 LLM을 이용해 최종 답변 생성
+    <br> Ollama 사용 → (model: "ollama")  
+    <br> GPT 사용 → (model: "gpt")
+    """,
     response_description="생성된 답변을 반환합니다.",
     responses={
     500: {
@@ -131,14 +150,24 @@ async def answer_endpoint(request_data: AnswerRequest):
     """
     사용자 질문을 받아 임베딩을 통해 유사한 노드를 찾고, 
     해당 노드들의 2단계 깊이 스키마를 추출 후 LLM을 이용해 최종 답변 생성
+    <br> Ollama 사용 → (model: "ollama")  
+    <br> GPT 사용 → (model: "gpt")
     """
     question = request_data.question
     brain_id = request_data.brain_id  # 요청에서 brain_id 받아오기
+    model =  request_data.model
     
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
+    
+     # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
+    if model == "gpt":
+        ai_service = get_ai_service_GPT()
+    elif model == "ollama":
+        ai_service = get_ai_service_Ollama()
+
     
     logging.info("질문 접수: %s, brain_id: %s", question, brain_id)
     
@@ -249,12 +278,18 @@ async def get_source_ids(node_name: str, brain_id: str):
                     # PDF와 TextFile 테이블에서 모두 조회
                     pdf = db.get_pdf(int(source_id))
                     textfile = db.get_textfile(int(source_id))
+                    memo = db.get_memo(int(source_id))
+                    md = db.get_mdfile(int(source_id))
                     
                     title = None
                     if pdf:
                         title = pdf['pdf_title']
                     elif textfile:
                         title = textfile['txt_title']
+                    elif memo:
+                        title = memo['memo_title']
+                    elif md:
+                        title = md['md_title']
                     
                     if title:
                         sources.append({
