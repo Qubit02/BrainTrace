@@ -9,6 +9,15 @@ from services.openai_service import OpenAIService
 from neo4j_db.Neo4jHandler import Neo4jHandler
 from sqlite_db.sqlite_handler import SQLiteHandler
 
+ALLOWED_MODELS = [
+    "gemma2:2b",
+    "phi4-mini:3.8b",
+    "exaone3.5:2.4b",       # 추가
+    "mistral:7b",
+    "qwen2.5-coder:3b",
+    "qwen3:4b",
+    "qwen3:8b",
+]
 
 def get_ai_service_GPT() -> BaseAIService:
     return OpenAIService()
