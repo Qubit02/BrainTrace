@@ -205,6 +205,7 @@ function GraphViewStandalone() {
                 onGraphDataUpdate={handleGraphDataUpdate}
                 onRefresh={handleRefresh}
                 onClearHighlights={handleClearHighlights}
+                onClose={() => window.close()}
                 // GraphView에 전달할 추가 props
                 isFullscreen={true}
             />

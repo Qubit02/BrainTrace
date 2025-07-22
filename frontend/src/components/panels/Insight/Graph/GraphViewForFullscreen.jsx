@@ -108,6 +108,9 @@ function GraphViewForFullscreen(props) {
                 document.getElementById('fullscreen-node-search')?.focus();
             }
             if (e.key === 'Escape') {
+                if (props.onClose) {
+                    props.onClose();
+                }
                 clearSearch();
                 document.getElementById('fullscreen-node-search')?.blur();
             }
@@ -410,15 +413,18 @@ function GraphViewForFullscreen(props) {
                         )}
                     </div>
 
-                    {/* <div className="fullscreen-status-right">
+                    <div className="fullscreen-status-right">
                         <div className="fullscreen-keyboard-shortcuts">
-                            <span className="fullscreen-shortcut">⌘F</span>
-                            <span className="fullscreen-shortcut">⌘D</span>
-                            <span className="fullscreen-shortcut">⌘K</span>
+                            <span className="fullscreen-shortcut">+</span>
+                            <span className="fullscreen-shortcut">w</span>
+                            <span className="fullscreen-shortcut-desc">줌인</span>
+                            <span className="fullscreen-shortcut">-</span>
+                            <span className="fullscreen-shortcut">s</span>
+                            <span className="fullscreen-shortcut-desc">줌아웃</span>
                             <span className="fullscreen-shortcut">ESC</span>
-                            <span className="fullscreen-shortcut-desc">더블클릭으로 이동</span>
+                            <span className="fullscreen-shortcut-desc">전체화면 종료</span>
                         </div>
-                    </div> */}
+                    </div>
                 </div>
             </div>
         </div>
