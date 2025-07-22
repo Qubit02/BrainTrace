@@ -16,7 +16,8 @@ import {
   getMemosByBrain,
   setMemoAsSource,
   getNodesBySourceId,
-  getMDFilesByBrain
+  getMDFilesByBrain,
+  getDocxFilesByBrain
 } from '../../../../api/backend';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -77,7 +78,7 @@ export default function FileView({
   // 검색 필터링된 파일 목록 계산
   const displayedFiles = filteredSourceIds
     ? files.filter(f => {
-      const id = f.memo_id || f.pdf_id || f.txt_id || f.md_id;
+      const id = f.memo_id || f.pdf_id || f.txt_id || f.md_id || f.docx_id;
       return filteredSourceIds.includes(String(id));
     })
     : files;
@@ -167,19 +168,20 @@ export default function FileView({
     if (!brainId) return;
     try {
       // 1) 브레인 기준 전체 파일 조회
-      const [pdfs, txts, memos, mds] = await Promise.all([
+      const [pdfs, txts, memos, mds, docxfiles] = await Promise.all([
         getPdfsByBrain(brainId),
         getTextfilesByBrain(brainId),
         getMemosByBrain(brainId),
         getMDFilesByBrain(brainId),
+        getDocxFilesByBrain(brainId)
       ]);
-      // 2) fileMap 갱신 - 각 파일 ID를 키로 하여 메타데이터를 빠르게 참조 가능하게 구성
       setFileMap(prev => {
         const m = { ...prev };
         pdfs.forEach(p => { m[p.pdf_id] = p; });
         txts.forEach(t => { m[t.txt_id] = t; });
         memos.forEach(memo => { m[memo.memo_id] = memo; });
         mds.forEach(md => { m[md.md_id] = md; });
+        docxfiles.forEach(docx => { m[docx.docx_id] = docx; });
         return m;
       });
     } catch (err) {
@@ -313,12 +315,13 @@ export default function FileView({
       // (2) 변환 작업은 큐 처리 로직에서 처리
       return;
     }
-    // 외부 파일 드래그 앤 드롭 (pdf, txt, md 허용)
+    // 외부 파일 드래그 앤 드롭 (pdf, txt, md, docx 허용)
     const dropped = Array.from(e.dataTransfer.files); // 드래그한 파일 배열로 변환
     if (!dropped.length) return; // 비어 있으면 종료
     // dropped 파일들을 큐에 모두 추가 (fileObj 포함)
+    const allowedExts = ['pdf', 'txt', 'md', 'docx'];
     const newQueueItems = dropped
-      .filter(file => ['pdf', 'txt', 'md'].includes(file.name.split('.').pop().toLowerCase()))
+      .filter(file => allowedExts.includes(file.name.split('.').pop().toLowerCase()))
       .map(file => {
         const ext = file.name.split('.').pop().toLowerCase();
         const uploadKey = `${file.name}-${file.size}-${ext}`;
@@ -331,6 +334,11 @@ export default function FileView({
           fileObj: file // 항상 fileObj 포함
         };
       });
+    // 지원하지 않는 확장자 드래그 시 toast 메시지
+    const unsupportedFiles = dropped.filter(file => !allowedExts.includes(file.name.split('.').pop().toLowerCase()));
+    if (unsupportedFiles.length > 0) {
+      toast.error(`지원하지 않는 파일 형식입니다: ${unsupportedFiles.map(f => f.name).join(', ')}`);
+    }
     if (newQueueItems.length > 0) {
       setUploadQueue(q => [...q, ...newQueueItems]);
     }
@@ -385,7 +393,7 @@ export default function FileView({
             }}
           >
             <FileIcon fileName={f.name} />
-            {/* ✏️ 이름 변경 입력창 */}
+            {/* 이름 변경 입력창 */}
             {editingId === f.id ? (
               <input
                 autoFocus

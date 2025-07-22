@@ -167,6 +167,8 @@ async def answer_endpoint(request_data: AnswerRequest):
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
         ai_service = get_ai_service_Ollama()
+    else:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
     
     logging.info("질문 접수: %s, brain_id: %s", question, brain_id)
@@ -275,11 +277,12 @@ async def get_source_ids(node_name: str, brain_id: str):
                 if source_id not in seen_ids:
                     seen_ids.add(source_id)
                     
-                    # PDF와 TextFile 테이블에서 모두 조회
+                    # PDF와 TextFile, Memo, MD, DocsFile 테이블에서 모두 조회
                     pdf = db.get_pdf(int(source_id))
                     textfile = db.get_textfile(int(source_id))
                     memo = db.get_memo(int(source_id))
                     md = db.get_mdfile(int(source_id))
+                    docx = db.get_docxfile(int(source_id))
                     
                     title = None
                     if pdf:
@@ -290,6 +293,8 @@ async def get_source_ids(node_name: str, brain_id: str):
                         title = memo['memo_title']
                     elif md:
                         title = md['md_title']
+                    elif docx:
+                        title = docx['docx_title']
                     
                     if title:
                         sources.append({
@@ -456,6 +461,25 @@ async def get_source_data_metrics(brain_id: str):
             except Exception as e:
                 logging.error(f"MEMO 메트릭 계산 오류 (ID: {memo['memo_id']}): {str(e)}")
         
+        # DOCX 소스들 조회
+        docxfiles = db_handler.get_docxfiles_by_brain(brain_id)
+        for docx in docxfiles:
+            try:
+                text_length = len(docx['docx_text'] or '')
+                docx_nodes = neo4j_handler.get_nodes_by_source_id(docx['docx_id'], brain_id)
+                docx_edges = neo4j_handler.get_edges_by_source_id(docx['docx_id'], brain_id)
+                source_metrics.append({
+                    "source_id": docx['docx_id'],
+                    "source_type": "docx",
+                    "title": docx['docx_title'],
+                    "text_length": text_length,
+                    "nodes_count": len(docx_nodes),
+                    "edges_count": len(docx_edges)
+                })
+                total_text_length += text_length
+            except Exception as e:
+                logging.error(f"DOCX 메트릭 계산 오류 (ID: {docx['docx_id']}): {str(e)}")
+        
         return {
             "total_text_length": total_text_length,
             "total_nodes": total_nodes,
@@ -481,12 +505,14 @@ async def get_source_count(brain_id: int):
         txts = db.get_textfiles_by_brain(brain_id)
         mds = db.get_mds_by_brain(brain_id)
         memos = db.get_memos_by_brain(brain_id, is_source=True)  # is_source가 True인 메모만 조회
-        total_count = len(pdfs) + len(txts) + len(mds) + len(memos)
+        docxfiles = db.get_docxfiles_by_brain(brain_id)
+        total_count = len(pdfs) + len(txts) + len(mds) + len(memos) + len(docxfiles)
         return {
             "pdf_count": len(pdfs),
             "txt_count": len(txts),
             "md_count": len(mds),
             "memo_count": len(memos),
+            "docx_count": len(docxfiles),
             "total_count": total_count
         }
     except Exception as e:
