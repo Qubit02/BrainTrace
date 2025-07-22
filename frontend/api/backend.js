@@ -9,3 +9,4 @@ export * from './voice';
 export * from './graphApi';
 export * from './tmpAPI';
 export * from './mds';
+export * from './docx';

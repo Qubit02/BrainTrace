@@ -52,13 +52,14 @@ export const requestBasicChat = async (text) => {
 //   }
 // };
 
-export const requestAnswer = async (question, brain_id) => {
+export const requestAnswer = async (question, brain_id, model = "gpt") => {
   try {
       const response = await axios.post(
           `${API_BASE_URL}/brainGraph/answer`,
           {
               question: question,
               brain_id: brain_id,
+              model: model, // 모델 파라미터 추가
           },
       );
       return response.data;
