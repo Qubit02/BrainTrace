@@ -35,8 +35,8 @@ function GraphView({
   textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1,
 
   // 3개 물리 설정 (0-100 범위)
-  repelStrength = 50,     // 반발력
-  linkDistance = 50,      // 링크 거리  
+  repelStrength = 20,     // 반발력력
+  linkDistance = 30,      // 링크 거리
   linkStrength = 50,      // 링크 장력
   onClearReferencedNodes,
   onClearFocusNodes,
@@ -64,6 +64,33 @@ function GraphView({
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
   const [hoveredNode, setHoveredNode] = useState(null); // ⭐️ hover된 노드 상태 추가
   const [hoveredLink, setHoveredLink] = useState(null); // ⭐️ hover된 링크 상태 추가
+  // 드래그 중인 노드와 연결된 노드 집합 상태
+  const [draggedNode, setDraggedNode] = useState(null);
+  const [connectedNodeSet, setConnectedNodeSet] = useState(new Set());
+
+  // BFS로 연결된 모든 노드 id 집합 반환
+  const getAllConnectedNodeIds = (startId, links) => {
+    const visited = new Set();
+    const queue = [startId];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!visited.has(current)) {
+        visited.add(current);
+        links.forEach(link => {
+          // source/target이 객체일 수 있으니 id로 변환
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          if (sourceId === current && !visited.has(targetId)) {
+            queue.push(targetId);
+          }
+          if (targetId === current && !visited.has(sourceId)) {
+            queue.push(sourceId);
+          }
+        });
+      }
+    }
+    return visited;
+  };
 
   // 자석 효과: 마우스 근처 노드 자동 hover
   useEffect(() => {
@@ -677,6 +704,33 @@ function GraphView({
     }
   }, [showSearch]);
 
+  // 키보드 단축키로 줌인/줌아웃, 화면 이동(팬) 기능
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!fgRef.current) return;
+      const fg = fgRef.current;
+      const zoomStep = 1.2;
+      let currZoom = fg.zoom();
+      switch (e.key) {
+        case '+':
+        case '=':
+        case 'w':
+        case 'W':
+          fg.zoom(currZoom * zoomStep, 300);
+          break;
+        case '-':
+        case 's':
+        case 'S':
+          fg.zoom(currZoom / zoomStep, 300);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fgRef]);
+
   return (
     <div
       className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
@@ -826,8 +880,8 @@ function GraphView({
             fg.force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
             fg.force("collide", d3.forceCollide(50));
 
-            const repelForce = -10 - (repelStrength / 100) * 290;
-            const linkDist = 50 + (linkDistance / 100) * 250;
+            const repelForce = 10 - (repelStrength / 100) * 290;
+            const linkDist = 40 + (linkDistance / 100) * 250;
             const linkForce = 0.1 + (linkStrength / 100) * 0.9;
 
             fg.force("charge", d3.forceManyBody().strength(repelForce));
@@ -835,7 +889,14 @@ function GraphView({
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
             ctx.save();
-            ctx.globalAlpha = node.__opacity ?? 1;
+            // 드래그 중이면 연결된 모든 노드만 진하게, 나머지는 투명하게
+            if (draggedNode) {
+              // node.id가 string인지 확인, 아니면 변환
+              const nodeId = typeof node.id === 'object' ? node.id.id : node.id;
+              ctx.globalAlpha = connectedNodeSet.has(nodeId) ? 1 : 0.18;
+            } else {
+              ctx.globalAlpha = node.__opacity ?? 1;
+            }
             const label = node.name || node.id;
             const isReferenced = showReferenced && referencedSet.has(node.name);
             const isImportantNode = node.linkCount >= 3;
@@ -848,7 +909,7 @@ function GraphView({
             const sizeFactor = Math.min(node.linkCount * 0.5, 3);
             const nodeSize = baseSize + sizeFactor;
             const nodeRadius = nodeSize / globalScale;
-            const pulseScale = 1.8;
+            const pulseScale = 1.5;
             const pulseDuration = 1000;
 
             // 다크모드에 따라 실시간으로 노드 색상 결정
@@ -874,8 +935,8 @@ function GraphView({
             ctx.fillStyle = nodeColor;
             ctx.fill();
 
+            // 드래그 중 연결된 노드는 폰트도 더 굵고 크게
             const fontSize = (isReferenced || isNewlyAdded || isFocus) ? 13 / globalScale : 9 / globalScale;
-
             ctx.font = (isReferenced || isNewlyAdded || isFocus)
               ? `bold ${fontSize}px Sans-Serif`
               : `${fontSize}px Sans-Serif`;
@@ -931,9 +992,10 @@ function GraphView({
             ctx.stroke();
 
             // 텍스트 색상
+            // 드래그 중 연결된 노드는 더 진한 색상
             const textColor = isDarkMode
-              ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#f1f5f9' : '#cbd5e1')
-              : ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#222' : '#555');
+              ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus ) ? '#f1f5f9' : '#cbd5e1')
+              : ((isImportantNode || isReferenced || isNewlyAdded || isFocus ) ? '#111' : '#555');
 
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
@@ -953,15 +1015,41 @@ function GraphView({
           onNodeDragEnd={node => {
             delete node.fx;
             delete node.fy;
+            setDraggedNode(null);
+            setConnectedNodeSet(new Set());
           }}
-          onNodeHover={node => {
-            setHoveredNode(node);
-            document.body.style.cursor = node ? 'pointer' : 'default';
+          onNodeDrag={node => {
+            setDraggedNode(node);
+            // BFS로 연결된 모든 노드 집합 계산
+            const connected = getAllConnectedNodeIds(node.id, graphData.links);
+            setConnectedNodeSet(connected);
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
             const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target);
-            if (isHovered) {
+            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+            if (draggedNode) {
+              const isConnected = connectedNodeSet.has(sourceId) && connectedNodeSet.has(targetId);
+              ctx.save();
+              ctx.globalAlpha = isConnected ? 1 : 0.13;
+              ctx.beginPath();
+              ctx.moveTo(link.source.x, link.source.y);
+              ctx.lineTo(link.target.x, link.target.y);
+              ctx.stroke();
+              // hover 효과는 항상 마지막에 한 번만
+              if (isHovered) {
+                ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
+                ctx.shadowColor = isDarkMode ? '#89c0feff' : '#92b5fbff';
+                ctx.shadowBlur = 16;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(link.source.x, link.source.y);
+                ctx.lineTo(link.target.x, link.target.y);
+                ctx.stroke();
+              }
+              ctx.restore();
+            } else if (isHovered) {
               ctx.save();
               ctx.globalAlpha = 1;
               ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
@@ -1000,8 +1088,8 @@ function GraphView({
               </li>
             ))}
           </ul>
-          <div style={{ fontSize: 11, color: '#888', marginLeft: 18, marginBottom: 20 }}>
-            해당 노드를 클릭하면 그래프가 해당 위치로 이동합니다.
+          <div style={{ fontSize: 11, color: '#888', marginLeft: 20, marginBottom: 20 }}>
+            *해당 노드를 클릭하면 그래프가 해당 위치로 이동합니다.
           </div>
         </>
       )}
