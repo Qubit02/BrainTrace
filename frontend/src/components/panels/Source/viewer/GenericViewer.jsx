@@ -3,9 +3,9 @@ import HighlightPopup from '../HighlightPopup';
 import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
-import { getMemo } from '../../../../../api/memos';
+import { getDocxFile, getMemo } from '../../../../../api/backend';
 
-export default function GenericViewer({ type, fileUrl, memoId, onBack, title }) {
+export default function GenericViewer({ type, fileUrl, memoId, onBack, title, docxId }) {
     const [content, setContent] = useState('');
     const [popup, setPopup] = useState(null);
     const [fontSize, setFontSize] = useState(16);
@@ -19,7 +19,17 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title }) 
 
     // 파일/메모 불러오기 및 하이라이트 불러오기
     useEffect(() => {
-        if (type === 'memo') {
+        if (type === 'docx') {
+            if (!docxId) {
+                setContent('[docx_id가 제공되지 않았습니다]');
+                return;
+            }
+            getDocxFile(docxId)
+                .then(data => setContent(data.docx_text))
+                .catch(() => setContent('[파일을 불러올 수 없습니다]'));
+            const saved = localStorage.getItem(`highlight:docx:${docxId}`);
+            if (saved) setHighlights(JSON.parse(saved));
+        } else if (type === 'memo') {
             getMemo(memoId)
                 .then(memo => setContent(memo.memo_text))
                 .catch(() => setContent('[메모를 불러올 수 없습니다]'));
@@ -33,7 +43,7 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title }) 
             const saved = localStorage.getItem(`highlight:${fileUrl}`);
             if (saved) setHighlights(JSON.parse(saved));
         }
-    }, [type, fileUrl, memoId]);
+    }, [type, fileUrl, memoId, docxId]);
 
     // 텍스트 선택 시 팝업 표시
     const onTextSelection = () => {
