@@ -90,9 +90,24 @@ async def update_mdfile(md_id: int, mdfile_data: MDFileUpdate):
 # ───────── MD 파일 삭제 ─────────
 @router.delete("/{md_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_mdfile(md_id: int):
-    """MD 파일 삭제"""
-    if not sqlite_handler.delete_mdfile(md_id):
+    """MD 파일 삭제 (DB + 로컬 파일 시스템)"""
+    md = sqlite_handler.get_mdfile(md_id)
+    if not md:
         raise HTTPException(status_code=404, detail="MD 파일을 찾을 수 없습니다")
+
+    sqlite_handler.delete_mdfile(md_id)
+
+    file_path = md["md_path"]
+    import os, logging
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.info(f"✅ 로컬 파일 삭제 완료: {file_path}")
+        else:
+            logging.warning(f"⚠️ 파일이 존재하지 않음: {file_path}")
+    except Exception as e:
+        logging.error(f"❌ 로컬 파일 삭제 실패: {e}")
+    return
 
 # ───────── Brain 기준 MD 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[MDFileResponse])
