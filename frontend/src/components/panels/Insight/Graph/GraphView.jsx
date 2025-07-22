@@ -32,7 +32,7 @@ function GraphView({
   isDarkMode = false,
   customNodeSize = 5,
   customLinkWidth = 1,
-  textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1, // ✅ Modal에서는 더 낮은 임계값
+  textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1,
 
   // 3개 물리 설정 (0-100 범위)
   repelStrength = 50,     // 반발력
@@ -65,7 +65,7 @@ function GraphView({
   const [hoveredNode, setHoveredNode] = useState(null); // ⭐️ hover된 노드 상태 추가
   const [hoveredLink, setHoveredLink] = useState(null); // ⭐️ hover된 링크 상태 추가
 
-  // ⭐️ 자석 효과: 마우스 근처 노드 자동 hover
+  // 자석 효과: 마우스 근처 노드 자동 hover
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!fgRef.current || loading) return;
@@ -101,7 +101,7 @@ function GraphView({
       setHoveredLink(null);
       document.body.style.cursor = 'default';
     };
-    // ⭐️ 자석 hover 더블클릭 시 해당 노드로 이동
+    // 자석 hover 더블클릭 시 해당 노드로 이동
     const handleDblClick = (e) => {
       if (!fgRef.current || !hoveredNode) return;
       // 노드 중심으로 카메라 이동 및 확대
@@ -310,11 +310,11 @@ function GraphView({
     const isChanged = JSON.stringify(prevNodes) !== JSON.stringify(newlyAddedNodeNames);
 
     if (isChanged) {
-      console.log('🆕 새로 추가된 노드 외부 알림:', newlyAddedNodeNames);
+      console.log('새로 추가된 노드 외부 알림:', newlyAddedNodeNames);
       onNewlyAddedNodes(newlyAddedNodeNames);
       prevGraphDataRef.current = { ...prevGraphDataRef.current, nodes: [...prevGraphDataRef.current.nodes, ...graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name))] };
     }
-  }, [newlyAddedNodeNames, graphData.nodes]); // ✅ onNewlyAddedNodes 의존성 제거
+  }, [newlyAddedNodeNames, graphData.nodes]);
 
   useEffect(() => {
     updateDimensions();
@@ -633,6 +633,7 @@ function GraphView({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const searchInputRef = useRef(null);
 
   // 노드 이름 목록
   const allNodeNames = graphData.nodes.map(node => node.name);
@@ -669,6 +670,13 @@ function GraphView({
     setRefPulseStartTime(Date.now());
   }, [searchQuery, searchResults]);
 
+  // showSearch가 true가 될 때 input에 포커스
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
   return (
     <div
       className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
@@ -682,6 +690,7 @@ function GraphView({
       {showSearch && (
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="노드 검색"
             value={searchQuery}
@@ -690,7 +699,7 @@ function GraphView({
           />
         </div>
       )}
-      
+
       {/* 추가된 노드 UI 표시 */}
       {showNewlyAdded && newlyAddedNodeNames.length > 0 && (
         <div className="graph-popup">
@@ -713,6 +722,7 @@ function GraphView({
           }}>×</span>
         </div>
       )}
+
       {/* 포커스 노드 팝업 */}
       {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
         <div className="graph-popup">
@@ -723,6 +733,7 @@ function GraphView({
           }}>×</span>
         </div>
       )}
+
       {/* 자석 hover 툴팁 */}
       {hoveredNode && !hoveredLink && (
         <div
@@ -731,7 +742,7 @@ function GraphView({
             left: `${window._lastMouseX || 0}px`,
             top: `${window._lastMouseY || 0}px`,
             pointerEvents: 'none',
-            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)', // 트렌디한 회색
+            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)',
             color: isDarkMode ? '#222' : '#333',
             borderRadius: 8,
             padding: '3px 10px',
@@ -752,7 +763,7 @@ function GraphView({
             left: `${window._lastMouseX || 0}px`,
             top: `${window._lastMouseY || 0}px`,
             pointerEvents: 'none',
-            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)', // 트렌디한 회색
+            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)',
             color: isDarkMode ? '#222' : '#333',
             borderRadius: 8,
             padding: '3px 10px',
@@ -804,12 +815,6 @@ function GraphView({
             links: visibleLinks
           } : graphData}
           onNodeClick={handleNodeClick}
-          //nodeLabel={node => {
-            // const baseLabel = `${node.name} (연결: ${node.linkCount})`;
-            // const isReferenced = showReferenced && referencedSet.has(node.name);
-            // return isReferenced ? `${baseLabel} - 참고됨` : baseLabel;
-          //}}
-          //linkLabel={link => link.relation}
           nodeRelSize={customNodeSize}
           linkColor={() => isDarkMode ? "#64748b" : "#dedede"}
           linkWidth={customLinkWidth}
@@ -839,7 +844,7 @@ function GraphView({
             const isRef = showReferenced && referencedSet.has(label);
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
-            const baseSize = customNodeSize; // 기존: const baseSize = 5;
+            const baseSize = customNodeSize;
             const sizeFactor = Math.min(node.linkCount * 0.5, 3);
             const nodeSize = baseSize + sizeFactor;
             const nodeRadius = nodeSize / globalScale;
@@ -859,9 +864,9 @@ function GraphView({
             // hover 효과: glow 및 테두리 강조
             const isHovered = hoveredNode && hoveredNode.id === node.id;
             if (isHovered) {
-              ctx.shadowColor = isDarkMode ? '#8ac0ffff' : '#9bc3ffff'; // 트렌디한 회색 glow
+              ctx.shadowColor = isDarkMode ? '#8ac0ffff' : '#9bc3ffff';
               ctx.shadowBlur = 16;
-              ctx.fillStyle = isDarkMode ? '#76b1f9ff' : '#73a0f9ff'; // 트렌디한 회색으로 꽉 채움
+              ctx.fillStyle = isDarkMode ? '#76b1f9ff' : '#73a0f9ff';
             }
 
             ctx.beginPath();
@@ -904,7 +909,7 @@ function GraphView({
 
             // 테두리 색상
             if (isHovered) {
-              ctx.strokeStyle = isDarkMode ? '#67acfaff' : '#93bcf8ff'; // hover 시 기존 색상 유지
+              ctx.strokeStyle = isDarkMode ? '#67acfaff' : '#93bcf8ff';
               ctx.lineWidth = 7 / globalScale;
             } else if (isNewlyAdded || isFocus) {
               ctx.strokeStyle = isDarkMode ? '#60a5fa' : '#2196f3';
@@ -950,18 +955,17 @@ function GraphView({
             delete node.fy;
           }}
           onNodeHover={node => {
-            setHoveredNode(node); // hover 상태 업데이트
+            setHoveredNode(node);
             document.body.style.cursor = node ? 'pointer' : 'default';
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
-            // 링크 hover 효과: 트렌디한 회색 glow 및 강조
             const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target);
             if (isHovered) {
               ctx.save();
               ctx.globalAlpha = 1;
-              ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff'; // 트렌디한 회색
-              ctx.shadowColor = isDarkMode ? '#89c0feff' : '#92b5fbff'; // 트렌디한 회색 glow
+              ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
+              ctx.shadowColor = isDarkMode ? '#89c0feff' : '#92b5fbff';
               ctx.shadowBlur = 16;
               ctx.lineWidth = 2;
               ctx.beginPath();
@@ -976,6 +980,7 @@ function GraphView({
           }}
         />
       )}
+
       {/* 그래프 하단(채팅바 아래)에 검색 결과 노드 리스트 고정 표시 */}
       {searchQuery.trim() !== '' && referencedSet.size > 0 && (
         <>
