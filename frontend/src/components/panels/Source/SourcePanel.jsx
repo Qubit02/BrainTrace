@@ -6,9 +6,9 @@ import {
   getSourceMemosByBrain,
   getMDFilesByBrain,
   uploadMDFiles,
-  getSourceDataMetrics
+  getSourceDataMetrics,
+  getDocxFilesByBrain
 } from '../../../../api/backend';
-
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
 import SourceUploadModal from './SourceUploadModal';
@@ -110,16 +110,17 @@ export default function SourcePanel({
     if (focusSource) {
       const targetFile = allFiles.find(file => {
         if (file.type === 'pdf') return file.pdf_id == focusSource.id;
-        if (['txt', 'md', 'memo'].includes(file.type)) {
+        if (['txt', 'md', 'memo', 'docx'].includes(file.type)) {
           if (file.type === 'txt') return file.txt_id == focusSource.id;
           if (file.type === 'md') return file.md_id == focusSource.id;
           if (file.type === 'memo') return file.memo_id == focusSource.id;
+          if (file.type === 'docx') return file.docx_id == focusSource.id;
         }
         return false;
       });
       if (targetFile) {
         if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-        else if (['txt', 'md', 'memo'].includes(targetFile.type)) setOpenedFile(targetFile);
+        else if (['txt', 'md', 'memo', 'docx'].includes(targetFile.type)) setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
       }
@@ -134,6 +135,7 @@ export default function SourcePanel({
       if (file.type === 'txt') return String(file.txt_id) === String(openSourceId);
       if (file.type === 'md') return String(file.md_id) === String(openSourceId);
       if (file.type === 'memo') return String(file.memo_id) === String(openSourceId);
+      if (file.type === 'docx') return String(file.docx_id) === String(openSourceId);
       return false;
     });
     if (targetFile) {
@@ -149,18 +151,20 @@ export default function SourcePanel({
    */
   const loadAllFiles = async () => {
     try {
-      const [pdfs, txts, memos, mds] = await Promise.all([
+      const [pdfs, txts, memos, mds, docxfiles] = await Promise.all([
         getPdfsByBrain(selectedBrainId),
         getTextfilesByBrain(selectedBrainId),
         getSourceMemosByBrain(selectedBrainId),
-        getMDFilesByBrain(selectedBrainId)
+        getMDFilesByBrain(selectedBrainId),
+        getDocxFilesByBrain(selectedBrainId)
       ]);
-      // txt, memo, md를 각각 type: 'txt', 'memo', 'md'로 구분
+      // txt, memo, md, docx를 각각 type: 'txt', 'memo', 'md', 'docx'로 구분
       const merged = [
         ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
         ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt', txt_path: txt.txt_path, txt_id: txt.txt_id })),
         ...mds.map(md => ({ ...md, title: md.md_title, type: 'md', md_path: md.md_path, md_id: md.md_id })),
-        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo', memo_id: memo.memo_id }))
+        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo', memo_id: memo.memo_id })),
+        ...docxfiles.map(docx => ({ ...docx, title: docx.docx_title, type: 'docx', docx_path: docx.docx_path, docx_id: docx.docx_id }))
       ];
       setAllFiles(merged);
       setUploadKey(k => k + 1);
@@ -208,6 +212,7 @@ export default function SourcePanel({
     else if (type === 'md') file = allFiles.find(f => f.type === 'md' && String(f.md_id) === String(id));
     else if (type === 'memo') file = allFiles.find(f => f.type === 'memo' && String(f.memo_id) === String(id));
     else if (type === 'pdf') file = allFiles.find(f => f.type === 'pdf' && String(f.pdf_id) === String(id));
+    else if (type === 'docx') file = allFiles.find(f => f.type === 'docx' && String(f.docx_id) === String(id));
     if (file) {
       if (type === 'pdf') setOpenedPDF(file);
       else setOpenedFile(file);
@@ -346,11 +351,13 @@ export default function SourcePanel({
                   fileUrl={
                     openedFile.type === 'txt' ? `http://localhost:8000/${openedFile.txt_path}` :
                       openedFile.type === 'md' ? `http://localhost:8000/${openedFile.md_path}` :
-                        undefined
+                        openedFile.type === 'docx' ? `http://localhost:8000/${openedFile.docx_path}` :
+                          undefined
                   }
                   memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
                   onBack={closeSource}
                   title={openedFile.title}
+                  docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
                 />
               </div>
             ) : (
@@ -394,7 +401,7 @@ export default function SourcePanel({
             const uploadedFiles = [];
             for (const f of fileObjs) {
               const ext = f.name.split('.').pop().toLowerCase();
-              if (!['pdf', 'txt', 'memo'].includes(ext)) continue;
+              if (!['pdf', 'txt', 'memo', 'md', 'docx'].includes(ext)) continue;
               const key = `${f.name}-${Date.now()}`;
               setUploadQueue(q => [...q, { key, name: f.name, filetype: ext, status: 'processing' }]);
               try {
@@ -414,6 +421,8 @@ export default function SourcePanel({
               uploadedFiles.forEach(file => {
                 if (file.pdf_id) m[file.pdf_id] = file;
                 else if (file.text_id) m[file.text_id] = file; // text_id로 변경
+                else if (file.md_id) m[file.md_id] = file;
+                else if (file.docx_id) m[file.docx_id] = file;
               });
               return m;
             });
@@ -423,6 +432,8 @@ export default function SourcePanel({
               const last = uploadedFiles[uploadedFiles.length - 1];
               if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });
               else if (last.text_id) setPendingFocusSource({ id: last.text_id, type: 'text' }); // text_id로 변경
+              else if (last.md_id) setPendingFocusSource({ id: last.md_id, type: 'md' });
+              else if (last.docx_id) setPendingFocusSource({ id: last.docx_id, type: 'docx' });
             }
             setShowUploadModal(false);
           } catch (e) {
