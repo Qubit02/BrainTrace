@@ -71,22 +71,44 @@ async def get_docxfile(docx_id: int):
 # ───────── DOCX 파일 수정 ─────────
 @router.put("/{docx_id}", response_model=DocxFileResponse)
 async def update_docxfile(docx_id: int, docxfile_data: DocxFileUpdate):
-    if not sqlite_handler.get_docxfile(docx_id):
+    docx = sqlite_handler.get_docxfile(docx_id)
+    if not docx:
         raise HTTPException(status_code=404, detail="DOCX 파일을 찾을 수 없습니다")
+    if docxfile_data.brain_id:
+        if not sqlite_handler.get_brain(docxfile_data.brain_id):
+            raise HTTPException(status_code=404, detail="Brain 엔티티를 찾을 수 없습니다")
+
+    # 파일명 제한 검증
+    if docxfile_data.docx_title is not None:
+        name = docxfile_data.docx_title
+        # 1. 길이 제한
+        if not (1 <= len(name) <= 100):
+            raise HTTPException(status_code=400, detail="파일명은 1~100자여야 합니다.")
+        # 2. 공백만 입력 금지
+        if name.strip() == "":
+            raise HTTPException(status_code=400, detail="파일명에 공백만 입력할 수 없습니다.")
+        # 3. 특수문자 제한
+        import re
+        if re.search(r'[\\/:*?"<>|]', name):
+            raise HTTPException(status_code=400, detail="파일명에 / \\ : * ? \" < > | 문자를 사용할 수 없습니다.")
+        # 4. 점(.)으로 시작/끝 금지
+        if name.startswith('.') or name.endswith('.'):
+            raise HTTPException(status_code=400, detail="파일명은 .(점)으로 시작하거나 끝날 수 없습니다.")
+
     try:
         updated = sqlite_handler.update_docxfile(
-            docx_id=docx_id,
-            docx_title=docxfile_data.docx_title,
-            docx_path=docxfile_data.docx_path,
-            type=docxfile_data.type,
-            brain_id=docxfile_data.brain_id,
-            docx_text=docxfile_data.docx_text
+            docx_id,
+            docxfile_data.docx_title,
+            docxfile_data.docx_path,
+            docxfile_data.type,
+            docxfile_data.brain_id,
+            docxfile_data.docx_text
         )
         if not updated:
             raise HTTPException(status_code=400, detail="업데이트할 정보가 없습니다")
         return sqlite_handler.get_docxfile(docx_id)
     except Exception as e:
-        logging.error("DOCX 파일 업데이트 오류: %s", e)
+        logging.error("DOCX 파일 수정 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 # ───────── DOCX 파일 삭제 ─────────

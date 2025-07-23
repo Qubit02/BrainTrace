@@ -81,6 +81,23 @@ async def update_pdf(pdf_id: int, pdf_data: PdfUpdate):
     if pdf_data.brain_id and not sqlite_handler.get_brain(pdf_data.brain_id):
         raise HTTPException(status_code=404, detail="Brain 엔티티를 찾을 수 없습니다")
 
+    # 파일명 제한 검증
+    if pdf_data.pdf_title is not None:
+        name = pdf_data.pdf_title
+        # 1. 길이 제한
+        if not (1 <= len(name) <= 100):
+            raise HTTPException(status_code=400, detail="파일명은 1~100자여야 합니다.")
+        # 2. 공백만 입력 금지
+        if name.strip() == "":
+            raise HTTPException(status_code=400, detail="파일명에 공백만 입력할 수 없습니다.")
+        # 3. 특수문자 제한
+        import re
+        if re.search(r'[\\/:*?"<>|]', name):
+            raise HTTPException(status_code=400, detail="파일명에 / \\ : * ? \" < > | 문자를 사용할 수 없습니다.")
+        # 4. 점(.)으로 시작/끝 금지
+        if name.startswith('.') or name.endswith('.'):
+            raise HTTPException(status_code=400, detail="파일명은 .(점)으로 시작하거나 끝날 수 없습니다.")
+
     try:
         updated = sqlite_handler.update_pdf(
             pdf_id=pdf_id,
