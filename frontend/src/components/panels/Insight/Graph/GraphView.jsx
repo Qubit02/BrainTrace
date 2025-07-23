@@ -36,7 +36,7 @@ function GraphView({
   textAlpha = 1.0,
 
   // 3개 물리 설정 (0-100 범위)
-  repelStrength = 20,     // 반발력력
+  repelStrength = 3,     // 반발력력
   linkDistance = 30,      // 링크 거리
   linkStrength = 50,      // 링크 장력
   onClearReferencedNodes,
@@ -116,7 +116,7 @@ function GraphView({
           nearest = node;
         }
       }
-      if (nearest && minDist < 40) {
+      if (nearest && minDist < 35) {
         setHoveredNode(nearest);
         document.body.style.cursor = 'pointer';
       } else {
@@ -1010,12 +1010,23 @@ function GraphView({
             delete node.fy;
             setDraggedNode(null);
             setConnectedNodeSet(new Set());
+            const fg = fgRef.current;
+            if (fg) {
+              // 반발력 strength 원래 값으로 복원
+              const repelForce = -10 - (repelStrength / 100) * 290;
+              fg.d3Force('charge', d3.forceManyBody().strength(repelForce));
+              fg.d3ReheatSimulation();
+            }
           }}
           onNodeDrag={node => {
             setDraggedNode(node);
             // BFS로 연결된 모든 노드 집합 계산
             const connected = getAllConnectedNodeIds(node.id, graphData.links);
             setConnectedNodeSet(connected);
+            const fg = fgRef.current;
+            if (fg) {
+              fg.d3Force('charge', d3.forceManyBody().strength(-10)); // 드래그 중 약한 반발력
+            }
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
