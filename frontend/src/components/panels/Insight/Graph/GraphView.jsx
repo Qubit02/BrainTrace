@@ -703,6 +703,9 @@ function GraphView({
     if (showSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
+    if (!showSearch) {
+      setSearchQuery('');
+    }
   }, [showSearch]);
 
   // 키보드 단축키로 줌인/줌아웃, 화면 이동(팬) 기능
@@ -750,6 +753,34 @@ function GraphView({
             placeholder="노드 검색"
             value={searchQuery}
             onChange={handleSearchInput}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && searchResults.length > 0) {
+                const foundNodes = graphData.nodes.filter(n => searchResults.includes(n.name) && typeof n.x === 'number' && typeof n.y === 'number');
+                if (foundNodes.length === 0 || !fgRef.current || !dimensions.width || !dimensions.height) return;
+
+                // 중심점 계산
+                const avgX = foundNodes.reduce((sum, n) => sum + n.x, 0) / foundNodes.length;
+                const avgY = foundNodes.reduce((sum, n) => sum + n.y, 0) / foundNodes.length;
+
+                // bounding box 계산
+                const xs = foundNodes.map(n => n.x);
+                const ys = foundNodes.map(n => n.y);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
+
+                const boxWidth = maxX - minX;
+                const boxHeight = maxY - minY;
+                const padding = 800;
+                const zoomScaleX = dimensions.width / (boxWidth + padding);
+                const zoomScaleY = dimensions.height / (boxHeight + padding);
+                const targetZoom = Math.min(zoomScaleX, zoomScaleY, 5);
+
+                fgRef.current.centerAt(avgX, avgY, 800);
+                fgRef.current.zoom(targetZoom, 800);
+              }
+            }}
             className="graph-search-input"
           />
         </div>
@@ -1071,31 +1102,6 @@ function GraphView({
             setHoveredLink(link);
           }}
         />
-      )}
-
-      {/* 그래프 하단(채팅바 아래)에 검색 결과 노드 리스트 고정 표시 */}
-      {searchQuery.trim() !== '' && referencedSet.size > 0 && (
-        <>
-          <ul className="graph-search-result-list">
-            {[...referencedSet].map(name => (
-              <li
-                key={name}
-                onClick={() => {
-                  const foundNode = graphData.nodes.find(n => n.name === name);
-                  if (foundNode && typeof foundNode.x === 'number' && typeof foundNode.y === 'number' && fgRef.current) {
-                    fgRef.current.centerAt(foundNode.x, foundNode.y, 800);
-                    fgRef.current.zoom(2, 800);
-                  }
-                }}
-              >
-                {name}
-              </li>
-            ))}
-          </ul>
-          <div style={{ fontSize: 11, color: '#888', marginLeft: 20, marginBottom: 20 }}>
-            *해당 노드를 클릭하면 그래프가 해당 위치로 이동합니다.
-          </div>
-        </>
       )}
     </div>
   );
