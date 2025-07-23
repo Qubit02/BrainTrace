@@ -295,7 +295,14 @@ export default function FileView({
         onFileUploaded();
       }
     } catch (e) {
-      alert('이름 변경 실패');
+      // 백엔드에서 온 에러 메시지 추출
+      let msg = '이름 변경 실패';
+      if (e && e.response && e.response.data && e.response.data.detail) {
+        msg = e.response.data.detail;
+      } else if (e && e.message) {
+        msg = e.message;
+      }
+      toast.error(msg);
     } finally {
       setEditingId(null);
     }
@@ -437,9 +444,11 @@ export default function FileView({
                   }}
                   style={{ width: '120px', marginRight: '2px' }}
                 />
-                <span style={{ color: '#888', fontSize: '0.95em', userSelect: 'none' }}>
-                  {f.name.slice(f.name.lastIndexOf('.'))}
-                </span>
+                {f.filetype !== 'memo' && (
+                  <span style={{ color: '#888', fontSize: '0.95em', userSelect: 'none' }}>
+                    {f.name.slice(f.name.lastIndexOf('.'))}
+                  </span>
+                )}
               </span>
             ) : (
               <span className="file-name">{f.name}</span>
