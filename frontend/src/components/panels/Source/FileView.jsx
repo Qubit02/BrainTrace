@@ -93,7 +93,22 @@ export default function FileView({
 
   // processedFiles에 key를 임시로 부여 (name, size, type 기준으로 생성)
   const processedFilesWithKey = processedFiles.map(f => {
-    const uploadKey = `${f.name}-${f.size || ''}-${f.type}`;
+    // 업로드 대기 큐와 동일한 key 생성 방식 사용
+    let ext = f.type;
+    let size = f.size || (f.pdf_size || f.txt_size || f.md_size || f.docx_size || 0);
+    let name = f.name || f.title;
+    if (!name) {
+      if (f.type === 'pdf') name = f.pdf_title;
+      else if (f.type === 'txt') name = f.txt_title;
+      else if (f.type === 'md') name = f.md_title;
+      else if (f.type === 'docx') name = f.docx_title;
+      else if (f.type === 'memo') name = f.memo_title;
+    }
+    if (f.type === 'memo') {
+      size = f.content ? f.content.length : (f.memo_content ? f.memo_content.length : 0);
+      ext = 'memo';
+    }
+    const uploadKey = `${name}-${size}-${ext}`;
     return { ...f, _uploadKey: uploadKey };
   });
 
@@ -117,7 +132,6 @@ export default function FileView({
         await processMemoTextAsGraph(file.memoContent, file.memoId, brainId);
         if (onGraphRefresh) onGraphRefresh();
         if (onSourceCountRefresh) onSourceCountRefresh();
-        if (onFileUploaded) await onFileUploaded();
       } else {
         // 실제 파일 업로드 및 그래프 생성
         const ext = file.filetype;
@@ -130,13 +144,19 @@ export default function FileView({
         }));
         if (onGraphRefresh) onGraphRefresh();
         if (onSourceCountRefresh) onSourceCountRefresh();
-        if (onFileUploaded) await onFileUploaded();
       }
     } catch (err) {
       console.error('파일 업로드 실패:', err);
     } finally {
-      // 큐에서 제거
-      setUploadQueue(q => q.slice(1));
+      // 큐에서 제거 후 파일 목록 갱신
+      setUploadQueue(q => {
+        const newQueue = q.slice(1);
+        // 업로드가 모두 끝난 후에만 onFileUploaded 호출
+        if (newQueue.length === 0 && typeof onFileUploaded === 'function') {
+          onFileUploaded();
+        }
+        return newQueue;
+      });
       setIsProcessing(false);
     }
   };
