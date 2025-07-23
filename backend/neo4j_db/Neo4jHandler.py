@@ -3,6 +3,7 @@ import logging
 from typing import List, Dict
 import json
 from exceptions.custom_exceptions import Neo4jException
+from collections import defaultdict
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
@@ -407,6 +408,41 @@ class Neo4jHandler:
         except Exception as e:
             logging.error(f"❌ source_id로 엣지 조회 실패: {str(e)}")
             raise Neo4jException(f"source_id로 엣지 조회 실패: {str(e)}")
+        
+    def get_descriptions_bulk(self, node_names: List[str], brain_id: str) -> Dict[str, List[int]]:
+        """
+        여러 노드 이름에 대해 descriptions 필드(문자열 리스트)를 한 번에 조회하고,
+        Python에서 JSON 문자열을 파싱하여 source_id 리스트를 추출합니다.
+        반환: { node_name: [source_id, ...], ... }
+        """
+        # Cypher: descriptions 문자열 리스트만 조회
+        query = '''
+        MATCH (n:Node)
+        WHERE n.brain_id = $brain_id AND n.name IN $names
+        RETURN n.name AS name, n.descriptions AS descriptions
+        '''
+        rows = self._execute_with_retry(query, {"names": node_names, "brain_id": brain_id})
+
+        result: Dict[str, List[int]] = defaultdict(list)
+        for rec in rows:
+            # rec이 dict 형태인지 튜플 형태인지 처리
+            name = rec.get('name') if isinstance(rec, dict) else rec[0]
+            desc_list = rec.get('descriptions') if isinstance(rec, dict) else rec[1]
+            if not desc_list:
+                continue
+            for raw in desc_list:
+                # JSON 문자열이면 loads, dict면 그대로
+                try:
+                    desc = json.loads(raw) if isinstance(raw, str) else raw
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                sid = desc.get('source_id')
+                if sid is not None:
+                    try:
+                        result[name].append(int(sid))
+                    except ValueError:
+                        continue
+        return result
 
     def __del__(self):
         self.close()
