@@ -189,7 +189,15 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색
         similar_nodes = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
-            raise QdrantException("질문과 유사한 노드를 찾지 못했습니다.")
+            # 안내 메시지도 DB에 저장
+            guide_message = "질문과 유사한 노드를 찾지 못했습니다."
+            guide_chat_id = db_handler.save_chat(True, guide_message, brain_id, [])
+            return {
+                "answer": "",
+                "referenced_nodes": [],
+                "chat_id": guide_chat_id,
+                "message": guide_message
+            }
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]

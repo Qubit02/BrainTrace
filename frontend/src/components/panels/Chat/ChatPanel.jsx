@@ -103,32 +103,57 @@ function ChatPanel({
     setChatHistory(prev => [...prev, tempQuestion]);
     // 입력창 즉시 비우기
     setInputText('');
-    // DB에 질문 저장 (is_ai=0)
-    saveChatToBrain(selectedBrainId, { is_ai: 0, message: inputText, referenced_nodes: [] })
-      .catch(err => console.error('질문 DB 저장 실패:', err));
+    // 질문은 더 이상 프론트에서 saveChatToBrain으로 저장하지 않음
 
     try {
       // 2. 답변 요청 및 DB 저장
       const res = await requestAnswer(inputText, selectedBrainId.toString(), "gpt");
       console.log('requestAnswer 응답:', res);
-      // 3. 답변을 바로 추가
-      const tempAnswer = {
-        chat_id: res?.chat_id || Date.now() + 1,
-        is_ai: true,
-        message: res?.answer,
-        referenced_nodes: res?.referenced_nodes || []
-      };
-      setChatHistory(prev => [...prev, tempAnswer]);
+      // 3. 답변이 아예 없고 안내 메시지도 없으면 아무것도 추가하지 않음
+      const hasRealAnswer = res?.answer && res.answer.trim() !== '';
+      const hasGuideMessage = res?.message && res.message.trim() !== '';
+      if (!hasRealAnswer && !hasGuideMessage) {
+        // 아무런 대답도 없으면 return (채팅 내역에 추가하지 않음)
+        return;
+      }
+      // 4. 답변이 있으면 추가
+      if (hasRealAnswer) {
+        const tempAnswer = {
+          chat_id: res?.chat_id || Date.now() + 1,
+          is_ai: true,
+          message: res?.answer,
+          referenced_nodes: res?.referenced_nodes || []
+        };
+        setChatHistory(prev => [...prev, tempAnswer]);
+        // 답변 DB 저장
+        saveChatToBrain(selectedBrainId, {
+          is_ai: 1,
+          message: res?.answer,
+          referenced_nodes: res?.referenced_nodes || []
+        }).catch(err => console.error('답변 DB 저장 실패:', err));
+      }
+      // 5. 안내 메시지가 있으면 추가
+      if (hasGuideMessage) {
+        setChatHistory(prev => [
+          ...prev,
+          {
+            chat_id: res.chat_id || Date.now() + 2,
+            is_ai: true,
+            message: res.message,
+            referenced_nodes: []
+          }
+        ]);
+        // 안내 메시지도 DB에 저장
+        saveChatToBrain(selectedBrainId, {
+          is_ai: 1,
+          message: res.message,
+          referenced_nodes: []
+        }).catch(err => console.error('안내 메시지 DB 저장 실패:', err));
+      }
       // === 답변에 referenced_nodes가 있으면 콜백 호출 ===
       if (res?.referenced_nodes && res.referenced_nodes.length > 0 && typeof onReferencedNodesUpdate === 'function') {
         onReferencedNodesUpdate(res.referenced_nodes);
       }
-      // DB에 답변 저장 (is_ai=1)
-      saveChatToBrain(selectedBrainId, {
-        is_ai: 1,
-        message: res?.answer,
-        referenced_nodes: res?.referenced_nodes || []
-      }).catch(err => console.error('답변 DB 저장 실패:', err));
     } catch (err) {
       alert('답변 생성 중 오류가 발생했습니다.');
       console.error(err);
@@ -171,6 +196,20 @@ function ChatPanel({
       } catch (err) {
         setOpenSourceNodes((prev) => ({ ...prev, [key]: [] }));
       }
+    }
+  };
+
+  // ===== 메시지 복사 핸들러 =====
+  const handleCopyMessage = async (m) => {
+    try {
+      let messageToCopy = m.message;
+      if (m.chat_id) {
+        const serverMessage = await getChatMessageById(m.chat_id);
+        if (serverMessage) messageToCopy = serverMessage;
+      }
+      await navigator.clipboard.writeText(messageToCopy);
+    } catch (err) {
+      console.error('복사 실패:', err);
     }
   };
 
@@ -265,21 +304,7 @@ function ChatPanel({
                     <button
                       className="copy-button"
                       title="복사"
-                      onClick={async () => {
-                        try {
-                          // chat_id가 있으면 서버에서 message를 받아서 복사
-                          if (m.chat_id) {
-                            const message = await getChatMessageById(m.chat_id);
-                            console.log('message:', message);
-                            await navigator.clipboard.writeText(message);
-                          } else {
-                            // fallback: 현재 메시지 그대로 복사
-                            await navigator.clipboard.writeText(m.message);
-                          }
-                        } catch (err) {
-                          console.error('복사 실패:', err);
-                        }
-                      }}
+                      onClick={() => handleCopyMessage(m)}
                     >
                       <IoCopyOutline size={18} />
                     </button>
