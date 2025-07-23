@@ -1,12 +1,12 @@
 // React 및 필요한 모듈 import
 import React, { useState, useEffect, useRef } from 'react';
 import './ChatPanel.css';
-import { requestAnswer } from '../../../../api/tmpAPI';
 import {
   getBrain,
   getReferencedNodes,
   getSourceIdsByNodeName,
-  getChatMessageById
+  getChatMessageById,
+  requestAnswer
 } from '../../../../../frontend/api/backend'
 
 import { PiGraph } from "react-icons/pi";
@@ -109,7 +109,7 @@ function ChatPanel({
 
     try {
       // 2. 답변 요청 및 DB 저장
-      const res = await requestAnswer(inputText, selectedBrainId.toString());
+      const res = await requestAnswer(inputText, selectedBrainId.toString(), "gpt");
       console.log('requestAnswer 응답:', res);
       // 3. 답변을 바로 추가
       const tempAnswer = {
@@ -233,7 +233,7 @@ function ChatPanel({
                                   onClick={() => toggleSourceList(m.chat_id, nodeName)}
                                   style={{ marginLeft: '6px' }}
                                 >
-                                  <VscOpenPreview  size={15} style={{ verticalAlign: 'middle', marginRight: '2px' }} />
+                                  <VscOpenPreview size={15} style={{ verticalAlign: 'middle', marginRight: '2px' }} />
                                   <span>출처보기</span>
                                 </button>
                               </div>

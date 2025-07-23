@@ -171,7 +171,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
     
-    logging.info("질문 접수: %s, brain_id: %s", question, brain_id)
+    logging.info("질문 접수: %s, brain_id: %s, model: %s", question, brain_id, model)
     
     try:
         # 사용자 질문 저장
