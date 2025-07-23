@@ -37,46 +37,35 @@ const PDFViewer = ({ file, containerWidth, onBack, title }) => {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="viewer-container">
       {/* 상단 컨트롤바 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'white',
-          padding: '10px 16px',
-          borderBottom: '1px solid #ddd',
-          position: 'relative',
-        }}
-      >
-        <FaArrowLeftLong
-          onClick={onBack}
-          style={{
-            cursor: 'pointer',
-            fontSize: '18px',
-            color: '#333',
-            position: 'absolute',
-            left: 16,
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <span style={{ fontWeight: 600, fontSize: 20, color: '#222', textAlign: 'center', flex: 1 }}>{title}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}>
-          <FaMinus onClick={handleZoomOut} style={iconStyle} />
-          <FaPlus onClick={handleZoomIn} style={iconStyle} />
-          <span style={{ fontSize: '14px', minWidth: '40px', textAlign: 'center' }}>
-            {Math.round(scale * 100)}%
-          </span>
+      <div className="viewer-header">
+        <div className="viewer-header-left">
+          <FaArrowLeftLong
+            onClick={onBack}
+            style={{
+              cursor: 'pointer',
+              fontSize: '18px',
+              color: '#333',
+              position: 'absolute',
+              left: 16,
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}
+          />
+        </div>
+        <div className="viewer-header-center">
+          <span className="viewer-title">{title}</span>
+        </div>
+        <div className="viewer-header-right viewer-controls">
+          <FaMinus onClick={handleZoomOut} className="viewer-button" />
+          <FaPlus onClick={handleZoomIn} className="viewer-button" />
+          <span className="viewer-fontsize">{Math.round(scale * 100)}%</span>
         </div>
       </div>
 
       {/* PDF 문서 렌더링 영역 */}
-      <div
-        style={{ flex: 1, overflowY: 'auto', position: 'relative' }}
-        ref={viewerRef}
-      >
+      <div className="viewer-content" ref={viewerRef}>
         <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
           {Array.from({ length: numPages }, (_, index) => (
             <Page
@@ -91,19 +80,6 @@ const PDFViewer = ({ file, containerWidth, onBack, title }) => {
       </div>
     </div>
   );
-};
-
-const iconStyle = {
-  cursor: 'pointer',
-  fontSize: '16px',
-  color: '#333',
-  borderRadius: '4px',
-  padding: '2px',
-  border: '1px solid #ccc',
-  backgroundColor: 'white',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center'
 };
 
 export default PDFViewer;

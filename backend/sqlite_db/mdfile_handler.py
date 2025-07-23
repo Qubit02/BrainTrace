@@ -6,13 +6,13 @@ class MDFileHandler(BaseHandler):
     def create_mdfile(self, md_title: str, md_path: str, type: Optional[str] = None, brain_id: Optional[int] = None) -> dict:
         """새 MD 파일 생성"""
         try:
+            md_id = self._get_next_id()  # 직접 id 생성
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO MDFile (md_title, md_path, type, brain_id) VALUES (?, ?, ?, ?)",
-                (md_title, md_path, type, brain_id)
+                "INSERT INTO MDFile (md_id, md_title, md_path, type, brain_id) VALUES (?, ?, ?, ?, ?)",
+                (md_id, md_title, md_path, type, brain_id)
             )
-            md_id = cursor.lastrowid
             cursor.execute("SELECT md_date FROM MDFile WHERE md_id = ?", (md_id,))
             md_date = cursor.fetchone()[0]
             conn.commit()

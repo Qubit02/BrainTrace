@@ -260,7 +260,8 @@ export default function ProjectListView() {
                                     }}
                                     onBlur={() => editingId === p.brain_id && handleSaveTitle(p)}
                                     style={{
-                                        cursor: editingId ? 'text' : 'pointer'
+                                        cursor: editingId === p.brain_id ? 'text' : 'pointer',
+                                        pointerEvents: editingId === p.brain_id ? 'auto' : 'none'
                                     }}
                                 >
                                     {editingId === p.brain_id
