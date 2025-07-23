@@ -21,11 +21,11 @@ if not openai_api_key:
 client = OpenAI(api_key=openai_api_key)
 
 
-class OpenAIService() :
+class OpenAIService(BaseAIService) :
     def __init__(self):
         # 인스턴스 속성으로 클라이언트 할당
         self.client = OpenAI(api_key=openai_api_key)
-    def extract_referenced_nodes(llm_response: str) -> List[str]:
+    def extract_referenced_nodes(self,llm_response: str) -> List[str]:
         """
         LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱해
         referenced_nodes만 추출한 뒤,
@@ -52,7 +52,7 @@ class OpenAIService() :
         except json.JSONDecodeError:
             return []
 
-    def extract_graph_components(text: str, source_id: str):
+    def extract_graph_components(self,text: str, source_id: str):
         """
         입력 텍스트에서 LLM을 활용해 노드와 엣지 정보를 추출합니다.
         텍스트가 2000자 이상인 경우 청킹하여 처리합니다.
@@ -70,21 +70,21 @@ class OpenAIService() :
             # 각 청크별로 노드와 엣지 추출
             for i, chunk in enumerate(chunks, 1):
                 logging.info(f"청크 {i}/{len(chunks)} 처리 중...")
-                nodes, edges = _extract_from_chunk(chunk, source_id)
+                nodes, edges = self._extract_from_chunk(chunk, source_id)
                 all_nodes.extend(nodes)
                 all_edges.extend(edges)
         else:
             # 2000자 미만이면 직접 처리
-            all_nodes, all_edges = _extract_from_chunk(text, source_id)
+            all_nodes, all_edges = self._extract_from_chunk(text, source_id)
         
         # 중복 제거
-        all_nodes = _remove_duplicate_nodes(all_nodes)
-        all_edges = _remove_duplicate_edges(all_edges)
+        all_nodes = self._remove_duplicate_nodes(all_nodes)
+        all_edges = self._remove_duplicate_edges(all_edges)
         
         logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
         return all_nodes, all_edges
 
-    def _extract_from_chunk(chunk: str, source_id: str):
+    def _extract_from_chunk(self, chunk: str, source_id: str):
         """개별 청크에서 노드와 엣지 정보를 추출합니다."""
         prompt = (
         "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
@@ -168,7 +168,7 @@ class OpenAIService() :
             logging.error(f"청크 처리 중 오류 발생: {str(e)}")
             return [], []
 
-    def _remove_duplicate_nodes(nodes: list) -> list:
+    def _remove_duplicate_nodes(self, nodes: list) -> list:
         """중복된 노드를 제거합니다."""
         seen = set()
         unique_nodes = []
@@ -184,7 +184,7 @@ class OpenAIService() :
                         existing_node["descriptions"].extend(node["descriptions"])
         return unique_nodes
 
-    def _remove_duplicate_edges(edges: list) -> list:
+    def _remove_duplicate_edges(self, edges: list) -> list:
         """중복된 엣지를 제거합니다."""
         seen = set()
         unique_edges = []
@@ -195,7 +195,7 @@ class OpenAIService() :
                 unique_edges.append(edge)
         return unique_edges
 
-    def generate_answer(schema_text: str, question: str) -> str:
+    def generate_answer(self, schema_text: str, question: str) -> str:
         """
         스키마 텍스트와 질문을 기반으로 AI를 호출하여 최종 답변을 생성합니다.
         """
@@ -232,7 +232,7 @@ class OpenAIService() :
     import json
     import logging
 
-    def generate_schema_text(nodes, related_nodes, relationships) -> str:
+    def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
         """
         Neo4j에서 가져온 노드, 인접 노드, 관계 데이터를 받아
         노드-관계-노드 형식의 스키마 텍스트를 생성합니다.
