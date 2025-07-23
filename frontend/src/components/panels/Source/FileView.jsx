@@ -256,23 +256,28 @@ export default function FileView({
    * @param {Object} f - 이름을 변경할 파일 정보
    */
   const handleNameChange = async (f) => {
-    const newName = tempName.trim();
-    if (!newName || newName === f.name) {
+    // 확장자 분리
+    const ext = f.name.includes('.') ? f.name.slice(f.name.lastIndexOf('.')) : '';
+    const baseName = tempName.replace(/\.[^/.]+$/, '').trim();
+    if (!baseName || baseName + ext === f.name) {
       setEditingId(null);
       return;
     }
+    const newName = baseName + ext;
     try {
       if (nameUpdateHandlers[f.filetype]) {
         await nameUpdateHandlers[f.filetype](f.id, newName, brainId);
       } else {
         throw new Error('지원하지 않는 파일 타입');
       }
-      // 2) 파일 목록 갱신
       await refresh();
+      if (typeof onFileUploaded === 'function') {
+        onFileUploaded();
+      }
     } catch (e) {
       alert('이름 변경 실패');
     } finally {
-      setEditingId(null); // 편집 모드 해제
+      setEditingId(null);
     }
   };
 
@@ -395,17 +400,23 @@ export default function FileView({
             <FileIcon fileName={f.name} />
             {/* 이름 변경 입력창 */}
             {editingId === f.id ? (
-              <input
-                autoFocus
-                className="rename-input"
-                defaultValue={f.name}
-                onChange={e => setTempName(e.target.value)}
-                onBlur={() => handleNameChange(f)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleNameChange(f);
-                  if (e.key === 'Escape') setEditingId(null);
-                }}
-              />
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  autoFocus
+                  className="rename-input"
+                  value={tempName.replace(/\.[^/.]+$/, '')}
+                  onChange={e => setTempName(e.target.value.replace(/\.[^/.]+$/, ''))}
+                  onBlur={() => handleNameChange(f)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleNameChange(f);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  style={{ width: '120px', marginRight: '2px' }}
+                />
+                <span style={{ color: '#888', fontSize: '0.95em', userSelect: 'none' }}>
+                  {f.name.slice(f.name.lastIndexOf('.'))}
+                </span>
+              </span>
             ) : (
               <span className="file-name">{f.name}</span>
             )}
