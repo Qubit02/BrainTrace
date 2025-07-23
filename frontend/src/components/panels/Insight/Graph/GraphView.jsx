@@ -33,6 +33,7 @@ function GraphView({
   customNodeSize = 5,
   customLinkWidth = 1,
   textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1,
+  textAlpha = 1.0,
 
   // 3개 물리 설정 (0-100 범위)
   repelStrength = 20,     // 반발력력
@@ -989,10 +990,12 @@ function GraphView({
 
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'top';
-              ctx.fillStyle = textColor;
-              ctx.fillText(label, node.x, node.y + nodeRadius + 1);
+                ctx.globalAlpha = textAlpha;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = textColor;
+                ctx.fillText(label, node.x, node.y + nodeRadius + 1);
+                ctx.globalAlpha = 1; // 텍스트 이후 alpha 복원
             }
             node.__bckgDimensions = [nodeRadius * 2, fontSize].map(n => n + fontSize * 0.2);
 

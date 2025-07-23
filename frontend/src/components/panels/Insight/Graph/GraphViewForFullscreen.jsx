@@ -21,12 +21,13 @@ function GraphViewForFullscreen(props) {
     // 상단에 색상 변수 선언
     const ICON_COLOR = isDarkMode ? 'white' : 'black';
 
-    // ✅ 핵심 커스터마이징 + 3개 물리 설정
+    // 핵심 커스터마이징 + 3개 물리 설정
     const [graphSettings, setGraphSettings] = useState({
         nodeSize: 6,                // 노드 크기
         linkWidth: 1,               // 링크 두께
         textZoomThreshold: 0.5,     // 텍스트 표시 시작점
-        // ✅ 3개 물리 설정 (0-100 범위)
+        textAlpha: 1.0,             // 텍스트 투명도(신규)
+        // 3개 물리 설정 (0-100 범위)
         repelStrength: 50,          // 반발력
         linkDistance: 50,           // 링크 거리
         linkStrength: 50,           // 링크 장력
@@ -52,7 +53,7 @@ function GraphViewForFullscreen(props) {
     }, [props.onGraphDataUpdate]);
 
     const handleNewlyAddedNodes = useCallback((nodeNames) => {
-        console.log('🆕 풀스크린에서 새로 추가된 노드 감지:', nodeNames);
+        console.log('풀스크린에서 새로 추가된 노드 감지:', nodeNames);
         setNewlyAddedNodes(nodeNames || []);
     }, []);
 
@@ -83,7 +84,7 @@ function GraphViewForFullscreen(props) {
     };
 
     const clearSearch = () => {
-        console.log('🧹 검색 및 하이라이트 해제');
+        console.log('검색 및 하이라이트 해제');
         setSearchQuery('');
         setLocalReferencedNodes([]);
         setNewlyAddedNodes([]);
@@ -142,11 +143,12 @@ function GraphViewForFullscreen(props) {
                 externalShowNewlyAdded={newlyAddedNodes.length === 0 ? false : undefined}
                 clearTrigger={clearTrigger}
                 isDarkMode={isDarkMode}
-                // ✅ 커스터마이징 props 전달
+                // 커스터마이징 props 전달
                 customNodeSize={graphSettings.nodeSize}
                 customLinkWidth={graphSettings.linkWidth}
                 textDisplayZoomThreshold={graphSettings.textZoomThreshold}
-                // ✅ 3개 물리 설정 전달
+                textAlpha={graphSettings.textAlpha}
+                // 3개 물리 설정 전달
                 repelStrength={graphSettings.repelStrength}
                 linkDistance={graphSettings.linkDistance}
                 linkStrength={graphSettings.linkStrength}
@@ -161,7 +163,7 @@ function GraphViewForFullscreen(props) {
                                 <input
                                     id="fullscreen-node-search"
                                     type="text"
-                                    placeholder="노드 검색 (⌘F)"
+                                    placeholder="노드 검색"
                                     value={searchQuery}
                                     onChange={handleSearchInput}
                                     className="fullscreen-search-input"
@@ -189,7 +191,7 @@ function GraphViewForFullscreen(props) {
                         <button
                             onClick={toggleDarkMode}
                             className="fullscreen-control-btn darkmode-toggle"
-                            title={`${isDarkMode ? '라이트' : '다크'}모드 (⌘D)`}
+                            title={`${isDarkMode ? '라이트' : '다크'}모드`}
                         >
                             <span className="fullscreen-btn-icon">
                                 {isDarkMode ? <FiSun color={ICON_COLOR} /> : <FiMoon color={ICON_COLOR} />}
@@ -202,7 +204,7 @@ function GraphViewForFullscreen(props) {
                         <button
                             onClick={() => setShowAdvancedControls(prev => !prev)}
                             className={`fullscreen-control-btn advanced-toggle ${showAdvancedControls ? 'active' : ''}`}
-                            title="고급 컨트롤 토글 (⌘K)"
+                            title="고급 컨트롤 토글"
                         >
                             <span className="fullscreen-btn-icon"><FiSettings color={ICON_COLOR} /></span>
                             <span className="btn-text">고급</span>
@@ -243,158 +245,176 @@ function GraphViewForFullscreen(props) {
                 </div>
 
                 {showAdvancedControls && (
-                    <div className="fullscreen-advanced-controls-panel">
-                        <div className="fullscreen-panel-header">
-                            <h4>그래프 설정</h4>
-                            <button
-                                onClick={() => setShowAdvancedControls(false)}
-                                className="fullscreen-close-panel-btn"
-                            >
-                                ✕
-                            </button>
+                    <>
+                        <div
+                            className="fullscreen-advanced-controls-overlay"
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                width: '100vw',
+                                height: '100vh',
+                                zIndex: 1000,
+                                background: 'rgba(0,0,0,0.01)',
+                                pointerEvents: 'auto',
+                            }}
+                            onClick={() => setShowAdvancedControls(false)}
+                        />
+                        <div
+                            className="fullscreen-advanced-controls-panel"
+                            style={{ zIndex: 1001, position: 'absolute', top: 80, right: 20 }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="fullscreen-panel-header">
+                                <h4>그래프 설정</h4>
+                                <button
+                                    onClick={() => setShowAdvancedControls(false)}
+                                    className="fullscreen-close-panel-btn"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <div className="fullscreen-panel-content">
+                                <div className="fullscreen-control-group">
+                                    <label>그래프 통계</label>
+                                    <div className="fullscreen-stats-grid">
+                                        <div className="fullscreen-stat-item">
+                                            <span className="fullscreen-stat-label">노드</span>
+                                            <span className="fullscreen-stat-value">{graphStats.nodes}</span>
+                                        </div>
+                                        <div className="fullscreen-stat-item">
+                                            <span className="fullscreen-stat-label">연결</span>
+                                            <span className="fullscreen-stat-value">{graphStats.links}</span>
+                                        </div>
+                                        <div className="fullscreen-stat-item">
+                                            <span className="fullscreen-stat-label">하이라이트</span>
+                                            <span className="fullscreen-stat-value">{localReferencedNodes.length}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 표시 설정 */}
+                                <div className="fullscreen-control-group">
+                                    <label>표시 설정</label>
+                                    <div className="fullscreen-slider-container">
+                                        {/* 노드 크기 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">노드 크기</span>
+                                            <input
+                                                type="range"
+                                                min="3"
+                                                max="12"
+                                                step="0.5"
+                                                value={graphSettings.nodeSize}
+                                                onChange={(e) => setGraphSettings(prev => ({
+                                                    ...prev,
+                                                    nodeSize: parseFloat(e.target.value)
+                                                }))}
+                                                className="fullscreen-slider"
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.nodeSize}</span>
+                                        </div>
+
+                                        {/* 링크 두께 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">링크 두께</span>
+                                            <input
+                                                type="range"
+                                                min="0.5"
+                                                max="4"
+                                                step="0.1"
+                                                value={graphSettings.linkWidth}
+                                                onChange={(e) => setGraphSettings(prev => ({
+                                                    ...prev,
+                                                    linkWidth: parseFloat(e.target.value)
+                                                }))}
+                                                className="fullscreen-slider"
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.linkWidth}</span>
+                                        </div>
+
+                                        {/* 텍스트 투명도 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">텍스트 투명도</span>
+                                            <input
+                                                type="range"
+                                                min="0.0"
+                                                max="1"
+                                                step="0.05"
+                                                value={graphSettings.textAlpha}
+                                                onChange={e => setGraphSettings(prev => ({ ...prev, textAlpha: parseFloat(e.target.value) }))}
+                                                className="fullscreen-slider"
+                                                style={{ direction: 'rtl' }}
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.textAlpha}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3개 물리 설정 */}
+                                <div className="fullscreen-control-group">
+                                    <label>물리 설정</label>
+                                    <div className="fullscreen-slider-container">
+                                        {/* 반발력 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">반발력</span>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                step="5"
+                                                value={graphSettings.repelStrength}
+                                                onChange={(e) => setGraphSettings(prev => ({
+                                                    ...prev,
+                                                    repelStrength: parseInt(e.target.value)
+                                                }))}
+                                                className="fullscreen-slider"
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.repelStrength}%</span>
+                                        </div>
+
+                                        {/* 링크 거리 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">링크 거리</span>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                step="5"
+                                                value={graphSettings.linkDistance}
+                                                onChange={(e) => setGraphSettings(prev => ({
+                                                    ...prev,
+                                                    linkDistance: parseInt(e.target.value)
+                                                }))}
+                                                className="fullscreen-slider"
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.linkDistance}%</span>
+                                        </div>
+
+                                        {/* 링크 장력 */}
+                                        <div className="fullscreen-slider-item">
+                                            <span className="fullscreen-slider-label">링크 장력</span>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                step="5"
+                                                value={graphSettings.linkStrength}
+                                                onChange={(e) => setGraphSettings(prev => ({
+                                                    ...prev,
+                                                    linkStrength: parseInt(e.target.value)
+                                                }))}
+                                                className="fullscreen-slider"
+                                            />
+                                            <span className="fullscreen-slider-value">{graphSettings.linkStrength}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            </div>
                         </div>
-                        <div className="fullscreen-panel-content">
-                            <div className="fullscreen-control-group">
-                                <label>그래프 통계</label>
-                                <div className="fullscreen-stats-grid">
-                                    <div className="fullscreen-stat-item">
-                                        <span className="fullscreen-stat-label">노드</span>
-                                        <span className="fullscreen-stat-value">{graphStats.nodes}</span>
-                                    </div>
-                                    <div className="fullscreen-stat-item">
-                                        <span className="fullscreen-stat-label">연결</span>
-                                        <span className="fullscreen-stat-value">{graphStats.links}</span>
-                                    </div>
-                                    <div className="fullscreen-stat-item">
-                                        <span className="fullscreen-stat-label">하이라이트</span>
-                                        <span className="fullscreen-stat-value">{localReferencedNodes.length}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 표시 설정 */}
-                            <div className="fullscreen-control-group">
-                                <label>표시 설정</label>
-                                <div className="fullscreen-slider-container">
-                                    {/* 노드 크기 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">노드 크기</span>
-                                        <input
-                                            type="range"
-                                            min="3"
-                                            max="12"
-                                            step="0.5"
-                                            value={graphSettings.nodeSize}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                nodeSize: parseFloat(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.nodeSize}</span>
-                                    </div>
-
-                                    {/* 링크 두께 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">링크 두께</span>
-                                        <input
-                                            type="range"
-                                            min="0.5"
-                                            max="4"
-                                            step="0.1"
-                                            value={graphSettings.linkWidth}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                linkWidth: parseFloat(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.linkWidth}</span>
-                                    </div>
-
-                                    {/* 텍스트 표시 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">텍스트 표시</span>
-                                        <input
-                                            type="range"
-                                            min="0.05"
-                                            max="2"
-                                            step="0.1"
-                                            value={graphSettings.textZoomThreshold}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                textZoomThreshold: parseFloat(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.textZoomThreshold}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ✅ 3개 물리 설정 */}
-                            <div className="fullscreen-control-group">
-                                <label>물리 설정</label>
-                                <div className="fullscreen-slider-container">
-                                    {/* 반발력 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">반발력</span>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            step="5"
-                                            value={graphSettings.repelStrength}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                repelStrength: parseInt(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.repelStrength}%</span>
-                                    </div>
-
-                                    {/* 링크 거리 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">링크 거리</span>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            step="5"
-                                            value={graphSettings.linkDistance}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                linkDistance: parseInt(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.linkDistance}%</span>
-                                    </div>
-
-                                    {/* 링크 장력 */}
-                                    <div className="fullscreen-slider-item">
-                                        <span className="fullscreen-slider-label">링크 장력</span>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            step="5"
-                                            value={graphSettings.linkStrength}
-                                            onChange={(e) => setGraphSettings(prev => ({
-                                                ...prev,
-                                                linkStrength: parseInt(e.target.value)
-                                            }))}
-                                            className="fullscreen-slider"
-                                        />
-                                        <span className="fullscreen-slider-value">{graphSettings.linkStrength}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                        
-                        </div>
-                    </div>
+                    </>
                 )}
 
                 <div className="fullscreen-statusbar">
