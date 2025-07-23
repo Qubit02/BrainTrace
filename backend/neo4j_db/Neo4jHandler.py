@@ -1,18 +1,19 @@
 from neo4j import GraphDatabase
 import logging
-import os
-from typing import List, Dict, Any
+from typing import List, Dict
 import json
+from exceptions.custom_exceptions import Neo4jException
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
-
+from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
 
     def close(self):
         self.driver.close()
+
 
     def insert_nodes_and_edges(self, nodes, edges, brain_id):
         """
@@ -73,7 +74,7 @@ class Neo4jHandler:
                 logging.info("✅ Neo4j 노드와 엣지 삽입 및 트랜잭션 커밋 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 쓰기 트랜잭션 오류: {str(e)}")
-            raise RuntimeError(f"Neo4j 쓰기 트랜잭션 오류: {str(e)}")
+            raise Neo4jException(message=f"Neo4j 쓰기 트랜잭션 오류: {str(e)}")
 
     def fetch_all_nodes(self):
         """
@@ -93,7 +94,7 @@ class Neo4jHandler:
                         "descriptions": descriptions
                     })
         except Exception as e:
-            logging.error(f"❌ Neo4j 읽기 오류: {str(e)}")
+            raise Neo4jException(f"❌ Neo4j 읽기 오류: {str(e)}")
         return nodes
 
     def query_schema_by_node_names(self, node_names, brain_id):
@@ -183,7 +184,7 @@ class Neo4jHandler:
                 }
         except Exception as e:
             logging.error("❌ Neo4j 스키마 조회 오류: %s", str(e))
-            raise RuntimeError(f"Neo4j 스키마 조회 오류: {str(e)}")
+            raise Neo4jException(f"Neo4j 스키마 조회 오류: {str(e)}")
 
     def _execute_with_retry(self, query: str, parameters: dict, retries: int = 3):
         """
@@ -197,7 +198,7 @@ class Neo4jHandler:
             except Exception as e:
                 logging.warning(f"재시도 {attempt+1}회 실패: {e}")
                 if attempt == retries - 1:
-                    raise
+                    raise Neo4jException((f"재시도 {attempt+1}회 실패: {e}"))
         return []
 
     def fetch_all_edges(self, brain_id: str) -> List[Dict]:
@@ -209,7 +210,7 @@ class Neo4jHandler:
             return self._execute_with_retry(query, {"brain_id": brain_id})
         except Exception as e:
             logging.error(f"❌ Neo4j 엣지 조회 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 엣지 조회 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 엣지 조회 실패: {str(e)}")
 
     def get_brain_graph(self, brain_id: str) -> Dict[str, List]:
         """특정 브레인의 노드와 엣지 정보 조회"""
@@ -253,7 +254,7 @@ class Neo4jHandler:
                 return result
         except Exception as e:
             logging.error("Neo4j 그래프 조회 오류: %s", str(e))
-            raise RuntimeError(f"그래프 조회 오류: {str(e)}") 
+            raise Neo4jException(f"그래프 조회 오류: {str(e)}") 
         
     def delete_brain(self, brain_id: str) -> None:
         try:
@@ -265,7 +266,7 @@ class Neo4jHandler:
             logging.info(f"✅ brain_id {brain_id}의 모든 데이터 삭제 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 데이터 삭제 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 데이터 삭제 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 데이터 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_source_id(self, source_id: str, brain_id: str) -> None:
         """
@@ -294,7 +295,7 @@ class Neo4jHandler:
             logging.info(f"✅ source_id {source_id}의 descriptions 삭제 완료")
         except Exception as e:
             logging.error(f"❌ descriptions 삭제 실패: {str(e)}")
-            raise RuntimeError(f"descriptions 삭제 실패: {str(e)}")
+            raise Neo4jException(f"descriptions 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_brain_id(self, brain_id: str) -> None:
         """
@@ -311,7 +312,7 @@ class Neo4jHandler:
             logging.info(f"✅ brain_id {brain_id}의 모든 데이터 삭제 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 데이터 삭제 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 데이터 삭제 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 데이터 삭제 실패: {str(e)}")
 
     def get_node_descriptions(self, node_name: str, brain_id: str) -> List[Dict]:
         """
@@ -349,7 +350,7 @@ class Neo4jHandler:
             
         except Exception as e:
             logging.error(f"❌ 노드 descriptions 조회 실패: {str(e)}")
-            raise RuntimeError(f"노드 descriptions 조회 실패: {str(e)}")
+            raise Neo4jException(f"노드 descriptions 조회 실패: {str(e)}")
 
     def get_nodes_by_source_id(self, source_id: str, brain_id: str) -> List[str]:
         """
@@ -373,7 +374,39 @@ class Neo4jHandler:
             
         except Exception as e:
             logging.error(f"❌ source_id로 노드 조회 실패: {str(e)}")
-            raise RuntimeError(f"source_id로 노드 조회 실패: {str(e)}")
+            raise Neo4jException(f"source_id로 노드 조회 실패: {str(e)}")
+
+    def get_edges_by_source_id(self, source_id: str, brain_id: str) -> List[Dict]:
+        """
+        특정 source_id가 descriptions에 포함된 노드들 간의 엣지를 반환합니다.
+        
+        Args:
+            source_id: 찾을 source_id
+            brain_id: 브레인 ID
+            
+        Returns:
+            List[Dict]: 엣지 목록 (source, target, relation 포함)
+        """
+        try:
+            query = """
+            MATCH (source:Node {brain_id: $brain_id})-[r:REL {brain_id: $brain_id}]->(target:Node {brain_id: $brain_id})
+            WHERE ANY(desc IN source.descriptions WHERE desc CONTAINS $source_id)
+               OR ANY(desc IN target.descriptions WHERE desc CONTAINS $source_id)
+            RETURN source.name as source, target.name as target, r.relation as relation
+            """
+            result = self._execute_with_retry(query, {"source_id": source_id, "brain_id": brain_id})
+            return [
+                {
+                    "source": record["source"],
+                    "target": record["target"],
+                    "relation": record["relation"]
+                }
+                for record in result
+            ]
+            
+        except Exception as e:
+            logging.error(f"❌ source_id로 엣지 조회 실패: {str(e)}")
+            raise Neo4jException(f"source_id로 엣지 조회 실패: {str(e)}")
 
     def __del__(self):
         self.close()

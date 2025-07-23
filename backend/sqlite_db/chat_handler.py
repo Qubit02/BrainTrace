@@ -58,6 +58,26 @@ class ChatHandler(BaseHandler):
             logging.error(f"채팅 삭제 중 오류 발생: {str(e)}")
             return False
     
+    def delete_all_chats_by_brain(self, brain_id: int) -> bool:
+        """
+        특정 brain_id에 해당하는 모든 채팅을 삭제합니다.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Chat WHERE brain_id = ?", (brain_id,))
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            conn.close()
+            if deleted:
+                logging.info("모든 채팅 삭제 완료: brain_id=%s", brain_id)
+            else:
+                logging.warning("채팅 삭제 실패: 존재하지 않는 brain_id=%s", brain_id)
+            return deleted
+        except Exception as e:
+            logging.error(f"모든 채팅 삭제 중 오류 발생: {str(e)}")
+            return False
+    
     def get_referenced_nodes(self, chat_id: int) -> str | None:
         """
         특정 채팅 ID에 해당하는 대화의 참고 노드 목록을 조회합니다.
@@ -120,4 +140,26 @@ class ChatHandler(BaseHandler):
             ]
         except Exception as e:
             logging.error(f"채팅 목록 조회 중 오류 발생: {str(e)}")
+            return None 
+
+    def get_chat_by_id(self, chat_id: int) -> dict | None:
+        """
+        특정 chat_id에 해당하는 채팅 정보를 반환합니다.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT chat_id, is_ai, message, referenced_nodes FROM Chat WHERE chat_id = ?", (chat_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                return {
+                    "chat_id": row[0],
+                    "is_ai": bool(row[1]),
+                    "message": row[2],
+                    "referenced_nodes": [node.strip().strip('\"') for node in row[3].split(",")] if row[3] else []
+                }
+            return None
+        except Exception as e:
+            logging.error(f"chat_id로 채팅 조회 중 오류 발생: {str(e)}")
             return None 

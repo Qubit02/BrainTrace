@@ -1,0 +1,185 @@
+/* SourceQuotaBar.css - 지식 그래프 현황 패널 (라이트/심플 스타일) */
+
+.source-quota-bar.technical {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 12px 10px 12px;
+    background: #fafafa;
+    color: #222;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 1px 4px 0 rgba(60, 60, 60, 0.04);
+    border-top: none;
+    margin: 0;
+    min-width: 200px;
+    max-width: 100%;
+}
+
+.source-quota-bar.technical.with-strong-border {
+    border-top: 1px solid #e8e9eb;
+}
+
+.main-title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #222;
+    margin-bottom: 2px;
+    margin-left: 2px;
+}
+
+.source-quota-bar .main-title {
+    border-radius: 4px 4px 0 0;
+    padding: 4px 0 4px 0;
+    background: transparent;
+}
+
+
+.collapse-toggle {
+    cursor: pointer;
+}
+
+.collapse-toggle>svg {
+    transition: color 0.18s, transform 0.18s;
+    color: #888;
+}
+
+.collapse-toggle>svg:hover {
+    color: #111;
+    transform: scale(1.12);
+}
+
+.collapse-toggle>svg:active {
+    color: #222;
+    transform: scale(0.98);
+}
+
+.quota-details {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    width: 100%;
+}
+
+.data-metric {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: white;
+    border-radius: 4px;
+    padding: 6px 10px 6px 8px;
+    font-size: 0.98rem;
+    border: 1px solid #e0e0e0;
+    position: relative;
+}
+
+.data-metric:hover {
+    background: #ededed;
+}
+
+.metric-label {
+    font-weight: 600;
+    color: #444;
+    min-width: 90px;
+    flex: 0 0 110px;
+    text-align: left;
+}
+
+.metric-value {
+    font-size: 1em;
+    font-weight: 600;
+    color: #111;
+    margin-left: auto;
+    margin-right: 0;
+    text-align: right;
+    flex: 1 1 auto;
+}
+
+.data-metric.total {
+    background: linear-gradient(90deg, #ffffff 60%, #fafafa 100%);
+    color: #111;
+    font-size: 1.1em;
+    font-weight: 800;
+    box-shadow: none;
+    margin-top: 4px;
+}
+
+.data-metric.total .metric-label {
+    color: #222;
+}
+
+.data-metric.total .metric-value {
+    color: #111;
+}
+
+.data-metric.total .metric-desc {
+    color: #444;
+}
+
+.qmark-tooltip {
+    display: inline-block;
+    position: relative;
+    margin-left: 7px;
+    cursor: pointer;
+    font-size: 0.85em;
+    color: #888;
+    font-weight: 700;
+    width: 1.1em;
+    height: 1.1em;
+    text-align: center;
+    line-height: 1.1em;
+    border-radius: 50%;
+    background: #f2f2f2;
+    box-shadow: 0 1px 3px 0 rgba(120, 120, 120, 0.07);
+}
+
+.qmark-tooltip:hover {
+    background: #222;
+    color: #fff;
+}
+
+.qmark-tooltip .custom-tooltip {
+    display: none;
+    position: absolute;
+    left: auto;
+    right: 0;
+    top: -50px;
+    transform: none;
+    min-width: 170px;
+    max-width: 220px;
+    background: #fff;
+    color: #111;
+    font-size: 0.97em;
+    font-weight: 400;
+    padding: 8px 13px;
+    border-radius: 7px;
+    box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.10);
+    z-index: 2147483647;
+    white-space: normal;
+    pointer-events: none;
+    opacity: 0;
+    border: 1px solid #e0e0e0;
+    transition: opacity 0.18s;
+}
+
+.qmark-tooltip:hover .custom-tooltip {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 400px) {
+    .source-quota-bar.technical {
+        min-width: 120px;
+        padding: 7px 2px 5px 2px;
+    }
+
+    .quota-details {
+        gap: 2px;
+    }
+
+    .data-metric {
+        font-size: 0.95em;
+        padding: 4px 4px 4px 4px;
+    }
+
+}

@@ -82,6 +82,33 @@ class BaseHandler:
             )
             ''')
 
+            # MDFile 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS MDFile (
+                md_id INTEGER PRIMARY KEY,
+                md_title TEXT NOT NULL,
+                md_path TEXT NOT NULL,
+                md_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                type TEXT,
+                brain_id INTEGER,
+                FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
+            )
+            ''')
+
+            # DocxFile 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS DocxFile (
+                docx_id INTEGER PRIMARY KEY,
+                docx_title TEXT NOT NULL,
+                docx_path TEXT NOT NULL,
+                docx_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                type TEXT,
+                brain_id INTEGER,
+                docx_text TEXT,
+                FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
+            )
+            ''')
+
             # Chat 테이블 생성
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS Chat (

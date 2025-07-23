@@ -1,77 +1,72 @@
 // AppHeader.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './AppHeader.css';
-import logo from '../../assets/logo.png';
-import { FiEdit2 } from 'react-icons/fi';
-import { getOrCreateUserName, setUserName } from '../../utils/userName';
-
+import { TbBrandAirtable } from "react-icons/tb";
+import { TbBrandAmongUs } from "react-icons/tb";
+import { TbBrand4Chan } from "react-icons/tb";
+import { TbBrandBilibili } from "react-icons/tb";
+import { DiHtml5DeviceAccess } from "react-icons/di";
+import { DiGoogleAnalytics } from "react-icons/di";
+import { IoLogoOctocat } from "react-icons/io";
+import { BiLogoCodepen } from "react-icons/bi";
+import { PiDropboxLogo } from "react-icons/pi";
 export default function AppHeader() {
-    const [userName, setUserNameState] = useState('...');
-    const [editing, setEditing] = useState(false);
-    const [tempName, setTempName] = useState('');
     const [today, setToday] = useState('');
+    const [currentTime, setCurrentTime] = useState('');
 
-    // 날짜 초기화
-    useEffect(() => {
+    // 날짜와 시간 업데이트 함수
+    const updateDateTime = useCallback(() => {
         const date = new Date();
-        const formatted = date.toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            weekday: 'short',
-        });
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        const weekday = weekdays[date.getDay()];
+
+        const formatted = `${year}년 ${month}월 ${day}일 (${weekday})`;
         setToday(formatted);
+
+        // 시간 포맷팅
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const timeFormatted = `${hours}:${minutes}`;
+        setCurrentTime(timeFormatted);
     }, []);
 
-    // 사용자 이름 초기화
+    // 날짜와 시간 초기화
     useEffect(() => {
-        const name = getOrCreateUserName();
-        setUserNameState(name);
-        setTempName(name);
-    }, []);
 
-    const handleSave = () => {
-        const trimmed = tempName.trim() || 'user-default';
-        setUserName(trimmed);
-        setUserNameState(trimmed);
-        setEditing(false);
-    };
+        // 초기 실행
+        updateDateTime();
+
+        // 다음 분의 시작까지 대기 후 1분마다 업데이트
+        const now = new Date();
+        const nextMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() + 1, 0, 0);
+        const delayToNextMinute = nextMinute.getTime() - now.getTime();
+
+        const timeoutId = setTimeout(() => {
+            updateDateTime(); // 첫 번째 분 업데이트
+            const intervalId = setInterval(updateDateTime, 60000); // 이후 1분마다 업데이트
+
+            // cleanup 함수에서 interval 정리
+            return () => clearInterval(intervalId);
+        }, delayToNextMinute);
+
+        // cleanup 함수
+        return () => {
+            clearTimeout(timeoutId);
+        };
+    }, []);
 
     return (
         <header className="app-header">
             <div className="header-left">
-                <img src={logo} alt="brainTrace 로고" className="app-logo" />
+                <PiDropboxLogo size={29} color='black' style={{ marginRight: 11 }} />
                 <span className="app-name">brainTrace</span>
             </div>
-
             <div className="header-right">
-                <div className="user-info-block">
-                    <div className="today-text">{today}</div>
-                    {editing ? (
-                        <input
-                            value={tempName}
-                            onChange={e => setTempName(e.target.value)}
-                            onBlur={handleSave}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter') handleSave();
-                                if (e.key === 'Escape') {
-                                    setEditing(false);
-                                    setTempName(userName);
-                                }
-                            }}
-                            autoFocus
-                            className="username-input"
-                        />
-                    ) : (
-                        <button
-                            className="avatar-round"
-                            onClick={() => setEditing(true)}
-                        >
-                            {userName}
-                            <FiEdit2 className="edit-icon" />
-                        </button>
-                    )}
-                </div>
+                <span className="today-text strong-date">{today}</span>
+                <span className="current-time">{currentTime}</span>
             </div>
         </header>
     );

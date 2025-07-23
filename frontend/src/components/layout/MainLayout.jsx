@@ -1,6 +1,6 @@
 // src/components/layout/MainLayout.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Panel,
   PanelGroup,
@@ -8,15 +8,15 @@ import {
 } from 'react-resizable-panels';
 import './MainLayout.css';
 
-import ProjectPanel from '../panels/ProjectPanel';
-import SourcePanel from '../panels/SourcePanel';
-import ChatPanel from '../panels/ChatPanel';
-import InsightPanel from '../panels/InsightPanel';
-import { listBrains } from '../../../../backend/api/backend'
+import ProjectPanel from '../panels/Project/ProjectPanel';
+import SourcePanel from '../panels/Source/SourcePanel';
+import ChatPanel from '../panels/Chat/ChatPanel';
+import InsightPanel from '../panels/Insight/InsightPanel';
+import Spinner from '../common/Spinner';
 
 // 패널 사이즈 상수
 const PANEL = {
-  SOURCE: { DEFAULT: 18, MIN: 10, COLLAPSED: 5 },
+  SOURCE: { DEFAULT: 19, MIN: 10, COLLAPSED: 5 },
   CHAT: { DEFAULT: 50, MIN: 30 },
   INSIGHT: { DEFAULT: 40, MIN: 10, COLLAPSED: 5 },
 };
@@ -34,14 +34,9 @@ function MainLayout() {
 
   // 라우팅 관련 상태
   const { projectId } = useParams();
-  const navigate = useNavigate();
 
   // 프로젝트 및 세션 상태
-  const [hasProject, setHasProject] = useState(true);  // 존재하지 않는 projectId 방지용
-  const [activeProject, setActiveProject] = useState(projectId);  // 현재 brain_id
-  const lastSavedProjectRef = useRef(null); // 이전에 저장한 프로젝트 ID를 기억하기 위한 ref
-  const [sessions, setSessions] = useState([]);  // 채팅 세션 목록
-  const [currentSessionId, setCurrentSessionId] = useState(null);  // 현재 선택된 세션 ID
+  const [selectedBrainId, setSelectedBrainId] = useState(projectId);  // 현재 brain_id
 
   // 패널 접힘 상태
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
@@ -60,42 +55,57 @@ function MainLayout() {
     syncToStandaloneWindow({ action: 'refresh' });
   };
 
+  // 소스 개수 새로고침 트리거
+  const [sourceCountRefreshTrigger, setSourceCountRefreshTrigger] = useState(0);
+  const handleSourceCountRefresh = () => {
+    setSourceCountRefreshTrigger(prev => prev + 1);
+  };
+
   // 그래프 데이터 변경 시 전체 노드명 업데이트
   const handleGraphDataUpdate = (graphData) => {
     const nodeNames = graphData?.nodes?.map(n => n.name) || [];
     setAllNodeNames(nodeNames);
   };
 
+  // 추가된 노드 상태
+  const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]);
+
   // 각 패널 크기 조절을 위한 ref
   const sourcePanelRef = useRef(null);
   const chatPanelRef = useRef(null);
   const InsightPanelRef = useRef(null);
-  const firstPdfExpand = useRef(true);  // PDF 처음 열릴 때 한 번만 확장되도록
+  const firstSourceExpand = useRef(true);  // 소스 처음 열릴 때 한 번만 확장되도록
 
   // 패널 크기 상태
   const [sourcePanelSize, setSourcePanelSize] = useState(PANEL.SOURCE.DEFAULT);
   const [chatPanelSize, setChatPanelSize] = useState(PANEL.CHAT.DEFAULT);
   const [insightPanelSize, setInsightPanelSize] = useState(PANEL.INSIGHT.DEFAULT);
 
-  // PDF 열림 여부 상태
-  const [isPDFOpen, setIsPDFOpen] = useState(false);
+  // 소스 열림 여부 상태
+  const [isSourceOpen, setIsSourceOpen] = useState(false);
 
-  // 현재 소스 개수 상태 (상단 표시용 등)
-  const [sourceCount, setSourceCount] = useState(0);
+  // 패널 데이터 준비 상태
+  const [isSourcePanelReady, setSourcePanelReady] = useState(false); // SourcePanel 준비 상태
+  const [isGraphReady, setGraphReady] = useState(false);
+  const [isChatReady, setChatReady] = useState(false); // ChatPanel 준비 상태
+  const allReady = isSourcePanelReady && isGraphReady && isChatReady;
+
+  // 프로젝트 이동 중 로딩 상태
+  const [isProjectLoading, setIsProjectLoading] = useState(false);
 
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
     localStorage.setItem('graphStateSync', JSON.stringify({
-      brainId: activeProject,
+      brainId: selectedBrainId,
       timestamp: Date.now(),
       ...data
     }));
   };
 
-  // PDF 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
-  const handleBackFromPDF = () => {
-    setIsPDFOpen(false);
-    firstPdfExpand.current = true;
+  // 소스 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
+  const handleBackFromSource = () => {
+    setIsSourceOpen(false);
+    firstSourceExpand.current = true;
     if (sourcePanelRef.current) {
       sourcePanelRef.current.resize(PANEL.SOURCE.DEFAULT);
     }
@@ -103,13 +113,17 @@ function MainLayout() {
 
   // 프로젝트 변경 시 상태 저장 및 라우팅 이동 처리
   const handleProjectChange = (projectId) => {
-    // 기존 세션을 localStorage에 저장
-    if (activeProject && sessions.length > 0) {
-      localStorage.setItem(`sessions-${activeProject}`, JSON.stringify(sessions));
-    }
-
-    setActiveProject(projectId);
+    setIsProjectLoading(true);
+    setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
+    setSelectedBrainId(projectId);
     setReferencedNodes([]);
+    setOpenSourceId(null);
+    setFocusSourceId(null);
+    firstSourceExpand.current = true;
+    setIsSourceOpen(false);
+    setSourcePanelSize(PANEL.SOURCE.DEFAULT);
+    setChatPanelSize(PANEL.CHAT.DEFAULT);
+    setInsightPanelSize(PANEL.INSIGHT.DEFAULT);
   };
 
   // 패널 리사이즈 핸들러들 (사용자 리사이즈 반영용)
@@ -150,82 +164,12 @@ function MainLayout() {
   };
 
   // 특정 소스를 열 때 포커스 ID와 타임스탬프를 기록
+  const [openSourceId, setOpenSourceId] = useState(null);
+  
   const handleOpenSource = (sourceId) => {
+    setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
-
-  // URL 변경(projectId 변경)에 따라 activeProject 상태 업데이트
-  useEffect(() => {
-    setActiveProject(projectId);
-  }, [projectId]);
-
-  // 세션 저장: 프로젝트 ID 또는 세션 목록이 바뀌었을 때 localStorage에 저장
-  useEffect(() => {
-    if (!activeProject) return;
-
-    const activeProjectStr = String(activeProject);
-    const projectIdStr = String(projectId);
-
-    if (
-      activeProjectStr === projectIdStr &&
-      lastSavedProjectRef.current !== activeProjectStr
-    ) {
-      localStorage.setItem(`sessions-${activeProjectStr}`, JSON.stringify(sessions));
-      lastSavedProjectRef.current = activeProjectStr;
-    }
-  }, [sessions, activeProject, projectId]);
-
-  // activeProject 변경 시 localStorage에서 세션 목록을 불러오고 초기 세션 설정
-  useEffect(() => {
-    if (!activeProject) return;
-    const saved = localStorage.getItem(`sessions-${activeProject}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setSessions(parsed);
-      setCurrentSessionId(parsed[0]?.id || null);
-    } else {
-      setSessions([]);
-      setCurrentSessionId(null);
-    }
-  }, [activeProject]);
-
-  // projectId가 유효한 brain인지 확인하고 존재하지 않으면 홈으로 이동
-  useEffect(() => {
-    if (!projectId) return;
-    listBrains()
-      .then(list => {
-        const exist = list.some(b => b.brain_id === Number(projectId));
-        if (!exist) navigate('/');
-        setHasProject(exist);
-      })
-      .catch(() => navigate('/'));
-  }, [projectId, navigate]);
-
-  // PDF 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
-  useEffect(() => {
-    if (!sourcePanelRef.current) return;
-
-    if (sourceCollapsed) {
-      sourcePanelRef.current.resize(PANEL.SOURCE.COLLAPSED);
-    } else if (isPDFOpen && firstPdfExpand.current) {
-      sourcePanelRef.current.resize(40);
-      firstPdfExpand.current = false;
-    } else {
-      sourcePanelRef.current.resize(sourcePanelSize);
-    }
-  }, [isPDFOpen, sourceCollapsed, sourcePanelSize]);
-
-  // 메모 패널 열림/접힘에 따른 크기 조절
-  useEffect(() => {
-    if (!InsightPanelRef.current) return;
-    if (insightCollapsed) {
-      InsightPanelRef.current.resize(PANEL.INSIGHT.COLLAPSED);
-    } else {
-      InsightPanelRef.current.resize(
-        insightPanelSize === PANEL.INSIGHT.COLLAPSED ? PANEL.INSIGHT.DEFAULT : insightPanelSize
-      );
-    }
-  }, [insightCollapsed]);
 
   // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
   useEffect(() => {
@@ -240,19 +184,54 @@ function MainLayout() {
     }
   }, [sourceCollapsed, insightCollapsed]);
 
-  // 전역 dragover 이벤트 핸들링 (기본 동작 방지)
+  // 소스 열림 여부나 소스 패널 접힘 여부에 따라 소스 패널 크기 조절
   useEffect(() => {
-    const handleDragOver = (e) => e.preventDefault();
-    window.addEventListener('dragover', handleDragOver);
-    return () => window.removeEventListener('dragover', handleDragOver);
-  }, []);
+    if (!sourcePanelRef.current) return;
+
+    if (sourceCollapsed) {
+      sourcePanelRef.current.resize(PANEL.SOURCE.COLLAPSED);
+    } else if (isSourceOpen && firstSourceExpand.current) {
+      sourcePanelRef.current.resize(40);
+      firstSourceExpand.current = false;
+    } else {
+      sourcePanelRef.current.resize(sourcePanelSize);
+    }
+  }, [isSourceOpen, sourceCollapsed, sourcePanelSize]);
+
+  // 메모 패널 열림/접힘에 따른 크기 조절
+  useEffect(() => {
+    if (!InsightPanelRef.current) return;
+    if (insightCollapsed) {
+      InsightPanelRef.current.resize(PANEL.INSIGHT.COLLAPSED);
+    } else {
+      InsightPanelRef.current.resize(
+        insightPanelSize === PANEL.INSIGHT.COLLAPSED ? PANEL.INSIGHT.DEFAULT : insightPanelSize
+      );
+    }
+  }, [insightCollapsed]);
+  
+  // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
+  useEffect(() => {
+    setSelectedBrainId(projectId);
+    setIsProjectLoading(true);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (isProjectLoading && allReady) setIsProjectLoading(false);
+    // projectId가 바뀔 때만 검사
+  }, [allReady, isProjectLoading, projectId]);
 
   return (
-    <div className="main-container">
+    <div className="main-container" style={{ position: 'relative' }}>
+      {isProjectLoading && (
+        <div className="loading-overlay">
+          <Spinner />
+        </div>
+      )}
       {/* 좌측 프로젝트 선택 패널 */}
       <div className="layout project-layout">
         <ProjectPanel
-          activeProject={Number(activeProject)}
+          selectedBrainId={Number(selectedBrainId)}
           onProjectChange={handleProjectChange}
         />
       </div>
@@ -271,15 +250,17 @@ function MainLayout() {
         >
           <div className="layout-inner source-inner">
             <SourcePanel
-              activeProject={Number(activeProject)}
+              selectedBrainId={Number(selectedBrainId)}
               collapsed={sourceCollapsed}
               setCollapsed={setSourceCollapsed}
-              setIsSourceOpen={setIsPDFOpen}
-              onBackFromPDF={handleBackFromPDF}
+              setIsSourceOpen={setIsSourceOpen}
+              onBackFromSource={handleBackFromSource}
               onGraphRefresh={handleGraphRefresh}
+              onSourceCountRefresh={handleSourceCountRefresh}
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
-              onSourceCountChange={setSourceCount}
+              openSourceId={openSourceId}
+              onSourcePanelReady={() => setSourcePanelReady(true)}
             />
           </div>
         </Panel>
@@ -295,15 +276,11 @@ function MainLayout() {
         >
           <div className="layout-inner chat-inner">
             <ChatPanel
-              activeProject={activeProject}
+              selectedBrainId={selectedBrainId}
               onReferencedNodesUpdate={onReferencedNodesUpdate}
-              sessions={sessions}
-              setSessions={setSessions}
-              currentSessionId={currentSessionId}
-              setCurrentSessionId={setCurrentSessionId}
-              allNodeNames={allNodeNames}
               onOpenSource={handleOpenSource}
-              sourceCount={sourceCount}
+              onChatReady={setChatReady}
+              sourceCountRefreshTrigger={sourceCountRefreshTrigger}
             />
           </div>
         </Panel>
@@ -321,13 +298,17 @@ function MainLayout() {
         >
           <div className="layout-inner insight-inner">
             <InsightPanel
-              activeProject={Number(activeProject)}
+              selectedBrainId={Number(selectedBrainId)}
               collapsed={insightCollapsed}
               setCollapsed={setInsightCollapsed}
               referencedNodes={referencedNodes}
               graphRefreshTrigger={graphRefreshTrigger}
               onGraphDataUpdate={handleGraphDataUpdate}
               focusNodeNames={focusNodeNames}
+              onGraphReady={setGraphReady}
+              setReferencedNodes={setReferencedNodes}
+              setFocusNodeNames={setFocusNodeNames}
+              setNewlyAddedNodeNames={setNewlyAddedNodeNames}
             />
           </div>
         </Panel>

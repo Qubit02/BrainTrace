@@ -4,16 +4,19 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import signal
 import logging
-import sqlite3
 import uvicorn
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from exceptions.custom_exceptions import AppException
+from schemas.error_response import ErrorResponse
+from fastapi.exceptions import RequestValidationError
 from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 
 # 기존 라우터
-from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter
+from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter, mdRouter, docxRouter
+
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -61,11 +64,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="BrainTrace API",
     description="지식 그래프 기반 질의응답 시스템 API",
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# ─── Error핸들러 추가 ─────────────────────────────────
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            code=exc.code,
+            message=exc.message,
+            detail=str(request.url)
+        ).model_dump()
+    )
 
 # ─── CORS 설정 ──────────────────────────────────────
 app.add_middleware(
@@ -82,12 +97,16 @@ app.include_router(brainRouter.router)
 app.include_router(memoRouter.router)
 app.include_router(pdfRouter.router)        
 app.include_router(textFileRouter.router)   
+app.include_router(mdRouter.router)
 app.include_router(chatRouter.router)
 app.include_router(searchRouter.router)
 app.include_router(voiceRouter.router)
+app.include_router(docxRouter.router)
 
 app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
 app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")
+app.mount("/uploaded_mds", StaticFiles(directory="uploaded_mds"), name="uploaded_mds")
+app.mount("/uploaded_docx", StaticFiles(directory="uploaded_docx"), name="uploaded_docx")
 
 
 # ─── 서버 실행 ──────────────────────────────────────

@@ -36,7 +36,9 @@ class ProcessTextRequest(BaseModel):
     text: str
     brain_id: str = Field(..., description="브레인 ID (문자열)")
     source_id: str = Field(..., description="소스 ID (문자열)")
+    model: str = Field("gpt", description="사용할 모델 (gpt 또는 ollama)")
 
 class AnswerRequest(BaseModel):
     question: str
     brain_id: str = Field(..., description="브레인 ID (문자열)")
+    model: str = Field("gpt", description="사용할 모델 (gpt 또는 ollama)")
