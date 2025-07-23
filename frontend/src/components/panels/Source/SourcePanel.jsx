@@ -71,6 +71,15 @@ export default function SourcePanel({
   const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
   const PANEL_WIDTH_THRESHOLD_SOURCE = 220;            // 소스 버튼 텍스트/아이콘 기준
 
+  // type별 id/title/path 추출 함수 맵
+  const typeMeta = {
+    pdf:   { id: f => f.pdf_id,    title: f => f.pdf_title,    path: f => f.pdf_path    },
+    txt:   { id: f => f.txt_id,    title: f => f.txt_title,    path: f => f.txt_path    },
+    md:    { id: f => f.md_id,     title: f => f.md_title,     path: f => f.md_path     },
+    docx:  { id: f => f.docx_id,   title: f => f.docx_title,   path: f => f.docx_path   },
+    memo:  { id: f => f.memo_id,   title: f => f.memo_title,   path: () => undefined    }
+  };
+
   // === useEffect 훅들 ===
   // 데이터 메트릭 재계산 (프로젝트 변경 시)
   useEffect(() => { refreshDataMetrics(); }, [selectedBrainId, uploadKey]);
@@ -108,19 +117,10 @@ export default function SourcePanel({
   // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
   useEffect(() => {
     if (focusSource) {
-      const targetFile = allFiles.find(file => {
-        if (file.type === 'pdf') return file.pdf_id == focusSource.id;
-        if (['txt', 'md', 'memo', 'docx'].includes(file.type)) {
-          if (file.type === 'txt') return file.txt_id == focusSource.id;
-          if (file.type === 'md') return file.md_id == focusSource.id;
-          if (file.type === 'memo') return file.memo_id == focusSource.id;
-          if (file.type === 'docx') return file.docx_id == focusSource.id;
-        }
-        return false;
-      });
+      const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(focusSource.id));
       if (targetFile) {
         if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-        else if (['txt', 'md', 'memo', 'docx'].includes(targetFile.type)) setOpenedFile(targetFile);
+        else setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
       }
@@ -130,14 +130,7 @@ export default function SourcePanel({
   // openSourceId가 변경될 때 해당 소스를 자동으로 연다
   useEffect(() => {
     if (!openSourceId || !allFiles.length) return;
-    const targetFile = allFiles.find(file => {
-      if (file.type === 'pdf') return String(file.pdf_id) === String(openSourceId);
-      if (file.type === 'txt') return String(file.txt_id) === String(openSourceId);
-      if (file.type === 'md') return String(file.md_id) === String(openSourceId);
-      if (file.type === 'memo') return String(file.memo_id) === String(openSourceId);
-      if (file.type === 'docx') return String(file.docx_id) === String(openSourceId);
-      return false;
-    });
+    const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(openSourceId));
     if (targetFile) {
       if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
       else setOpenedFile(targetFile);
@@ -158,13 +151,13 @@ export default function SourcePanel({
         getMDFilesByBrain(selectedBrainId),
         getDocxFilesByBrain(selectedBrainId)
       ]);
-      // txt, memo, md, docx를 각각 type: 'txt', 'memo', 'md', 'docx'로 구분
+      // typeMeta를 활용해 merged 생성
       const merged = [
-        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
-        ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt', txt_path: txt.txt_path, txt_id: txt.txt_id })),
-        ...mds.map(md => ({ ...md, title: md.md_title, type: 'md', md_path: md.md_path, md_id: md.md_id })),
-        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo', memo_id: memo.memo_id })),
-        ...docxfiles.map(docx => ({ ...docx, title: docx.docx_title, type: 'docx', docx_path: docx.docx_path, docx_id: docx.docx_id }))
+        ...pdfs.map(pdf => ({ ...pdf, title: typeMeta.pdf.title(pdf), type: 'pdf', pdf_id: typeMeta.pdf.id(pdf), pdf_path: typeMeta.pdf.path(pdf) })),
+        ...txts.map(txt => ({ ...txt, title: typeMeta.txt.title(txt), type: 'txt', txt_id: typeMeta.txt.id(txt), txt_path: typeMeta.txt.path(txt) })),
+        ...mds.map(md => ({ ...md, title: typeMeta.md.title(md), type: 'md', md_id: typeMeta.md.id(md), md_path: typeMeta.md.path(md) })),
+        ...memos.map(memo => ({ ...memo, title: typeMeta.memo.title(memo), type: 'memo', memo_id: typeMeta.memo.id(memo) })),
+        ...docxfiles.map(docx => ({ ...docx, title: typeMeta.docx.title(docx), type: 'docx', docx_id: typeMeta.docx.id(docx), docx_path: typeMeta.docx.path(docx) }))
       ];
       setAllFiles(merged);
       setUploadKey(k => k + 1);
@@ -207,12 +200,7 @@ export default function SourcePanel({
 
   // 파일 열기 핸들러: pdf는 그대로, 나머지는 모두 openedFile로
   const handleOpenFile = (id, type) => {
-    let file;
-    if (type === 'txt') file = allFiles.find(f => f.type === 'txt' && String(f.txt_id) === String(id));
-    else if (type === 'md') file = allFiles.find(f => f.type === 'md' && String(f.md_id) === String(id));
-    else if (type === 'memo') file = allFiles.find(f => f.type === 'memo' && String(f.memo_id) === String(id));
-    else if (type === 'pdf') file = allFiles.find(f => f.type === 'pdf' && String(f.pdf_id) === String(id));
-    else if (type === 'docx') file = allFiles.find(f => f.type === 'docx' && String(f.docx_id) === String(id));
+    const file = allFiles.find(f => f.type === type && String(typeMeta[type]?.id(f)) === String(id));
     if (file) {
       if (type === 'pdf') setOpenedPDF(file);
       else setOpenedFile(file);
@@ -430,10 +418,9 @@ export default function SourcePanel({
             onSourceCountRefresh?.();
             if (uploadedFiles.length > 0) {
               const last = uploadedFiles[uploadedFiles.length - 1];
-              if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });
-              else if (last.text_id) setPendingFocusSource({ id: last.text_id, type: 'text' }); // text_id로 변경
-              else if (last.md_id) setPendingFocusSource({ id: last.md_id, type: 'md' });
-              else if (last.docx_id) setPendingFocusSource({ id: last.docx_id, type: 'docx' });
+              if (last && last.type && typeMeta[last.type]) {
+                setPendingFocusSource({ id: typeMeta[last.type].id(last), type: last.type });
+              }
             }
             setShowUploadModal(false);
           } catch (e) {
