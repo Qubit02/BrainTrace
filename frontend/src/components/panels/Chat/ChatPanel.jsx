@@ -199,6 +199,20 @@ function ChatPanel({
     }
   };
 
+  // ===== 메시지 복사 핸들러 =====
+  const handleCopyMessage = async (m) => {
+    try {
+      let messageToCopy = m.message;
+      if (m.chat_id) {
+        const serverMessage = await getChatMessageById(m.chat_id);
+        if (serverMessage) messageToCopy = serverMessage;
+      }
+      await navigator.clipboard.writeText(messageToCopy);
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
   const hasChatStarted = chatHistory.length > 0;
   return (
     <div className="panel-container">
@@ -290,21 +304,7 @@ function ChatPanel({
                     <button
                       className="copy-button"
                       title="복사"
-                      onClick={async () => {
-                        try {
-                          // chat_id가 있으면 서버에서 message를 받아서 복사
-                          if (m.chat_id) {
-                            const message = await getChatMessageById(m.chat_id);
-                            console.log('message:', message);
-                            await navigator.clipboard.writeText(message);
-                          } else {
-                            // fallback: 현재 메시지 그대로 복사
-                            await navigator.clipboard.writeText(m.message);
-                          }
-                        } catch (err) {
-                          console.error('복사 실패:', err);
-                        }
-                      }}
+                      onClick={() => handleCopyMessage(m)}
                     >
                       <IoCopyOutline size={18} />
                     </button>
