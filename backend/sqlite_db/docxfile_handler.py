@@ -11,13 +11,13 @@ class DocxFileHandler(BaseHandler):
                 brain = brain_handler.get_brain(brain_id)
                 if not brain:
                     raise ValueError(f"존재하지 않는 Brain ID: {brain_id}")
+            docx_id = self._get_next_id()  # 직접 id 생성
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO DocxFile (docx_title, docx_path, type, brain_id, docx_text) VALUES (?, ?, ?, ?, ?)",
-                (docx_title, docx_path, type, brain_id, docx_text)
+                "INSERT INTO DocxFile (docx_id, docx_title, docx_path, type, brain_id, docx_text) VALUES (?, ?, ?, ?, ?, ?)",
+                (docx_id, docx_title, docx_path, type, brain_id, docx_text)
             )
-            docx_id = cursor.lastrowid
             cursor.execute("SELECT docx_date FROM DocxFile WHERE docx_id = ?", (docx_id,))
             docx_date = cursor.fetchone()[0]
             conn.commit()
@@ -65,6 +65,75 @@ class DocxFileHandler(BaseHandler):
         cols = [c[0] for c in cursor.description]
         conn.close()
         return [dict(zip(cols, row)) for row in rows]
+
+    def update_docxfile(self, docx_id: int, docx_title: str = None, docx_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None, docx_text: Optional[str] = None) -> bool:
+        """DOCX 파일 정보 업데이트"""
+        try:
+            # 대상 DOCX 파일 존재 확인
+            docxfile = self.get_docxfile(docx_id)
+            if not docxfile:
+                raise ValueError(f"존재하지 않는 DOCX 파일 ID: {docx_id}")
+
+            # brain_id 유효성 검사
+            if brain_id is not None and brain_id != "null":
+                from .brain_handler import BrainHandler
+                brain_handler = BrainHandler(self.db_path)
+                if not brain_handler.get_brain(brain_id):
+                    raise ValueError(f"존재하지 않는 Brain ID: {brain_id}")
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            update_fields = []
+            params = []
+
+            if docx_title is not None:
+                update_fields.append("docx_title = ?")
+                params.append(docx_title)
+            if docx_path is not None:
+                update_fields.append("docx_path = ?")
+                params.append(docx_path)
+            if type is not None:
+                update_fields.append("type = ?")
+                params.append(type)
+            if docx_text is not None:
+                update_fields.append("docx_text = ?")
+                params.append(docx_text)
+
+            # brain_id 처리: null 또는 값
+            if brain_id is None or brain_id == "null":
+                update_fields.append("brain_id = NULL")
+            elif brain_id is not None:
+                update_fields.append("brain_id = ?")
+                params.append(brain_id)
+
+            if not update_fields:
+                conn.close()
+                return False  # 변경할 내용 없음
+
+            update_fields.append("docx_date = CURRENT_TIMESTAMP")
+
+            query = f"UPDATE DocxFile SET {', '.join(update_fields)} WHERE docx_id = ?"
+            params.append(docx_id)
+
+            cursor.execute(query, params)
+            updated = cursor.rowcount > 0
+
+            conn.commit()
+            conn.close()
+
+            if updated:
+                logging.info("DOCX 파일 업데이트 완료: docx_id=%s", docx_id)
+            else:
+                logging.warning("DOCX 파일 업데이트 실패: 존재하지 않는 docx_id=%s", docx_id)
+
+            return updated
+        except ValueError as e:
+            logging.error("DOCX 파일 업데이트 실패: %s", str(e))
+            raise
+        except Exception as e:
+            logging.error("DOCX 파일 업데이트 오류: %s", str(e))
+            raise RuntimeError(f"DOCX 파일 업데이트 오류: {str(e)}")
 
     def delete_docxfile(self, docx_id: int) -> bool:
         """DOCX 파일 삭제"""
