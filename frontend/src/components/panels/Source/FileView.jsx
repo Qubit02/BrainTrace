@@ -303,6 +303,10 @@ export default function FileView({
     const memoData = e.dataTransfer.getData('application/json-memo');
     if (memoData) {
       const { id, name, content } = JSON.parse(memoData);
+      if (!content || content.trim() === "") {
+        toast.error('메모 내용이 비어 있어 소스로 추가할 수 없습니다.');
+        return;
+      }
       const key = `${name}-${content.length}-memo`;
       // (1) 큐에 추가
       setUploadQueue(q => [
