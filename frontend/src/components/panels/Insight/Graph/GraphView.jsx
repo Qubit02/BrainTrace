@@ -62,8 +62,8 @@ function GraphView({
   const [isAnimating, setIsAnimating] = useState(false); // 타임랩스 등 애니메이션 동작 여부
   const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
-  const [hoveredNode, setHoveredNode] = useState(null); // ⭐️ hover된 노드 상태 추가
-  const [hoveredLink, setHoveredLink] = useState(null); // ⭐️ hover된 링크 상태 추가
+  const [hoveredNode, setHoveredNode] = useState(null); // hover된 노드 상태 추가
+  const [hoveredLink, setHoveredLink] = useState(null); // hover된 링크 상태 추가
   // 드래그 중인 노드와 연결된 노드 집합 상태
   const [draggedNode, setDraggedNode] = useState(null);
   const [connectedNodeSet, setConnectedNodeSet] = useState(new Set());
@@ -92,7 +92,7 @@ function GraphView({
     return visited;
   };
 
-  // 자석 효과: 마우스 근처 노드 자동 hover
+  // 마우스 근처 노드 자동 hover
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!fgRef.current || loading) return;
@@ -128,7 +128,7 @@ function GraphView({
       setHoveredLink(null);
       document.body.style.cursor = 'default';
     };
-    // 자석 hover 더블클릭 시 해당 노드로 이동
+    // hover 더블클릭 시 해당 노드로 이동
     const handleDblClick = (e) => {
       if (!fgRef.current || !hoveredNode) return;
       // 노드 중심으로 카메라 이동 및 확대
@@ -788,23 +788,13 @@ function GraphView({
         </div>
       )}
 
-      {/* 자석 hover 툴팁 */}
-      {hoveredNode && !hoveredLink && (
+      {/* hover 툴팁 */}
+      {hoveredNode && !hoveredLink && !draggedNode && (
         <div
+          className="graph-hover-tooltip"
           style={{
-            position: 'fixed',
             left: `${window._lastMouseX || 0}px`,
-            top: `${window._lastMouseY || 0}px`,
-            pointerEvents: 'none',
-            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)',
-            color: isDarkMode ? '#222' : '#333',
-            borderRadius: 8,
-            padding: '3px 10px',
-            fontSize: 15,
-            fontWeight: 500,
-            boxShadow: isDarkMode ? '0 2px 16px 0 #b0b8c1' : '0 2px 16px 0 #e5e7eb',
-            zIndex: 1000,
-            transform: 'translate(12px, 8px)'
+            top: `${window._lastMouseY || 0}px`
           }}
         >
           노드 : {hoveredNode.name} <span style={{ fontWeight: 400, fontSize: 13 }}>(연결: {hoveredNode.linkCount})</span>
@@ -923,7 +913,7 @@ function GraphView({
             }
 
             // hover 효과: glow 및 테두리 강조
-            const isHovered = hoveredNode && hoveredNode.id === node.id;
+            const isHovered = hoveredNode && hoveredNode.id === node.id && !draggedNode;
             if (isHovered) {
               ctx.shadowColor = isDarkMode ? '#8ac0ffff' : '#9bc3ffff';
               ctx.shadowBlur = 16;
@@ -1026,7 +1016,7 @@ function GraphView({
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
-            const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target);
+            const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target) && !draggedNode;
             const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
             const targetId = typeof link.target === 'object' ? link.target.id : link.target;
             if (draggedNode) {

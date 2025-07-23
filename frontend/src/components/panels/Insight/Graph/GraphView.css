@@ -149,3 +149,23 @@
     box-shadow: 0 2px 8px #60a5fa33;
     transform: scale(1.08);
 }
+
+/* ====== hover 툴팁 ====== */
+.graph-hover-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(225,227,231,0.97);
+  color: #333;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 2px 16px 0 #e5e7eb;
+  z-index: 1000;
+  transform: translate(12px, 8px);
+}
+.graph-area.dark-mode .graph-hover-tooltip {
+  background: rgba(176,184,193,0.97);
+  color: #222;
+  box-shadow: 0 2px 16px 0 #b0b8c1;
+}
