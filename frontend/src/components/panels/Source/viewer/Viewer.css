@@ -12,6 +12,29 @@
     background-color: white;
     padding: 10px 16px;
     border-bottom: 1px solid #ddd;
+    position: relative;
+}
+
+.viewer-header-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 48px;
+}
+
+.viewer-header-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    min-width: 120px;
 }
 
 .viewer-controls {
@@ -31,6 +54,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.viewer-button:hover {
+    background: #cecdcd;
+    color: #111;
+    box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.13);
+}
+
+.viewer-button:active {
+    background: #929191;
+    color: #222;
 }
 
 .viewer-fontsize {
