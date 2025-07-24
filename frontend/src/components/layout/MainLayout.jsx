@@ -92,6 +92,7 @@ function MainLayout() {
 
   // 프로젝트 이동 중 로딩 상태
   const [isProjectLoading, setIsProjectLoading] = useState(false);
+  const [isNodeViewLoading, setIsNodeViewLoading] = useState(null); // 노드 보기 로딩 상태
 
   // 그래프 상태를 외부 윈도우(localStorage)로 동기화
   const syncToStandaloneWindow = (data) => {
@@ -221,6 +222,13 @@ function MainLayout() {
     // projectId가 바뀔 때만 검사
   }, [allReady, isProjectLoading, projectId]);
 
+  // focusNodeNames가 실제로 변경(즉, 그래프에 반영)될 때 스피너 해제
+  useEffect(() => {
+    if (isNodeViewLoading) {
+      setIsNodeViewLoading(null);
+    }
+  }, [focusNodeNames]);
+
   return (
     <div className="main-container" style={{ position: 'relative' }}>
       {isProjectLoading && (
@@ -261,6 +269,8 @@ function MainLayout() {
               focusSource={focusSourceId}
               openSourceId={openSourceId}
               onSourcePanelReady={() => setSourcePanelReady(true)}
+              isNodeViewLoading={isNodeViewLoading}
+              setIsNodeViewLoading={setIsNodeViewLoading}
             />
           </div>
         </Panel>
