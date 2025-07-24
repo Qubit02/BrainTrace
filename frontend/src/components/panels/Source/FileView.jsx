@@ -44,7 +44,9 @@ export default function FileView({
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   filteredSourceIds,          // 검색 필터링된 소스 ID 목록
   searchText,                 // 검색 텍스트
-  onFileUploaded              // 파일 업로드 완료 시 호출할 콜백
+  onFileUploaded,             // 파일 업로드 완료 시 호출할 콜백
+  isNodeViewLoading,
+  setIsNodeViewLoading
 }) {
   // === 상태 관리 ===
   const [selectedFile, setSelectedFile] = useState(null)        // 현재 선택된 파일 ID
@@ -56,6 +58,7 @@ export default function FileView({
   const [uploadQueue, setUploadQueue] = useState([]);           // 업로드/변환 대기 큐
   const [isProcessing, setIsProcessing] = useState(false);      // 변환 작업 진행 중 여부
   const [isDeleting, setIsDeleting] = useState(false);          // 삭제 작업 진행 중 여부
+  // const [isNodeViewLoading, setIsNodeViewLoading] = useState(null); // 노드 보기 로딩 상태
 
   // === 파일 목록 처리 ===
   // 검색 필터링된 파일 목록 계산
@@ -308,6 +311,7 @@ export default function FileView({
                   <div
                     className="popup-item"
                     onClick={async () => {
+                      setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
                         const names = await getNodesBySourceId(f.id, brainId);
                         if (onFocusNodeNamesUpdate) {
@@ -317,11 +321,17 @@ export default function FileView({
                         console.error('노드 조회 실패:', err);
                         alert('해당 소스에서 생성된 노드를 가져오지 못했습니다.');
                       }
+                      // setIsNodeViewLoading(null); // 실제 반영은 부모에서
                       setMenuOpenId(null);
                     }}
                   >
                     <AiOutlineNodeIndex size={17} style={{ marginRight: 1 }} />
                     노드 보기
+                    {isNodeViewLoading === f.id && (
+                      <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 5 }}>
+                        <AiOutlineLoading3Quarters className="loading-spinner" />
+                      </span>
+                    )}
                   </div>
                   <div
                     className="popup-item"

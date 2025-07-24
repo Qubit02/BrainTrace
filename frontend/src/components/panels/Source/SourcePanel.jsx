@@ -34,8 +34,10 @@ export default function SourcePanel({
   onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
-  onSourcePanelReady,          // SourcePanel 준비 완료 콜백
-  openSourceId
+  onSourcePanelReady,         // SourcePanel 준비 완료 콜백
+  openSourceId,
+  isNodeViewLoading,
+  setIsNodeViewLoading
 }) {
   // === DOM 참조 ===
   const panelRef = useRef();                           // 패널 DOM 참조 (리사이징 감지용)
@@ -362,10 +364,17 @@ export default function SourcePanel({
                   loadAllFiles();
                 }}
                 onSourceCountRefresh={onSourceCountRefresh}
-                onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
+                onFocusNodeNamesUpdate={async (names) => {
+                  if (onFocusNodeNamesUpdate) {
+                    await onFocusNodeNamesUpdate(names);
+                  }
+                  setIsNodeViewLoading(null); // 실제로 부모까지 전달 후 스피너 해제
+                }}
                 filteredSourceIds={filteredSourceIds}
                 searchText={searchText}
-                onFileUploaded={loadAllFiles} // 파일 업로드 완료 시 목록 즉시 갱신
+                onFileUploaded={loadAllFiles}
+                isNodeViewLoading={isNodeViewLoading}
+                setIsNodeViewLoading={setIsNodeViewLoading}
               />
             )}
           </div >
