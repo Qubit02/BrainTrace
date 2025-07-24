@@ -115,9 +115,11 @@ function MainLayout() {
   // 프로젝트 변경 시 상태 저장 및 라우팅 이동 처리
   const handleProjectChange = (projectId) => {
     setIsProjectLoading(true);
-    setSourcePanelReady(false); // 프로젝트 변경 시 SourcePanel 준비 상태 초기화
-    setSelectedBrainId(projectId);
+    setSourcePanelReady(false);
+    setSelectedBrainId(projectId);    
     setReferencedNodes([]);
+    setFocusNodeNames([]);
+    setNewlyAddedNodeNames([]);
     setOpenSourceId(null);
     setFocusSourceId(null);
     firstSourceExpand.current = true;
