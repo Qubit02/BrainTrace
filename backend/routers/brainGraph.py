@@ -8,7 +8,7 @@ from exceptions.custom_exceptions import Neo4jException,AppException, QdrantExce
 from examples.error_examples import ErrorExamples
 from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
-
+import sqlite3
 
 router = APIRouter(
     prefix="/brainGraph",
@@ -232,15 +232,32 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-            
-        # AI 답변 저장
+
+        # node의 출처 소스 id들 가져오기
+        node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+        logging.info(f"node_to_ids: {node_to_ids}")
+        # 모든 source_id 집합 수집
+        all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
+        logging.info(f"all_ids: {all_ids}")
+        # SQLite batch 조회로 id→title 매핑
+        id_to_title = db_handler.get_titles_by_ids(all_ids)
+                
+        # 최종 구조화
+        enriched = []
+        for node in referenced_nodes:
+            sources = [
+                {"id": str(sid), "title": id_to_title.get(sid)}
+                for sid in node_to_ids.get(node, [])
+                if sid in id_to_title
+            ]
+            enriched.append({"name": node, "source_ids": sources})
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(True, final_answer, brain_id, referenced_nodes)
+        chat_id = db_handler.save_chat(True, final_answer, brain_id, enriched)
 
         return {
             "answer": final_answer,
-            "referenced_nodes": referenced_nodes,
-            "chat_id": chat_id   # ✅ 반드시 포함!
+            "referenced_nodes": enriched,
+            "chat_id": chat_id  
         }
     except Exception as e:
         logging.error("answer 오류: %s", str(e))
