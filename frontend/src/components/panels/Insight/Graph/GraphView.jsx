@@ -945,7 +945,8 @@ function GraphView({
             }
 
             // hover 효과: glow 및 테두리 강조
-            const isHovered = hoveredNode && hoveredNode.id === node.id && !draggedNode;
+            // 링크가 hover 중이면 노드 hover 효과를 무시한다
+            const isHovered = hoveredNode && hoveredNode.id === node.id && !draggedNode && !hoveredLink;
             if (isHovered) {
               ctx.shadowColor = isDarkMode ? '#8ac0ffff' : '#9bc3ffff';
               ctx.shadowBlur = 16;
