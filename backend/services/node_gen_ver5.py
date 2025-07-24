@@ -31,20 +31,6 @@ stopwords = set([
 
 okt = Okt()
 
-def is_pronoun_like_phrase(tokens: list[str]) -> bool:
-    pronouns = {
-        "이", "그", "저", "본", "해당", "그런", "전술한", "앞서", "말한", "이런", "이러한", "그러한"
-    }
-    
-    if len(tokens) <2:
-        return False
-    
-    check_len = min(2, len(tokens))
-    for i in range(check_len):
-        if tokens[i] in pronouns:
-            return True
-    return False
-
 def extract_noun_phrases(text: str) -> list:
     """
     명사구를 추출합니다.
@@ -60,7 +46,7 @@ def extract_noun_phrases(text: str) -> list:
         elif tag in ["Noun", "Alpha"]:
             if word not in stopwords and len(word) > 1:
                 current_phrase.append(word)
-        elif tag == "Adjective" and word[-1] not in '다요죠':
+        elif tag == "Adjective" and word[-1] not in '다요죠며지만':
             current_phrase.append(word)
         else:
             if current_phrase:
@@ -182,7 +168,7 @@ def group_phrases(
     return group_infos
 
 
-def normalize_coreferences(text: str) -> str:
+def extract_nodes(text: str) -> str:
     phrase_info=[]
     sentences = re.split(r'(?<=[.!?])\s+|(?<=[다요죠오])\s*$|\n', text.strip(), flags=re.MULTILINE)
     sentences=[s.strip() for s in sentences if s.strip()]
@@ -195,6 +181,8 @@ def normalize_coreferences(text: str) -> str:
                 "sentence_index": s_idx,
                 "phrase": p
             })
+    
+    print(phrase_info)
  
     phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
@@ -205,11 +193,4 @@ def normalize_coreferences(text: str) -> str:
     for g in groups:
         print(f"{g['representative']} ← {g['members']}")
     
-
-texts="""① 야성적, 활동적, 정열적
-고려대학교의 교풍은 야성, 활기와 정열 등으로 대표된다. 무섭고 사나운 호랑이, 강렬하게 검붉은 크림슨색 등 고대를 대표하거나 '고대' 하면 떠오르는 상징들은 대부분 위의 특징들과 연관된 경우가 많다. 이는 고려대학교가 그 전신인 보성전문학교 시절 사실상 유일한 민족·민립의 지도자 양성기구였기 때문에, 민족정신이라는 시대적 요구가 교수와 학생들에게 특별히 더 부하됐고, 그것이 학생들의 지사적 또는 투사적 저항 기질을 배태시켰던 데 기인한다는 견해가 있다.[20]
-
-② 협동적, 끈끈함
-고려대에서는 졸업생을 '동문', '동창' 등의 단어 대신 '교우(校友)'라고 부른다. 이는 학교를 같이 다녔다는 이유만으로 친구라는 의미이다. 사회에서 고려대 출신 간에는 유대가 매우 강한 편이며 이러한 문화는 개인주의 성향이 강해진 현대에도 사라지지 않고 건강하게 이어지고 있다. 고대에는 자기 이익만 앞세우려 하기보다는, 타인과 소통하고 서로의 장점을 살려 일을 분담함으로써 시너지를 내는 문화가 발달돼 있다. 또한 일대일 간의 관계보다는 폭넓은 집단 내에서의 관계를 더 선호하는 편이다.[21] 구성원들의 애교심이 워낙 커서 그런지, 정치적 이념 및 경제적 이해관계가 다르더라도 같은 고대 동문 사이에는 좀 더 상대방의 입장에 서서 생각해보고 인간적 신뢰에 입각하여 갈등을 풀어가려는 전통이 이어지고 있다. 실제로 고려대에는 동아리 조직이 발달해 그 구성원이 인간관계를 다지고 팀플레이를 하는 풍조가 강하다. 공부도 물론 중요시하지만, 개인의 성적만을 챙기는 능력보다는 인간관계를 충실히 하는 능력, 남을 이끄는 지도력이나 상급자, 동료와 화합하는 친화력 등을 더 높이 평가하는 편이다. 다른 그 무엇보다도 장기적인 대인관계와 신뢰감을 중시하는 습관, 조직을 위해 희생하고 봉사하고 오욕 뒤집어쓰는 일을 두려워하지 않는 기질이 이런 문화 속에서 길러지는 건 당연한 일이다.[22] 21세기 들어서 오프라인 커넥션만이 아니라 온라인 커넥션의 중요성이 매우 커졌는데, 이에 발맞춰 고대에서는 인터넷 커뮤니티도 매우 활발하게 운영되고 있다. 고려대학교 에브리타임도 상당히 활성화되어 있는 편이지만, 특히 고대의 자랑 중 하나인 고파스의 경우 각종 게시판에서 유통되고 누적되는 정보가 매우 방대할 뿐 아니라 영양가도 높다.[23]"""
-results=normalize_coreferences(texts)
 
