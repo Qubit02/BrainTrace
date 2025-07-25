@@ -328,7 +328,7 @@ export default function FileView({
                     <AiOutlineNodeIndex size={17} style={{ marginRight: 1 }} />
                     노드 보기
                     {isNodeViewLoading === f.id && (
-                      <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 5 }}>
+                      <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 10 }}>
                         <AiOutlineLoading3Quarters className="loading-spinner" />
                       </span>
                     )}
