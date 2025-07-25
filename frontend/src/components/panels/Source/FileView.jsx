@@ -268,6 +268,10 @@ export default function FileView({
               )
             }
             onClick={() => {
+              if (uploadQueue && uploadQueue.length > 0) {
+                toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');
+                return;
+              }
               setSelectedFile(f.id);
               onOpenFile(f.id, f.filetype);
             }}
