@@ -12,10 +12,12 @@
     background-color: #fafafa;
     transition: background-color 0.3s ease;
 }
+
 /* 다크모드 지원 */
 .graph-area.dark-mode {
     background-color: #0f172a;
 }
+
 .graph-area * {
     transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -32,12 +34,12 @@
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    background-color: rgba(255, 255, 255, 0.8);
-    color: black;
+    color: rgb(98, 97, 97);
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s ease;
 }
+
 .graph-loading-spinner {
     width: 40px;
     height: 40px;
@@ -48,6 +50,7 @@
     margin-bottom: 12px;
     transition: border-color 0.3s ease;
 }
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -80,20 +83,25 @@
     outline: none;
     font-size: 14px;
     z-index: 30;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     position: relative;
 }
+
 .graph-area.dark-mode .graph-search-input {
     background: #334155;
     color: #fff;
     border-color: #444c5e;
 }
-.graph-search-input:hover, .graph-search-input:focus, .graph-search-input:active {
+
+.graph-search-input:hover,
+.graph-search-input:focus,
+.graph-search-input:active {
     border-color: #2563eb;
     box-shadow: 0 0 0 2px #60a5fa33;
     background: #e0e7ef;
 }
+
 .graph-area.dark-mode .graph-search-input:hover,
 .graph-area.dark-mode .graph-search-input:focus,
 .graph-area.dark-mode .graph-search-input:active {
@@ -115,17 +123,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background: rgba(255,255,255,0.95);
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     min-height: 18px;
     align-items: center;
     border-radius: 999px;
 }
+
 .graph-area.dark-mode .graph-search-result-list {
     color: #60a5fa;
-    background: rgba(30,41,59,0.95);
+    background: rgba(30, 41, 59, 0.95);
 }
+
 .graph-search-result-list li {
     cursor: pointer;
     text-decoration: underline;
@@ -134,13 +144,16 @@
     border-radius: 9999px;
     transition: background 0.15s, color 0.15s;
 }
-.graph-search-result-list li:hover, .graph-search-result-list li:active {
+
+.graph-search-result-list li:hover,
+.graph-search-result-list li:active {
     background: #2563eb33;
     color: #1d4ed8;
     font-weight: bold;
     box-shadow: 0 2px 8px #2563eb22;
     transform: scale(1.08);
 }
+
 .graph-area.dark-mode .graph-search-result-list li:hover,
 .graph-area.dark-mode .graph-search-result-list li:active {
     background: #60a5fa44;
@@ -152,20 +165,78 @@
 
 /* ====== hover 툴팁 ====== */
 .graph-hover-tooltip {
-  position: fixed;
-  pointer-events: none;
-  background: rgba(225,227,231,0.97);
-  color: #333;
-  border-radius: 8px;
-  padding: 3px 10px;
-  font-size: 15px;
-  font-weight: 500;
-  box-shadow: 0 2px 16px 0 #e5e7eb;
-  z-index: 1000;
-  transform: translate(12px, 8px);
+    position: fixed;
+    pointer-events: none;
+    background: rgba(225, 227, 231, 0.97);
+    color: #333;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 2px 16px 0 #e5e7eb;
+    z-index: 1000;
+    transform: translate(12px, 8px);
 }
+
 .graph-area.dark-mode .graph-hover-tooltip {
-  background: rgba(176,184,193,0.97);
-  color: #222;
-  box-shadow: 0 2px 16px 0 #b0b8c1;
+    background: rgba(176, 184, 193, 0.97);
+    color: #222;
+    box-shadow: 0 2px 16px 0 #b0b8c1;
+}
+
+.graph-loading-text-animate {
+    font-size: 18px;
+    font-weight: 600;
+    color: #b0b3b8;
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+    animation: fadeIn 1.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.dot-animate {
+    display: inline-block;
+    width: 1.2em;
+    text-align: left;
+}
+
+.dot-animate span {
+    display: inline-block;
+    animation: blink 1.4s infinite both;
+    font-size: 1.2em;
+    color: #d1d5db;
+}
+
+.dot-animate span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dot-animate span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+    }
+
+    40% {
+        opacity: 1;
+    }
 }
