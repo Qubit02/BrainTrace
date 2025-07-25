@@ -206,6 +206,10 @@ export default function SourcePanel({
 
   // 파일 열기 핸들러: pdf는 그대로, 나머지는 모두 openedFile로
   const handleOpenFile = (id, type) => {
+    if (uploadQueue.length > 0) {
+      toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');
+      return;
+    }
     const file = allFiles.find(f => f.type === type && String(typeMeta[type]?.id(f)) === String(id));
     if (file) {
       if (type === 'pdf') setOpenedPDF(file);

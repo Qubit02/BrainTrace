@@ -12,11 +12,11 @@ import {
 import { PiGraph } from "react-icons/pi";
 import { IoCopyOutline } from "react-icons/io5";
 import { MdSource } from "react-icons/md";
+import { IoCheckmarkOutline } from "react-icons/io5";
 
-import { fetchChatHistoryByBrain, deleteAllChatsByBrain, saveChatToBrain, getNodeSourcesByChat } from '../../../../api/chat';
+import { fetchChatHistoryByBrain, deleteAllChatsByBrain, getNodeSourcesByChat } from '../../../../api/chat';
 import { getSourceCountByBrain } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
-import { TbSourceCode } from "react-icons/tb";
 import { VscOpenPreview } from "react-icons/vsc";
 
 // === 채팅 내역 불러오기 함수 ===
@@ -45,6 +45,7 @@ function ChatPanel({
   const [showConfirm, setShowConfirm] = useState(false); // 대화 초기화 확인창
   const [chatHistory, setChatHistory] = useState([]); // DB 기반 채팅 내역
   const [sourceCount, setSourceCount] = useState(0); // 소스 개수 상태
+  const [copiedMessageId, setCopiedMessageId] = useState(null); // 복사된 메시지 id 상태
 
   // selectedBrainId 변경 시 소스 개수 fetch
   useEffect(() => {
@@ -198,6 +199,8 @@ function ChatPanel({
         if (serverMessage) messageToCopy = serverMessage;
       }
       await navigator.clipboard.writeText(messageToCopy);
+      setCopiedMessageId(m.chat_id || m.message); // chat_id가 없으면 message 자체를 id로 사용
+      setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
       console.error('복사 실패:', err);
     }
@@ -300,7 +303,11 @@ function ChatPanel({
                       title="복사"
                       onClick={() => handleCopyMessage(m)}
                     >
-                      <IoCopyOutline size={18} />
+                      {copiedMessageId === (m.chat_id || m.message) ? (
+                        <IoCheckmarkOutline size={18} color="#303030ff" />
+                      ) : (
+                        <IoCopyOutline size={18} />
+                      )}
                     </button>
                     {/* bot 메시지에만 그래프 버튼 표시 */}
                     {m.is_ai && (

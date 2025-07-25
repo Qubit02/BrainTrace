@@ -46,6 +46,7 @@ export default function NewBrainModal({ onClose, onCreated }) {
 
                     <h3>새 프로젝트 만들기</h3>
                     <button
+                        type="button"
                         onClick={onClose}
                         className='close-button'
                     >
