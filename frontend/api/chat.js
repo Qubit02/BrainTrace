@@ -8,6 +8,10 @@ export const deleteChat = chat_id =>
 export const getReferencedNodes = chat_id =>
     api.get(`/chat/${chat_id}/referenced_nodes`).then(r => r.data);
 
+// 노드별 소스 개수 및 타이틀/ID 조회 (API 응답: { titles: [...], ids: [...] })
+export const getNodeSourcesByChat = (chat_id, node_name) =>
+    api.get(`/chat/${chat_id}/node_sources`, { params: { node_name } }).then(r => r.data);
+
 // === 브레인별 전체 채팅 내역 조회 ===
 export const fetchChatHistoryByBrain = brain_id =>
     api.get(`/chat/brain/${brain_id}`).then(r => r.data);

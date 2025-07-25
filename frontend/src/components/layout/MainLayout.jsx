@@ -116,7 +116,7 @@ function MainLayout() {
   const handleProjectChange = (projectId) => {
     setIsProjectLoading(true);
     setSourcePanelReady(false);
-    setSelectedBrainId(projectId);    
+    setSelectedBrainId(projectId);
     setReferencedNodes([]);
     setFocusNodeNames([]);
     setNewlyAddedNodeNames([]);
@@ -168,9 +168,9 @@ function MainLayout() {
 
   // 특정 소스를 열 때 포커스 ID와 타임스탬프를 기록
   const [openSourceId, setOpenSourceId] = useState(null);
-  
+
   const handleOpenSource = (sourceId) => {
-    setOpenSourceId(sourceId);
+    // setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
@@ -212,7 +212,7 @@ function MainLayout() {
       );
     }
   }, [insightCollapsed]);
-  
+
   // URL 변경(projectId 변경)에 따라 selectedBrainId 상태 업데이트
   useEffect(() => {
     setSelectedBrainId(projectId);
