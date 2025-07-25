@@ -12,6 +12,7 @@ import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
 import { FiSearch, FiX } from 'react-icons/fi';
 import { MdOutlineSearch } from "react-icons/md";
+import { toast } from 'react-toastify';
 
 function GraphView({
   brainId = 'default-brain-id',
@@ -736,6 +737,23 @@ function GraphView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fgRef]);
 
+  // 참고된 노드가 그래프에 하나도 없을 때 안내 토스트 메시지 표시
+  useEffect(() => {
+    // 참고된 노드 팝업이 활성화되어 있고,
+    // referencedNodesState에 값이 있으며,
+    // 그래프에 노드가 하나 이상 있고,
+    // referencedNodesState와 매치되는 노드가 그래프에 하나도 없을 때
+    if (
+      showReferenced &&
+      referencedNodesState &&
+      referencedNodesState.length > 0 &&
+      graphData.nodes.length > 0 &&
+      !graphData.nodes.some(n => referencedNodesState.includes(n.name))
+    ) {
+      toast.info('참고된 노드가 그래프에 없습니다.');
+    }
+  }, [showReferenced, referencedNodesState, graphData.nodes]);
+
   return (
     <div
       className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
@@ -799,7 +817,11 @@ function GraphView({
         </div>
       )}
       {/* 참고된 노드가 있을 때 정보 표시 */}
-      {(!fromFullscreen) && showReferenced && referencedNodesState && referencedNodesState.length > 0 && (
+      {(!fromFullscreen)
+        && showReferenced
+        && referencedNodesState
+        && referencedNodesState.length > 0
+        && graphData.nodes.some(n => referencedNodesState.includes(n.name)) && (
         <div className="graph-popup">
           <span>참고된 노드: {referencedNodesState.join(', ')}</span>
           <span className="close-x" onClick={() => {
