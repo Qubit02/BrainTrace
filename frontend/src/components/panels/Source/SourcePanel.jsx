@@ -19,6 +19,7 @@ import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
 import GenericViewer from './viewer/GenericViewer';
+import { toast } from 'react-toastify';
 
 /**
  * 소스 패널 컴포넌트
@@ -75,11 +76,11 @@ export default function SourcePanel({
 
   // type별 id/title/path 추출 함수 맵
   const typeMeta = {
-    pdf:   { id: f => f.pdf_id,    title: f => f.pdf_title,    path: f => f.pdf_path    },
-    txt:   { id: f => f.txt_id,    title: f => f.txt_title,    path: f => f.txt_path    },
-    md:    { id: f => f.md_id,     title: f => f.md_title,     path: f => f.md_path     },
-    docx:  { id: f => f.docx_id,   title: f => f.docx_title,   path: f => f.docx_path   },
-    memo:  { id: f => f.memo_id,   title: f => f.memo_title,   path: () => undefined    }
+    pdf: { id: f => f.pdf_id, title: f => f.pdf_title, path: f => f.pdf_path },
+    txt: { id: f => f.txt_id, title: f => f.txt_title, path: f => f.txt_path },
+    md: { id: f => f.md_id, title: f => f.md_title, path: f => f.md_path },
+    docx: { id: f => f.docx_id, title: f => f.docx_title, path: f => f.docx_path },
+    memo: { id: f => f.memo_id, title: f => f.memo_title, path: () => undefined }
   };
 
   // === useEffect 훅들 ===
@@ -125,20 +126,23 @@ export default function SourcePanel({
         else setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
+      } else {
+        // 파일이 없는 경우 toast 메시지
+        toast.error('해당 소스 파일이 삭제되었거나 존재하지 않습니다.');
       }
     }
   }, [localFocusSource]);
 
-  // openSourceId가 변경될 때 해당 소스를 자동으로 연다
-  useEffect(() => {
-    if (!openSourceId || !allFiles.length) return;
-    const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(openSourceId));
-    if (targetFile) {
-      if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-      else setOpenedFile(targetFile);
-      setIsSourceOpen(true);
-    }
-  }, [openSourceId, allFiles]);
+  // // openSourceId가 변경될 때 해당 소스를 자동으로 연다
+  // useEffect(() => {
+  //   if (!openSourceId || !allFiles.length) return;
+  //   const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(openSourceId));
+  //   if (targetFile) {
+  //     if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
+  //     else setOpenedFile(targetFile);
+  //     setIsSourceOpen(true);
+  //   }
+  // }, [openSourceId, allFiles]);
 
   /**
    * 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
