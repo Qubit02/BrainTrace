@@ -13,7 +13,7 @@ import { PiGraph } from "react-icons/pi";
 import { IoCopyOutline } from "react-icons/io5";
 import { MdSource } from "react-icons/md";
 
-import { fetchChatHistoryByBrain, deleteAllChatsByBrain, saveChatToBrain } from '../../../../api/chat';
+import { fetchChatHistoryByBrain, deleteAllChatsByBrain, saveChatToBrain, getNodeSourcesByChat } from '../../../../api/chat';
 import { getSourceCountByBrain } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { TbSourceCode } from "react-icons/tb";
@@ -125,12 +125,6 @@ function ChatPanel({
           referenced_nodes: res?.referenced_nodes || []
         };
         setChatHistory(prev => [...prev, tempAnswer]);
-        // 답변 DB 저장
-        saveChatToBrain(selectedBrainId, {
-          is_ai: 1,
-          message: res?.answer,
-          referenced_nodes: res?.referenced_nodes || []
-        }).catch(err => console.error('답변 DB 저장 실패:', err));
       }
       // 5. 안내 메시지가 있으면 추가
       if (hasGuideMessage) {
@@ -143,16 +137,11 @@ function ChatPanel({
             referenced_nodes: []
           }
         ]);
-        // 안내 메시지도 DB에 저장
-        saveChatToBrain(selectedBrainId, {
-          is_ai: 1,
-          message: res.message,
-          referenced_nodes: []
-        }).catch(err => console.error('안내 메시지 DB 저장 실패:', err));
       }
       // === 답변에 referenced_nodes가 있으면 콜백 호출 ===
       if (res?.referenced_nodes && res.referenced_nodes.length > 0 && typeof onReferencedNodesUpdate === 'function') {
-        onReferencedNodesUpdate(res.referenced_nodes);
+        const nodeNames = res.referenced_nodes.map(n => n.name);
+        onReferencedNodesUpdate(nodeNames);
       }
     } catch (err) {
       alert('답변 생성 중 오류가 발생했습니다.');
@@ -177,7 +166,7 @@ function ChatPanel({
     }
   };
 
-  // ===== 출처(소스) 토글 함수 =====
+  // ===== 출처(소스) 토글 함수 (API 호출 방식, title+id 저장) =====
   const toggleSourceList = async (chatId, nodeName) => {
     const key = `${chatId}_${nodeName}`;
     if (openSourceNodes[key]) {
@@ -188,10 +177,11 @@ function ChatPanel({
       });
     } else {
       try {
-        const res = await getSourceIdsByNodeName(nodeName, selectedBrainId);
+        const res = await getNodeSourcesByChat(chatId, nodeName);
+        // res.titles와 res.ids를 함께 저장 (동일 인덱스)
         setOpenSourceNodes((prev) => ({
           ...prev,
-          [key]: res.sources,
+          [key]: (res.titles || []).map((title, idx) => ({ title, id: (res.ids && res.ids[idx]) || null })),
         }));
       } catch (err) {
         setOpenSourceNodes((prev) => ({ ...prev, [key]: [] }));
@@ -279,13 +269,17 @@ function ChatPanel({
                               {/* 출처 목록 표시 */}
                               {openSourceNodes[`${m.chat_id}_${nodeName}`] && (
                                 <ul className="source-title-list">
-                                  {openSourceNodes[`${m.chat_id}_${nodeName}`].map((source, sourceIndex) => (
+                                  {openSourceNodes[`${m.chat_id}_${nodeName}`].map((item, sourceIndex) => (
                                     <li key={sourceIndex} className="source-title-item">
                                       <span
                                         className="source-title-content"
-                                        onClick={() => onOpenSource(source.id)}
+                                        onClick={() => {
+                                          console.log('소스 title 클릭:', item.title, 'id:', item.id);
+                                          if (item.id) onOpenSource(item.id);
+                                        }}
+                                        style={{ cursor: item.id ? 'pointer' : 'default' }}
                                       >
-                                        {source.source_title || source.title || `소스 ${source.id}`}
+                                        {item.title}
                                       </span>
                                     </li>
                                   ))}
@@ -318,7 +312,8 @@ function ChatPanel({
                           try {
                             const res = await getReferencedNodes(m.chat_id);
                             if (res.referenced_nodes && res.referenced_nodes.length > 0) {
-                              onReferencedNodesUpdate(res.referenced_nodes);
+                              const nodeNames = res.referenced_nodes.map(n => n.name ?? n);
+                              onReferencedNodesUpdate(nodeNames);
                             }
                           } catch (err) {
                             console.error('❌ 참고 노드 불러오기 실패:', err);
