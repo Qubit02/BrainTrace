@@ -121,3 +121,23 @@ async def get_chat_message_by_id(chat_id: int):
     if "[참고된 노드 목록]" in message:
         message = message.split("[참고된 노드 목록]")[0].strip()
     return {"message": message}
+
+@router.get("/{chat_id}/node_sources")
+async def get_node_sources_by_chat(chat_id: int, node_name: str):
+    """
+    특정 chat_id와 node_name에 해당하는 노드의 소스 title 리스트, id 리스트를 반환합니다.
+    반환 예시: { "titles": ["테스트1.txt", "테스트2.pdf"], "ids": ["67", "69"] }
+    """
+    from sqlite_db.chat_handler import ChatHandler
+    db = ChatHandler()
+    chat = db.get_chat_by_id(chat_id)
+    if not chat:
+        raise HTTPException(404, "해당 chat_id의 채팅이 없습니다.")
+    referenced_nodes = chat.get("referenced_nodes", [])
+    # node_name에 해당하는 노드 찾기
+    node = next((n for n in referenced_nodes if n.get("name") == node_name), None)
+    if not node:
+        return {"titles": [], "ids": []}
+    titles = [s.get("title", f"소스 {s.get('id')}") for s in node.get("source_ids", [])]
+    ids = [str(s.get("id")) if s.get("id") is not None else None for s in node.get("source_ids", [])]
+    return {"titles": titles, "ids": ids}
