@@ -843,40 +843,46 @@ function GraphView({
         </div>
       )}
 
-      {/* hover 툴팁 */}
-      {hoveredNode && !hoveredLink && !draggedNode && (
-        <div
-          className="graph-hover-tooltip"
-          style={{
-            left: `${window._lastMouseX || 0}px`,
-            top: `${window._lastMouseY || 0}px`
-          }}
-        >
-          노드 : {hoveredNode.name} <span style={{ fontWeight: 400, fontSize: 13 }}>(연결: {hoveredNode.linkCount})</span>
-        </div>
-      )}
-      {hoveredLink && (
+      {(hoveredNode || hoveredLink) && (
         <div
           style={{
-            position: 'fixed',
-            left: `${window._lastMouseX || 0}px`,
-            top: `${window._lastMouseY || 0}px`,
-            pointerEvents: 'none',
-            background: isDarkMode ? 'rgba(176,184,193,0.97)' : 'rgba(225,227,231,0.97)',
-            color: isDarkMode ? '#222' : '#333',
-            borderRadius: 8,
-            padding: '3px 10px',
+            position: 'absolute',
+            left: 18,
+            bottom: 18,
+            zIndex: 1001,
             fontSize: 15,
-            fontWeight: 500,
-            boxShadow: isDarkMode ? '0 2px 16px 0 #b0b8c1' : '0 2px 16px 0 #e5e7eb',
-            zIndex: 1000,
-            transform: 'translate(12px, 8px)'
+            fontWeight: 400,
+            color: '#222',
+            fontFamily: 'Pretendard, Noto Sans KR, sans-serif',
+            background: 'none',
+            padding: 0,
+            borderRadius: 0,
+            boxShadow: 'none',
+            pointerEvents: 'none',
+            textAlign: 'left',
+            lineHeight: 1.5,
+            letterSpacing: '-0.01em',
+            minHeight: 0,
+            minWidth: 0
           }}
         >
-          <div>{hoveredLink.source?.name || hoveredLink.source} → {hoveredLink.target?.name || hoveredLink.target}</div>
-          <div style={{ fontWeight: 400, fontSize: 13 }}>관계 : {hoveredLink.relation || '관계'}</div>
+          {hoveredNode && !hoveredLink && !draggedNode && (
+            <>
+              <span style={{fontWeight:500}}>노드:</span> <span style={{fontWeight:400}}>{hoveredNode.name}</span> <span style={{ fontWeight: 300, fontSize: 13, marginLeft: 4 }}>(연결: {hoveredNode.linkCount})</span>
+            </>
+          )}
+          {hoveredLink && (
+            <>
+              <span style={{fontWeight:500}}>{hoveredLink.source?.name || hoveredLink.source}</span>
+              <span style={{margin: '0 6px', fontWeight:300}}>→</span>
+              <span style={{fontWeight:500}}>{hoveredLink.target?.name || hoveredLink.target}</span>
+              <span style={{ display:'block', fontWeight: 300, fontSize: 13, marginTop: 1 }}>링크: {hoveredLink.relation || '없음'}</span>
+            </>
+          )}
         </div>
       )}
+
+      {/* ForceGraph2D의 내장 tooltip 사용: nodeTitle, linkTitle 설정 */}
       {loading && (
         isFullscreen ? (
           <div className="graph-loading" style={{
@@ -915,6 +921,7 @@ function GraphView({
             nodes: visibleNodes,
             links: visibleLinks
           } : graphData}
+          linkLabel={link => `${link.relation}`}
           onNodeClick={handleNodeClick}
           nodeRelSize={customNodeSize}
           linkColor={() => isDarkMode ? "#64748b" : "#dedede"}
