@@ -375,7 +375,7 @@ function GraphView({
   useEffect(() => {
     if (initialGraphData) {
       processGraphData(initialGraphData);
-      setGraphReady(true);
+      setgraphReady(true);
       return;
     }
 
@@ -398,6 +398,7 @@ function GraphView({
   // === 그래프 준비 완료 시 콜백 ===
   // graphReady가 바뀔 때마다 부모에 전달
   useEffect(() => {
+    console.log('graphReady changed:', graphReady);
     if (onGraphReady) onGraphReady(graphReady);
   }, [graphReady, onGraphReady]);
 
@@ -855,28 +856,30 @@ function GraphView({
         </div>
       )}
       {loading && (
-        <div className="graph-loading" style={{
-          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.8)',
-          color: isDarkMode ? '#f1f5f9' : '#000'
-        }}>
-          <div
-            className="graph-loading-spinner"
-            style={{
-              borderColor: isDarkMode ? '#475569' : '#adadad',
-              borderTopColor: isDarkMode ? '#f1f5f9' : '#2c2929'
-            }}
-          ></div>
-          <div>그래프를 불러오는 중입니다...</div>
-        </div>
+        isFullscreen ? (
+          <div className="graph-loading" style={{
+            backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.8)',
+            color: isDarkMode ? '#f1f5f9' : '#000'
+          }}>
+            <div
+              className="graph-loading-spinner"
+            ></div>
+            <div>그래프를 불러오는 중입니다...</div>
+          </div>
+        ) : (
+          <div className="graph-loading">
+            <div className="graph-loading-text-animate">
+              그래프를 불러오는 중입니다
+              <span className="dot-animate">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </div>
+          </div>
+        )
       )}
       {error && (
         <div
-          className="graph-error"
-          style={{
-            backgroundColor: isDarkMode ? '#0f172a' : '#fafafa',
-            color: isDarkMode ? '#fca5a5' : 'red'
-          }}
-        >
+          className="graph-error">
           {error}
         </div>
       )}
@@ -1017,17 +1020,17 @@ function GraphView({
             // 텍스트 색상
             // 드래그 중 연결된 노드는 더 진한 색상
             const textColor = isDarkMode
-              ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus ) ? '#f1f5f9' : '#cbd5e1')
-              : ((isImportantNode || isReferenced || isNewlyAdded || isFocus ) ? '#111' : '#555');
+              ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#f1f5f9' : '#cbd5e1')
+              : ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#111' : '#555');
 
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
-                ctx.globalAlpha = textAlpha;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillStyle = textColor;
-                ctx.fillText(label, node.x, node.y + nodeRadius + 1);
-                ctx.globalAlpha = 1; // 텍스트 이후 alpha 복원
+              ctx.globalAlpha = textAlpha;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              ctx.fillStyle = textColor;
+              ctx.fillText(label, node.x, node.y + nodeRadius + 1);
+              ctx.globalAlpha = 1; // 텍스트 이후 alpha 복원
             }
             node.__bckgDimensions = [nodeRadius * 2, fontSize].map(n => n + fontSize * 0.2);
 

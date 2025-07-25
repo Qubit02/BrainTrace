@@ -170,7 +170,7 @@ function MainLayout() {
   const [openSourceId, setOpenSourceId] = useState(null);
 
   const handleOpenSource = (sourceId) => {
-    // setOpenSourceId(sourceId);
+    setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
   };
 
