@@ -101,10 +101,6 @@
   cursor: pointer;
 }
 
-.sidebar-icon.active {
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
 .add-icon {
   margin-top: auto;
   margin-left: 2px;
