@@ -113,10 +113,21 @@ class BaseHandler:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS Chat (
                 chat_id INTEGER PRIMARY KEY,
+                session_id INTEGER,  -- 채팅 세션 ID
                 is_ai BOOLEAN NOT NULL,
                 message TEXT,
-                brain_id INTEGER,
                 referenced_nodes TEXT,
+                FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)
+            )
+            ''')
+
+            # ChatSession 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ChatSession (
+                session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_name TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                brain_id INTEGER,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
