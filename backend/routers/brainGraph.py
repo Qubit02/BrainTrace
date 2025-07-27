@@ -154,11 +154,14 @@ async def answer_endpoint(request_data: AnswerRequest):
     <br> GPT 사용 → (model: "gpt")
     """
     question = request_data.question
-    brain_id = request_data.brain_id  # 요청에서 brain_id 받아오기
-    model =  request_data.model
+    session_id = request_data.session_id
+    brain_id = str(request_data.brain_id)  # 문자열로 변환
+    model = request_data.model
     
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id 파라미터가 필요합니다.")
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
@@ -170,13 +173,12 @@ async def answer_endpoint(request_data: AnswerRequest):
     else:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
-    
-    logging.info("질문 접수: %s, brain_id: %s, model: %s", question, brain_id, model)
+    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s", question, session_id, brain_id, model)
     
     try:
         # 사용자 질문 저장
         db_handler = SQLiteHandler()
-        chat_id = db_handler.save_chat(False, question, brain_id)
+        chat_id = db_handler.save_chat(session_id, False, question)
         
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):
@@ -191,7 +193,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         if not similar_nodes:
             # 안내 메시지도 DB에 저장
             guide_message = "질문과 유사한 노드를 찾지 못했습니다."
-            guide_chat_id = db_handler.save_chat(True, guide_message, brain_id, [])
+            guide_chat_id = db_handler.save_chat(session_id, True, guide_message, [])
             return {
                 "answer": "",
                 "referenced_nodes": [],
@@ -252,7 +254,7 @@ async def answer_endpoint(request_data: AnswerRequest):
             ]
             enriched.append({"name": node, "source_ids": sources})
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(True, final_answer, brain_id, enriched)
+        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched)
 
         return {
             "answer": final_answer,
