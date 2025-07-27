@@ -40,5 +40,6 @@ class ProcessTextRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     question: str
-    brain_id: str = Field(..., description="브레인 ID (문자열)")
+    session_id: int = Field(..., description="채팅 세션 ID")
+    brain_id: int = Field(..., description="브레인 ID")
     model: str = Field("gpt", description="사용할 모델 (gpt 또는 ollama)")

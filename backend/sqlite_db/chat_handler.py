@@ -6,9 +6,9 @@ from .base_handler import BaseHandler
 class ChatHandler(BaseHandler):
     def save_chat(
         self,
+        session_id: int,
         is_ai: bool,
         message: str,
-        brain_id: int,
         referenced_nodes: List[Dict[str, Any]] = None
     ) -> int:
         """채팅 메시지를 저장합니다. referenced_nodes는 JSON 직렬화하여 저장됩니다."""
@@ -22,15 +22,15 @@ class ChatHandler(BaseHandler):
             # 새 chat_id 생성
             chat_id = self._get_next_id()
             cursor.execute(
-                "INSERT INTO Chat (chat_id, is_ai, message, brain_id, referenced_nodes) VALUES (?, ?, ?, ?, ?)",
-                (chat_id, 1 if is_ai else 0, message, brain_id, ref_json)
+                "INSERT INTO Chat (chat_id, session_id, is_ai, message, referenced_nodes) VALUES (?, ?, ?, ?, ?)",
+                (chat_id, session_id, 1 if is_ai else 0, message, ref_json)
             )
             conn.commit()
             conn.close()
 
             logging.info(
-                "채팅 저장 완료: chat_id=%s, is_ai=%s, brain_id=%s",
-                chat_id, is_ai, brain_id
+                "채팅 저장 완료: chat_id=%s, session_id=%s, is_ai=%s",
+                chat_id, session_id, is_ai
             )
             return chat_id
         except Exception as e:
@@ -65,21 +65,21 @@ class ChatHandler(BaseHandler):
             logging.error(f"채팅 삭제 중 오류 발생: {str(e)}")
             return False
     
-    def delete_all_chats_by_brain(self, brain_id: int) -> bool:
+    def delete_all_chats_by_session(self, session_id: int) -> bool:
         """
-        특정 brain_id에 해당하는 모든 채팅을 삭제합니다.
+        특정 session_id에 해당하는 모든 채팅을 삭제합니다.
         """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM Chat WHERE brain_id = ?", (brain_id,))
+            cursor.execute("DELETE FROM Chat WHERE session_id = ?", (session_id,))
             deleted = cursor.rowcount > 0
             conn.commit()
             conn.close()
             if deleted:
-                logging.info("모든 채팅 삭제 완료: brain_id=%s", brain_id)
+                logging.info("모든 채팅 삭제 완료: session_id=%s", session_id)
             else:
-                logging.warning("채팅 삭제 실패: 존재하지 않는 brain_id=%s", brain_id)
+                logging.warning("채팅 삭제 실패: 존재하지 않는 session_id=%s", session_id)
             return deleted
         except Exception as e:
             logging.error(f"모든 채팅 삭제 중 오류 발생: {str(e)}")
@@ -109,8 +109,8 @@ class ChatHandler(BaseHandler):
             logging.error(f"참고 노드 조회 중 오류 발생: {str(e)}")
             return None
     
-    def get_chat_list(self, brain_id: int) -> List[Dict[str, Any]] | None:
-        """특정 brain_id의 모든 채팅을 반환합니다."""
+    def get_chat_list(self, session_id: int) -> List[Dict[str, Any]] | None:
+        """특정 session_id의 모든 채팅을 반환합니다."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -118,10 +118,10 @@ class ChatHandler(BaseHandler):
                 """
                 SELECT chat_id, is_ai, message, referenced_nodes
                   FROM Chat
-                 WHERE brain_id = ?
+                 WHERE session_id = ?
               ORDER BY chat_id ASC
                 """,
-                (brain_id,)
+                (session_id,)
             )
             rows = cursor.fetchall()
             conn.close()

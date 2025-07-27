@@ -160,11 +160,12 @@ export const processText = async (text, sourceId, brainId, model = "gpt") => {
   }
 };
 
-export const requestAnswer = async (question, brain_id, model = "gpt") => {
+export const requestAnswer = async (question, session_id, brain_id, model = "gpt") => {
   try {
     const response = await api.post(`/brainGraph/answer`,
       {
         question: question,
+        session_id: session_id,
         brain_id: brain_id,
         model: model, // 모델 파라미터 추가
       },

@@ -10,6 +10,7 @@ import './MainLayout.css';
 
 import ProjectPanel from '../panels/Project/ProjectPanel';
 import SourcePanel from '../panels/Source/SourcePanel';
+import ChatSession from '../panels/Chat/ChatSession';
 import ChatPanel from '../panels/Chat/ChatPanel';
 import InsightPanel from '../panels/Insight/InsightPanel';
 import Spinner from '../common/Spinner';
@@ -47,6 +48,10 @@ function MainLayout() {
   const [allNodeNames, setAllNodeNames] = useState([]);        // 그래프 내 전체 노드 이름
   const [focusNodeNames, setFocusNodeNames] = useState([]);    // 포커싱할 노드들
   const [focusSourceId, setFocusSourceId] = useState(null);    // 포커싱할 소스 ID
+
+  // 채팅 상태 관리
+  const [selectedChatSession, setSelectedChatSession] = useState(null);  // 선택된 채팅 세션 ID
+  const [sessionInfo, setSessionInfo] = useState(null); // 세션 정보
 
   // 그래프 Refresh 용도
   const [graphRefreshTrigger, setGraphRefreshTrigger] = useState(0);
@@ -89,7 +94,7 @@ function MainLayout() {
   const [isGraphReady, setGraphReady] = useState(false);
   const [isChatReady, setChatReady] = useState(false); // ChatPanel 준비 상태
   const allReady = isSourcePanelReady && isGraphReady && isChatReady;
-
+  
   // 프로젝트 이동 중 로딩 상태
   const [isProjectLoading, setIsProjectLoading] = useState(false);
   const [isNodeViewLoading, setIsNodeViewLoading] = useState(null); // 노드 보기 로딩 상태
@@ -122,6 +127,8 @@ function MainLayout() {
     setNewlyAddedNodeNames([]);
     setOpenSourceId(null);
     setFocusSourceId(null);
+    setSelectedChatSession(null);
+    setSessionInfo(null);
     firstSourceExpand.current = true;
     setIsSourceOpen(false);
     setSourcePanelSize(PANEL.SOURCE.DEFAULT);
@@ -146,7 +153,7 @@ function MainLayout() {
     }
   };
 
-  // 참고된 노드 목록을 업데이트하고 상태를 동기화
+  // 참조 노드 업데이트 핸들러
   const onReferencedNodesUpdate = (nodes) => {
     setReferencedNodes(nodes);
     syncToStandaloneWindow({ referencedNodes: nodes });
@@ -172,6 +179,18 @@ function MainLayout() {
   const handleOpenSource = (sourceId) => {
     setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
+  };
+
+  // 채팅 세션 선택 핸들러
+  const handleSessionSelect = (sessionId, options = {}) => {
+    setSelectedChatSession(sessionId);
+    setSessionInfo(options.sessionInfo || null);
+  };
+
+  // 채팅 목록으로 돌아가기 핸들러
+  const handleBackToList = () => {
+    setSelectedChatSession(null);
+    setSessionInfo(null);
   };
 
   // 소스/채팅/메모 패널의 비율 합이 100%를 초과하거나 부족할 경우 자동으로 정규화
@@ -287,13 +306,24 @@ function MainLayout() {
           onResize={handleChatResize}
         >
           <div className="layout-inner chat-inner">
-            <ChatPanel
-              selectedBrainId={selectedBrainId}
-              onReferencedNodesUpdate={onReferencedNodesUpdate}
-              onOpenSource={handleOpenSource}
-              onChatReady={setChatReady}
-              sourceCountRefreshTrigger={sourceCountRefreshTrigger}
-            />
+            {selectedChatSession ? (
+              <ChatPanel
+                selectedSessionId={selectedChatSession}
+                selectedBrainId={selectedBrainId}
+                onReferencedNodesUpdate={onReferencedNodesUpdate}
+                onOpenSource={handleOpenSource}
+                onChatReady={setChatReady}
+                sourceCountRefreshTrigger={sourceCountRefreshTrigger}
+                onBackToList={handleBackToList}
+                sessionInfo={sessionInfo}
+              />
+            ) : (
+              <ChatSession
+                selectedBrainId={selectedBrainId}
+                onSessionSelect={handleSessionSelect}
+                onChatReady={setChatReady}
+              />
+            )}
           </div>
         </Panel>
 

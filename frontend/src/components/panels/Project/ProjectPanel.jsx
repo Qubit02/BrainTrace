@@ -60,18 +60,19 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
                 </div>
               );
             })}
-
-          <div className="sidebar-icon add-icon" onClick={() => setShowModal(true)}>
-            <AiOutlinePlus size={27} />
-            <span>새 프로젝트</span>
-          </div>
-
+        </div>
+        
+        <div className="sidebar-icon add-icon" onClick={() => setShowModal(true)}>
+          <AiOutlinePlus size={27} />
+          <span>새 프로젝트</span>
         </div>
       </div>
+      
       <div className="sidebar-icon home-icon" onClick={() => nav('/')}>
         <IoHomeOutline size={25} />
         <span>홈으로</span>
       </div>
+      
       {showModal && (
         <NewBrainModal
           onClose={() => setShowModal(false)}

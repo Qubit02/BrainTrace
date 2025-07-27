@@ -2,67 +2,176 @@
 .confirm-back {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1200;
+    animation: confirmBackdropFadeIn 0.2s ease-out;
 }
 
 /* ─── 본체 ───────────────────────────── */
 .confirm-box {
-    width: 320px;
-    max-width: 88%;
+    width: 380px;
+    max-width: 90%;
     background: #ffffff;
-    color: #111;
-    border-radius: 12px;
-    padding: 26px 28px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-    font-family: "Noto Sans KR", sans‑serif;
-    line-height: 1.45;
+    color: #1f2937;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.5;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    animation: confirmBoxSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-/* 메시지 영역 여유 */
+.confirm-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6b7280, #374151, #1f2937);
+    border-radius: 16px 16px 0 0;
+}
+
+/* 메시지 영역 */
 .confirm-box>div:first-child {
-    margin-bottom: 22px;
-    font-size: 1rem;
+    margin-bottom: 28px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+    text-align: center;
+    padding: 0 8px;
 }
 
 /* ─── 버튼 영역 ──────────────────────── */
 .confirm-buttons {
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 
 /* 기본 버튼 스타일 */
 .confirm-buttons button {
     flex: 1;
-    min-width: 100px;
+    min-width: 120px;
     text-align: center;
     font-weight: 600;
     font-size: 14px;
-    padding: 10px 0;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-.confirm-buttons button:hover {
-    background: #f2f2f2;
+.confirm-buttons button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
 }
 
+.confirm-buttons button:hover::before {
+    left: 100%;
+}
+
+/* 취소 버튼 */
+.cancel-button {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+.cancel-button:hover {
+    background: #e5e7eb;
+    color: #374151;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 삭제 버튼 */
 .confirm-buttons .danger {
-    color: black;
-    background-color: #cccaca;
+    background: linear-gradient(135deg, #374151, #1f2937);
+    color: white;
+    border: 1px solid #1f2937;
+    box-shadow: 0 2px 4px rgba(31, 41, 55, 0.2);
 }
 
 .confirm-buttons .danger:hover {
-    color: black;
-    background: #797979;
+    background: linear-gradient(135deg, #1f2937, #111827);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(31, 41, 55, 0.3);
 }
 
+.confirm-buttons .danger:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(31, 41, 55, 0.2);
+}
+
+/* 비활성화 상태 */
 .cancel-button:disabled,
 .delete-button:disabled {
-    background-color: #ccc !important;
-    color: #666 !important;
-    opacity: 0.6;
-    box-shadow: none;
+    background: #f3f4f6 !important;
+    color: #9ca3af !important;
+    border-color: #e5e7eb !important;
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
     transition: none;
+}
+
+/* 애니메이션 */
+@keyframes confirmBackdropFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes confirmBoxSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* 반응형 */
+@media (max-width: 480px) {
+    .confirm-box {
+        width: 90%;
+        padding: 24px;
+        margin: 20px;
+    }
+    
+    .confirm-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .confirm-buttons button {
+        min-width: auto;
+    }
 }
