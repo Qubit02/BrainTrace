@@ -109,8 +109,27 @@ class Neo4jHandler:
         logging.info("Neo4j 스키마 조회 시작 (노드 이름 목록: %s, brain_id: %s)", node_names, brain_id)
         
         try:
-            # 두 개의 별도 쿼리로 분리: 1단계 관계와 2단계 관계
+            # 먼저 해당 brain_id의 모든 노드를 확인
             with self.driver.session() as session:
+                debug_query = "MATCH (n:Node) WHERE n.brain_id = $brain_id RETURN n.name as name"
+                debug_result = session.run(debug_query, brain_id=brain_id)
+                all_nodes = [record["name"] for record in debug_result]
+                logging.info("Neo4j에 저장된 모든 노드 (brain_id=%s): %s", brain_id, all_nodes)
+                
+                # 검색하려는 노드들이 실제로 존재하는지 확인
+                existing_nodes = [name for name in node_names if name in all_nodes]
+                missing_nodes = [name for name in node_names if name not in all_nodes]
+                logging.info("존재하는 노드: %s", existing_nodes)
+                logging.info("존재하지 않는 노드: %s", missing_nodes)
+                
+                if not existing_nodes:
+                    logging.warning("검색하려는 노드들이 모두 존재하지 않습니다.")
+                    return {
+                        "nodes": [],
+                        "relatedNodes": [],
+                        "relationships": []
+                    }
+                
                 # 1단계: 직접 연결된 노드 및 관계
                 query1 = '''
                 MATCH (n:Node)
@@ -415,6 +434,8 @@ class Neo4jHandler:
         Python에서 JSON 문자열을 파싱하여 source_id 리스트를 추출합니다.
         반환: { node_name: [source_id, ...], ... }
         """
+        logging.info(f"get_descriptions_bulk 호출: node_names={node_names}, brain_id={brain_id}")
+        
         # Cypher: descriptions 문자열 리스트만 조회
         query = '''
         MATCH (n:Node)
@@ -422,6 +443,8 @@ class Neo4jHandler:
         RETURN n.name AS name, n.descriptions AS descriptions
         '''
         rows = self._execute_with_retry(query, {"names": node_names, "brain_id": brain_id})
+        
+        logging.info(f"get_descriptions_bulk 쿼리 결과: {rows}")
 
         result: Dict[str, List[int]] = defaultdict(list)
         for rec in rows:
