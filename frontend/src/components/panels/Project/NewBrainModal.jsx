@@ -50,7 +50,7 @@ export default function NewBrainModal({ onClose, onCreated }) {
                         onClick={onClose}
                         className='close-button'
                     >
-                        <RiDeleteBack2Line size={22} />
+                        ✕
                     </button>
                 </div>
 
