@@ -866,12 +866,12 @@ function GraphView({
             minWidth: 0
           }}
         >
-          {hoveredNode && !hoveredLink && !draggedNode && (
+          {hoveredNode && !hoveredLink && !draggedNode && !isFullscreen && (
             <>
               <span style={{fontWeight:500}}>노드:</span> <span style={{fontWeight:400}}>{hoveredNode.name}</span> <span style={{ fontWeight: 300, fontSize: 13, marginLeft: 4 }}>(연결: {hoveredNode.linkCount})</span>
             </>
           )}
-          {hoveredLink && (
+          {(hoveredLink && !isFullscreen) && (
             <>
               <span style={{fontWeight:500}}>{hoveredLink.source?.name || hoveredLink.source}</span>
               <span style={{margin: '0 6px', fontWeight:300}}>→</span>
