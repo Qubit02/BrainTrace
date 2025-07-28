@@ -8,7 +8,7 @@ from exceptions.custom_exceptions import Neo4jException,AppException, QdrantExce
 from examples.error_examples import ErrorExamples
 from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
-import sqlite3
+from services.accuracy_service import compute_accuracy
 
 router = APIRouter(
     prefix="/brainGraph",
@@ -234,7 +234,8 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-
+        accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id)
+        logging.info(f"정확도 : {accuracy}")
         # node의 출처 소스 id들 가져오기
         node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
         logging.info(f"node_to_ids: {node_to_ids}")
@@ -243,7 +244,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         logging.info(f"all_ids: {all_ids}")
         # SQLite batch 조회로 id→title 매핑
         id_to_title = db_handler.get_titles_by_ids(all_ids)
-                
+               
         # 최종 구조화
         enriched = []
         for node in referenced_nodes:
@@ -259,7 +260,8 @@ async def answer_endpoint(request_data: AnswerRequest):
         return {
             "answer": final_answer,
             "referenced_nodes": enriched,
-            "chat_id": chat_id  
+            "chat_id": chat_id  ,
+            "accuracy": accuracy
         }
     except Exception as e:
         logging.error("answer 오류: %s", str(e))
