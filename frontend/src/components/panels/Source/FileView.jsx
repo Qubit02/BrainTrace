@@ -311,14 +311,21 @@ export default function FileView({
                       setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
                         const names = await getNodesBySourceId(f.id, brainId);
-                        if (onFocusNodeNamesUpdate) {
-                          onFocusNodeNamesUpdate(names);
+                        if (names && names.length > 0) {
+                          if (onFocusNodeNamesUpdate) {
+                            onFocusNodeNamesUpdate(names);
+                          }
+                        } else {
+                          // 노드가 없을 때 toast 메시지 표시
+                          toast.info(`그래프에 "${f.name}" 파일의 노드가 없습니다.`);
                         }
                       } catch (err) {
                         console.error('노드 조회 실패:', err);
-                        alert('해당 소스에서 생성된 노드를 가져오지 못했습니다.');
+                        toast.error('해당 소스에서 생성된 노드를 가져오지 못했습니다.');
+                      } finally {
+                        // 로딩 상태 해제
+                        setIsNodeViewLoading && setIsNodeViewLoading(null);
                       }
-                      // setIsNodeViewLoading(null); // 실제 반영은 부모에서
                       setMenuOpenId(null);
                     }}
                   >
