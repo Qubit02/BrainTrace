@@ -260,13 +260,6 @@ export default function FileView({
           <div
             key={`${f.filetype}-${f.id}`}
             className={`file-item ${selectedFile === f.id ? 'selected' : ''}`}
-            draggable
-            onDragStart={e =>
-              e.dataTransfer.setData(
-                'application/json',
-                JSON.stringify({ id: f.id, filetype: f.filetype })
-              )
-            }
             onClick={() => {
               if (uploadQueue && uploadQueue.length > 0) {
                 toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');

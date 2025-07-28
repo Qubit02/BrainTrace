@@ -16,20 +16,21 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
 }
 
 .file-item:hover {
-  background-color: rgba(148, 148, 148, 0.05);
-  outline: 2px dotted #999;
-  outline-offset: -2px;
-  transform: translateY(-3px);
+  background-color: rgba(148, 148, 148, 0.1);
+  border-color: #ddd;
 }
 
 .file-item.selected {
-  background-color: transparent;
-  color: inherit;
-  outline: 2px dotted #999;
-  outline-offset: -2px;
+  background-color: rgba(100, 150, 255, 0.1);
+  border-color: #6496ff;
 }
 
 /* 파일 아이콘 */
