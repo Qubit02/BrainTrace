@@ -88,7 +88,7 @@ function MemoListPanel({
                     </div>
 
                     {/* 새 메모 추가 버튼 */}
-                    <button className="add-memo-button" onClick={() => onAdd('')}>
+                    <button className="chat-session-new-chat-button" onClick={() => onAdd('')}>
                         + 새 메모
                     </button>
                 </div>
