@@ -1,4 +1,4 @@
-// src/components/panels/MemoPanel.jsx
+// src/components/panels/InsightPanel.jsx
 import React, { useState, useEffect } from 'react';
 import './InsightPanel.css';
 
@@ -17,7 +17,7 @@ import {
   deleteMemo
 } from '../../../../api/backend';
 
-function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady, setReferencedNodes, setFocusNodeNames, setNewlyAddedNodeNames }) {
+function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady, setReferencedNodes, setFocusNodeNames, setNewlyAddedNodeNames }) {
   const projectId = selectedBrainId;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
@@ -255,4 +255,4 @@ function MemoPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes =
   );
 }
 
-export default MemoPanel;
+export default InsightPanel;
