@@ -41,6 +41,38 @@ function ChatPanel({
   const [sessionName, setSessionName] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // ===== 초기 로딩 화면 (채팅 내역 로드 후 0.5초) =====
+  useEffect(() => {
+    if (!selectedSessionId) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    const loadChatHistory = async () => {
+      try {
+        const history = await fetchChatHistoryBySession(selectedSessionId);
+        setChatHistory(history);
+        if (onChatReady) onChatReady(true);
+        
+        // 채팅 내역 로드 후 0.5초 더 대기
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 500);
+      } catch (error) {
+        console.error('채팅 내역 로드 실패:', error);
+        if (onChatReady) onChatReady(false);
+        
+        // 에러가 발생해도 0.5초 후 로딩 종료
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 500);
+      }
+    };
+
+    loadChatHistory();
+  }, [selectedSessionId, onChatReady]);
 
   // ===== 소스 개수 및 브레인 이름 불러오기 =====
   useEffect(() => {
@@ -51,20 +83,6 @@ function ChatPanel({
     // 브레인 이름 불러오기 (필요시)
     // getBrain(selectedBrainId).then(data => setBrainName(data.brain_name)).catch(() => setBrainName(`프로젝트 #${selectedBrainId}`));
   }, [selectedBrainId, sourceCountRefreshTrigger]);
-
-
-  // ===== 채팅 내역 불러오기 (프로젝트 변경 시) =====
-  useEffect(() => {
-    if (!selectedSessionId) return;
-    fetchChatHistoryBySession(selectedSessionId)
-      .then(history => {
-        setChatHistory(history);
-        if (onChatReady) onChatReady(true);
-      })
-      .catch(() => {
-        if (onChatReady) onChatReady(false);
-      });
-  }, [selectedSessionId]);
 
   // ===== 세션 정보 불러오기 =====
   useEffect(() => {
@@ -242,7 +260,18 @@ function ChatPanel({
           </button>
         </div>
       </div>
-      {hasChatStarted ? (
+      {isInitialLoading ? (
+        <div className="chat-panel-initial-loading">
+          <div className="chat-panel-thinking-indicator">
+            <span>데이터를 불러오는 중...</span>
+            <div className="chat-panel-thinking-dots">
+              <div className="chat-panel-thinking-dot" />
+              <div className="chat-panel-thinking-dot" />
+              <div className="chat-panel-thinking-dot" />
+            </div>
+          </div>
+        </div>
+      ) : hasChatStarted ? (
         <div className="chat-panel-content">
           <div className="chat-panel-title-container">
             {isEditingTitle ? (

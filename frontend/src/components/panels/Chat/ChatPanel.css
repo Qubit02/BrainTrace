@@ -1,5 +1,26 @@
 /* ChatPanel.css - 채팅 패널 전용 스타일 */
 
+/* ====== 초기 로딩 화면 ====== */
+.chat-panel-initial-loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 90%;
+  background-color: #FFFFFF;
+  padding: 20px;
+}
+
+.chat-panel-initial-loading .chat-panel-thinking-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 /* ====== 채팅 패널 메인 컨테이너 ====== */
 .chat-panel-content {
   display: flex;
