@@ -39,11 +39,11 @@
 }
 
 .memo-title-text {
-    font-size: 1.27rem;
-    font-weight: 700;
+    font-size: 1.2rem;
+    font-weight: 600;
     color: #222;
     letter-spacing: 0.01em;
-    margin-left: -12px;
+    margin-left: -13px;
 }
 
 .memo-count {
