@@ -427,7 +427,30 @@ class Neo4jHandler:
         except Exception as e:
             logging.error(f"❌ source_id로 엣지 조회 실패: {str(e)}")
             raise Neo4jException(f"source_id로 엣지 조회 실패: {str(e)}")
-        
+
+    def get_node_descriptions(self, node_name: str, brain_id: str) -> List[Dict]:
+        """
+        특정 노드의 descriptions 필드를 조회해서 JSON 파싱 후 반환.
+        Returns: [{ 'description': str, 'source_id': int }, ...]
+        """
+        query = """
+        MATCH (n:Node {name: $node_name, brain_id: $brain_id})
+        RETURN n.descriptions AS descriptions
+        """
+        rows = self._execute_with_retry(query, {"node_name": node_name, "brain_id": brain_id})
+        if not rows or not rows[0].get("descriptions"):
+            return []
+
+        descriptions = []
+        for raw in rows[0]["descriptions"]:
+            try:
+                desc = json.loads(raw) if isinstance(raw, str) else raw
+            except json.JSONDecodeError:
+                logging.warning(f"[Neo4j] JSON decode error for desc: {raw}")
+                continue
+            descriptions.append(desc)
+        return descriptions
+       
     def get_descriptions_bulk(self, node_names: List[str], brain_id: str) -> Dict[str, List[int]]:
         """
         여러 노드 이름에 대해 descriptions 필드(문자열 리스트)를 한 번에 조회하고,

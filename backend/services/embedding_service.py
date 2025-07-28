@@ -324,6 +324,13 @@ def delete_collection(brain_id: str) -> None:
         logging.warning("컬렉션 %s가 존재하지 않을 수 있습니다: %s", collection_name, str(e))
 
 
+def encode(text: str) -> List[float]:
+        """
+        KoE5 모델을 이용해 텍스트를 임베딩합니다.
+        Returns: EMBED_DIM 차원의 float 리스트
+        """
+        return encode_text(text)
+
 def search_similar_descriptions(
     embedding: List[float],
     brain_id: str,
