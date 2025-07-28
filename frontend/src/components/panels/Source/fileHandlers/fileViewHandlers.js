@@ -132,7 +132,9 @@ export const handleDelete = async (f, brainId, onGraphRefresh, onSourceCountRefr
     // 2) 실제 파일 삭제 (파일 시스템 또는 DB에서)
     let deleted = false;
     if (deleteHandlers[f.filetype]) {
-      deleted = await deleteHandlers[f.filetype](f.id);
+      // fileUrl을 전달하여 하이라이팅 데이터도 함께 삭제
+      const fileUrl = f.fileUrl || f.url || f.path || null;
+      deleted = await deleteHandlers[f.filetype](f.id, fileUrl);
     } else {
       throw new Error('지원하지 않는 파일 타입');
     }
