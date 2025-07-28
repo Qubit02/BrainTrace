@@ -45,7 +45,7 @@ function MemoListPanel({
                 <div className="memo-list-header-left">
                     {/* 메모 아이콘 + Note 텍스트 */}
                     <div className="memo-list-title-row">
-                        <span className="memo-title-text">Note</span>
+                        <span className="memo-title-text">Memo</span>
                     </div>
                 </div>
 
