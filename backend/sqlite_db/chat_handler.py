@@ -9,7 +9,8 @@ class ChatHandler(BaseHandler):
         session_id: int,
         is_ai: bool,
         message: str,
-        referenced_nodes: List[Dict[str, Any]] = None
+        referenced_nodes: List[Dict[str, Any]] = None,
+        accuracy: float = None
     ) -> int:
         """채팅 메시지를 저장합니다. referenced_nodes는 JSON 직렬화하여 저장됩니다."""
         try:
@@ -22,15 +23,15 @@ class ChatHandler(BaseHandler):
             # 새 chat_id 생성
             chat_id = self._get_next_id()
             cursor.execute(
-                "INSERT INTO Chat (chat_id, session_id, is_ai, message, referenced_nodes) VALUES (?, ?, ?, ?, ?)",
-                (chat_id, session_id, 1 if is_ai else 0, message, ref_json)
+                "INSERT INTO Chat (chat_id, session_id, is_ai, message, referenced_nodes, accuracy) VALUES (?, ?, ?, ?, ?, ?)",
+                (chat_id, session_id, 1 if is_ai else 0, message, ref_json, accuracy)
             )
             conn.commit()
             conn.close()
 
             logging.info(
-                "채팅 저장 완료: chat_id=%s, session_id=%s, is_ai=%s",
-                chat_id, session_id, is_ai
+                "채팅 저장 완료: chat_id=%s, session_id=%s, is_ai=%s, accuracy=%s",
+                chat_id, session_id, is_ai, accuracy
             )
             return chat_id
         except Exception as e:
@@ -116,7 +117,7 @@ class ChatHandler(BaseHandler):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT chat_id, is_ai, message, referenced_nodes
+                SELECT chat_id, is_ai, message, referenced_nodes, accuracy
                   FROM Chat
                  WHERE session_id = ?
               ORDER BY chat_id ASC
@@ -127,13 +128,14 @@ class ChatHandler(BaseHandler):
             conn.close()
 
             result: List[Dict[str, Any]] = []
-            for chat_id, is_ai, message, ref_json in rows:
+            for chat_id, is_ai, message, ref_json, accuracy in rows:
                 referenced_nodes = json.loads(ref_json) if ref_json else []
                 result.append({
                     "chat_id": chat_id,
                     "is_ai": bool(is_ai),
                     "message": message,
-                    "referenced_nodes": referenced_nodes
+                    "referenced_nodes": referenced_nodes,
+                    "accuracy": accuracy
                 })
             return result
         except Exception as e:
@@ -147,7 +149,7 @@ class ChatHandler(BaseHandler):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT chat_id, is_ai, message, referenced_nodes
+                SELECT chat_id, is_ai, message, referenced_nodes, accuracy
                   FROM Chat
                  WHERE chat_id = ?
                 """,
@@ -159,13 +161,14 @@ class ChatHandler(BaseHandler):
             if not row:
                 return None
 
-            _id, is_ai, message, ref_json = row
+            _id, is_ai, message, ref_json, accuracy = row
             referenced_nodes = json.loads(ref_json) if ref_json else []
             return {
                 "chat_id": _id,
                 "is_ai": bool(is_ai),
                 "message": message,
-                "referenced_nodes": referenced_nodes
+                "referenced_nodes": referenced_nodes,
+                "accuracy": accuracy
             }
         except Exception as e:
             logging.error("chat_id로 채팅 조회 중 오류 발생: %s", str(e))

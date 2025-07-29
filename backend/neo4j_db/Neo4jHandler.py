@@ -377,23 +377,58 @@ class Neo4jHandler:
         특정 source_id가 descriptions에 포함된 모든 노드의 이름을 반환합니다.
         
         Args:
-            source_id: 찾을 source_id
+            source_id: 찾을 source_id (파일 ID)
             brain_id: 브레인 ID
             
         Returns:
-            List[str]: 노드 이름 목록
+            List[str]: 해당 source_id를 가진 노드들의 이름 목록
         """
         try:
+            # 1단계: 특정 brain_id의 모든 노드를 Neo4j에서 조회
+            # Neo4j의 CONTAINS 연산자는 JSON 문자열 내부 검색에 한계가 있어서
+            # 모든 노드를 가져온 후 Python에서 JSON 파싱으로 필터링하는 방식 사용
             query = """
             MATCH (n:Node {brain_id: $brain_id})
-            WHERE ANY(desc IN n.descriptions WHERE desc CONTAINS $source_id)
-            RETURN n.name as name
+            RETURN n.name as name, n.descriptions as descriptions
             """
-            result = self._execute_with_retry(query, {"source_id": source_id, "brain_id": brain_id})
-            return [record["name"] for record in result]
+            result = self._execute_with_retry(query, {"brain_id": brain_id})
+            
+            # 2단계: Python에서 각 노드의 descriptions를 검사하여 source_id 매칭
+            node_names = []
+            for record in result:
+                node_name = record["name"]
+                descriptions = record["descriptions"]
+                
+                # descriptions가 비어있으면 건너뛰기
+                if not descriptions:
+                    continue
+                    
+                # 3단계: 각 description을 JSON으로 파싱하여 source_id 확인
+                for desc in descriptions:
+                    try:
+                        # description이 문자열인 경우 JSON 파싱, 이미 객체인 경우 그대로 사용
+                        if isinstance(desc, str):
+                            desc_obj = json.loads(desc)
+                        else:
+                            desc_obj = desc
+                            
+                        # 4단계: source_id가 일치하는지 확인
+                        # 정확한 매칭을 위해 타입 변환 없이 직접 비교
+                        if desc_obj.get("source_id") == source_id:
+                            node_names.append(node_name)
+                            break  # 이 노드에서 source_id를 찾았으므로 다음 노드로 이동
+                            
+                    except (json.JSONDecodeError, TypeError):
+                        # 5단계: JSON 파싱 실패 시 대안으로 문자열 검색 사용
+                        # Neo4j에 저장된 데이터 형식이 예상과 다를 경우를 대비
+                        if str(source_id) in str(desc):
+                            node_names.append(node_name)
+                            break
+                            
+            return node_names
             
         except Exception as e:
-            logging.error(f"❌ source_id로 노드 조회 실패: {str(e)}")
+            logging.error(f"source_id로 노드 조회 실패: {str(e)}")
             raise Neo4jException(f"source_id로 노드 조회 실패: {str(e)}")
 
     def get_edges_by_source_id(self, source_id: str, brain_id: str) -> List[Dict]:

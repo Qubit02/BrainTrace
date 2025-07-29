@@ -255,7 +255,7 @@ async def answer_endpoint(request_data: AnswerRequest):
             ]
             enriched.append({"name": node, "source_ids": sources})
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched)
+        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
 
         return {
             "answer": final_answer,

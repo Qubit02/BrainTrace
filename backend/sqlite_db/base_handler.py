@@ -117,6 +117,7 @@ class BaseHandler:
                 is_ai BOOLEAN NOT NULL,
                 message TEXT,
                 referenced_nodes TEXT,
+                accuracy REAL,  -- 정확도 정보 추가
                 FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)
             )
             ''')

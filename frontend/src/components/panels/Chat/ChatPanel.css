@@ -696,3 +696,117 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.1s ease;
 }
+
+/* ====== 정확도 표시 스타일 ====== */
+.chat-panel-accuracy-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 13px;
+  color: #666666;
+  align-self: flex-end;
+  margin-left: auto;
+  width: fit-content;
+  position: relative;
+}
+
+.chat-panel-accuracy-label {
+  font-weight: 500;
+  color: #333333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-panel-accuracy-label::before {
+  content: '●';
+  font-size: 9px;
+  color: #adadad;
+}
+
+.chat-panel-accuracy-value {
+  font-weight: 600;
+  color: #333333;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+/* 정확도에 따른 색상 변화 */
+.chat-panel-accuracy-value[data-accuracy="high"] {
+  color: #000000;
+}
+
+.chat-panel-accuracy-value[data-accuracy="high"]:hover {
+  color: #333333;
+}
+
+.chat-panel-accuracy-value[data-accuracy="medium"] {
+  color: #666666;
+}
+
+.chat-panel-accuracy-value[data-accuracy="medium"]:hover {
+  color: #555555;
+}
+
+.chat-panel-accuracy-value[data-accuracy="low"] {
+  color: #999999;
+}
+
+.chat-panel-accuracy-value[data-accuracy="low"]:hover {
+  color: #888888;
+}
+
+/* 물음표 아이콘 */
+.chat-panel-accuracy-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #666666;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+  margin-left: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.chat-panel-accuracy-help:hover {
+  background: #e0e0e0;
+  color: #333333;
+}
+
+/* 호버 툴팁 */
+.chat-panel-accuracy-help::after {
+  content: '신뢰도는 AI 답변과 참고된 소스 내용의 의미적 유사도를 측정합니다. 높을수록 답변이 소스 내용과 더 일치함을 의미합니다.';
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 280px;
+  padding: 12px;
+  background: #ffffff;
+  color: #333333;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  white-space: normal;
+  text-align: left;
+  margin-bottom: 8px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chat-panel-accuracy-help:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-4px);
+}

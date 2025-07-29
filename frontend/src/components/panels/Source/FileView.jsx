@@ -335,7 +335,8 @@ export default function FileView({
                     onClick={async () => {
                       setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
-                        const names = await getNodesBySourceId(f.id, brainId);
+                        const response = await getNodesBySourceId(f.id, brainId);
+                        const names = response?.nodes || [];
                         if (names && names.length > 0) {
                           if (onFocusNodeNamesUpdate) {
                             onFocusNodeNamesUpdate(names);

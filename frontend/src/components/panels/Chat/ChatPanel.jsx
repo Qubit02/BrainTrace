@@ -162,7 +162,8 @@ function ChatPanel({
           chat_id: res?.chat_id || Date.now() + 1,
           is_ai: true,
           message: res?.answer,
-          referenced_nodes: res?.referenced_nodes || []
+          referenced_nodes: res?.referenced_nodes || [],
+          accuracy: res?.accuracy || null // accuracy 추가
         };
         setChatHistory(prev => [...prev, tempAnswer]);
       }
@@ -174,7 +175,8 @@ function ChatPanel({
             chat_id: res.chat_id || Date.now() + 2,
             is_ai: true,
             message: res.message,
-            referenced_nodes: []
+            referenced_nodes: [],
+            accuracy: null
           }
         ]);
       }
@@ -263,7 +265,7 @@ function ChatPanel({
       {isInitialLoading ? (
         <div className="chat-panel-initial-loading">
           <div className="chat-panel-thinking-indicator">
-            <span>데이터를 불러오는 중...</span>
+            <span>채팅 내역을 불러오는 중...</span>
             <div className="chat-panel-thinking-dots">
               <div className="chat-panel-thinking-dot" />
               <div className="chat-panel-thinking-dot" />
@@ -424,6 +426,22 @@ function ChatPanel({
                       </button>
                     )}
                   </div>
+                  {/* 신뢰도 표시 (AI 답변에만) */}
+                  {m.is_ai && m.accuracy !== null && m.accuracy !== undefined && (
+                    <div className="chat-panel-accuracy-display">
+                      <span className="chat-panel-accuracy-label">신뢰도:</span>
+                      <span 
+                        className="chat-panel-accuracy-value"
+                        data-accuracy={
+                          m.accuracy >= 0.8 ? "high" : 
+                          m.accuracy >= 0.6 ? "medium" : "low"
+                        }
+                      >
+                        {(m.accuracy * 100).toFixed(1)}%
+                      </span>
+                      <span className="chat-panel-accuracy-help">?</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
