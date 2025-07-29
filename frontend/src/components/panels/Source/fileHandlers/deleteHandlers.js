@@ -1,4 +1,4 @@
-import { deletePdf, deleteTextFile, deleteMDFile, setMemoAsNotSource, deleteDocxFile } from '../../../../../api/backend';
+import { deletePdf, deleteTextFile, deleteMDFile, hardDeleteMemo, deleteDocxFile } from '../../../../../api/backend';
 import { clearHighlightingData } from '../viewer/Highlighting.jsx';
 
 const deleteHandlers = {
@@ -27,7 +27,7 @@ const deleteHandlers = {
     return result;
   },
   memo: async (id) => { 
-    const result = await setMemoAsNotSource(id);
+    const result = await hardDeleteMemo(id);
     if (result) {
       // 메모 삭제 시 하이라이팅 데이터도 삭제
       clearHighlightingData('memo', null, id);

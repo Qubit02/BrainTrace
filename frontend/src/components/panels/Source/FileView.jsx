@@ -6,7 +6,6 @@ import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
 import { RiDeleteBinLine } from 'react-icons/ri';
-import { processText, deleteDB } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
@@ -14,17 +13,15 @@ import {
   getPdfsByBrain,
   getTextfilesByBrain,
   getMemosByBrain,
-  setMemoAsSource,
   getNodesBySourceId,
   getMDFilesByBrain,
-  getDocxFilesByBrain
+  getDocxFilesByBrain,
+  convertMemoToSource
 } from '../../../../api/backend';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import fileHandlers from './fileHandlers/fileHandlers';
-import deleteHandlers from './fileHandlers/deleteHandlers';
-import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
 import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
 import { processMemoTextAsGraph } from './fileHandlers/memoHandlers';
 import { handleDrop, handleNameChange, handleDelete } from './fileHandlers/fileViewHandlers';
@@ -129,9 +126,12 @@ export default function FileView({
     const file = uploadQueue[0];
     try {
       if (file.filetype === 'memo' && file.memoId && file.memoContent) {
-        // 메모를 소스로 변환
-        await setMemoAsSource(file.memoId);
-        await processMemoTextAsGraph(file.memoContent, file.memoId, brainId);
+        // 메모를 소스로 변환하고 새로운 메모 ID 받기
+        const newSourceMemo = await convertMemoToSource(file.memoId);
+        const newSourceMemoId = newSourceMemo.memo_id;
+        
+        // 새로운 메모 ID로 그래프 생성
+        await processMemoTextAsGraph(file.memoContent, newSourceMemoId, brainId);
         if (onGraphRefresh) onGraphRefresh();
         if (onSourceCountRefresh) onSourceCountRefresh();
       } else {
@@ -336,6 +336,7 @@ export default function FileView({
                       setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
                         const response = await getNodesBySourceId(f.id, brainId);
+                        
                         const names = response?.nodes || [];
                         if (names && names.length > 0) {
                           if (onFocusNodeNamesUpdate) {

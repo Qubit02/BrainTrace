@@ -52,6 +52,7 @@ class BaseHandler:
                 is_source BOOLEAN DEFAULT 0,
                 type TEXT,          
                 brain_id INTEGER,
+                is_deleted INTEGER DEFAULT 0,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
