@@ -38,6 +38,7 @@ class MemoResponse(BaseModel):
     is_source: bool
     type: Optional[str]
     brain_id: Optional[int]
+    is_deleted: Optional[bool] = False
 
 # 메모 생성
 @router.post("/", response_model=MemoResponse, status_code=status.HTTP_201_CREATED)
@@ -61,7 +62,7 @@ async def create_memo(memo_data: MemoCreate):
 # 메모 조회
 @router.get("/{memo_id}", response_model=MemoResponse)
 async def get_memo(memo_id: int):
-    memo = sqlite_handler.get_memo(memo_id)
+    memo = sqlite_handler.get_memo_with_deleted(memo_id)
     if not memo:
         raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
     return memo
@@ -120,10 +121,35 @@ async def delete_memo(memo_id: int):
         logging.error(f"메모 삭제 오류: {e}")
         raise HTTPException(status_code=500, detail="서버 오류")
 
+# 메모 완전 삭제 (소프트 삭제된 메모를 실제로 삭제)
+@router.delete("/{memo_id}/hard", status_code=204)
+async def hard_delete_memo(memo_id: int):
+    if not sqlite_handler.get_memo_with_deleted(memo_id):
+        raise HTTPException(status_code=404, detail="삭제할 메모를 찾을 수 없습니다")
+    try:
+        if not sqlite_handler.hard_delete_memo(memo_id):
+            raise HTTPException(status_code=400, detail="메모 완전 삭제 실패")
+    except Exception as e:
+        logging.error(f"메모 완전 삭제 오류: {e}")
+        raise HTTPException(status_code=500, detail="서버 오류")
+
+# 삭제된 메모 복구
+@router.put("/{memo_id}/restore", response_model=MemoResponse)
+async def restore_memo(memo_id: int):
+    if not sqlite_handler.get_memo_with_deleted(memo_id):
+        raise HTTPException(status_code=404, detail="복구할 메모를 찾을 수 없습니다")
+    try:
+        if not sqlite_handler.restore_memo(memo_id):
+            raise HTTPException(status_code=400, detail="메모 복구 실패")
+        return sqlite_handler.get_memo(memo_id)
+    except Exception as e:
+        logging.error(f"메모 복구 오류: {e}")
+        raise HTTPException(status_code=500, detail="서버 오류")
+
 # 메모를 소스로 설정
 @router.put("/{memo_id}/isSource", response_model=MemoResponse)
 async def set_memo_as_source(memo_id: int):
-    memo = sqlite_handler.get_memo(memo_id)
+    memo = sqlite_handler.get_memo_with_deleted(memo_id)
     if not memo:
         raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
     try:
@@ -131,44 +157,37 @@ async def set_memo_as_source(memo_id: int):
             memo_id=memo_id,                    # 메모 ID
             memo_title=None,                    # 제목 변경 없음
             memo_text=None,                     # 내용 변경 없음
-            is_source=True,                     # is_source → False로 설정
+            is_source=True,                     # is_source → True로 설정
             type=None,                          # 파일 형식 변경 없음
             brain_id=memo.get("brain_id")       # 기존 brain_id 유지
         )
         if not updated:
             raise HTTPException(status_code=400, detail="메모 업데이트 실패")
-        return sqlite_handler.get_memo(memo_id)
+        return sqlite_handler.get_memo_with_deleted(memo_id)
     except Exception as e:
         logging.error(f"소스 설정 오류: {e}")
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
-# 메모를 비소스로 설정
-@router.put("/{memo_id}/isNotSource", response_model=MemoResponse)
+# 메모를 비소스로 설정 (완전 삭제)
+@router.put("/{memo_id}/isNotSource", status_code=204)
 async def set_memo_as_not_source(memo_id: int):
-    memo = sqlite_handler.get_memo(memo_id)
+    memo = sqlite_handler.get_memo_with_deleted(memo_id)
     if not memo:
         raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
     try:
-        updated = sqlite_handler.update_memo(
-            memo_id=memo_id,                    # 메모 ID
-            memo_title=None,                    # 제목 변경 없음
-            memo_text=None,                     # 내용 변경 없음
-            is_source=False,                    # is_source → False로 설정
-            type=None,                          # 파일 형식 변경 없음
-            brain_id=memo.get("brain_id")       # 기존 brain_id 유지
-        )
-        if not updated:
-            raise HTTPException(status_code=400, detail="메모 업데이트 실패")
-        return sqlite_handler.get_memo(memo_id)
+        # 메모를 완전히 삭제
+        if not sqlite_handler.hard_delete_memo(memo_id):
+            raise HTTPException(status_code=400, detail="메모 삭제 실패")
+        logging.info(f"소스 메모 완전 삭제 완료: memo_id={memo_id}")
     except Exception as e:
-        logging.error(f"비소스 설정 오류: {e}")
+        logging.error(f"소스 메모 삭제 오류: {e}")
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 # 브레인 내 모든 메모 조회
 @router.get("/brain/{brain_id}", response_model=List[MemoResponse])
-async def get_memos_by_brain(brain_id: int):
+async def get_memos_by_brain(brain_id: int, include_deleted: bool = False):
     try:
-        return sqlite_handler.get_memos_by_brain(brain_id)
+        return sqlite_handler.get_memos_by_brain(brain_id, include_deleted=include_deleted)
     except Exception as e:
         logging.error(f"메모 조회 오류: {e}")
         raise HTTPException(status_code=500, detail="서버 오류")
@@ -177,7 +196,43 @@ async def get_memos_by_brain(brain_id: int):
 @router.get("/source/brain/{brain_id}", response_model=List[MemoResponse])
 async def get_source_memos_by_brain(brain_id: int):
     try:
-        return sqlite_handler.get_memos_by_brain(brain_id, is_source=True)
+        return sqlite_handler.get_memos_by_brain(brain_id, is_source=True, include_deleted=True)
     except Exception as e:
         logging.error(f"소스 메모 조회 오류: {e}")
+        raise HTTPException(status_code=500, detail="서버 오류")
+
+# 메모를 소스로 변환
+@router.post("/{memo_id}/convertToSource", response_model=MemoResponse, status_code=status.HTTP_201_CREATED)
+async def convert_memo_to_source(memo_id: int):
+    # 원본 메모 조회
+    original_memo = sqlite_handler.get_memo_with_deleted(memo_id)
+    if not original_memo:
+        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+    
+    try:
+        # 새로운 소스 메모 생성
+        new_source_memo = sqlite_handler.create_memo(
+            memo_title=original_memo.get("memo_title", ""),
+            memo_text=original_memo.get("memo_text", ""),
+            is_source=True,
+            type=original_memo.get("type"),
+            brain_id=original_memo.get("brain_id")
+        )
+        
+        logging.info(f"메모를 소스로 변환 완료: memo_id={memo_id} -> new_source_id={new_source_memo['memo_id']}")
+        return new_source_memo
+    except Exception as e:
+        logging.error(f"메모 소스 변환 오류: {e}")
+        raise HTTPException(status_code=500, detail="내부 서버 오류")
+
+# 휴지통 비우기 (삭제된 메모 모두 완전 삭제)
+@router.delete("/trash/{brain_id}", status_code=204)
+async def empty_trash(brain_id: int):
+    try:
+        # 브레인 내 삭제된 메모들을 모두 완전 삭제
+        deleted_count = sqlite_handler.empty_trash(brain_id)
+        logging.info(f"휴지통 비우기 완료: brain_id={brain_id}, 삭제된 메모 수={deleted_count}")
+        return {"deleted_count": deleted_count}
+    except Exception as e:
+        logging.error(f"휴지통 비우기 오류: {e}")
         raise HTTPException(status_code=500, detail="서버 오류")
