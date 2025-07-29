@@ -42,6 +42,7 @@ class ChatSaveRequest(BaseModel):
     is_ai: int
     message: str
     referenced_nodes: list[str] = []
+    accuracy: float = None
 
 @router.post("/session/{session_id}")
 async def save_chat_to_session(session_id: int, req: ChatSaveRequest):
@@ -54,7 +55,8 @@ async def save_chat_to_session(session_id: int, req: ChatSaveRequest):
         session_id=session_id,
         is_ai=bool(req.is_ai),
         message=req.message,
-        referenced_nodes=req.referenced_nodes
+        referenced_nodes=req.referenced_nodes,
+        accuracy=req.accuracy
     )
     if chat_id == -1:
         raise HTTPException(500, "채팅 저장 실패")
