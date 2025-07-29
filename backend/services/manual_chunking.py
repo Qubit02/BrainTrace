@@ -20,200 +20,230 @@ from chunk_service import chunk_text
 from node_gen_ver5 import extract_nodes
 
 okt = Okt()
-# 불용어 정의 (필요시 확장 가능)
-stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우"]
+# 불용어 정의 
+stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나"]
 
-# ✅ .env 파일에서 환경 변수 로드
-#load_dotenv()
 
-def extract_keywords_by_tfidf(paragraphs, topn=5):
+def lda_keyword_and_similarity(chunk: list[list[str]], num_topics=5, topn_keyword=1):
+    """
+    chunk: 문단별로 토큰화된 텍스트 (e.g., [["나는", "학생이다"], ["오늘은", "날씨가", "좋다"]])
+    """
+
+    # Step 1: LDA 모델 학습
+    dictionary = corpora.Dictionary(chunk)
+    corpus = [dictionary.doc2bow(text) for text in chunk]
+    lda_model = models.LdaModel(corpus, num_topics=num_topics, id2word=dictionary, passes=10)
+
+    # Step 2: 전체 문서의 평균 topic 분포 계산
+    topic_weights = [lda_model.get_document_topics(bow) for bow in corpus]
+    topic_distribution = defaultdict(float)
+    for doc in topic_weights:
+        for topic_id, weight in doc:
+            topic_distribution[topic_id] += weight
+    for topic_id in topic_distribution:
+        topic_distribution[topic_id] /= len(topic_weights)
+
+    # Step 3: 가장 중심적인 topic 찾기
+    main_topic = max(topic_distribution.items(), key=lambda x: x[1])[0]
+
+    # Step 4: 중심 topic의 가장 중요한 키워드 하나 추출
+    top_keyword = lda_model.show_topic(main_topic, topn=topn_keyword)[0]
+
+    # Step 5: 각 문단의 topic vector 생성 (0으로 채우고 sparse vector를 dense로)
+    topic_vectors = []
+    for doc_topics in topic_weights:
+        vec = np.zeros(num_topics)
+        for topic_id, weight in doc_topics:
+            vec[topic_id] = weight
+        topic_vectors.append(vec)
+
+    # Step 6: 문단 간 유사도 계산 (코사인 유사도)
+    similarity_matrix = cosine_similarity(topic_vectors)
+
+    return top_keyword, topic_vectors, similarity_matrix
+
+
+#문단을 문자열 리스트로 입력으로 받아 tf-idf를 기반으로 문단 별 키워드를 추출합니다.
+def extract_keywords_by_tfidf(tokenized_chunks:list[str], topn=5):
+    #각 단어의 tf-idf 점수를 계산한 메트릭스를 생성합니다.
     vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=1000)
-    tfidf_matrix = vectorizer.fit_transform(paragraphs)
+    text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
+    tfidf_matrix = vectorizer.fit_transform(text_chunks)
     feature_names = vectorizer.get_feature_names_out()
 
+    #각 문단 i의 tf-idf 벡터를 배열로 변환하고, 값이 큰 순서대로 정렬 후 상위 5개를 추출합니다.
     keywords_per_paragraph = []
     for i in range(tfidf_matrix.shape[0]):
         row = tfidf_matrix[i].toarray().flatten()
         top_indices = row.argsort()[::-1][:topn]
         top_keywords = [feature_names[j] for j in top_indices if row[j] > 0  ]
-        keywords_per_paragraph.append(top_keywords)
+        for k in top_keywords:
+            if k not in stop_words:
+                keywords_per_paragraph.append(top_keywords)
+                break
 
     return keywords_per_paragraph
 
-def get_topic_vector_keywords(bow, lda_model, num_topics=3, topn=10):
-    # 해당 문단에 대한 토픽 분포 추출
-    topic_dist = lda_model.get_document_topics(bow, minimum_probability=0)
-    topic_vectors=[vector[1] for vector in topic_dist]
 
-    # 확률 기준으로 상위 5개 토픽 선택
-    top_topics = sorted(topic_dist, key=lambda x: x[1], reverse=True)[:5]
-
-    topic_keywords = []
-
-    for topic_id, prob in top_topics:
-        # 각 토픽의 키워드 추출 (문자열)
-        keywords = lda_model.show_topic(topic_id, topn=topn)
-        # 한 글자짜리 키워드는 제외
-        keyword_str = ", ".join([word for word, _ in keywords if len(word) > 1])
-        topic_keywords.append(keyword_str)
-
-    return topic_keywords, topic_vectors
+#의미있는 단어구들을 추출하여 토큰화
+def tokenization(paragraphs: list[dict]) -> list[list[str]]:
+    tokenized = []
+    okt = Okt()
+    for p in paragraphs:
+        tokens = okt.nouns(p["text"])
+        filtered_tokens = [t for t in tokens if t not in stop_words and len(t)>1]
+        tokenized_para={}
+        tokenized_para["tokens"]=filtered_tokens
+        tokenized_para["index"]=p["index"]
+        tokenized.append(tokenized_para)
+    return tokenized
 
 
-def extract_referenced_nodes(llm_response: str) -> list[str]:
-    """
-    LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱해
-    referenced_nodes만 추출한 뒤,
-    '레이블-노드' 형식일 경우 레이블과 '-'을 제거하고
-    노드 이름만 반환합니다.
-    """
-    parts = llm_response.split("EOF")
-    if len(parts) < 2:
-        return []
-
-    json_part = parts[-1].strip()
-    try:
-        payload = json.loads(json_part)
-        # payload가 리스트인 경우 빈 리스트 반환
-        if isinstance(payload, list):
-            return []
-        # payload가 딕셔너리인 경우에만 get() 호출
-        raw_nodes = payload.get("referenced_nodes", [])
-        cleaned = [
-            node.split("-", 1)[1] if "-" in node else node
-            for node in raw_nodes
-        ]
-        return cleaned
-    except json.JSONDecodeError:
-        return []
-
-
-def extract_graph_components(paragraphs: list[str], source_id: str, depth: int, threshold: int):
-    """
-    input 텍스트의 전체 주제를 추출하고 문단 별로 topic을 추출해 chunk로 나눕니다
-    """
+def recurrsive_chunking(chunk:list[dict], depth:int, chunking_result:list[dict], threshold: int)-> tuple[list[dict], list[dict]]:
     text=""
-    print(f"depth {depth} 시작!!\n")
-    print(paragraphs)
-    for para in paragraphs:
-        text+=para
+    for para in text:
+        text+=para   
+
+    #LDA 방식으로 추출한 각 문단의 핵심 키워드와 topic을 나타내는 vector를 추출
+    tokens=[c["tokens"] for c in chunk]
+    top_keyword, topic_vectors, similarity_matrix=lda_keyword_and_similarity(tokens, 5, 1)
+    
+    print(top_keyword)
+
+    similarity_matrix = cosine_similarity(topic_vectors)
+    
+    #두 번째 chunking부터는 chunk의 크기가 250 token 이하이면 다시 chunking하지 않습니다
+    if depth>0:
+        sizes=[len(c["tokens"]) for c in chunk]
+        if sum(sizes) <= 250:
+            result={}
+            result["depth"]=depth
+            result["chunks"] = [[c["index"] for c in chunk]]
+            print(f"depth {depth} 종료")
+            return [result]
+        #depth가 5 이상이면 그냥 각 문단을 하나의 chunk로 삼습니다.
+        elif depth>5:
+            result={}
+            result["depth"]=depth
+            result["chunks"] = [[c["index"]] for c in chunk]
+            print(f"depth {depth} 종료")
+            return [result]
+
+    
+    #각 문단 간의 topic vector의 유사도를 바탕으로 문단을 묶어 chunking합니다
+    print("chunking 시작!")
+    new_chunk_groups=[]
+    new_chunk=[]
+    visited = set()
+    for idx, c in enumerate(chunk):
+        if idx in visited:
+            continue
+
+        new_chunk = [idx]
+        visited.add(idx)
+
+        for next_idx in range(idx + 1, len(chunk)):
+            # 이미 방문한 문단은 건너뜀
+            if next_idx in visited:
+                continue
+
+            # 이전 문단들 중 하나라도 유사하면 chunk에 추가
+            if any(similarity_matrix[i][next_idx] >= threshold for i in new_chunk):
+                new_chunk.append(next_idx)
+                visited.add(next_idx)
+            else:
+                break  # 연속되지 않으면 묶지 않음
+
+        new_chunk_groups.append(new_chunk)
+    
+    print(f"depth {depth} chunking 끝!")
+
+
+    #grouping 결과를 바탕으로 더 깊은 chunking할 go_chunk, 
+    #tf-idf를 바탕으로 토픽을 추출할 묶음 get_topic을 생성
+    go_chunk=[]
+    get_topics=[]
+    for group in new_chunk_groups:
+        go_chunk_temp=[]
+        get_topics_temp=[]
+        for mem in group:
+            get_topics_temp+=chunk[mem]["tokens"]
+            go_chunk_temp.append(chunk[mem])
+        go_chunk.append(go_chunk_temp)
+        get_topics.append(get_topics_temp)
+    
+    result=[]
+    for c in go_chunk:
+        print(f"depth {depth+1} 진입")
+        result+=recurrsive_chunking(c, depth+1, chunking_result, threshold*1.2)
+
+    current_result={}
+    current_result["depth"]=depth
+    current_result["topics"]=extract_keywords_by_tfidf(get_topics, 5)
+    current_result["chunks"]=current_result["chunks"] = [[chunk[idx]["index"] for idx in group] for group in new_chunk_groups]
+    current_result["keyword"]=top_keyword
+    result.append(current_result)
+
+    return result
+
+
+def split_into_tokenized_para(text:str):
+        #text를 문단 단위로 쪼갬
+    merge=""
+    paragraphs=[]
+    texts=[]
+    index=0
+    for p in text.strip().split("\n"):
+        if p.strip():
+            if len(p)<60: #문단이 60글자 이하이면 다음 문단에 병합
+                merge+=p
+            else:
+                para={}
+                para["text"]=merge+"\n"+p
+                para["index"]=index
+                paragraphs.append(para)
+                texts.append([merge+"\n"+p])
+                index+=1
+                merge=""
+    return tokenization(paragraphs), texts
+
+def extract_graph_components(text: str, source_id: str):
+    """
+    input 텍스트의 전체 주제를 추출하고 재귀적으로 chunking을 시작합니다.
+    chunking이 끝나면 return값을 바탕으로 노드와 엣지를 생성하여 반환합니다.
+    """
     
     # 모든 노드와 엣지를 저장할 리스트
     all_nodes = []
     all_edges = []
-    plus=""
+
+    tokenized, paragraphs = split_into_tokenized_para(text)
+    chunking_result=recurrsive_chunking(tokenized, 0, {}, threshold=0.6)
+
+    #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
+
+
+    for branch in chunking_result:
+        if "topics" not in branch:
+            leaf_chunk=""
+            for c in branch["chunks"]:
+                leaf_chunk+=paragraphs[c]
+            
+            
+
+
+
+
     
-    if depth==0:
-        paragraphs=[]
-        for p in text.strip().split("\n"):
-            if p.strip():
-                if len(p)<50:
-                    plus=p
-                else:
-                    plus=plus+"\n"+p
-                    paragraphs.append(plus)
-                    plus=""
-        
-        print("속도 체크 시작")
+    #더 이상 청킹할 수 없을 때까지 재귀적으로 함수를 호출
+    "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
+    "엣지는 { \"source\": string, \"target\": string, \"relation\": string } 형식의 객체 배열로 출력해줘. "
 
-    okt = Okt()
-    tokenized = [okt.nouns(p) for p in paragraphs]
-
-    print("속도 체크 끝")
-
-    dictionary = corpora.Dictionary(tokenized)
-    corpus = [dictionary.doc2bow(text) for text in tokenized ]
-    lda_model = models.LdaModel(corpus, num_topics=3, id2word=dictionary, passes=10)
-
-    LDA_keywords=[]
-    topic_vectors=[]
-    for bow in corpus:
-        paragraph_content = get_topic_vector_keywords(bow, lda_model, num_topics=5, topn=10)
-        LDA_keywords.append(paragraph_content[0]) 
-        topic_vectors.append(paragraph_content[1])   
-    
-
-    print(f"depth {depth}의 전체 토픽의 키워드입니다!!!!!!!!!!!!")
-    for idx, topic in lda_model.show_topics(formatted=False):
-        print(f"Topic {idx}: {[word for word, _ in topic]}")
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    
-    for p in range(len(paragraphs)):
-        print("/////////////////////////////////////")
-        #print(f"tf-idf 키워드 {keywords[p]}")
-        print(paragraphs[p])
-        #print(topic_vectors[p])
-        print("/////////////////////////////////////")
-
-    similarity_matrix = cosine_similarity(topic_vectors)
-
-    chunks = []
-    complete=[]
-    para_lengths=[]
-    visited = set()
-    
-    if depth>3:
-        extract_nodes()
-
-    if depth>0:
-        for i in range(len(paragraphs)):
-            l=len(paragraphs)
-            para_lengths.append(l)
-            if l<1000:
-                complete.append([i])
-                visited.add(i)
-
-    for i in range(len(paragraphs)):
-        if i in visited:
-            continue
-        chunk = [i]
-        #total_length=para_lengths[i]
-        visited.add(i)
-        for j in range(i + 1, len(paragraphs)):
-            if j not in visited and similarity_matrix[i][j] >= threshold:
-                #if total_length+para_lengths[j] < 2000:
-                chunk.append(j)
-                visited.add(j)
-                #total_length+=para_lengths[j]
-                """
-                else:
-                    complete.append(chunk)
-                    chunks.remove(chunk)
-                    break
-                    """
-            else:
-                break
-        chunks.append(chunk)
-    
-
-    # 출력
-    go_chunk=""
-    for c in complete:
-        go_chunk=""
-        c_tokenized=[]
-        for idx in c:
-            c_tokenized.append(tokenized[idx])
-            go_chunk+=paragraphs[idx]
-        #topic=get_topic_keywords(go_chunk, c_tokenized)
-        topic=extract_keywords_by_tfidf(go_chunk)
-        print(f"depth {depth}의 {c}번째의 top keyword는 {topic[0]}")
-        extract_nodes(go_chunk)
-        print(f"chunk {c} extraction 완료")
-
-
-    for chunk in chunks:
-        current=[]
-        for idx in chunk:
-            current.append(paragraphs[idx])
-        print("current 입니다!!")
-        print(current)
-        extract_graph_components(current, source_id, depth+1, threshold*1.2)
-
-    logging.info(f"✅ 총 개의 노드와 {len(chunks)}개의 청크가 추출되었습니다.")
+    logging.info(f"✅ 총 개의 노드와 개의 청크가 추출되었습니다.")
     return all_nodes, all_edges
 
-
-def get_topic_keywords(text:str, tokenized):
+"""
+def get_topic_keywords(tokenized:list[str]):
     dictionary = corpora.Dictionary(tokenized)
     corpus = [dictionary.doc2bow(text) for text in tokenized ]
     lda_model = models.LdaModel(corpus, num_topics=3, id2word=dictionary, passes=10)
@@ -226,10 +256,26 @@ def get_topic_keywords(text:str, tokenized):
     main_keyword = top_keywords[0]
 
     return main_keyword
-    
-    
+    """
 
-text = ["""보성전문학교 시절부터 대한민국 국내에서 오랫동안 인식되어 왔던 고려대의 모습은 하기와 같다.
+def manual_chunking(text:str):
+    tokenized, paragraphs = split_into_tokenized_para(text)
+    chunking_result=recurrsive_chunking(tokenized, 0, {}, threshold=0.6)
+    print(chunking_result)
+
+    #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
+
+    chunks=[]
+    for branch in chunking_result:
+        if "topics" not in branch:
+            leaf_chunk=""
+            for c in branch["chunks"]:
+                for idx in c:
+                    leaf_chunk=paragraphs[idx]
+            chunks.append(leaf_chunk)
+    return chunks
+
+text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안 인식되어 왔던 고려대의 모습은 하기와 같다.
 
 ① 야성적, 활동적, 정열적
 고려대학교의 교풍은 야성, 활기와 정열 등으로 대표된다. 무섭고 사나운 호랑이, 강렬하게 검붉은 크림슨색 등 고대를 대표하거나 '고대' 하면 떠오르는 상징들은 대부분 위의 특징들과 연관된 경우가 많다. 이는 고려대학교가 그 전신인 보성전문학교 시절 사실상 유일한 민족·민립의 지도자 양성기구였기 때문에, 민족정신이라는 시대적 요구가 교수와 학생들에게 특별히 더 부하됐고, 그것이 학생들의 지사적 또는 투사적 저항 기질을 배태시켰던 데 기인한다는 견해가 있다.[20]
@@ -249,6 +295,7 @@ text = ["""보성전문학교 시절부터 대한민국 국내에서 오랫동�
 ⑥ 교풍의 변화
 이렇듯 고려대의 학풍은 특유의 굳건함, 저력과 함께 정(情)이 합쳐진 모습으로 대표되어 왔고 이는 위에서 언급한 다양한 이점을 가지고 왔다. 그러나 과거에는 이러한 측면이 과다해 학내에 수직적, 강압적 악폐습이 존재했으며, 실제 동문 모임이나 학교 생활에서 일명 '고대인다운 모습'을 지나치게 강요하여 개인적 반발을 불러일으킨다는 측면도 일부 존재하였다. 고려대학교가 지켜 왔던 ‘굳건한 기질’ 역시 다르게 말하면 보수적, 즉 변화에 소극적이라는 단점이 될 수도 있는 것이었다. 실제로 21세기 들어 인터넷·디지털 혁명이 일어나고 법학과 의학 분야에 전문대학원 체제가 도입되며 이공계의 중요성이 강조되는 등 급격한 변화가 일어났지만, 고려대학교의 구성원은 이러한 변화를 따르는 것에 소극적이었다. 그러나 2010년대 이후 고려대학교의 공동체 문화 역시 자유주의와 개인주의를 상당 부분 수용하는 방향으로 다듬어졌으며,[27] 학사행정에 있어서도 혁신의 바람을 몰고 오는 등의 변화가 일어났다.[28] 이를 단적으로 보여주는 사례가 몇 가지 존재하는데 첫째는 총학생회의 장기간 계속되는 부재이다. 1990년대경까지 지속되었던 사회운동의 시대에 고려대는 그 중심에 서 있었고 이러한 학생운동의 흐름은 대개 사회주의 또는 PC주의 성향의 학생회 및 회장이 이어나가고 있었다. 그런데 이러한 자리가 장기간 공석이 된 것은, 출마한 후보의 자질 문제도 존재하지만, 궁극적으로는 과거와 같이 전체주의, 집단주의적 사상으로 똘똘 뭉쳐 정치 투쟁 방식으로 세상을 바꾼다는 생각 자체를 학생들이 더 이상 하지 않게 된 것이 크다고 할 수 있다. 요즘 학생들은 과거와 같은 민중혁명 방식보다 학문지식 또는 과학기술에 의한 진보 방식을 더 선호하는 추세이기 때문이다. 둘째로는 집단 행사의 약화이다. 본교에는 4.18 구국 대장정, 사발식과 같은 단체 행사가 많이 존재했으며 이는 한때 학교의 아이덴티티를 형성한다고 일컬어지기도 했다. 그러나 2010년대부터는 인권의 중요성이 부각됐고 그로 인해 이러한 행사 속에 묻혀 왔던 다양한 폐해가 드러나게 되자, 이에 맞춰 재학생들 사이에서는 강제 참여에 대한 비판론이 대두되었고 결국 이러한 행사는 옛날과 같은 일방적 강요가 아니라 선택적 참여로 바뀌는 수순을 밟게 됐다.[29] 이에 더하여 새로운 교육을 중시하는 자율형 고등학교 및 국제고 출신 학생, 해외 유학생이 늘면서 학과 내의 가부장적 색채나 시대착오적 위계 질서 또는 파시즘스러운 문화 행태 또한 학과를 가리지 않고 사라지게 되었다.[30]
 
-상기를 종합하면, 고려대학교는 격동하는 한국 근현대사에서 특유의 끈끈한 공동체 정신 및 정의감 등으로 주목받았으나 이제는 변화하는 현대 사회의 요구에 맞게 과거의 공동체문 화에서 부정적인 부분은 보완하고 그와 동시에 자유주의적 면모를 더하여 새롭게 발전해 나가는, 신구의 조화를 이루어낸 대학교라고 할 수 있다. 분명 이는 긍정적인 변화이나, 자칫 너무 극단적인 변화를 추구하여 그간 유지된 고유의 기질까지 사라지지 않도록 하는 노력이 필요하다고 할 것이다."""]
-extract_graph_components(text,"1234", 0, 0.9)
+상기를 종합하면, 고려대학교는 격동하는 한국 근현대사에서 특유의 끈끈한 공동체 정신 및 정의감 등으로 주목받았으나 이제는 변화하는 현대 사회의 요구에 맞게 과거의 공동체문 화에서 부정적인 부분은 보완하고 그와 동시에 자유주의적 면모를 더하여 새롭게 발전해 나가는, 신구의 조화를 이루어낸 대학교라고 할 수 있다. 분명 이는 긍정적인 변화이나, 자칫 너무 극단적인 변화를 추구하여 그간 유지된 고유의 기질까지 사라지지 않도록 하는 노력이 필요하다고 할 것이다."""
+#extract_graph_components(text,"1234")
+print(manual_chunking(text))
 

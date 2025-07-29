@@ -210,8 +210,10 @@ class OpenAIService(BaseAIService) :
         "{\n"
         '  "referenced_nodes": ["노드 이름1", "노드 이름2", ...]\n'
         "}\n"
-        "※ 참고한 노드 이름만 정확히 JSON 배열로 나열하고, 도메인 정보, 노드 간 관계, 설명은 포함하지 마."
-        "※ 반드시    EOF를 출력해"
+        "※ 'referenced_nodes'에는 참고한 노드 이름만 정확히 JSON 배열로 나열하고, 도메인 정보, 노드 간 관계, 설명은 포함하지 마."
+        "※ 반드시 EOF를 출력해"
+
+     
         )
 
 
