@@ -8,13 +8,13 @@ import {
   getSourceDataMetrics,
   getDocxFilesByBrain
 } from '../../../../api/backend';
+import { toast } from 'react-toastify';
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
 import { MdSearch } from "react-icons/md";
-import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
 import GenericViewer from './viewer/GenericViewer';
 
