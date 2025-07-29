@@ -5,13 +5,11 @@ import {
   getSimilarSourceIds,
   getSourceMemosByBrain,
   getMDFilesByBrain,
-  uploadMDFiles,
   getSourceDataMetrics,
   getDocxFilesByBrain
 } from '../../../../api/backend';
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
-import SourceUploadModal from './SourceUploadModal';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
@@ -19,7 +17,7 @@ import { MdSearch } from "react-icons/md";
 import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
 import GenericViewer from './viewer/GenericViewer';
-import { toast } from 'react-toastify';
+
 
 /**
  * 소스 패널 컴포넌트
@@ -51,7 +49,6 @@ export default function SourcePanel({
   // === 파일 뷰어 상태 ===
   const [openedPDF, setOpenedPDF] = useState(null);    // 열람 중인 PDF
   const [openedFile, setOpenedFile] = useState(null); // txt, md, memo 모두 이걸로
-  const [showUploadModal, setShowUploadModal] = useState(false);  // 업로드 모달 표시 여부
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
   const [dataMetrics, setDataMetrics] = useState({     // 데이터 메트릭
     textLength: 0,
@@ -69,6 +66,7 @@ export default function SourcePanel({
   const [localFocusSource, setLocalFocusSource] = useState(null);  // 클릭 포커스 대상
   const [pendingFocusSource, setPendingFocusSource] = useState(null); // 업로드 후 포커스 대상
   const [uploadQueue, setUploadQueue] = useState([]);              // 업로드 진행상황 상태
+  const [externalUploadQueue, setExternalUploadQueue] = useState([]); // 외부에서 전달할 업로드 큐
 
   // === 반응형 UI 설정 ===
   const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
@@ -220,6 +218,70 @@ export default function SourcePanel({
     }
   };
 
+  // 파일 선택 핸들러
+  const handleFileSelect = async () => {
+    try {
+      let filePaths = [];
+      if (window.api && window.api.openFileDialog) {
+        // Electron 환경
+        filePaths = await window.api.openFileDialog();
+      } else {
+        // 웹 브라우저 환경 - HTML5 file input 사용
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '.pdf,.txt,.md,.docx';
+        
+        input.onchange = async (event) => {
+          const files = Array.from(event.target.files);
+          if (files.length > 0) {
+            await processSelectedFiles(files);
+          }
+        };
+        
+        input.click();
+        return;
+      }
+      
+      if (filePaths && filePaths.length > 0) {
+        // Electron 환경에서 파일 경로를 File 객체로 변환
+        if (window.api && window.api.readFilesAsBuffer) {
+          const filesData = await window.api.readFilesAsBuffer(filePaths);
+          const fileObjs = filesData.map(fd => new File([new Uint8Array(fd.buffer)], fd.name));
+          await processSelectedFiles(fileObjs);
+        }
+      }
+    } catch (e) {
+      console.error('파일 선택 오류:', e);
+    }
+  };
+
+  // 선택된 파일 처리 함수
+  const processSelectedFiles = async (fileObjs) => {
+    try {
+      const uploadItems = [];
+      for (const f of fileObjs) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf', 'txt', 'memo', 'md', 'docx'].includes(ext)) continue;
+        
+        const key = `${f.name}-${f.size || 0}-${ext}`;
+        uploadItems.push({ 
+          key, 
+          name: f.name, 
+          filetype: ext, 
+          status: 'processing',
+          fileObj: f
+        });
+      }
+      
+      if (uploadItems.length > 0) {
+        setExternalUploadQueue(uploadItems);
+      }
+    } catch (e) {
+      console.error('파일 처리 오류:', e);
+    }
+  };
+
   return (
     <div
       ref={panelRef}
@@ -251,7 +313,7 @@ export default function SourcePanel({
                 {/* 소스 추가 버튼 (아이콘/텍스트 토글) */}
                 <button
                   className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SOURCE ? 'icon-only' : ''}`}
-                  onClick={() => setShowUploadModal(true)}
+                  onClick={handleFileSelect}
                 >
                   {panelWidth < 250
                     ? <MdOutlineDriveFolderUpload size={25} />
@@ -383,68 +445,14 @@ export default function SourcePanel({
                 onFileUploaded={loadAllFiles}
                 isNodeViewLoading={isNodeViewLoading}
                 setIsNodeViewLoading={setIsNodeViewLoading}
+                externalUploadQueue={externalUploadQueue}
+                setExternalUploadQueue={setExternalUploadQueue}
               />
             )}
           </div >
         </>
       )}
-      {/* === 소스 업로드 모달 === */}
-      <SourceUploadModal
-        visible={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onUpload={async filePaths => {
-          try {
-            if (!filePaths || filePaths.length === 0) return;
-            let fileObjs = [];
-            if (window.api && window.api.readFilesAsBuffer) {
-              const filesData = await window.api.readFilesAsBuffer(filePaths);
-              fileObjs = filesData.map(fd => new File([new Uint8Array(fd.buffer)], fd.name));
-            } else {
-              alert('Electron 파일 읽기 기능이 필요합니다.');
-              return;
-            }
-            const uploadedFiles = [];
-            for (const f of fileObjs) {
-              const ext = f.name.split('.').pop().toLowerCase();
-              if (!['pdf', 'txt', 'memo', 'md', 'docx'].includes(ext)) continue;
-              const key = `${f.name}-${Date.now()}`;
-              setUploadQueue(q => [...q, { key, name: f.name, filetype: ext, status: 'processing' }]);
-              try {
-                const result = await fileHandlers[ext](f, selectedBrainId);
-                if (result && result.meta) uploadedFiles.push(result.meta);
-              } catch (err) {
-                alert(f.name + ' 업로드 실패: ' + err.message);
-              } finally {
-                setUploadQueue(q => q.filter(item => item.key !== key));
-              }
-            }
-            await loadAllFiles();
-            setUploadKey(k => k + 1);
-            await refreshDataMetrics();
-            setFileMap(prev => {
-              const m = { ...prev };
-              uploadedFiles.forEach(file => {
-                if (file.pdf_id) m[file.pdf_id] = file;
-                else if (file.text_id) m[file.text_id] = file; // text_id로 변경
-                else if (file.md_id) m[file.md_id] = file;
-                else if (file.docx_id) m[file.docx_id] = file;
-              });
-              return m;
-            });
-            onGraphRefresh?.();
-            onSourceCountRefresh?.();
-            if (uploadedFiles.length > 0) {
-              const last = uploadedFiles[uploadedFiles.length - 1];
-              if (last && last.type && typeMeta[last.type]) {
-                setPendingFocusSource({ id: typeMeta[last.type].id(last), type: last.type });
-              }
-            }
-            setShowUploadModal(false);
-          } catch (e) {
-            alert('파일 업로드 실패');
-          }
-        }}
-      />
+
       {/* KnowledgeGraphStatusBar: 소스가 열려있지 않을 때만 표시 */}
       {!collapsed && !openedPDF && !openedFile && ( // 통합 변수로 변경
         <KnowledgeGraphStatusBar
