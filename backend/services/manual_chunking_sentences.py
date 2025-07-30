@@ -1,13 +1,3 @@
-"""
-gensim을 이용해서 전체 텍스트의 토픽과 각 문단의 토픽을 추출하는 과정을
-재귀적으로 반복합니다. 현재는 gensim의 lda 방식으로만 문단 간의 차이를 계산하지만
-tf-idf로 구하는 함수도 구현은 되어있습니다
-
-남은 과제
-1. 각 문단의 topic을 gensim의 lda 방식 뿐만 아니라 tf-idf를 결합하여 더 정교하게 추출하기
-2. gensim에 전체 text를 넘겨줄 때 불용어를 제거하고 넘겨도 괜찮을지 실험해보기
-   ex) "그러나", "그리고"는 토픽 키워드의 관점에서는 불용어이지만 삭제 시 텍스트의 전체 맥락에 영향을 줄 수 있음
-"""
 import logging
 import re
 from konlpy.tag import Okt
@@ -209,8 +199,8 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
     # 종료 조건
     if depth > 0:
         sizes = [len(c["tokens"]) for c in chunk]
-        if sum(sizes) <= 250 | depth > 5:
-            result = {"depth": depth, "chunks": [[c["index"] for c in chunk]], "keyword": top_keyword}
+        if( sum(sizes) <= 30 or depth > 5):
+            result = [{"depth": depth, "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
             return result ,{"nodes":[], "edges":[]}
 
 
@@ -271,15 +261,12 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
                 keywords.append(t)
                 break
     
-    print(go_chunk)
-    print(keywords)
-    
     current_result = []
     for idx, c in enumerate(go_chunk):
         print(f"depth {depth+1} 진입")
-        result, graph = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.2,
+        result, graph = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.1,
                                       lda_model=lda_model, dictionary=dictionary, num_topics=num_topics)
-        current_result.append(result)
+        current_result+=(result)
         nodes_and_edges["nodes"]+=graph["nodes"]
         nodes_and_edges["edges"]+=graph["edges"]
 
@@ -306,25 +293,21 @@ def lda_keyword_and_similarity(paragraphs_tokenized, lda_model, dictionary, num_
 
     return top_keyword, topic_vectors, sim_matrix
 
-def split_into_tokenized_para(text:str):
+def split_into_tokenized_sentence(text:str):
         #text를 문단 단위로 쪼갬
     merge=""
-    paragraphs=[]
+    sentences=[]
     texts=[]
     index=0
-    for p in text.strip().split("\n"):
-        if p.strip():
-            if len(p)<60: #문단이 60글자 이하이면 다음 문단에 병합
-                merge+=p
-            else:
-                para={}
-                para["text"]=merge+"\n"+p
-                para["index"]=index
-                paragraphs.append(para)
-                texts.append([merge+"\n"+p])
-                index+=1
-                merge=""
-    return tokenization(paragraphs), texts
+    for p in re.split(r'(?<=[.!?])\s+', text.strip()):
+        sentence = {
+            "text": p.strip(),
+            "index": index
+        }
+        sentences.append(sentence)
+        texts.append([p.strip()])
+        index += 1
+    return tokenization(sentences), texts
 
 def extract_graph_components(text: str, source_id: str):
     """
@@ -336,7 +319,8 @@ def extract_graph_components(text: str, source_id: str):
     all_nodes = []
     all_edges = []
 
-    tokenized, paragraphs = split_into_tokenized_para(text)
+    tokenized, paragraphs = split_into_tokenized_sentence(text)
+    print(tokenized)
     chunks, nodes_and_edges=recurrsive_chunking(tokenized, 0, [], "", threshold=0.6,)
     print(chunks)
     print(nodes_and_edges)
@@ -348,12 +332,7 @@ def extract_graph_components(text: str, source_id: str):
             for c in branch["chunks"]:
                 leaf_chunk+=paragraphs[c]"""
             
-            
 
-
-
-
-    
     #더 이상 청킹할 수 없을 때까지 재귀적으로 함수를 호출
     "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
     "엣지는 { \"source\": string, \"target\": string, \"relation\": string } 형식의 객체 배열로 출력해줘. "
@@ -378,20 +357,20 @@ def get_topic_keywords(tokenized:list[str]):
     """
 
 def manual_chunking(text:str):
-    tokenized, paragraphs = split_into_tokenized_para(text)
+    tokenized, sentences = split_into_tokenized_sentence(text)
     chunks, nodes_and_edges=recurrsive_chunking(tokenized, 0, {}, "", threshold=0.6)
     nodes=nodes_and_edges["nodes"]
     edges=nodes_and_edges["edges"]
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
-    chunks=[]
+
+    final_chunks=[]
     for c in chunks:
-        if "topics" not in branch:
-            leaf_chunk=""
-            for c in branch["chunks"]:
-                for idx in c:
-                    leaf_chunk=paragraphs[idx]
-            chunks.append(leaf_chunk)
+        chunk=""
+        for idx in c["chunks"]:
+            print(sentences[idx])
+            chunk+=sentences[idx][0]
+        final_chunks.append(chunk)
     return chunks
 
 text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안 인식되어 왔던 고려대의 모습은 하기와 같다.
@@ -415,6 +394,6 @@ text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안
 이렇듯 고려대의 학풍은 특유의 굳건함, 저력과 함께 정(情)이 합쳐진 모습으로 대표되어 왔고 이는 위에서 언급한 다양한 이점을 가지고 왔다. 그러나 과거에는 이러한 측면이 과다해 학내에 수직적, 강압적 악폐습이 존재했으며, 실제 동문 모임이나 학교 생활에서 일명 '고대인다운 모습'을 지나치게 강요하여 개인적 반발을 불러일으킨다는 측면도 일부 존재하였다. 고려대학교가 지켜 왔던 ‘굳건한 기질’ 역시 다르게 말하면 보수적, 즉 변화에 소극적이라는 단점이 될 수도 있는 것이었다. 실제로 21세기 들어 인터넷·디지털 혁명이 일어나고 법학과 의학 분야에 전문대학원 체제가 도입되며 이공계의 중요성이 강조되는 등 급격한 변화가 일어났지만, 고려대학교의 구성원은 이러한 변화를 따르는 것에 소극적이었다. 그러나 2010년대 이후 고려대학교의 공동체 문화 역시 자유주의와 개인주의를 상당 부분 수용하는 방향으로 다듬어졌으며,[27] 학사행정에 있어서도 혁신의 바람을 몰고 오는 등의 변화가 일어났다.[28] 이를 단적으로 보여주는 사례가 몇 가지 존재하는데 첫째는 총학생회의 장기간 계속되는 부재이다. 1990년대경까지 지속되었던 사회운동의 시대에 고려대는 그 중심에 서 있었고 이러한 학생운동의 흐름은 대개 사회주의 또는 PC주의 성향의 학생회 및 회장이 이어나가고 있었다. 그런데 이러한 자리가 장기간 공석이 된 것은, 출마한 후보의 자질 문제도 존재하지만, 궁극적으로는 과거와 같이 전체주의, 집단주의적 사상으로 똘똘 뭉쳐 정치 투쟁 방식으로 세상을 바꾼다는 생각 자체를 학생들이 더 이상 하지 않게 된 것이 크다고 할 수 있다. 요즘 학생들은 과거와 같은 민중혁명 방식보다 학문지식 또는 과학기술에 의한 진보 방식을 더 선호하는 추세이기 때문이다. 둘째로는 집단 행사의 약화이다. 본교에는 4.18 구국 대장정, 사발식과 같은 단체 행사가 많이 존재했으며 이는 한때 학교의 아이덴티티를 형성한다고 일컬어지기도 했다. 그러나 2010년대부터는 인권의 중요성이 부각됐고 그로 인해 이러한 행사 속에 묻혀 왔던 다양한 폐해가 드러나게 되자, 이에 맞춰 재학생들 사이에서는 강제 참여에 대한 비판론이 대두되었고 결국 이러한 행사는 옛날과 같은 일방적 강요가 아니라 선택적 참여로 바뀌는 수순을 밟게 됐다.[29] 이에 더하여 새로운 교육을 중시하는 자율형 고등학교 및 국제고 출신 학생, 해외 유학생이 늘면서 학과 내의 가부장적 색채나 시대착오적 위계 질서 또는 파시즘스러운 문화 행태 또한 학과를 가리지 않고 사라지게 되었다.[30]
 
 상기를 종합하면, 고려대학교는 격동하는 한국 근현대사에서 특유의 끈끈한 공동체 정신 및 정의감 등으로 주목받았으나 이제는 변화하는 현대 사회의 요구에 맞게 과거의 공동체문 화에서 부정적인 부분은 보완하고 그와 동시에 자유주의적 면모를 더하여 새롭게 발전해 나가는, 신구의 조화를 이루어낸 대학교라고 할 수 있다. 분명 이는 긍정적인 변화이나, 자칫 너무 극단적인 변화를 추구하여 그간 유지된 고유의 기질까지 사라지지 않도록 하는 노력이 필요하다고 할 것이다."""
-extract_graph_components(text,"1234")
-#print(manual_chunking(text))
+#extract_graph_components(text,"1234")
+print(manual_chunking(text))
 
