@@ -14,6 +14,19 @@ import { FiSearch, FiX } from 'react-icons/fi';
 import { MdOutlineSearch } from "react-icons/md";
 import { toast } from 'react-toastify';
 
+// 노드 상태 팝업 컴포넌트
+const NodeStatusPopup = ({ type, color, nodes, onClose }) => (
+  <div className="graph-popup">
+    <div className="popup-content">
+      <span className="popup-tag" style={{ background: color }}>
+        {type}
+      </span>
+      <span className="popup-text">{nodes.join(', ')}</span>
+    </div>
+    <span className="close-x" onClick={onClose}>×</span>
+  </div>
+);
+
 function GraphView({
   brainId = 'default-brain-id',
   height = '100%',
@@ -216,6 +229,46 @@ function GraphView({
     else baseZoom = 1;
 
     return Math.min(baseZoom * modalMultiplier, 5); // 최대 줌 제한
+  };
+
+  // === 카메라 이동 유틸리티 함수 ===
+  // 노드들로 카메라를 이동시키는 공통 함수
+  const moveCameraToNodes = (nodes, delay = 1000, zoomDuration = 800, centerDuration = 1000) => {
+    if (!nodes.length || !fgRef.current || !dimensions.width || !dimensions.height) return;
+
+    const validNodes = nodes.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
+    if (validNodes.length === 0) return;
+
+    const fg = fgRef.current;
+    
+    // 중심점 계산
+    const avgX = validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
+    const avgY = validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
+
+    // 바운딩 박스 계산
+    const xs = validNodes.map(n => n.x);
+    const ys = validNodes.map(n => n.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    const boxWidth = maxX - minX;
+    const boxHeight = maxY - minY;
+    const padding = 500;
+    const zoomScaleX = dimensions.width / (boxWidth + padding);
+    const zoomScaleY = dimensions.height / (boxHeight + padding);
+    const targetZoom = Math.min(zoomScaleX, zoomScaleY, 5);
+
+    // 카메라 이동 애니메이션
+    fg.zoom(0.05, zoomDuration);
+    
+    setTimeout(() => {
+      fg.centerAt(avgX, avgY, centerDuration);
+      setTimeout(() => {
+        fg.zoom(targetZoom, centerDuration);
+      }, centerDuration);
+    }, zoomDuration);
   };
 
   // === 노드 클릭/더블클릭 핸들러 ===
@@ -467,34 +520,7 @@ function GraphView({
       return;
     }
 
-    const fg = fgRef.current;
-    if (!fg || !dimensions.width || !dimensions.height) return;
-
-    const avgX = validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
-    const avgY = validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
-
-    const xs = validNodes.map(n => n.x);
-    const ys = validNodes.map(n => n.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    const boxWidth = maxX - minX;
-    const boxHeight = maxY - minY;
-    const padding = 500;
-    const zoomScaleX = dimensions.width / (boxWidth + padding);
-    const zoomScaleY = dimensions.height / (boxHeight + padding);
-    const targetZoom = Math.min(zoomScaleX, zoomScaleY, 5);
-
-    fg.zoom(0.05, 800);
-
-    setTimeout(() => {
-      fg.centerAt(avgX, avgY, 1000);
-      setTimeout(() => {
-        fg.zoom(targetZoom, 1000);
-      }, 1000);
-    }, 900);
+    moveCameraToNodes(validNodes, 1000, 800, 1000);
   }, [focusNodeNames, graphData.nodes]);
 
   // === 참고노드 카메라 이동 ===
@@ -509,35 +535,7 @@ function GraphView({
       const validNodes = referenced.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
       if (validNodes.length === 0) return;
 
-      const fg = fgRef.current;
-      if (!fg || !dimensions.width || !dimensions.height) return;
-
-      const avgX = validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
-      const avgY = validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
-
-      const xs = validNodes.map(n => n.x);
-      const ys = validNodes.map(n => n.y);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      const boxWidth = maxX - minX;
-      const boxHeight = maxY - minY;
-
-      const padding = 500;
-      const zoomScaleX = dimensions.width / (boxWidth + padding);
-      const zoomScaleY = dimensions.height / (boxHeight + padding);
-      const targetZoom = Math.min(zoomScaleX, zoomScaleY, 5);
-
-      fg.zoom(0.05, 800);
-
-      setTimeout(() => {
-        fg.centerAt(avgX, avgY, 1000);
-        setTimeout(() => {
-          fg.zoom(targetZoom, 1000);
-        }, 1000);
-      }, 900);
+      moveCameraToNodes(validNodes, 1000, 800, 1000);
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -555,35 +553,7 @@ function GraphView({
       const validNodes = addedNodes.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
       if (validNodes.length === 0) return;
 
-      const fg = fgRef.current;
-      if (!fg || !dimensions.width || !dimensions.height) return;
-
-      const avgX = validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
-      const avgY = validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
-
-      const xs = validNodes.map(n => n.x);
-      const ys = validNodes.map(n => n.y);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      const boxWidth = maxX - minX;
-      const boxHeight = maxY - minY;
-
-      const padding = 500;
-      const zoomScaleX = dimensions.width / (boxWidth + padding);
-      const zoomScaleY = dimensions.height / (boxHeight + padding);
-      const targetZoom = Math.min(zoomScaleX, zoomScaleY, 5);
-
-      fg.zoom(0.05, 800);
-
-      setTimeout(() => {
-        fg.centerAt(avgX, avgY, 1000);
-        setTimeout(() => {
-          fg.zoom(targetZoom, 1000);
-        }, 1000);
-      }, 900);
+      moveCameraToNodes(validNodes, 2000, 800, 1000);
     }, 2000);
 
     return () => clearTimeout(timer);
@@ -765,7 +735,7 @@ function GraphView({
 
       {/* 상단에 검색 인풋 표시 (showSearch prop이 true일 때만) */}
       {showSearch && (
-        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <div className="search-container">
           <input
             ref={searchInputRef}
             type="text"
@@ -805,79 +775,78 @@ function GraphView({
         </div>
       )}
 
-      {/* 추가된 노드 UI 표시 */}
+      {/* 노드 상태 팝업 컴포넌트 */}
       {showNewlyAdded && newlyAddedNodeNames.length > 0 && (
-        <div className="graph-popup">
-          <span>추가된 노드: {newlyAddedNodeNames.join(', ')}</span>
-          <span className="close-x" onClick={() => {
+        <NodeStatusPopup
+          type="NEW"
+          color="#10b981"
+          nodes={newlyAddedNodeNames}
+          onClose={() => {
             setShowNewlyAdded(false);
             setNewlyAddedNodeNames([]);
             if (onClearNewlyAddedNodes) onClearNewlyAddedNodes();
-          }}>×</span>
-        </div>
+          }}
+        />
       )}
-      {/* 참고된 노드가 있을 때 정보 표시 */}
+      
       {(!fromFullscreen)
         && showReferenced
         && referencedNodesState
         && referencedNodesState.length > 0
         && graphData.nodes.some(n => referencedNodesState.includes(n.name)) && (
-        <div className="graph-popup">
-          <span>참고된 노드: {referencedNodesState.join(', ')}</span>
-          <span className="close-x" onClick={() => {
+        <NodeStatusPopup
+          type="REF"
+          color="#f59e0b"
+          nodes={referencedNodesState}
+          onClose={() => {
             setShowReferenced(false);
             setReferencedNodesState([]);
             if (onClearReferencedNodes) onClearReferencedNodes();
-          }}>×</span>
-        </div>
+          }}
+        />
       )}
 
-      {/* 포커스 노드 팝업 */}
       {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
-        <div className="graph-popup">
-          <span>소스로 생성된 노드: {focusNodeNames.join(', ')}</span>
-          <span className="close-x" onClick={() => {
+        <NodeStatusPopup
+          type="FOCUS"
+          color="#3b82f6"
+          nodes={focusNodeNames}
+          onClose={() => {
             setShowFocus(false);
             if (onClearFocusNodes) onClearFocusNodes();
-          }}>×</span>
-        </div>
+          }}
+        />
       )}
 
       {(hoveredNode || hoveredLink) && (
-        <div
+        <div 
+          className="graph-hover-tooltip"
           style={{
-            position: 'absolute',
-            left: 18,
-            bottom: 18,
-            zIndex: 1001,
-            fontSize: 15,
-            fontWeight: 400,
-            color: '#222',
-            fontFamily: 'Pretendard, Noto Sans KR, sans-serif',
-            background: 'none',
-            padding: 0,
-            borderRadius: 0,
-            boxShadow: 'none',
-            pointerEvents: 'none',
-            textAlign: 'left',
-            lineHeight: 1.5,
-            letterSpacing: '-0.01em',
-            minHeight: 0,
-            minWidth: 0
+            left: hoveredLink ? '8px' : '16px'
           }}
         >
           {hoveredNode && !hoveredLink && !draggedNode && !isFullscreen && (
-            <>
-              <span style={{fontWeight:500}}>노드:</span> <span style={{fontWeight:400}}>{hoveredNode.name}</span> <span style={{ fontWeight: 300, fontSize: 13, marginLeft: 4 }}>(연결: {hoveredNode.linkCount})</span>
-            </>
+            <div className="tooltip-content">
+              <div className="tooltip-row">
+                <span className="tooltip-label">노드:</span> 
+                <span className="tooltip-value">{hoveredNode.name}</span>
+              </div>
+              <div className="tooltip-row">
+                <span className="tooltip-info">(연결: {hoveredNode.linkCount})</span>
+              </div>
+            </div>
           )}
           {(hoveredLink && !isFullscreen) && (
-            <>
-              <span style={{fontWeight:500}}>{hoveredLink.source?.name || hoveredLink.source}</span>
-              <span style={{margin: '0 6px', fontWeight:300}}>→</span>
-              <span style={{fontWeight:500}}>{hoveredLink.target?.name || hoveredLink.target}</span>
-              <span style={{ display:'block', fontWeight: 300, fontSize: 13, marginTop: 1 }}>링크: {hoveredLink.relation || '없음'}</span>
-            </>
+            <div className="tooltip-content">
+              <div className="tooltip-row">
+                <span className="tooltip-value">{hoveredLink.source?.name || hoveredLink.source}</span>
+                <span className="tooltip-arrow">→</span>
+                <span className="tooltip-value">{hoveredLink.target?.name || hoveredLink.target}</span>
+              </div>
+              <div className="tooltip-row tooltip-indent">
+                <span className="tooltip-info">링크: {hoveredLink.relation || '없음'}</span>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -885,13 +854,8 @@ function GraphView({
       {/* ForceGraph2D의 내장 tooltip 사용: nodeTitle, linkTitle 설정 */}
       {loading && (
         isFullscreen ? (
-          <div className="graph-loading" style={{
-            backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.8)',
-            color: isDarkMode ? '#f1f5f9' : '#000'
-          }}>
-            <div
-              className="graph-loading-spinner"
-            ></div>
+          <div className={`graph-loading ${isDarkMode ? 'dark' : 'light'}`}>
+            <div className="graph-loading-spinner"></div>
             <div>그래프를 불러오는 중입니다...</div>
           </div>
         ) : (

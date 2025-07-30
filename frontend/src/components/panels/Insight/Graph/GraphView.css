@@ -165,7 +165,9 @@
 
 /* ====== hover 툴팁 ====== */
 .graph-hover-tooltip {
-    position: fixed;
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
     pointer-events: none;
     background: rgba(225, 227, 231, 0.97);
     color: #333;
@@ -175,7 +177,6 @@
     font-weight: 500;
     box-shadow: 0 2px 16px 0 #e5e7eb;
     z-index: 1000;
-    transform: translate(12px, 8px);
 }
 
 .graph-area.dark-mode .graph-hover-tooltip {
@@ -239,4 +240,199 @@
     40% {
         opacity: 1;
     }
+}
+
+/* ====== 그래프 노드 상태 팝업 ====== */
+.graph-popup {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    z-index: 1000;
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideInRight 0.3s ease-out;
+    transition: all 0.2s ease;
+}
+
+.graph-area.dark-mode .graph-popup {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.graph-popup:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.graph-area.dark-mode .graph-popup:hover {
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.graph-popup .close-x {
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 800;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.graph-area.dark-mode .graph-popup .close-x {
+    background: transparent;
+    color: #6b7280;
+}
+
+.graph-popup .close-x:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    transform: scale(1.05);
+    opacity: 1;
+}
+
+.graph-area.dark-mode .graph-popup .close-x:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    opacity: 1;
+}
+
+/* 팝업 애니메이션 */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 여러 팝업이 있을 때 간격 조정 */
+.graph-popup + .graph-popup {
+    top: 80px;
+}
+
+.graph-popup + .graph-popup + .graph-popup {
+    top: 144px;
+}
+
+/* ====== 팝업 콘텐츠 영역 ====== */
+.popup-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+/* ====== 팝업 태그 ====== */
+.popup-tag {
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ====== 팝업 텍스트 ====== */
+.popup-text {
+    font-size: 14px;
+    color: inherit;
+}
+
+/* ====== 검색 컨테이너 ====== */
+.search-container {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ====== 툴팁 스타일 ====== */
+.graph-hover-tooltip {
+    position: absolute;
+    z-index: 1001;
+    font-size: 15px;
+    font-weight: 400;
+    color: #222;
+    font-family: 'Pretendard, Noto Sans KR, sans-serif';
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+    text-align: left;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    min-height: 0;
+    min-width: 0;
+}
+
+.tooltip-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tooltip-indent {
+    padding-left: 8px;
+}
+
+.tooltip-label {
+    font-weight: 500;
+}
+
+.tooltip-value {
+    font-weight: 400;
+}
+
+.tooltip-info {
+    font-weight: 300;
+    font-size: 13px;
+}
+
+.tooltip-arrow {
+    margin: 0 6px;
+    font-weight: 300;
+}
+
+/* ====== 로딩 스타일 개선 ====== */
+.graph-loading.dark {
+    background-color: rgba(15, 23, 42, 0.9);
+    color: #f1f5f9;
+}
+
+.graph-loading.light {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #000;
 }
