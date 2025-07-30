@@ -348,10 +348,7 @@ def extract_graph_components(text: str, source_id: str):
             for c in branch["chunks"]:
                 leaf_chunk+=paragraphs[c]"""
             
-            
-
-
-
+          
 
     
     #더 이상 청킹할 수 없을 때까지 재귀적으로 함수를 호출
