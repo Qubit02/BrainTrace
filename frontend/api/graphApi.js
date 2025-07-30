@@ -142,14 +142,15 @@ function getDefaultGraphData() {
   };
 }
 
-export const processText = async (text, sourceId, brainId) => {
+export const processText = async (text, sourceId, brainId, model = "gpt") => {
   try {
     const response = await api.post(
       '/brainGraph/process_text',
       {
         text,
         source_id: sourceId,
-        brain_id: brainId
+        brain_id: brainId,
+        model: model
       }
     );
     return response.data;
@@ -159,15 +160,19 @@ export const processText = async (text, sourceId, brainId) => {
   }
 };
 
-export const getAnswer = async (question, brainId) => {
+export const requestAnswer = async (question, session_id, brain_id, model = "gpt") => {
   try {
-    const response = await api.post('/brainGraph/answer', {
-      question,
-      brain_id: brainId
-    });
+    const response = await api.post(`/brainGraph/answer`,
+      {
+        question: question,
+        session_id: session_id,
+        brain_id: brain_id,
+        model: model, // 모델 파라미터 추가
+      },
+    );
     return response.data;
   } catch (error) {
-    console.error('질문 답변 실패:', error);
+    console.error('Answer 요청 중 에러 발생:', error);
     throw error;
   }
 };

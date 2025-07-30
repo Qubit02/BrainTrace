@@ -71,6 +71,23 @@ async def update_textfile(txt_id: int, textfile_data: TextFileUpdate):
         if not sqlite_handler.get_brain(textfile_data.brain_id):
             raise HTTPException(status_code=404, detail="Brain 엔티티를 찾을 수 없습니다")
 
+    # 파일명 제한 검증
+    if textfile_data.txt_title is not None:
+        name = textfile_data.txt_title
+        # 1. 길이 제한
+        if not (1 <= len(name) <= 100):
+            raise HTTPException(status_code=400, detail="파일명은 1~100자여야 합니다.")
+        # 2. 공백만 입력 금지
+        if name.strip() == "":
+            raise HTTPException(status_code=400, detail="파일명에 공백만 입력할 수 없습니다.")
+        # 3. 특수문자 제한
+        import re
+        if re.search(r'[\\/:*?"<>|]', name):
+            raise HTTPException(status_code=400, detail="파일명에 / \\ : * ? \" < > | 문자를 사용할 수 없습니다.")
+        # 4. 점(.)으로 시작/끝 금지
+        if name.startswith('.') or name.endswith('.'):
+            raise HTTPException(status_code=400, detail="파일명은 .(점)으로 시작하거나 끝날 수 없습니다.")
+
     try:
         updated = sqlite_handler.update_textfile(
             txt_id=txt_id,
@@ -89,9 +106,24 @@ async def update_textfile(txt_id: int, textfile_data: TextFileUpdate):
 # ───────── 텍스트 파일 삭제 ─────────
 @router.delete("/{txt_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_textfile(txt_id: int):
-    """텍스트 파일 삭제"""
-    if not sqlite_handler.delete_textfile(txt_id):
+    """텍스트 파일 삭제 (DB + 로컬 파일 시스템)"""
+    txt = sqlite_handler.get_textfile(txt_id)
+    if not txt:
         raise HTTPException(status_code=404, detail="텍스트 파일을 찾을 수 없습니다")
+
+    sqlite_handler.delete_textfile(txt_id)
+
+    file_path = txt["txt_path"]
+    import os, logging
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.info(f"✅ 로컬 파일 삭제 완료: {file_path}")
+        else:
+            logging.warning(f"⚠️ 파일이 존재하지 않음: {file_path}")
+    except Exception as e:
+        logging.error(f"❌ 로컬 파일 삭제 실패: {e}")
+    return
 
 # ───────── Brain 기준 텍스트 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[TextFileResponse])

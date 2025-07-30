@@ -5,20 +5,19 @@ import {
   getSimilarSourceIds,
   getSourceMemosByBrain,
   getMDFilesByBrain,
-  uploadMDFiles,
-  getSourceDataMetrics
+  getSourceDataMetrics,
+  getDocxFilesByBrain
 } from '../../../../api/backend';
-
+import { toast } from 'react-toastify';
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
-import SourceUploadModal from './SourceUploadModal';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import toggleIcon from '../../../assets/icons/toggle-view.png';
 import './SourcePanel.css';
 import { MdSearch } from "react-icons/md";
-import fileHandlers from './fileHandlers/fileHandlers';
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
 import GenericViewer from './viewer/GenericViewer';
+
 
 /**
  * 소스 패널 컴포넌트
@@ -34,8 +33,10 @@ export default function SourcePanel({
   onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
-  onSourcePanelReady,          // SourcePanel 준비 완료 콜백
-  openSourceId
+  onSourcePanelReady,         // SourcePanel 준비 완료 콜백
+  openSourceId,
+  isNodeViewLoading,
+  setIsNodeViewLoading
 }) {
   // === DOM 참조 ===
   const panelRef = useRef();                           // 패널 DOM 참조 (리사이징 감지용)
@@ -48,7 +49,6 @@ export default function SourcePanel({
   // === 파일 뷰어 상태 ===
   const [openedPDF, setOpenedPDF] = useState(null);    // 열람 중인 PDF
   const [openedFile, setOpenedFile] = useState(null); // txt, md, memo 모두 이걸로
-  const [showUploadModal, setShowUploadModal] = useState(false);  // 업로드 모달 표시 여부
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
   const [dataMetrics, setDataMetrics] = useState({     // 데이터 메트릭
     textLength: 0,
@@ -66,10 +66,20 @@ export default function SourcePanel({
   const [localFocusSource, setLocalFocusSource] = useState(null);  // 클릭 포커스 대상
   const [pendingFocusSource, setPendingFocusSource] = useState(null); // 업로드 후 포커스 대상
   const [uploadQueue, setUploadQueue] = useState([]);              // 업로드 진행상황 상태
+  const [externalUploadQueue, setExternalUploadQueue] = useState([]); // 외부에서 전달할 업로드 큐
 
   // === 반응형 UI 설정 ===
   const PANEL_WIDTH_THRESHOLD_SEARCH = 250;            // 탐색 버튼 텍스트/아이콘 기준
   const PANEL_WIDTH_THRESHOLD_SOURCE = 220;            // 소스 버튼 텍스트/아이콘 기준
+
+  // type별 id/title/path 추출 함수 맵
+  const typeMeta = {
+    pdf: { id: f => f.pdf_id, title: f => f.pdf_title, path: f => f.pdf_path },
+    txt: { id: f => f.txt_id, title: f => f.txt_title, path: f => f.txt_path },
+    md: { id: f => f.md_id, title: f => f.md_title, path: f => f.md_path },
+    docx: { id: f => f.docx_id, title: f => f.docx_title, path: f => f.docx_path },
+    memo: { id: f => f.memo_id, title: f => f.memo_title, path: () => undefined }
+  };
 
   // === useEffect 훅들 ===
   // 데이터 메트릭 재계산 (프로젝트 변경 시)
@@ -108,40 +118,29 @@ export default function SourcePanel({
   // 외부에서 특정 소스를 클릭했을 때 해당 파일 열기
   useEffect(() => {
     if (focusSource) {
-      const targetFile = allFiles.find(file => {
-        if (file.type === 'pdf') return file.pdf_id == focusSource.id;
-        if (['txt', 'md', 'memo'].includes(file.type)) {
-          if (file.type === 'txt') return file.txt_id == focusSource.id;
-          if (file.type === 'md') return file.md_id == focusSource.id;
-          if (file.type === 'memo') return file.memo_id == focusSource.id;
-        }
-        return false;
-      });
+      const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(focusSource.id));
       if (targetFile) {
         if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-        else if (['txt', 'md', 'memo'].includes(targetFile.type)) setOpenedFile(targetFile);
+        else setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
+      } else {
+        // 파일이 없는 경우 toast 메시지
+        toast.error('해당 소스 파일이 삭제되었거나 존재하지 않습니다.');
       }
     }
   }, [localFocusSource]);
 
-  // openSourceId가 변경될 때 해당 소스를 자동으로 연다
-  useEffect(() => {
-    if (!openSourceId || !allFiles.length) return;
-    const targetFile = allFiles.find(file => {
-      if (file.type === 'pdf') return String(file.pdf_id) === String(openSourceId);
-      if (file.type === 'txt') return String(file.txt_id) === String(openSourceId);
-      if (file.type === 'md') return String(file.md_id) === String(openSourceId);
-      if (file.type === 'memo') return String(file.memo_id) === String(openSourceId);
-      return false;
-    });
-    if (targetFile) {
-      if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-      else setOpenedFile(targetFile);
-      setIsSourceOpen(true);
-    }
-  }, [openSourceId, allFiles]);
+  // // openSourceId가 변경될 때 해당 소스를 자동으로 연다
+  // useEffect(() => {
+  //   if (!openSourceId || !allFiles.length) return;
+  //   const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(openSourceId));
+  //   if (targetFile) {
+  //     if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
+  //     else setOpenedFile(targetFile);
+  //     setIsSourceOpen(true);
+  //   }
+  // }, [openSourceId, allFiles]);
 
   /**
    * 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
@@ -149,18 +148,20 @@ export default function SourcePanel({
    */
   const loadAllFiles = async () => {
     try {
-      const [pdfs, txts, memos, mds] = await Promise.all([
+      const [pdfs, txts, memos, mds, docxfiles] = await Promise.all([
         getPdfsByBrain(selectedBrainId),
         getTextfilesByBrain(selectedBrainId),
         getSourceMemosByBrain(selectedBrainId),
-        getMDFilesByBrain(selectedBrainId)
+        getMDFilesByBrain(selectedBrainId),
+        getDocxFilesByBrain(selectedBrainId)
       ]);
-      // txt, memo, md를 각각 type: 'txt', 'memo', 'md'로 구분
+      // typeMeta를 활용해 merged 생성
       const merged = [
-        ...pdfs.map(pdf => ({ ...pdf, title: pdf.pdf_title, type: 'pdf' })),
-        ...txts.map(txt => ({ ...txt, title: txt.txt_title, type: 'txt', txt_path: txt.txt_path, txt_id: txt.txt_id })),
-        ...mds.map(md => ({ ...md, title: md.md_title, type: 'md', md_path: md.md_path, md_id: md.md_id })),
-        ...memos.map(memo => ({ ...memo, title: memo.memo_title, type: 'memo', memo_id: memo.memo_id }))
+        ...pdfs.map(pdf => ({ ...pdf, title: typeMeta.pdf.title(pdf), type: 'pdf', pdf_id: typeMeta.pdf.id(pdf), pdf_path: typeMeta.pdf.path(pdf) })),
+        ...txts.map(txt => ({ ...txt, title: typeMeta.txt.title(txt), type: 'txt', txt_id: typeMeta.txt.id(txt), txt_path: typeMeta.txt.path(txt) })),
+        ...mds.map(md => ({ ...md, title: typeMeta.md.title(md), type: 'md', md_id: typeMeta.md.id(md), md_path: typeMeta.md.path(md) })),
+        ...memos.map(memo => ({ ...memo, title: typeMeta.memo.title(memo), type: 'memo', memo_id: typeMeta.memo.id(memo) })),
+        ...docxfiles.map(docx => ({ ...docx, title: typeMeta.docx.title(docx), type: 'docx', docx_id: typeMeta.docx.id(docx), docx_path: typeMeta.docx.path(docx) }))
       ];
       setAllFiles(merged);
       setUploadKey(k => k + 1);
@@ -203,17 +204,81 @@ export default function SourcePanel({
 
   // 파일 열기 핸들러: pdf는 그대로, 나머지는 모두 openedFile로
   const handleOpenFile = (id, type) => {
-    let file;
-    if (type === 'txt') file = allFiles.find(f => f.type === 'txt' && String(f.txt_id) === String(id));
-    else if (type === 'md') file = allFiles.find(f => f.type === 'md' && String(f.md_id) === String(id));
-    else if (type === 'memo') file = allFiles.find(f => f.type === 'memo' && String(f.memo_id) === String(id));
-    else if (type === 'pdf') file = allFiles.find(f => f.type === 'pdf' && String(f.pdf_id) === String(id));
+    if (uploadQueue.length > 0) {
+      toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');
+      return;
+    }
+    const file = allFiles.find(f => f.type === type && String(typeMeta[type]?.id(f)) === String(id));
     if (file) {
       if (type === 'pdf') setOpenedPDF(file);
       else setOpenedFile(file);
       setIsSourceOpen(true);
     } else {
       alert('파일을 찾을 수 없습니다.');
+    }
+  };
+
+  // 파일 선택 핸들러
+  const handleFileSelect = async () => {
+    try {
+      let filePaths = [];
+      if (window.api && window.api.openFileDialog) {
+        // Electron 환경
+        filePaths = await window.api.openFileDialog();
+      } else {
+        // 웹 브라우저 환경 - HTML5 file input 사용
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '.pdf,.txt,.md,.docx';
+        
+        input.onchange = async (event) => {
+          const files = Array.from(event.target.files);
+          if (files.length > 0) {
+            await processSelectedFiles(files);
+          }
+        };
+        
+        input.click();
+        return;
+      }
+      
+      if (filePaths && filePaths.length > 0) {
+        // Electron 환경에서 파일 경로를 File 객체로 변환
+        if (window.api && window.api.readFilesAsBuffer) {
+          const filesData = await window.api.readFilesAsBuffer(filePaths);
+          const fileObjs = filesData.map(fd => new File([new Uint8Array(fd.buffer)], fd.name));
+          await processSelectedFiles(fileObjs);
+        }
+      }
+    } catch (e) {
+      console.error('파일 선택 오류:', e);
+    }
+  };
+
+  // 선택된 파일 처리 함수
+  const processSelectedFiles = async (fileObjs) => {
+    try {
+      const uploadItems = [];
+      for (const f of fileObjs) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf', 'txt', 'memo', 'md', 'docx'].includes(ext)) continue;
+        
+        const key = `${f.name}-${f.size || 0}-${ext}`;
+        uploadItems.push({ 
+          key, 
+          name: f.name, 
+          filetype: ext, 
+          status: 'processing',
+          fileObj: f
+        });
+      }
+      
+      if (uploadItems.length > 0) {
+        setExternalUploadQueue(uploadItems);
+      }
+    } catch (e) {
+      console.error('파일 처리 오류:', e);
     }
   };
 
@@ -248,7 +313,7 @@ export default function SourcePanel({
                 {/* 소스 추가 버튼 (아이콘/텍스트 토글) */}
                 <button
                   className={`pill-button ${panelWidth < PANEL_WIDTH_THRESHOLD_SOURCE ? 'icon-only' : ''}`}
-                  onClick={() => setShowUploadModal(true)}
+                  onClick={handleFileSelect}
                 >
                   {panelWidth < 250
                     ? <MdOutlineDriveFolderUpload size={25} />
@@ -346,11 +411,13 @@ export default function SourcePanel({
                   fileUrl={
                     openedFile.type === 'txt' ? `http://localhost:8000/${openedFile.txt_path}` :
                       openedFile.type === 'md' ? `http://localhost:8000/${openedFile.md_path}` :
-                        undefined
+                        openedFile.type === 'docx' ? `http://localhost:8000/${openedFile.docx_path}` :
+                          undefined
                   }
                   memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
                   onBack={closeSource}
                   title={openedFile.title}
+                  docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
                 />
               </div>
             ) : (
@@ -367,69 +434,25 @@ export default function SourcePanel({
                   loadAllFiles();
                 }}
                 onSourceCountRefresh={onSourceCountRefresh}
-                onFocusNodeNamesUpdate={onFocusNodeNamesUpdate}
+                onFocusNodeNamesUpdate={async (names) => {
+                  if (onFocusNodeNamesUpdate) {
+                    await onFocusNodeNamesUpdate(names);
+                  }
+                  setIsNodeViewLoading(null); // 실제로 부모까지 전달 후 스피너 해제
+                }}
                 filteredSourceIds={filteredSourceIds}
                 searchText={searchText}
-                onFileUploaded={loadAllFiles} // 파일 업로드 완료 시 목록 즉시 갱신
+                onFileUploaded={loadAllFiles}
+                isNodeViewLoading={isNodeViewLoading}
+                setIsNodeViewLoading={setIsNodeViewLoading}
+                externalUploadQueue={externalUploadQueue}
+                setExternalUploadQueue={setExternalUploadQueue}
               />
             )}
           </div >
         </>
       )}
-      {/* === 소스 업로드 모달 === */}
-      <SourceUploadModal
-        visible={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onUpload={async filePaths => {
-          try {
-            if (!filePaths || filePaths.length === 0) return;
-            let fileObjs = [];
-            if (window.api && window.api.readFilesAsBuffer) {
-              const filesData = await window.api.readFilesAsBuffer(filePaths);
-              fileObjs = filesData.map(fd => new File([new Uint8Array(fd.buffer)], fd.name));
-            } else {
-              alert('Electron 파일 읽기 기능이 필요합니다.');
-              return;
-            }
-            const uploadedFiles = [];
-            for (const f of fileObjs) {
-              const ext = f.name.split('.').pop().toLowerCase();
-              if (!['pdf', 'txt', 'memo'].includes(ext)) continue;
-              const key = `${f.name}-${Date.now()}`;
-              setUploadQueue(q => [...q, { key, name: f.name, filetype: ext, status: 'processing' }]);
-              try {
-                const result = await fileHandlers[ext](f, selectedBrainId);
-                if (result && result.meta) uploadedFiles.push(result.meta);
-              } catch (err) {
-                alert(f.name + ' 업로드 실패: ' + err.message);
-              } finally {
-                setUploadQueue(q => q.filter(item => item.key !== key));
-              }
-            }
-            await loadAllFiles();
-            setUploadKey(k => k + 1);
-            await refreshDataMetrics();
-            setFileMap(prev => {
-              const m = { ...prev };
-              uploadedFiles.forEach(file => {
-                if (file.pdf_id) m[file.pdf_id] = file;
-                else if (file.text_id) m[file.text_id] = file; // text_id로 변경
-              });
-              return m;
-            });
-            onGraphRefresh?.();
-            onSourceCountRefresh?.();
-            if (uploadedFiles.length > 0) {
-              const last = uploadedFiles[uploadedFiles.length - 1];
-              if (last.pdf_id) setPendingFocusSource({ id: last.pdf_id, type: 'pdf' });
-              else if (last.text_id) setPendingFocusSource({ id: last.text_id, type: 'text' }); // text_id로 변경
-            }
-            setShowUploadModal(false);
-          } catch (e) {
-            alert('파일 업로드 실패');
-          }
-        }}
-      />
+
       {/* KnowledgeGraphStatusBar: 소스가 열려있지 않을 때만 표시 */}
       {!collapsed && !openedPDF && !openedFile && ( // 통합 변수로 변경
         <KnowledgeGraphStatusBar

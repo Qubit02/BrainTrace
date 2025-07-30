@@ -28,3 +28,4 @@ ollama
 dotenv
 python-multipart
 markdown>=3.5.0
+python-docx

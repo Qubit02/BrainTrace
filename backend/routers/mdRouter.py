@@ -72,6 +72,22 @@ async def update_mdfile(md_id: int, mdfile_data: MDFileUpdate):
         if not sqlite_handler.get_brain(mdfile_data.brain_id):
             raise HTTPException(status_code=404, detail="Brain 엔티티를 찾을 수 없습니다")
 
+    # 파일명 제한 검증
+    if mdfile_data.md_title is not None:
+        name = mdfile_data.md_title
+        # 1. 길이 제한
+        if not (1 <= len(name) <= 100):
+            raise HTTPException(status_code=400, detail="파일명은 1~100자여야 합니다.")
+        # 2. 공백만 입력 금지
+        if name.strip() == "":
+            raise HTTPException(status_code=400, detail="파일명에 공백만 입력할 수 없습니다.")
+        # 3. 특수문자 제한
+        if re.search(r'[\\/:*?"<>|]', name):
+            raise HTTPException(status_code=400, detail="파일명에 / \\ : * ? \" < > | 문자를 사용할 수 없습니다.")
+        # 4. 점(.)으로 시작/끝 금지
+        if name.startswith('.') or name.endswith('.'):
+            raise HTTPException(status_code=400, detail="파일명은 .(점)으로 시작하거나 끝날 수 없습니다.")
+
     try:
         updated = sqlite_handler.update_mdfile(
             md_id=md_id,
@@ -90,9 +106,24 @@ async def update_mdfile(md_id: int, mdfile_data: MDFileUpdate):
 # ───────── MD 파일 삭제 ─────────
 @router.delete("/{md_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_mdfile(md_id: int):
-    """MD 파일 삭제"""
-    if not sqlite_handler.delete_mdfile(md_id):
+    """MD 파일 삭제 (DB + 로컬 파일 시스템)"""
+    md = sqlite_handler.get_mdfile(md_id)
+    if not md:
         raise HTTPException(status_code=404, detail="MD 파일을 찾을 수 없습니다")
+
+    sqlite_handler.delete_mdfile(md_id)
+
+    file_path = md["md_path"]
+    import os, logging
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.info(f"✅ 로컬 파일 삭제 완료: {file_path}")
+        else:
+            logging.warning(f"⚠️ 파일이 존재하지 않음: {file_path}")
+    except Exception as e:
+        logging.error(f"❌ 로컬 파일 삭제 실패: {e}")
+    return
 
 # ───────── Brain 기준 MD 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[MDFileResponse])

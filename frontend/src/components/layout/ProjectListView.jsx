@@ -7,6 +7,7 @@ import {
     createBrain
 } from '../../../api/backend';
 import { getSourceCountByBrain } from '../../../api/graphApi';
+import { clearAllHighlightingData } from '../panels/Source/viewer/Highlighting.jsx';
 
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
@@ -260,7 +261,8 @@ export default function ProjectListView() {
                                     }}
                                     onBlur={() => editingId === p.brain_id && handleSaveTitle(p)}
                                     style={{
-                                        cursor: editingId ? 'text' : 'pointer'
+                                        cursor: editingId === p.brain_id ? 'text' : 'pointer',
+                                        pointerEvents: editingId === p.brain_id ? 'auto' : 'none'
                                     }}
                                 >
                                     {editingId === p.brain_id
@@ -398,6 +400,8 @@ export default function ProjectListView() {
                         setIsDeleting(true);
                         try {
                             await deleteBrain(confirmId);
+                            // 브레인 삭제 시 모든 하이라이팅 데이터도 삭제
+                            clearAllHighlightingData();
                             setBrains(prev => prev.filter(b => b.brain_id !== confirmId));
                         } catch {
                             alert('삭제 실패');

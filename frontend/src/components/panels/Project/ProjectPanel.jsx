@@ -15,8 +15,8 @@ import NewBrainModal from './NewBrainModal';
 
 /**
  * 왼쪽 세로 사이드바 (프로젝트/브레인 아이콘 목록)
- * @param {number}   selectedBrainId   – 현재 열린 브레인 id
- * @param {function} onProjectChange – 상위 컴포넌트로 id 전파
+ * @param {number}   selectedBrainId   – 현재 열린 브레인 id
+ * @param {function} onProjectChange – 상위 컴포넌트로 id 전파
  */
 export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
   const nav = useNavigate();
@@ -60,18 +60,19 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
                 </div>
               );
             })}
-
+          
           <div className="sidebar-icon add-icon" onClick={() => setShowModal(true)}>
             <AiOutlinePlus size={27} />
             <span>새 프로젝트</span>
           </div>
-
         </div>
       </div>
+      
       <div className="sidebar-icon home-icon" onClick={() => nav('/')}>
         <IoHomeOutline size={25} />
         <span>홈으로</span>
       </div>
+      
       {showModal && (
         <NewBrainModal
           onClose={() => setShowModal(false)}

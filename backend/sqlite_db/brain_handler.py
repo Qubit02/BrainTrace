@@ -77,8 +77,8 @@ class BrainHandler(BaseHandler):
                 logging.info("🧹 Memo 테이블에서 brain_id=%s 삭제 시도", brain_id)
                 cursor.execute("DELETE FROM Memo WHERE brain_id = ?", (brain_id,))
                 
-                logging.info("🧹 Chat 테이블에서 brain_id=%s 삭제 시도", brain_id)
-                cursor.execute("DELETE FROM Chat WHERE brain_id = ?", (brain_id,))
+                logging.info("🧹 ChatSession 테이블에서 brain_id=%s 삭제 시도", brain_id)
+                cursor.execute("DELETE FROM ChatSession WHERE brain_id = ?", (brain_id,))
                 
                 logging.info("🧹 Brain 테이블에서 brain_id=%s 삭제 시도", brain_id)
                 cursor.execute("DELETE FROM Brain WHERE brain_id = ?", (brain_id,))

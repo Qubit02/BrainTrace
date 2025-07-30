@@ -2,10 +2,12 @@ import {
     TbFileTypePdf,       // PDF 파일 아이콘
     TbFileTypeXls,       // Excel 파일 아이콘
     TbFileTypeTxt,       // 텍스트 파일 아이콘
+    TbFileTypeDocx, // Docx 파일 아이콘
     TbFile,       // 확장자를 알 수 없는 파일 아이콘
     TbFileDescription    // 일반적인 파일 설명 아이콘 (기본 fallback)
 } from "react-icons/tb";
 import { AiOutlineFileMarkdown } from "react-icons/ai";
+
 
 function FileIcon({ fileName }) {
     const iconSize = 20; // 아이콘 크기 지정 (예: 20px)
@@ -27,6 +29,9 @@ function FileIcon({ fileName }) {
     }
     if (lower.endsWith(".md")) {
         return <AiOutlineFileMarkdown color="black" size={iconSize} />;
+    }
+    if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+        return <TbFileTypeDocx color="black" size={iconSize} />;
     }
     if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
         return <TbFileTypeXls color="black" size={iconSize} />;

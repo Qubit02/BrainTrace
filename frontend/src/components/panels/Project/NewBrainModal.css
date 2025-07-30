@@ -2,93 +2,123 @@
 .modal-back {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 999;
+    backdrop-filter: blur(4px);
 }
 
 /* 카드 스타일 */
 .modal-box {
-    width: 400px;
+    width: 420px;
     max-width: 90%;
-    background: #fefefe;
+    background: #ffffff;
     padding: 32px 36px;
-    border-radius: 16px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    color: #2e2e2e;
-    font-family: 'Segoe UI', sans-serif;
+    gap: 28px;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    border: 1px solid #f0f0f0;
 }
 
 /* 모달 제목 */
 .modal-box h3 {
     margin: 0;
     text-align: center;
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #222;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000000;
+    letter-spacing: -0.02em;
 }
 
 /* 설명 텍스트 */
 .modal-box p {
     text-align: center;
     font-size: 0.95rem;
-    color: #666;
+    color: #666666;
     margin: 0;
+    line-height: 1.5;
 }
 
 /* 입력 필드 */
 .modal-box input {
-    padding: 14px;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    color: #333;
+    padding: 16px 20px;
+    background: #fafafa;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    color: #1a1a1a;
     font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    outline: none;
 }
 
 .modal-box input::placeholder {
-    color: #aaa;
+    color: #999999;
+    font-weight: 400;
 }
 
 .modal-box input:focus {
-    outline: none;
-    border-color: #555;
+    border-color: #000000;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.modal-box input:hover {
+    border-color: #cccccc;
+    background: #f8f8f8;
 }
 
 /* 버튼 */
 .modal-box button {
-    padding: 13px;
+    padding: 16px 24px;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     font-weight: 600;
     font-size: 1rem;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
+    letter-spacing: -0.01em;
 }
 
 .modal-box button[type="submit"] {
-    background: #222;
-    color: white;
+    background: #000000;
+    color: #ffffff;
+}
+
+.modal-box button[type="submit"]:hover:not(:disabled) {
+    background: #1a1a1a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-box button[type="submit"]:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .modal-box button[type="submit"]:disabled {
-    background: #aaa;
+    background: #cccccc;
+    color: #999999;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 .modal-box .secondary {
-    background: white;
-    border: 1.5px solid #222;
-    color: #222;
+    background: #ffffff;
+    border: 2px solid #e5e5e5;
+    color: #1a1a1a;
 }
 
 .modal-box .secondary:hover {
-    background: #f4f4f4;
+    background: #f8f8f8;
+    border-color: #cccccc;
 }
 
 /* 헤더 */
@@ -96,18 +126,37 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: -8px;
 }
 
 /* 닫기 버튼 */
 .close-button {
-    background: none;
-    border: none;
-    color: #aaa;
+    background: #f0f0f0;
+    border: 1px solid #e0e0e0;
+    color: #333333;
     cursor: pointer;
-    transition: color 0.2s;
-    margin-right: -22px;
+    transition: all 0.2s ease;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: -4px;
+    margin-top: -4px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
 }
 
 .close-button:hover {
-    color: #333;
+    background: #e0e0e0;
+    color: #000000;
+    border-color: #cccccc;
+    transform: scale(1.05);
+}
+
+.close-button:active {
+    transform: scale(0.95);
 }
