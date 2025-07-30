@@ -147,6 +147,21 @@
     transform: translateY(-3px);
 }
 
+/* 삭제 버튼 영역에서 메모 아이템 hover 효과 방지 */
+.memo-item-actions:hover ~ .memo-item-content,
+.memo-item-actions:hover {
+    background-color: #fdfdfd !important;
+    border: 1.5px solid #eee !important;
+    transform: none !important;
+}
+
+/* actions-hover 클래스가 적용된 메모 아이템의 hover 효과 무효화 */
+.memo-item.actions-hover:hover {
+    background-color: #fdfdfd !important;
+    border: 1.5px solid #eee !important;
+    transform: none !important;
+}
+
 
 
 /* 휴지통 모드에서는 hover 효과 제거 */
@@ -229,6 +244,23 @@
 
 .delete-button:active {
     outline: none;
+}
+
+/* 삭제 버튼 hover 시 메모 아이템의 hover 효과 무효화 */
+.memo-item-actions:hover ~ .memo-item-content,
+.memo-item-actions:hover {
+    background-color: #fdfdfd !important;
+    border: 1.5px solid #eee !important;
+    transform: none !important;
+}
+
+/* 삭제 버튼 영역에서 메모 아이템 hover 효과 방지 */
+.memo-item-actions:hover ~ .memo-item-content {
+    background-color: #fdfdfd !important;
+}
+
+.memo-item-actions:hover {
+    background-color: transparent !important;
 }
 
 .restore-button {

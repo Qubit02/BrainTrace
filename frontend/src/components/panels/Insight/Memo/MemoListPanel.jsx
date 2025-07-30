@@ -233,7 +233,19 @@ function MemoListPanel({
                             </div>
 
                             {/* 메모 삭제/복구/완전삭제 버튼 */}
-                            <div className="memo-item-actions">
+                            <div 
+                                className="memo-item-actions"
+                                onMouseEnter={e => {
+                                    if (!showTrash) {
+                                        e.currentTarget.parentElement.classList.add('actions-hover');
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (!showTrash) {
+                                        e.currentTarget.parentElement.classList.remove('actions-hover');
+                                    }
+                                }}
+                            >
                                 {showTrash ? (
                                     <>
                                         <button
