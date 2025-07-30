@@ -7,8 +7,8 @@ LLMService 구현체에 대한 인터페이스입니다.
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
 
-#BaseAIService : AIService 클래스들의 기능을 모아놓은 추상 클래스입니다.
-class BaseAIService(ABC):
+#BaseLLMService : AIService 클래스들의 기능을 모아놓은 추상 클래스입니다.
+class BaseLLMService(ABC):
     @abstractmethod
     def extract_graph_components(self, text: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
         """텍스트 → (nodes, edges)"""

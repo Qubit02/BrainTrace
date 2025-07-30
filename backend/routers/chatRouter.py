@@ -10,8 +10,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 class ChatRequest(BaseModel):
     question: str = Field(..., description="질문 내용")
-    model: str = Field("ollama", description="사용할 프레임워크(gpt 또는 ollama)")
-    model_name : str = Field("exaone3.5:2.4b", description="사용할 실제 모델")
+    model: str = Field("ollama", description="사용할 모델 (gpt 또는 ollama)")
 
 class ChatResponse(BaseModel):
     answer: str = Field(..., description="AI가 생성한 답변")
@@ -32,7 +31,7 @@ async def chat_endpoint(
     if req.model == "gpt":
         ai_service = get_ai_service_GPT()
     elif req.model == "ollama":
-        ai_service = get_ai_service_Ollama(req.model_name)
+        ai_service = get_ai_service_Ollama()
     if not req.question:
         raise HTTPException(400, "question을 입력해주세요.")
     answer = ai_service.chat(req.question)  
