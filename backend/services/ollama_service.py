@@ -7,20 +7,19 @@ import logging
 import json
 from typing import Tuple, List, Dict
 from ollama import chat, pull  # Python Ollama SDK
-from .ai_service import BaseAIService
+from .base_ai_service import BaseAIService
 from .chunk_service import chunk_text
 
 MODEL_NAME = "exaone3.5:2.4b"
-pull(MODEL_NAME)
 
 class OllamaAIService(BaseAIService):
     def __init__(self):
-        # 최초에 모델이 로컬에 없으면 내려받습니다. location : C:\Users\<username>\.ollama\models
-        try:
-            pull(MODEL_NAME)
-            logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
-        except Exception as e:
-            logging.warning(f"Ollama 모델 '{MODEL_NAME}' 풀링 오류: {e}")
+        if os.getenv("OLLAMA_PULL_MODEL", "false").lower() in ("1","true","yes"):
+            try:
+                pull(MODEL_NAME)
+                logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
+            except Exception as e:
+                logging.warning(f"Ollama 모델 '{MODEL_NAME}' 풀링 오류: {e}")
 
     def extract_referenced_nodes(self, llm_response: str) -> List[str]:
         parts = llm_response.split("EOF")
