@@ -9,6 +9,8 @@ import toggleIcon from '../../../assets/icons/toggle-view.png';
 
 import { PiGraphLight } from "react-icons/pi";
 import { CiStickyNote } from "react-icons/ci";
+import { PiGraphBold } from "react-icons/pi";
+import { PiNoteBlankFill } from "react-icons/pi";
 
 import {
   createMemo,
@@ -206,22 +208,21 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
         )}
         <div className="header-actions">
           {!collapsed && (
-            <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: '6px' }}>
+            <div style={{ display: 'flex'}}>
               <button
                 className={`insight-toggle-btn${showGraph ? ' active' : ''}`}
                 title="그래프 보기 토글"
-                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                 onClick={() => setShowGraph(prev => !prev)}
               >
-                <PiGraphLight size={19} color={'black'} />
+                {showGraph ? <PiGraphBold size={19} color={'black'} /> : <PiGraphLight size={19} color={'black'} />}
               </button>
               <button
                 className={`insight-toggle-btn${showMemo ? ' active' : ''}`}
                 title="메모 보기 토글"
-                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                 onClick={() => setShowMemo(prev => !prev)}
+                style={{marginRight: '1px'}}
               >
-                <CiStickyNote size={19} color={'black'} />
+                {showMemo ? <PiNoteBlankFill size={19} color={'black'} /> : <CiStickyNote size={19} color={'black'} />}
               </button>
             </div>
           )}
