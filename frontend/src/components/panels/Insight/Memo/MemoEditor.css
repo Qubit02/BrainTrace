@@ -5,17 +5,18 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    padding: 30px;
+    height: 100vh;
+    padding: 35px;
     font-family: 'Noto Sans KR', sans-serif;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* ====== 제목 입력 ====== */
 .notion-title {
     font-size: 24px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     border: none;
     outline: none;
     width: 100%;
@@ -24,6 +25,7 @@
     transition: border-color 0.2s ease;
     color: black;
     background-color: white;
+    flex-shrink: 0;
 }
 
 /* ====== 본문 에디터 ====== */
@@ -38,9 +40,10 @@
     border-radius: 8px;
     box-shadow: inset 0 0 0 1px #e0e0e0;
     transition: box-shadow 0.2s ease;
-    min-height: 300px;
+    min-height: 0;
     color: black;
     background-color: white;
+    overflow-y: auto;
 }
 .notion-textarea:focus {
     background-color: #fff;
@@ -69,8 +72,7 @@
 
 .small-top-left {
     /* 추가적인 작은 크기와 위치 조정이 필요한 경우 */
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+    width: 35px;
+    height: 35px;
     padding: 0;
 }
