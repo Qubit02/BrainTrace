@@ -108,7 +108,7 @@ function MemoListPanel({
                     {/* 메모 아이콘 + Note 텍스트 */}
                     <div className="memo-list-title-row">
                         <span className="memo-title-text">
-                            {showTrash ? 'Trash' : 'Memo'}
+                            {showTrash ? 'Bin' : 'Memo'}
                         </span>
                     </div>
                 </div>

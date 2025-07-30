@@ -406,7 +406,7 @@
     padding: 8px 16px;
     background-color: #fafafa;
     border-top: 1px solid #eee;
-    min-height: 40px;
+    min-height: 45px;
     flex-shrink: 0;
     position: relative;
     z-index: 10;

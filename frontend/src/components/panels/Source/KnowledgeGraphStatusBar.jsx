@@ -154,7 +154,7 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
     };
 
     return (
-        <div className="source-quota-bar technical with-strong-border">
+        <div className={`source-quota-bar technical with-strong-border ${!collapsed ? 'expanded' : ''}`}>
             {/* === 헤더 영역 === */}
             <div className="quota-label main-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {/* 제목과 정보 아이콘 */}
