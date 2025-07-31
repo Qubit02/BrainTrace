@@ -248,12 +248,16 @@ async def answer_endpoint(request_data: AnswerRequest):
         # 최종 구조화
         enriched = []
         for node in referenced_nodes:
+            unique_sids = dict.fromkeys(node_to_ids.get(node, []))
             sources = [
-                {"id": str(sid), "title": id_to_title.get(sid)}
-                for sid in node_to_ids.get(node, [])
+                {"id": str(sid), "title": id_to_title[sid]}
+                for sid in unique_sids
                 if sid in id_to_title
             ]
-            enriched.append({"name": node, "source_ids": sources})
+            enriched.append({
+                "name": node,
+                "source_ids": sources
+            })
         # AI 답변 저장 및 chat_id 획득
         chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
 
