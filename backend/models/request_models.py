@@ -42,4 +42,5 @@ class AnswerRequest(BaseModel):
     question: str
     session_id: int = Field(..., description="채팅 세션 ID")
     brain_id: int = Field(..., description="브레인 ID")
-    model: str = Field("gpt", description="사용할 모델 (gpt 또는 ollama)")
+    model: str = Field("ollama", description="사용할 프레임워크 (openai(변수명은gpt로) 또는 ollama)")
+    model_name:str = Field("gemma3:4b", description="ollama 선택 시 사용할 모델 명 전달")
