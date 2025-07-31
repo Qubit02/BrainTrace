@@ -166,14 +166,14 @@ async def answer_endpoint(request_data: AnswerRequest):
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
      # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
-    if model == "gpt":
+    if model == "openai":
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
         ai_service = get_ai_service_Ollama(model_name)
     else:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
-    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s", question, session_id, brain_id, model)
+    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s, model_name: %s", question, session_id, brain_id, model, model_name)
     
     try:
         # 사용자 질문 저장
