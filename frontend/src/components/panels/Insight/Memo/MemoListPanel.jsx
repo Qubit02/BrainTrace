@@ -291,7 +291,7 @@ function MemoListPanel({
             <div className="memo-footer">
                 <div className="memo-count-footer">총 {displayedMemos.length}개</div>
 
-                <div className="memo-list-header-toggle" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
+                <div className="memo-list-header-toggle" style={{ marginRight: '8px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
                     <div className="memo-header-icons">
                         {!showTrash ? (
                             <BsTrash
