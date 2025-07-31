@@ -135,7 +135,7 @@ class BrainHandler(BaseHandler):
             conn = sqlite3.connect(self.db_path)
             cur  = conn.cursor()
             cur.execute(
-                """SELECT brain_id, brain_name, created_at
+                """SELECT brain_id, brain_name, created_at, is_important
                    FROM Brain WHERE brain_id=?""",
                 (brain_id,)
             )
@@ -147,6 +147,7 @@ class BrainHandler(BaseHandler):
                 "brain_id":   row[0],
                 "brain_name": row[1],
                 "created_at": row[2],
+                "is_important": bool(row[3]) if row[3] is not None else False,
             }
         except Exception as e:
             logging.error("브레인 조회 오류: %s", e)
@@ -158,7 +159,7 @@ class BrainHandler(BaseHandler):
             conn = sqlite3.connect(self.db_path)
             cur  = conn.cursor()
             cur.execute(
-                """SELECT brain_id, brain_name, created_at
+                """SELECT brain_id, brain_name, created_at, is_important
                      FROM Brain"""
             )
             rows = cur.fetchall(); conn.close()
@@ -167,8 +168,49 @@ class BrainHandler(BaseHandler):
                     "brain_id":   r[0],
                     "brain_name": r[1],
                     "created_at": r[2],
+                    "is_important": bool(r[3]) if r[3] is not None else False,
                 } for r in rows
             ]
         except Exception as e:
             logging.error("브레인 목록 조회 오류: %s", e)
-            return [] 
+            return []
+
+    def toggle_importance(self, brain_id: int) -> bool:
+        """브레인 중요도 토글"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 현재 중요도 상태 확인
+            cursor.execute(
+                "SELECT is_important FROM Brain WHERE brain_id = ?",
+                (brain_id,)
+            )
+            row = cursor.fetchone()
+            
+            if not row:
+                conn.close()
+                return False
+            
+            current_importance = bool(row[0]) if row[0] is not None else False
+            new_importance = not current_importance
+            
+            # 중요도 업데이트
+            cursor.execute(
+                "UPDATE Brain SET is_important = ? WHERE brain_id = ?",
+                (new_importance, brain_id)
+            )
+            updated = cursor.rowcount > 0
+            
+            conn.commit()
+            conn.close()
+            
+            if updated:
+                logging.info("브레인 중요도 토글 완료: brain_id=%s, is_important=%s", brain_id, new_importance)
+            else:
+                logging.warning("브레인 중요도 토글 실패: 존재하지 않는 brain_id=%s", brain_id)
+            
+            return updated
+        except Exception as e:
+            logging.error("브레인 중요도 토글 오류: %s", str(e))
+            raise RuntimeError(f"브레인 중요도 토글 오류: {str(e)}") 
