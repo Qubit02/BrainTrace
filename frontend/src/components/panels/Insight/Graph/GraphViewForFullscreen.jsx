@@ -435,11 +435,11 @@ function GraphViewForFullscreen(props) {
 
                     <div className="fullscreen-status-right">
                         <div className="fullscreen-keyboard-shortcuts">
-                            <span className="fullscreen-shortcut">+</span>
-                            <span className="fullscreen-shortcut">w</span>
+                            <span className="fullscreen-shortcut">Ctrl + 1</span>
+                            <span className="fullscreen-shortcut">Ctrl + +</span>
                             <span className="fullscreen-shortcut-desc">줌인</span>
-                            <span className="fullscreen-shortcut">-</span>
-                            <span className="fullscreen-shortcut">s</span>
+                            <span className="fullscreen-shortcut">Ctrl + 2</span>
+                            <span className="fullscreen-shortcut">Ctrl + -</span>
                             <span className="fullscreen-shortcut-desc">줌아웃</span>
                             <span className="fullscreen-shortcut">ESC</span>
                             <span className="fullscreen-shortcut-desc">전체화면 종료</span>
