@@ -1,4 +1,4 @@
-/* MemoPanel.css - 메모 패널/에디터 전용 스타일 */
+/* InsightPanel.css - 메모 패널/에디터 전용 스타일 */
 
 /* ====== 메모 패널 컨테이너 ====== */
 .memo-container {
@@ -116,29 +116,27 @@
   width: 25px;
   height: 25px;
   border-radius: 6px;
-  background: white;
-  border: 1px solid #292929;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease-in-out;
+  cursor: pointer;
 }
 
 .insight-toggle-btn.active {
-  background: #bdbcbc56;
-  border-color: #797979;
+  background: transparent;
   color: #111;
 }
 
 .insight-toggle-btn:hover {
-  background: #929292;
+  background: transparent;
   color: #111;
-  box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.13);
   cursor: pointer;
 }
 
 .insight-toggle-btn:active {
-  background: #929191;
+  background: transparent;
   color: #222;
 }

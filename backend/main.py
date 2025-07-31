@@ -15,7 +15,7 @@ from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 
 # 기존 라우터
-from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, searchRouter, voiceRouter, mdRouter, docxRouter
+from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, chatsessionRouter, searchRouter, voiceRouter, mdRouter, docxRouter
 
 
 # ─── 로깅 설정 ─────────────────────────────────────
@@ -99,6 +99,7 @@ app.include_router(pdfRouter.router)
 app.include_router(textFileRouter.router)   
 app.include_router(mdRouter.router)
 app.include_router(chatRouter.router)
+app.include_router(chatsessionRouter.router)
 app.include_router(searchRouter.router)
 app.include_router(voiceRouter.router)
 app.include_router(docxRouter.router)

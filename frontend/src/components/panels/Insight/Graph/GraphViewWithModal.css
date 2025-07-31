@@ -1,17 +1,16 @@
 /* GraphViewWithModal.css - 그래프 모달/팝업/버튼 전용 스타일 */
 
 /* ====== 모달/버튼 컨테이너 ====== */
-.graph-view-wrapper {
-    position: relative;
-}
+.graph-view-wrapper,
 .graph-with-button {
-    position: relative;
+    height: 100%;
+    min-height: 300px;
 }
 
 /* ====== 전체화면 버튼 ====== */
 .fullscreen-btn {
     position: absolute;
-    top: 11px;
+    top: 50px;
     right: 11px;
     padding: 6px;
     cursor: pointer;
@@ -20,9 +19,11 @@
     background: transparent;
     z-index: 100;
 }
+
 .fullscreen-btn:hover {
     transform: scale(1.08);
 }
+
 .fullscreen-btn:active,
 .fullscreen-btn:focus {
     transform: scale(1.08);
@@ -47,6 +48,7 @@
     max-width: 900px;
     right: 40px;
 }
+
 .graph-popup .close-x {
     position: absolute;
     top: 4px;
@@ -58,6 +60,7 @@
     transition: color 0.2s;
     z-index: 10;
 }
+
 .graph-popup .close-x:hover {
     color: red;
 }
@@ -65,10 +68,11 @@
 /* ====== 타임랩스 버튼 ====== */
 .timelapse-button-container {
     position: absolute;
-    top: 38px;
+    top: 77px;
     right: 15px;
     z-index: 50;
 }
+
 .timelapse-button {
     margin-right: -2px;
     color: black;
@@ -83,6 +87,7 @@
     padding: 1px;
     border-radius: 50%;
 }
+
 .timelapse-button:hover {
     transform: scale(1.1);
     background: rgba(255, 255, 255, 0.1);
@@ -91,32 +96,35 @@
 .graph-search-toggle-btn {
     margin-right: -3px;
     margin-top: 12px;
-  border-radius: 50%;
-  height: 28px;
-  width: 28px;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
-  box-shadow: none;
-  outline: none;
-}
-.graph-search-toggle-btn svg {
-  color: #222;
-  font-size: 21px;
-}
-.graph-search-toggle-btn.active {
-  background: #cececf;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.graph-search-toggle-btn:hover {
-  background: #d3d3d4;
-}
-.graph-search-toggle-btn.active:hover,
-.graph-search-toggle-btn:active {
-  background: #d1d5db;
+    border-radius: 50%;
+    height: 28px;
+    width: 28px;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: none;
+    outline: none;
 }
 
+.graph-search-toggle-btn svg {
+    color: #222;
+    font-size: 21px;
+}
+
+.graph-search-toggle-btn.active {
+    background: #cececf;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.graph-search-toggle-btn:hover {
+    background: #d3d3d4;
+}
+
+.graph-search-toggle-btn.active:hover,
+.graph-search-toggle-btn:active {
+    background: #d1d5db;
+}

@@ -1,16 +1,57 @@
-**/__pycache__/
+# =========================
+# Python/Backend 관련 무시
+# =========================
+__pycache__/
 *.pyc
-/neo4j/
-*.log
-.DS_Store
-
-backend/venv
-frontend/node_modules
-
-backend/LLM/genie_bundle_3_2
+.venv/
+backend/venv/
+backend/node_modules/
+backend/LLM/genie_bundle_3_2/
 backend/data/
-backend/node_modules
 backend/data/qdrant/meta.json
-.env
+backend/tests/test_document.docx
+backend/tests/test_document.md
+backend/tests/test_document.pdf
+backend/tests/test_document.txt
+backend/uploaded_txts/
+backend/uploaded_pdfs/
+backend/uploaded_mds/
+backend/uploaded_docx/
+.data/
+/data/
+
+# =========================
+# Node.js/Frontend 관련 무시
+# =========================
+frontend/node_modules/
 node_modules/
+dist/
+dist-ssr/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+
+# =========================
+# 에디터/IDE/OS 환경 파일 무시
+# =========================
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================
+# 환경설정 및 기타
+# =========================
+.env
 .gitignore
+/neo4j/

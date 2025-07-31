@@ -8,7 +8,7 @@ from exceptions.custom_exceptions import Neo4jException,AppException, QdrantExce
 from examples.error_examples import ErrorExamples
 from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
-
+from services.accuracy_service import compute_accuracy
 
 router = APIRouter(
     prefix="/brainGraph",
@@ -154,11 +154,14 @@ async def answer_endpoint(request_data: AnswerRequest):
     <br> GPT 사용 → (model: "gpt")
     """
     question = request_data.question
-    brain_id = request_data.brain_id  # 요청에서 brain_id 받아오기
-    model =  request_data.model
-    
+    session_id = request_data.session_id
+    brain_id = str(request_data.brain_id)  # 문자열로 변환
+    model = request_data.model
+    model_name = request_data.model_name
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id 파라미터가 필요합니다.")
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
@@ -166,17 +169,16 @@ async def answer_endpoint(request_data: AnswerRequest):
     if model == "gpt":
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
-        ai_service = get_ai_service_Ollama()
+        ai_service = get_ai_service_Ollama(model_name)
     else:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
-    
-    logging.info("질문 접수: %s, brain_id: %s, model: %s", question, brain_id, model)
+    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s", question, session_id, brain_id, model)
     
     try:
         # 사용자 질문 저장
         db_handler = SQLiteHandler()
-        chat_id = db_handler.save_chat(False, question, brain_id)
+        chat_id = db_handler.save_chat(session_id, False, question)
         
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):
@@ -189,7 +191,15 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색
         similar_nodes = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
-            raise QdrantException("질문과 유사한 노드를 찾지 못했습니다.")
+            # 안내 메시지도 DB에 저장
+            guide_message = "질문과 유사한 노드를 찾지 못했습니다."
+            guide_chat_id = db_handler.save_chat(session_id, True, guide_message, [])
+            return {
+                "answer": "",
+                "referenced_nodes": [],
+                "chat_id": guide_chat_id,
+                "message": guide_message
+            }
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]
@@ -224,15 +234,34 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-            
-        # AI 답변 저장
+        accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id)
+        logging.info(f"정확도 : {accuracy}")
+        # node의 출처 소스 id들 가져오기
+        node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+        logging.info(f"node_to_ids: {node_to_ids}")
+        # 모든 source_id 집합 수집
+        all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
+        logging.info(f"all_ids: {all_ids}")
+        # SQLite batch 조회로 id→title 매핑
+        id_to_title = db_handler.get_titles_by_ids(all_ids)
+               
+        # 최종 구조화
+        enriched = []
+        for node in referenced_nodes:
+            sources = [
+                {"id": str(sid), "title": id_to_title.get(sid)}
+                for sid in node_to_ids.get(node, [])
+                if sid in id_to_title
+            ]
+            enriched.append({"name": node, "source_ids": sources})
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(True, final_answer, brain_id, referenced_nodes)
+        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
 
         return {
             "answer": final_answer,
-            "referenced_nodes": referenced_nodes,
-            "chat_id": chat_id   # ✅ 반드시 포함!
+            "referenced_nodes": enriched,
+            "chat_id": chat_id  ,
+            "accuracy": accuracy
         }
     except Exception as e:
         logging.error("answer 오류: %s", str(e))

@@ -7,20 +7,20 @@ import logging
 import json
 from typing import Tuple, List, Dict
 from ollama import chat, pull  # Python Ollama SDK
-from .ai_service import BaseAIService
+from .base_ai_service import BaseAIService
 from .chunk_service import chunk_text
 
-MODEL_NAME = "exaone3.5:2.4b"
-pull(MODEL_NAME)
 
 class OllamaAIService(BaseAIService):
-    def __init__(self):
-        # 최초에 모델이 로컬에 없으면 내려받습니다. location : C:\Users\<username>\.ollama\models
-        try:
-            pull(MODEL_NAME)
-            logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
-        except Exception as e:
-            logging.warning(f"Ollama 모델 '{MODEL_NAME}' 풀링 오류: {e}")
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+
+        if os.getenv("OLLAMA_PULL_MODEL", "false").lower() in ("1","true","yes"):
+            try:
+                pull(self.model_name)
+                logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
+            except Exception as e:
+                logging.warning(f"Ollama 모델 '{MODEL_NAME}' 풀링 오류: {e}")
 
     def extract_referenced_nodes(self, llm_response: str) -> List[str]:
         parts = llm_response.split("EOF")
@@ -58,16 +58,27 @@ class OllamaAIService(BaseAIService):
         self, chunk: str, source_id: str
     ) -> Tuple[List[Dict], List[Dict]]:
         prompt = (
-            "다음 텍스트에서 노드와 엣지를 추출해 JSON으로 출력해 주세요.\n"
+            "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
+            "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
+            "엣지는 { \"source\": string, \"target\": string, \"relation\": string } 형식의 객체 배열로 출력해줘. "
+            "여기서 source와 target은 노드의 name을 참조해야 하고, source_id는 사용하면 안 돼. "
+            "출력 결과는 반드시 아래 JSON 형식을 준수해야 해:\n"
             "{\n"
-            '  "nodes": [ { "label": "...", "name": "...", "description": "..." }, ... ],\n'
-            '  "edges": [ { "source": "...", "target": "...", "relation": "..." }, ... ]\n'
-            "}\n\n"
+            '  "nodes": [ ... ],\n'
+            '  "edges": [ ... ]\n'
+            "}\n"
+            "문장에 있는 모든 개념을 노드로 만들어줘"
+            "각 노드의 description은 해당 노드를 간단히 설명하는 문장이어야 해. "
+            "만약 텍스트 내에 하나의 긴 description에 여러 개념이 섞여 있다면, 반드시 개념 단위로 나누어 여러 노드를 생성해줘. "
+            "description은 하나의 개념에 대한 설명만 들어가야 해"
+            "노드의 label과 name은 한글로 표현하고, 불필요한 내용이나 텍스트에 없는 정보는 추가하지 말아줘. "
+            "노드와 엣지 정보가 추출되지 않으면 빈 배열을 출력해줘.\n\n"
+            "json 형식 외에는 출력 금지"
             f"텍스트: {chunk}"
-        )
+         )
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[
                     {"role": "system", "content": "당신은 노드/엣지 추출 전문가입니다."},
                     {"role": "user",   "content": prompt}
@@ -139,7 +150,7 @@ class OllamaAIService(BaseAIService):
         )
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 stream=False
             )
@@ -196,7 +207,7 @@ class OllamaAIService(BaseAIService):
         """
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[{"role": "user", "content": message}],
                 stream=False
             )

@@ -28,9 +28,9 @@ function GraphViewForFullscreen(props) {
         textZoomThreshold: 0.5,     // 텍스트 표시 시작점
         textAlpha: 1.0,             // 텍스트 투명도(신규)
         // 3개 물리 설정 (0-100 범위)
-        repelStrength: 50,          // 반발력
-        linkDistance: 50,           // 링크 거리
-        linkStrength: 50,           // 링크 장력
+        repelStrength: 5,          // 반발력
+        linkDistance: 40,           // 링크 거리
+        linkStrength: 40,           // 링크 장력
     });
 
     // 다크모드 토글 함수

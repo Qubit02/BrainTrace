@@ -40,6 +40,40 @@ class SearchHandler(BaseHandler):
                 }
                 for row in results
             ]
+        
+        
         except Exception as e:
             logging.error("제목 검색 오류: %s", str(e))
             return [] 
+
+
+    def get_titles_by_ids(self, ids: List[int]) -> Dict[int, str]:
+        """
+        주어진 source_id 리스트에 대해,
+        Pdf/TextFile/Memo/MD/Docx 테이블을 UNION ALL 로 한 번에 조회해서
+        { id: title, ... } 맵으로 반환.
+        """
+        if not ids:
+            return {}
+
+        placeholders = ",".join("?" for _ in ids)
+        sql = f"""
+        SELECT pdf_id  AS id, pdf_title   AS title FROM Pdf      WHERE pdf_id  IN ({placeholders})
+        UNION ALL
+        SELECT txt_id  AS id, txt_title   AS title FROM TextFile WHERE txt_id  IN ({placeholders})
+        UNION ALL
+        SELECT memo_id AS id, memo_title AS title FROM Memo     WHERE memo_id IN ({placeholders})
+        UNION ALL
+        SELECT md_id    AS id, md_title   AS title FROM MDFile   WHERE md_id    IN ({placeholders})
+        UNION ALL
+        SELECT docx_id  AS id, docx_title AS title FROM DocxFile WHERE docx_id IN ({placeholders})
+        """
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.cursor()
+        params = ids * 5
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        conn.close()
+
+        return {rid: title for rid, title in rows}   
+        

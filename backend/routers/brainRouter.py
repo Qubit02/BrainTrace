@@ -91,12 +91,10 @@ async def update_brain(brain_id: int, data: BrainUpdate):
         return origin  # 변경 사항 없음
 
     try:
-        # 이름만 바꿀 때 기존 메서드 활용
+        # brain_name만 업데이트하는 경우
         if 'brain_name' in payload:
             sqlite_handler.update_brain_name(brain_id, payload['brain_name'])
-        # 나머지 필드는 범용 update_brain(가변) 메서드로 처리
-        sqlite_handler.update_brain(brain_id, **payload)
-        origin.update(payload)
+            origin.update(payload)
         return origin
     except Exception as e:
         logging.error("브레인 업데이트 오류: %s", e)
