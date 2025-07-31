@@ -38,7 +38,8 @@ class BaseHandler:
             CREATE TABLE IF NOT EXISTS Brain (
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
-                created_at TEXT
+                created_at TEXT,
+                is_important BOOLEAN DEFAULT 0
             )
             ''')
             
