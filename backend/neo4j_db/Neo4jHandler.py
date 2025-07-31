@@ -15,7 +15,6 @@ class Neo4jHandler:
     def close(self):
         self.driver.close()
 
-
     def insert_nodes_and_edges(self, nodes, edges, brain_id):
         """
         노드와 엣지를 Neo4j에 저장합니다.
@@ -24,43 +23,54 @@ class Neo4jHandler:
         def _insert(tx, nodes, edges, brain_id):
             # 노드 저장
             for node in nodes:
-                # descriptions를 JSON 문자열로 변환 (한글 깨짐 방지를 위해 ensure_ascii=False)
-                # source_id를 descriptions에 포함하여 저장
+                # descriptions를 JSON 문자열로 변환
                 new_descriptions = []
                 for desc in node.get("descriptions", []):
-                    # 이미 source_id가 포함되어 있지 않으면 추가
-                    if isinstance(desc, dict) and "source_id" not in desc and "description" in desc:
-                        desc["source_id"] = node.get("source_id", "")
-                    new_descriptions.append(json.dumps(desc, ensure_ascii=False))
-                
+                    if isinstance(desc, dict):
+                        new_descriptions.append(json.dumps(desc, ensure_ascii=False))
+
+                # original_sentences를 JSON 문자열로 변환
+                new_originals = []
+                for orig in node.get("original_sentences", []):
+                    if isinstance(orig, dict):
+                        new_originals.append(json.dumps(orig, ensure_ascii=False))
+
                 tx.run(
                     """
                     MERGE (n:Node {name: $name, brain_id: $brain_id})
-                    ON CREATE SET 
-                        n.label = $label, 
-                        n.descriptions = $new_descriptions,
+                    ON CREATE SET
+                        n.label = $label,
                         n.source_id = $source_id,
-                        n.brain_id = $brain_id
-                    ON MATCH SET 
-                        n.label = $label, 
+                        n.brain_id = $brain_id,
+                        n.descriptions = $new_descriptions,
+                        n.original_sentences = $new_originals
+                    ON MATCH SET
+                        n.label = $label,
                         n.source_id = $source_id,
                         n.brain_id = $brain_id,
                         n.descriptions = CASE 
                             WHEN n.descriptions IS NULL THEN $new_descriptions 
                             ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions] 
+                        END,
+                        n.original_sentences = CASE
+                            WHEN n.original_sentences IS NULL THEN $new_originals
+                            ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
                         END
                     """,
                     name=node["name"],
                     label=node["label"],
                     source_id=node.get("source_id", ""),
                     new_descriptions=new_descriptions,
+                    new_originals=new_originals,
                     brain_id=brain_id
                 )
+
             # 엣지 저장
             for edge in edges:
                 tx.run(
                     """
-                    MATCH (a:Node {name: $source, brain_id: $brain_id}), (b:Node {name: $target, brain_id: $brain_id})
+                    MATCH (a:Node {name: $source, brain_id: $brain_id})
+                    MATCH (b:Node {name: $target, brain_id: $brain_id})
                     MERGE (a)-[r:REL {relation: $relation, brain_id: $brain_id}]->(b)
                     """,
                     source=edge["source"],
@@ -77,10 +87,11 @@ class Neo4jHandler:
             logging.error(f"❌ Neo4j 쓰기 트랜잭션 오류: {str(e)}")
             raise Neo4jException(message=f"Neo4j 쓰기 트랜잭션 오류: {str(e)}")
 
+
     def fetch_all_nodes(self):
         """
         모든 노드를 읽어와 JSON 형식의 리스트로 반환합니다.
-        읽기 쿼리는 session.run()을 사용하여 처리합니다.
+        읽기 쿼리는 session.run()을 사용하여 처리합니다.    
         """
         nodes = []
         try:

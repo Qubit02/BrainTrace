@@ -1,9 +1,3 @@
-"""
-openai_service.py
-BaseAIService 인터페이스를 구현하여,
-
-OpenAI에 대해 요청을 처리해주는 클래스입니다.
-"""
 
 import logging
 from openai import OpenAI           # OpenAI 클라이언트 임포트
@@ -11,9 +5,14 @@ import json
 from .chunk_service import chunk_text
 from .base_ai_service import BaseAIService
 from typing import List
-
+from .manual_chunking_sentences import manual_chunking
+import numpy as np
 import os
 from dotenv import load_dotenv  # dotenv 추가
+from .embedding_service import encode_text
+from sklearn.metrics.pairwise import cosine_similarity
+
+
 
 # ✅ .env 파일에서 환경 변수 로드
 load_dotenv()
@@ -139,7 +138,7 @@ class OpenAIService(BaseAIService) :
                 if not all(key in node for key in ["label", "name"]):
                     logging.warning("필수 필드가 누락된 노드: %s", node)
                     continue
-                    
+
                 # descriptions 필드 초기화
                 if "descriptions" not in node:
                     node["descriptions"] = []
@@ -168,8 +167,60 @@ class OpenAIService(BaseAIService) :
                         logging.warning("잘못된 엣지 참조: %s", edge)
                 else:
                     logging.warning("필수 필드가 누락된 엣지: %s", edge)
+
+             # 1) 문장 단위 분리(의미에 따라서 여러문장일 수도 있음)
+            sentences = manual_chunking(chunk)   # List[str]
             
-            return valid_nodes, valid_edges
+            if not sentences:
+                # 빈 sentences인 경우에도 original_sentences 필드 추가
+                for node in valid_nodes:
+                    node["original_sentences"] = []
+                return valid_nodes, valid_edges
+
+            # 2) 모든 문장 임베딩 (한 번만)
+            sentence_embeds = np.vstack([encode_text(s) for s in sentences])  # (num_sentences, dim)
+
+            # 3) 노드별로 original_sentences 계산
+            threshold = 0.8
+        
+            for node in valid_nodes:
+                # node["descriptions"] 에는 반드시 1개의 딕셔너리가 들어있다고 가정
+                desc_obj = node["descriptions"][0]
+                desc_text = desc_obj["description"]
+                desc_src  = desc_obj["source_id"]
+                desc_text_full = f"{node['name']} - {desc_text}"
+                # 3-1) name-description 형태로 임베딩
+                desc_vec = np.array(encode_text(desc_text)).reshape(1, -1)  # (1, dim)
+
+                # 3-2) 문장 × 설명 유사도 계산
+                sim_scores = cosine_similarity(sentence_embeds, desc_vec).flatten()  # (num_sentences,)
+                # 0.75 이상 문장 인덱스·점수 모으기
+                above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
+                # 3-3) threshold 이상인 문장만 모아서 original_sentences 에 저장
+                node_originals = []
+                
+                if above:
+                    # 0.8 이상인 모든 문장 추가
+                    for i, score in above:
+                        node_originals.append({
+                            "original_sentence": sentences[i],
+                            "source_id":        desc_src,
+                            "score":            round(float(score), 4)
+                        })
+                else:
+                    # 0.8 미만 중 최고점 문장 하나만 추가
+                    best_i = int(np.argmax(sim_scores))
+                    node_originals.append({
+                        "original_sentence": sentences[best_i],
+                        "source_id":        desc_src,
+                        "score":            round(float(sim_scores[best_i]), 4)
+                    })
+
+
+                # 3-4) 각 node에 필드로 추가
+                node["original_sentences"] = node_originals
+
+            return valid_nodes, valid_edges 
         except Exception as e:
             logging.error(f"청크 처리 중 오류 발생: {str(e)}")
             return [], []
@@ -237,8 +288,7 @@ class OpenAIService(BaseAIService) :
         except Exception as e:
             logging.error("GPT 응답 오류: %s", str(e))
             raise RuntimeError("GPT 응답 생성 중 오류 발생")
-    import json
-    import logging
+    
 
     def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
         """

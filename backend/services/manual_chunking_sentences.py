@@ -6,8 +6,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 from collections import defaultdict
-from chunk_service import chunk_text
-from node_gen_ver5 import extract_nodes
+from .chunk_service import chunk_text
+from .node_gen_ver5 import extract_nodes
 
 okt = Okt()
 # 불용어 정의 
@@ -368,10 +368,11 @@ def manual_chunking(text:str):
     for c in chunks:
         chunk=""
         for idx in c["chunks"]:
-            print(sentences[idx])
+            # print(sentences[idx])
             chunk+=sentences[idx][0]
         final_chunks.append(chunk)
-    return chunks
+    return final_chunks
+
 
 text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안 인식되어 왔던 고려대의 모습은 하기와 같다.
 
@@ -395,5 +396,5 @@ text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안
 
 상기를 종합하면, 고려대학교는 격동하는 한국 근현대사에서 특유의 끈끈한 공동체 정신 및 정의감 등으로 주목받았으나 이제는 변화하는 현대 사회의 요구에 맞게 과거의 공동체문 화에서 부정적인 부분은 보완하고 그와 동시에 자유주의적 면모를 더하여 새롭게 발전해 나가는, 신구의 조화를 이루어낸 대학교라고 할 수 있다. 분명 이는 긍정적인 변화이나, 자칫 너무 극단적인 변화를 추구하여 그간 유지된 고유의 기질까지 사라지지 않도록 하는 노력이 필요하다고 할 것이다."""
 #extract_graph_components(text,"1234")
-print(manual_chunking(text))
+# print(manual_chunking(text))
 
