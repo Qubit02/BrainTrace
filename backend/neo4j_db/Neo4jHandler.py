@@ -40,13 +40,11 @@ class Neo4jHandler:
                     MERGE (n:Node {name: $name, brain_id: $brain_id})
                     ON CREATE SET
                         n.label = $label,
-                        n.source_id = $source_id,
                         n.brain_id = $brain_id,
                         n.descriptions = $new_descriptions,
                         n.original_sentences = $new_originals
                     ON MATCH SET
                         n.label = $label,
-                        n.source_id = $source_id,
                         n.brain_id = $brain_id,
                         n.descriptions = CASE 
                             WHEN n.descriptions IS NULL THEN $new_descriptions 
@@ -59,7 +57,6 @@ class Neo4jHandler:
                     """,
                     name=node["name"],
                     label=node["label"],
-                    source_id=node.get("source_id", ""),
                     new_descriptions=new_descriptions,
                     new_originals=new_originals,
                     brain_id=brain_id
