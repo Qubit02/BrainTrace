@@ -687,20 +687,24 @@ function GraphView({
       const fg = fgRef.current;
       const zoomStep = 1.2;
       let currZoom = fg.zoom();
-      switch (e.key) {
-        case '+':
-        case '=':
-        case 'w':
-        case 'W':
-          fg.zoom(currZoom * zoomStep, 300);
-          break;
-        case '-':
-        case 's':
-        case 'S':
-          fg.zoom(currZoom / zoomStep, 300);
-          break;
-        default:
-          break;
+      
+      // Ctrl 키와 함께 눌러야 작동하도록 수정
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case '+':
+          case '=':
+          case '1':
+            e.preventDefault();
+            fg.zoom(currZoom * zoomStep, 300);
+            break;
+          case '-':
+          case '2':
+            e.preventDefault();
+            fg.zoom(currZoom / zoomStep, 300);
+            break;
+          default:
+            break;
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);

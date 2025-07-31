@@ -157,7 +157,7 @@ async def answer_endpoint(request_data: AnswerRequest):
     session_id = request_data.session_id
     brain_id = str(request_data.brain_id)  # 문자열로 변환
     model = request_data.model
-    
+    model_name = request_data.model_name
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
     if not session_id:
@@ -169,7 +169,7 @@ async def answer_endpoint(request_data: AnswerRequest):
     if model == "gpt":
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
-        ai_service = get_ai_service_Ollama()
+        ai_service = get_ai_service_Ollama(model_name)
     else:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 

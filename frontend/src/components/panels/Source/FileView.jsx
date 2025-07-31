@@ -5,10 +5,11 @@ import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
-import { RiDeleteBinLine } from 'react-icons/ri';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
+import { LuGitPullRequestClosed } from "react-icons/lu";
+
 import {
   getPdfsByBrain,
   getTextfilesByBrain,
@@ -375,7 +376,7 @@ export default function FileView({
                     <GoPencil size={14} style={{ marginRight: 4 }} /> 소스 이름 바꾸기
                   </div>
                   <div className="popup-item" onClick={() => openDeleteConfirm(f)}>
-                    <RiDeleteBinLine size={14} style={{ marginRight: 4 }} /> 소스 삭제
+                    <LuGitPullRequestClosed size={14} style={{ marginRight: 4 }} /> 소스 삭제
                   </div>
                 </div>
               )}

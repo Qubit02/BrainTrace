@@ -15,13 +15,14 @@ from .manual_chunking_sentences import manual_chunking
 import numpy as np
 
 
-MODEL_NAME = "exaone3.5:2.4b"
 
 class OllamaAIService(BaseAIService):
-    def __init__(self):
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+
         if os.getenv("OLLAMA_PULL_MODEL", "false").lower() in ("1","true","yes"):
             try:
-                pull(MODEL_NAME)
+                pull(self.model_name)
                 logging.info(f"Ollama 모델 '{MODEL_NAME}' 준비 완료")
             except Exception as e:
                 logging.warning(f"Ollama 모델 '{MODEL_NAME}' 풀링 오류: {e}")
@@ -82,7 +83,7 @@ class OllamaAIService(BaseAIService):
          )
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[
                     {"role": "system", "content": "당신은 노드/엣지 추출 전문가입니다."},
                     {"role": "user",   "content": prompt}
@@ -207,7 +208,7 @@ class OllamaAIService(BaseAIService):
         )
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 stream=False
             )
@@ -264,7 +265,7 @@ class OllamaAIService(BaseAIService):
         """
         try:
             resp = chat(
-                model=MODEL_NAME,
+                model=self.model_name,
                 messages=[{"role": "user", "content": message}],
                 stream=False
             )
