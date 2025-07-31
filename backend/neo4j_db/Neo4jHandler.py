@@ -39,11 +39,9 @@ class Neo4jHandler:
                     ON CREATE SET 
                         n.label = $label, 
                         n.descriptions = $new_descriptions,
-                        n.source_id = $source_id,
                         n.brain_id = $brain_id
                     ON MATCH SET 
                         n.label = $label, 
-                        n.source_id = $source_id,
                         n.brain_id = $brain_id,
                         n.descriptions = CASE 
                             WHEN n.descriptions IS NULL THEN $new_descriptions 
@@ -52,7 +50,6 @@ class Neo4jHandler:
                     """,
                     name=node["name"],
                     label=node["label"],
-                    source_id=node.get("source_id", ""),
                     new_descriptions=new_descriptions,
                     brain_id=brain_id
                 )
