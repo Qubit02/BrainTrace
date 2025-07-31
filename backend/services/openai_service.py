@@ -170,7 +170,7 @@ class OpenAIService(BaseAIService) :
 
              # 1) 문장 단위 분리(의미에 따라서 여러문장일 수도 있음)
             sentences = manual_chunking(chunk)   # List[str]
-            
+            logging.warning("청킹된 문장: %s", sentences)
             if not sentences:
                 # 빈 sentences인 경우에도 original_sentences 필드 추가
                 for node in valid_nodes:

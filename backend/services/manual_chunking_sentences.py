@@ -254,9 +254,10 @@ def manual_chunking(text:str):
     for c in chunks:
         chunk=""
         for idx in c["chunks"]:
-            # print(sentences[idx])
-            chunk+=sentences[idx][0]
+            print(sentences[idx])
+            chunk+=sentences[idx]
         final_chunks.append(chunk)
+        print(final_chunks)
     return final_chunks
 
 
@@ -284,5 +285,3 @@ text = """보성전문학교 시절부터 대한민국 국내에서 오랫동안
 
 #extract_graph_components(text,"1234")
 # print(manual_chunking(text))
-
-
