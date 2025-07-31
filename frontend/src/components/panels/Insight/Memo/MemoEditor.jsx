@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './MemoEditor.css';
-import { RiCollapseDiagonalFill } from "react-icons/ri";
+import { BsBoxArrowInLeft } from "react-icons/bs";
 
 // 메모 에디터 컴포넌트
 // - 메모 제목과 내용을 입력하거나 수정할 수 있는 화면
@@ -45,7 +45,7 @@ function MemoEditor({ memo, onSaveAndClose }) {
     <div className="notion-editor">
       {/* 뒤로가기 버튼 */}
       <button className="back-button small-top-left" onClick={handleBack}>
-        <RiCollapseDiagonalFill size={28} color='black' />
+        <BsBoxArrowInLeft size={26} color='black' />
       </button>
 
       {/* 제목 입력창 */}

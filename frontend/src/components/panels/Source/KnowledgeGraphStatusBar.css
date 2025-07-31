@@ -9,7 +9,7 @@
     gap: 10px;
     
     /* 스페이싱 */
-    padding: 14px 12px 10px 12px;
+    padding: 5px 12px 10px 12px;
     
     /* 시각적 스타일 */
     background: #fafafa;
@@ -22,6 +22,18 @@
     min-width: 200px;
     max-width: 100%;
     margin: 0;
+    
+    /* 높이 제약 - 접혀있을 때 45px */
+    min-height: 45px;
+    height: 45px;
+    overflow: hidden;
+    transition: height 0.3s ease;
+}
+
+/* 펼쳐진 상태일 때 높이 자동 조정 */
+.source-quota-bar.technical.expanded {
+    height: auto;
+    min-height: 45px;
 }
 
 /* 강한 상단 보더가 있는 버전 */
