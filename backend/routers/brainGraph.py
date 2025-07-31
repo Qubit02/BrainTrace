@@ -248,16 +248,26 @@ async def answer_endpoint(request_data: AnswerRequest):
         # 최종 구조화
         enriched = []
         for node in referenced_nodes:
-            unique_sids = dict.fromkeys(node_to_ids.get(node, []))
-            sources = [
-                {"id": str(sid), "title": id_to_title[sid]}
-                for sid in unique_sids
-                if sid in id_to_title
-            ]
+            # 중복 제거된 source_id 리스트
+            unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
+            sources = []
+            for sid in unique_sids:
+                if sid not in id_to_title:
+                    continue
+                # Neo4j 에서 이 (node, sid) 조합의 original_sentences 가져오기
+                orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
+
+                sources.append({
+                    "id": str(sid),
+                    "title": id_to_title[sid],
+                    "original_sentences": orig_sents  # 여기에 리스트 형태로 들어감
+                })
+
             enriched.append({
-                "name": node,
-                "source_ids": sources
+                    "name": node,
+                    "source_ids": sources
             })
+
         # AI 답변 저장 및 chat_id 획득
         chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
 

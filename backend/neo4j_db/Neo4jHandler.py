@@ -535,6 +535,61 @@ class Neo4jHandler:
                     except ValueError:
                         continue
         return result
+    
+    def get_original_sentences(
+    self,
+        node_name: str,
+        source_id: str,
+        brain_id: str
+    ) -> List[Dict]:
+        """
+        특정 노드의 original_sentences 배열을 조회하고,
+        source_id가 일치하는 항목들만 파싱해서 반환합니다.
+        중복 문장과 score 필드는 제거됩니다.
+        """
+        try:
+            query = """
+            MATCH (n:Node {name: $node_name, brain_id: $brain_id})
+            RETURN n.original_sentences AS originals
+            """
+            rows = self._execute_with_retry(
+                query,
+                {"node_name": node_name, "brain_id": brain_id}
+            )
+            if not rows or not rows[0].get("originals"):
+                return []
 
+            raw_list = rows[0]["originals"]
+            results: List[Dict] = []
+            seen = set()
+
+            for raw in raw_list:
+                # JSON 문자열이면 파싱
+                try:
+                    item = json.loads(raw) if isinstance(raw, str) else raw
+                except json.JSONDecodeError:
+                    logging.warning(f"[Neo4j] original_sentences JSON 파싱 실패: {raw}")
+                    continue
+
+                # source_id 필터링
+                if str(item.get("source_id")) != str(source_id):
+                    continue
+
+                # 중복 제거
+                orig = item.get("original_sentence")
+                if orig in seen:
+                    continue
+                seen.add(orig)
+
+                # score 제거
+                item.pop("score", None)
+
+                results.append(item)
+
+            return results
+
+        except Exception as e:
+            logging.error(f"❌ original_sentences 조회 실패: {e}")
+            raise Neo4jException(f"original_sentences 조회 실패: {e}")
     def __del__(self):
         self.close()
