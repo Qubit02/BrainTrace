@@ -9,6 +9,11 @@ from typing import Tuple, List, Dict
 from ollama import chat, pull  # Python Ollama SDK
 from .base_ai_service import BaseAIService
 from .chunk_service import chunk_text
+from .embedding_service import encode_text
+from sklearn.metrics.pairwise import cosine_similarity
+from .manual_chunking_sentences import manual_chunking
+import numpy as np
+
 
 MODEL_NAME = "exaone3.5:2.4b"
 
@@ -114,7 +119,60 @@ class OllamaAIService(BaseAIService):
             else:
                 logging.warning("스키마 누락 엣지: %s", edge)
 
-        return valid_nodes, valid_edges
+
+            # 1) 문장 단위 분리(의미에 따라서 여러문장일 수도 있음)
+            sentences = manual_chunking(chunk)   # List[str]
+            
+            if not sentences:
+                # 빈 sentences인 경우에도 original_sentences 필드 추가
+                for node in valid_nodes:
+                    node["original_sentences"] = []
+                return valid_nodes, valid_edges
+
+            # 2) 모든 문장 임베딩 (한 번만)
+            sentence_embeds = np.vstack([encode_text(s) for s in sentences])  # (num_sentences, dim)
+
+            # 3) 노드별로 original_sentences 계산
+            threshold = 0.8
+        
+            for node in valid_nodes:
+                # node["descriptions"] 에는 반드시 1개의 딕셔너리가 들어있다고 가정
+                desc_obj = node["descriptions"][0]
+                desc_text = desc_obj["description"]
+                desc_src  = desc_obj["source_id"]
+                desc_text_full = f"{node['name']} - {desc_text}"
+                # 3-1) name-description 형태로 임베딩
+                desc_vec = np.array(encode_text(desc_text)).reshape(1, -1)  # (1, dim)
+
+                # 3-2) 문장 × 설명 유사도 계산
+                sim_scores = cosine_similarity(sentence_embeds, desc_vec).flatten()  # (num_sentences,)
+                # 0.75 이상 문장 인덱스·점수 모으기
+                above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
+                # 3-3) threshold 이상인 문장만 모아서 original_sentences 에 저장
+                node_originals = []
+                
+                if above:
+                    # 0.8 이상인 모든 문장 추가
+                    for i, score in above:
+                        node_originals.append({
+                            "original_sentence": sentences[i],
+                            "source_id":        desc_src,
+                            "score":            round(float(score), 4)
+                        })
+                else:
+                    # 0.8 미만 중 최고점 문장 하나만 추가
+                    best_i = int(np.argmax(sim_scores))
+                    node_originals.append({
+                        "original_sentence": sentences[best_i],
+                        "source_id":        desc_src,
+                        "score":            round(float(sim_scores[best_i]), 4)
+                    })
+
+
+                # 3-4) 각 node에 필드로 추가
+                node["original_sentences"] = node_originals
+
+            return valid_nodes, valid_edges 
 
     def _remove_duplicate_nodes(self, nodes: List[Dict]) -> List[Dict]:
         seen = set(); unique = []
