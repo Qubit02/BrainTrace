@@ -281,6 +281,7 @@ export default function ProjectListView() {
     // ===== 중요도 토글 함수 =====
     const handleToggleImportance = async (brain, e) => {
         e.stopPropagation();
+        e.preventDefault();
         try {
             const updatedBrain = await toggleBrainImportance(brain.brain_id);
             setBrains(prev =>
@@ -370,6 +371,8 @@ export default function ProjectListView() {
                              <div 
                                  className="importance-star"
                                  onClick={(e) => handleToggleImportance(project, e)}
+                                 onMouseDown={(e) => e.stopPropagation()}
+                                 onMouseUp={(e) => e.stopPropagation()}
                                  title={project.is_important ? "중요 해제" : "중요로 설정"}
                              >
                                  {project.is_important ? (
