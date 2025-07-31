@@ -12,8 +12,8 @@ from sqlite_db.sqlite_handler import SQLiteHandler
 def get_ai_service_GPT() -> BaseAIService:
     return OpenAIService()
 
-def get_ai_service_Ollama() -> BaseAIService:
-    return OllamaAIService()
+def get_ai_service_Ollama(model_name) -> BaseAIService:
+    return OllamaAIService(model_name)
 
 # 나중에 임베딩 서비스 쪽도 OCP 만족하도록 수정해야할듯
 # def get_embedding_service() -> EmbeddingService:
