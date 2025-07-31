@@ -390,7 +390,7 @@ const ChatInput = ({
  * - 출처 보기 기능 (소스 목록 토글)
  * - 메시지 복사 기능
  * - 그래프 연동 (AI 메시지만)
- * - 신뢰도 표시 (AI 메시지만)
+ * - 정확도 표시 (AI 메시지만)
  * 
  * @param {object} message - 메시지 객체
  * @param {object} openSourceNodes - 열린 소스 노드 상태
@@ -506,10 +506,10 @@ const ChatMessage = ({
             </button>
           )}
         </div>
-        {/* 신뢰도 표시 (AI 답변에만) */}
+        {/* 정확도 표시 (AI 답변에만) */}
         {message.is_ai && message.accuracy !== null && message.accuracy !== undefined && (
           <div className="chat-panel-accuracy-display">
-            <span className="chat-panel-accuracy-label">신뢰도:</span>
+            <span className="chat-panel-accuracy-label">정확도:</span>
             <span 
               className="chat-panel-accuracy-value"
               data-accuracy={
