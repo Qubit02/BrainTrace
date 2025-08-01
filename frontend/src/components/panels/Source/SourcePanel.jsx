@@ -425,6 +425,9 @@ export default function SourcePanel({
                   onBack={closeSource}
                   title={openedFile.title}
                   docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
+                  pdfId={openedFile.type === 'pdf' ? openedFile.pdf_id : undefined}
+                  txtId={openedFile.type === 'txt' ? openedFile.txt_id : undefined}
+                  mdId={openedFile.type === 'md' ? openedFile.md_id : undefined}
                 />
               </div>
             ) : (
