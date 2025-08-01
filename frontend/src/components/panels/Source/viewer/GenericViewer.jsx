@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import HighlightPopup from '../HighlightPopup';
-import PDFViewer from './PDFViewer';
 import { Highlighting } from './Highlighting.jsx';
 import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
@@ -25,16 +24,7 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
         loadHighlights
     } = Highlighting(type, fileUrl, memoId, docxId, pdfId, txtId, mdId);
 
-    // PDF 파일인 경우 PDFViewer 사용
-    if (type === 'pdf') {
-        return (
-            <PDFViewer 
-                file={fileUrl} 
-                title={title} 
-                onBack={onBack}
-            />
-        );
-    }
+
 
     // 파일/메모 불러오기 및 하이라이트 불러오기
     useEffect(() => {
