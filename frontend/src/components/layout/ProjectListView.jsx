@@ -49,6 +49,7 @@ import { FaStar, FaRegStar } from "react-icons/fa";
 import ConfirmDialog from '../common/ConfirmDialog';
 import './ProjectListView.css';
 import { FaPlus } from "react-icons/fa";
+import { IoIosArrowDown } from "react-icons/io";
 
 export default function ProjectListView() {
     const navigate = useNavigate();
@@ -311,12 +312,9 @@ export default function ProjectListView() {
                     <div className="sort-dropdown">
                         <button className="sort-button">
                             {sortOption}
-                            <img
-                                src="/src/assets/icons/arrow-down.png"
-                                alt="dropdown"
+                            <IoIosArrowDown
+                                size={14}
                                 className="dropdown-arrow"
-                                width={12}
-                                height={12}
                             />
                         </button>
                             <div className="sort-menu">
