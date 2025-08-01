@@ -12,7 +12,7 @@ import { toast } from 'react-toastify';
 import FileView from './FileView';
 import PDFViewer from './viewer/PDFViewer';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
-import toggleIcon from '../../../assets/icons/toggle-view.png';
+import { VscLayoutSidebarRightOff, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import './SourcePanel.css';
 import { MdSearch } from "react-icons/md";
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
@@ -296,12 +296,19 @@ export default function SourcePanel({
         {!collapsed && <span className="header-title">Source</span>}
         <div className="header-right-icons" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* 사이드패널 접기/펴기 버튼 */}
-          <img
-            src={toggleIcon}
-            alt="Toggle"
-            style={{ width: '23px', height: '23px', cursor: 'pointer' }}
-            onClick={() => setCollapsed(prev => !prev)}
-          />
+          {collapsed ? (
+            <VscLayoutSidebarLeftOff
+              size={18}
+              style={{ cursor: 'pointer'}}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          ) : (
+            <VscLayoutSidebarRightOff
+              size={18}
+              style={{ cursor: 'pointer'}}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          )}
         </div>
       </div>
       {!collapsed && (

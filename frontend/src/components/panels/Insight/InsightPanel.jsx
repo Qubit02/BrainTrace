@@ -5,8 +5,7 @@ import './InsightPanel.css';
 import MemoEditor from './Memo/MemoEditor';
 import MemoListPanel from './Memo/MemoListPanel';
 import GraphViewWithModal from './Graph/GraphViewWithModal';
-import toggleIcon from '../../../assets/icons/toggle-view.png';
-
+import { VscLayoutSidebarRightOff, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import { PiGraphLight } from "react-icons/pi";
 import { CiStickyNote } from "react-icons/ci";
 import { PiGraphBold } from "react-icons/pi";
@@ -226,12 +225,19 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
               </button>
             </div>
           )}
-          <img
-            src={toggleIcon}
-            alt="Toggle View"
-            style={{ width: '23px', height: '23px', cursor: 'pointer' }}
-            onClick={() => setCollapsed(prev => !prev)}
-          />
+          {collapsed ? (
+            <VscLayoutSidebarLeftOff
+              size={18}
+              style={{ cursor: 'pointer'}}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          ) : (
+            <VscLayoutSidebarRightOff
+              size={18}
+              style={{ cursor: 'pointer', marginRight: '2px', marginLeft:'3px' }}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          )}
         </div>
       </div>
 
