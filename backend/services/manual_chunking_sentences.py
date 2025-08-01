@@ -1,7 +1,6 @@
 import logging
 import re
-from soynlp.word import WordExtractor
-from soynlp.tokenizer import LTokenizer
+from konlpy.tag import Okt
 from gensim import corpora, models
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -10,9 +9,7 @@ from collections import defaultdict
 from .chunk_service import chunk_text
 from .node_gen_ver5 import extract_nodes
 
-# soynlp 토크나이저 초기화
-word_extractor = WordExtractor()
-l_tokenizer = LTokenizer()
+okt = Okt()
 
 # 불용어 정의 
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나"]
@@ -43,8 +40,9 @@ def extract_keywords_by_tfidf(tokenized_chunks:list[str], topn=5):
 #의미있는 단어구들을 추출하여 토큰화
 def tokenization(paragraphs: list[dict]) -> list[list[str]]:
     tokenized = []
+    okt = Okt()
     for p in paragraphs:
-        tokens = l_tokenizer.tokenize(p["text"])
+        tokens = okt.nouns(p["text"])
         filtered_tokens = [t for t in tokens if t not in stop_words and len(t)>1]
         tokenized_para={}
         tokenized_para["tokens"]=filtered_tokens
