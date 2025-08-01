@@ -5,9 +5,9 @@ import { Highlighting } from './Highlighting.jsx';
 import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
-import { getDocxFile, getMemo } from '../../../../../api/backend';
+import { getDocxFile, getMemo, getPdf, getTextFile, getMDFile } from '../../../../../api/backend';
 
-export default function GenericViewer({ type, fileUrl, memoId, onBack, title, docxId }) {
+export default function GenericViewer({ type, fileUrl, memoId, onBack, title, docxId, pdfId, txtId, mdId }) {
     const [content, setContent] = useState('');
     const [fontSize, setFontSize] = useState(16);
     const containerRef = useRef(null);
@@ -23,7 +23,7 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
         renderHighlightedContent,
         copyText,
         loadHighlights
-    } = Highlighting(type, fileUrl, memoId, docxId);
+    } = Highlighting(type, fileUrl, memoId, docxId, pdfId, txtId, mdId);
 
     // PDF 파일인 경우 PDFViewer 사용
     if (type === 'pdf') {
@@ -38,28 +38,68 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
 
     // 파일/메모 불러오기 및 하이라이트 불러오기
     useEffect(() => {
-        if (type === 'docx') {
-            if (!docxId) {
-                setContent('[docx_id가 제공되지 않았습니다]');
-                return;
+        const loadContent = async () => {
+            try {
+                switch (type) {
+                    case 'docx':
+                        if (!docxId) {
+                            setContent('[docx_id가 제공되지 않았습니다]');
+                            return;
+                        }
+                        const docxData = await getDocxFile(docxId);
+                        setContent(docxData.docx_text || '[텍스트를 불러올 수 없습니다]');
+                        break;
+                    
+                    case 'memo':
+                        const memoData = await getMemo(memoId);
+                        setContent(memoData.memo_text || '[메모를 불러올 수 없습니다]');
+                        break;
+                    
+                    case 'pdf':
+                        if (!pdfId) {
+                            setContent('[pdf_id가 제공되지 않았습니다]');
+                            return;
+                        }
+                        const pdfData = await getPdf(pdfId);
+                        setContent(pdfData.pdf_text || '[텍스트를 불러올 수 없습니다]');
+                        break;
+                    
+                    case 'txt':
+                        if (!txtId) {
+                            setContent('[txt_id가 제공되지 않았습니다]');
+                            return;
+                        }
+                        const txtData = await getTextFile(txtId);
+                        setContent(txtData.txt_text || '[텍스트를 불러올 수 없습니다]');
+                        break;
+                    
+                    case 'md':
+                        if (!mdId) {
+                            setContent('[md_id가 제공되지 않았습니다]');
+                            return;
+                        }
+                        const mdData = await getMDFile(mdId);
+                        setContent(mdData.md_text || '[텍스트를 불러올 수 없습니다]');
+                        break;
+                    
+                    default:
+                        // 기존 방식으로 파일 시스템에서 읽기 (fallback)
+                        const response = await fetch(fileUrl);
+                        const text = await response.text();
+                        setContent(text);
+                        break;
+                }
+            } catch (error) {
+                console.error('파일 내용 로딩 실패:', error);
+                setContent('[파일을 불러올 수 없습니다]');
             }
-            getDocxFile(docxId)
-                .then(data => setContent(data.docx_text))
-                .catch(() => setContent('[파일을 불러올 수 없습니다]'));
-        } else if (type === 'memo') {
-            getMemo(memoId)
-                .then(memo => setContent(memo.memo_text))
-                .catch(() => setContent('[메모를 불러올 수 없습니다]'));
-        } else {
-            fetch(fileUrl)
-                .then(res => res.text())
-                .then(text => setContent(text))
-                .catch(() => setContent('[파일을 불러올 수 없습니다]'));
-        }
+        };
+
+        loadContent();
         
         // 하이라이트 불러오기
         loadHighlights();
-    }, [type, fileUrl, memoId, docxId, loadHighlights]);
+    }, [type, fileUrl, memoId, docxId, pdfId, txtId, mdId, loadHighlights]);
 
     return (
         <div className="viewer-container" data-file-type={type}>
