@@ -1,6 +1,7 @@
 import logging
 import re
-from konlpy.tag import Okt
+from soynlp.word import WordExtractor
+from soynlp.tokenizer import LTokenizer
 from gensim import corpora, models
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -9,7 +10,10 @@ from collections import defaultdict
 from .chunk_service import chunk_text
 from .node_gen_ver5 import extract_nodes
 
-okt = Okt()
+# soynlp 토크나이저 초기화
+word_extractor = WordExtractor()
+l_tokenizer = LTokenizer()
+
 # 불용어 정의 
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나"]
 
@@ -39,9 +43,8 @@ def extract_keywords_by_tfidf(tokenized_chunks:list[str], topn=5):
 #의미있는 단어구들을 추출하여 토큰화
 def tokenization(paragraphs: list[dict]) -> list[list[str]]:
     tokenized = []
-    okt = Okt()
     for p in paragraphs:
-        tokens = okt.nouns(p["text"])
+        tokens = l_tokenizer.tokenize(p["text"])
         filtered_tokens = [t for t in tokens if t not in stop_words and len(t)>1]
         tokenized_para={}
         tokenized_para["tokens"]=filtered_tokens
@@ -148,10 +151,14 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
                 keywords.append(t)
                 break
     
+    # 재귀적으로 각 청크 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
-        print(f"depth {depth+1} 진입")
-        result, graph = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.1,
+        logging.debug(f"depth {depth+1} 진입")
+        # keywords 배열의 인덱스가 범위를 벗어나지 않도록 안전하게 접근
+        # (keywords 배열이 go_chunk보다 짧을 수 있음)
+        keyword = keywords[idx] if idx < len(keywords) else ""
+        result, graph = recurrsive_chunking(c, depth+1, already_made, keyword, threshold*1.1,
                                       lda_model=lda_model, dictionary=dictionary, num_topics=num_topics)
         current_result+=(result)
         nodes_and_edges["nodes"]+=graph["nodes"]
@@ -175,8 +182,11 @@ def lda_keyword_and_similarity(paragraphs_tokenized, lda_model, dictionary, num_
     topic_vectors = np.array(topic_distributions)
     sim_matrix = cosine_similarity(topic_vectors)
 
+    # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
     top_topic_terms = lda_model.show_topic(0, topn=topn)
-    top_keyword = top_topic_terms[0][0] if top_topic_terms else ""
+    # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+    # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+    top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
 
     return top_keyword, topic_vectors, sim_matrix
 
@@ -212,11 +222,18 @@ def extract_graph_components(text: str, source_id: str):
     all_nodes=nodes_and_edges["nodes"]
     all_edges=nodes_and_edges["edges"]
 
+    # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
-        if node["description"]!="":
+        # description이 비어있지 않고 리스트 형태인지 확인
+        # (description이 문자열이거나 빈 값일 수 있음)
+        if node["description"]!="" and isinstance(node["description"], list):
             descriptions=""
+            # description 리스트의 각 인덱스를 실제 문장으로 변환
             for idx in node["description"]:
-                descriptions+=sentences[idx]
+                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+                # (인덱스 오류 방지)
+                if idx < len(sentences):
+                    descriptions+=sentences[idx]
             node["description"]=descriptions
     
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
@@ -250,12 +267,17 @@ def manual_chunking(text:str):
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
 
+    # 최종 청크들을 생성
     final_chunks=[]
     for c in chunks:
         chunk=""
+        # 각 청크의 문장 인덱스들을 실제 텍스트로 변환
         for idx in c["chunks"]:
-            print(sentences[idx])
-            chunk+=sentences[idx]
+            # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+            # (인덱스 오류 방지)
+            if idx < len(sentences):
+                print(sentences[idx])
+                chunk+=sentences[idx]
         final_chunks.append(chunk)
         print(final_chunks)
     return final_chunks
