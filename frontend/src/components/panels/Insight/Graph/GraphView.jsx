@@ -10,22 +10,54 @@ import * as d3 from 'd3';
 import { fetchGraphData } from '../../../../../api/graphApi';
 import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
-import { FiSearch, FiX } from 'react-icons/fi';
-import { MdOutlineSearch } from "react-icons/md";
 import { toast } from 'react-toastify';
 
 // 노드 상태 팝업 컴포넌트
-const NodeStatusPopup = ({ type, color, nodes, onClose }) => (
-  <div className="graph-popup">
-    <div className="popup-content">
-      <span className="popup-tag" style={{ background: color }}>
-        {type}
-      </span>
-      <span className="popup-text">{nodes.join(', ')}</span>
+const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      const element = textRef.current;
+      // 접힌 상태에서 텍스트가 넘치는지 확인 (말줄임표가 나타나는지)
+      const isOverflowing = element.scrollWidth > element.clientWidth;
+      setCanExpand(isOverflowing);
+      
+      // 펼칠 수 없으면 항상 접힌 상태로 유지
+      if (!isOverflowing) {
+        setIsExpanded(false);
+      }
+    }
+  }, [nodes]);
+
+  const toggleExpand = () => {
+    if (canExpand) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  return (
+    <div 
+      className={`graph-popup ${isExpanded ? 'expanded' : ''} ${canExpand ? 'expandable' : ''}`} 
+      onClick={toggleExpand}
+    >
+      <div className="popup-content">
+        <span className="popup-tag" style={{ background: color }}>
+          {type}
+        </span>
+        <span 
+          ref={textRef}
+          className="popup-text"
+        >
+          {nodes.join(', ')}
+        </span>
+      </div>
+      <span className="close-x" onClick={onClose}>×</span>
     </div>
-    <span className="close-x" onClick={onClose}>×</span>
-  </div>
-);
+  );
+};
 
 function GraphView({
   brainId = 'default-brain-id',

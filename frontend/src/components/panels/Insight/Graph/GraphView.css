@@ -258,11 +258,22 @@
     color: #333;
     z-index: 1000;
     max-width: 300px;
+    min-width: 200px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     animation: slideInRight 0.3s ease-out;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.graph-popup.expandable {
+    cursor: pointer;
+}
+
+.graph-popup.expanded {
+    max-width: 400px;
+    min-height: 100px;
 }
 
 .graph-area.dark-mode .graph-popup {
@@ -286,13 +297,14 @@
     color: #9ca3af;
     border: none;
     border-radius: 50%;
-    width: 26px;
-    height: 26px;
+    width: 29px;
+    height: 29px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-weight: 800;
+    font-size: 20px;
     transition: all 0.2s ease;
     flex-shrink: 0;
     opacity: 0.7;
@@ -340,9 +352,18 @@
 /* ====== 팝업 콘텐츠 영역 ====== */
 .popup-content {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     flex: 1;
+    max-width: calc(100% - 40px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.graph-popup.expanded .popup-content {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
 }
 
 /* ====== 팝업 태그 ====== */
@@ -350,7 +371,7 @@
     color: white;
     padding: 2px 6px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
 }
 
@@ -358,7 +379,21 @@
 .popup-text {
     font-size: 14px;
     color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    transition: all 0.3s ease;
 }
+
+.graph-popup.expanded .popup-text {
+    white-space: normal;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+
 
 /* ====== 검색 컨테이너 ====== */
 .search-container {
