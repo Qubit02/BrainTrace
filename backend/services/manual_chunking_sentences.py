@@ -148,10 +148,14 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
                 keywords.append(t)
                 break
     
+    # 재귀적으로 각 청크 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
-        print(f"depth {depth+1} 진입")
-        result, graph = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.1,
+        logging.debug(f"depth {depth+1} 진입")
+        # keywords 배열의 인덱스가 범위를 벗어나지 않도록 안전하게 접근
+        # (keywords 배열이 go_chunk보다 짧을 수 있음)
+        keyword = keywords[idx] if idx < len(keywords) else ""
+        result, graph = recurrsive_chunking(c, depth+1, already_made, keyword, threshold*1.1,
                                       lda_model=lda_model, dictionary=dictionary, num_topics=num_topics)
         current_result+=(result)
         nodes_and_edges["nodes"]+=graph["nodes"]
@@ -175,8 +179,11 @@ def lda_keyword_and_similarity(paragraphs_tokenized, lda_model, dictionary, num_
     topic_vectors = np.array(topic_distributions)
     sim_matrix = cosine_similarity(topic_vectors)
 
+    # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
     top_topic_terms = lda_model.show_topic(0, topn=topn)
-    top_keyword = top_topic_terms[0][0] if top_topic_terms else ""
+    # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+    # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+    top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
 
     return top_keyword, topic_vectors, sim_matrix
 

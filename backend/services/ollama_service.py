@@ -137,7 +137,14 @@ class OllamaAIService(BaseAIService):
             threshold = 0.8
         
             for node in valid_nodes:
-                # node["descriptions"] 에는 반드시 1개의 딕셔너리가 들어있다고 가정
+                # node["descriptions"]가 비어있지 않은지 확인
+                # (descriptions가 빈 리스트일 경우 인덱스 오류 방지)
+                if not node["descriptions"]:
+                    logging.warning(f"노드 '{node['name']}'의 descriptions가 비어있습니다. original_sentences를 빈 배열로 설정합니다.")
+                    node["original_sentences"] = []
+                    continue
+                
+                # descriptions 배열의 첫 번째 요소에 안전하게 접근
                 desc_obj = node["descriptions"][0]
                 desc_text = desc_obj["description"]
                 desc_src  = desc_obj["source_id"]
