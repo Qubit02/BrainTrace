@@ -411,7 +411,6 @@ function GraphView({
   useEffect(() => {
     if (!loading && graphData.nodes.length > 0 && fgRef.current) {
       const zoom = getInitialZoomScale(graphData.nodes.length);
-      console.log("노드의 갯수 : ", graphData.nodes.length)
       fgRef.current.centerAt(0, 0, 0);
       fgRef.current.zoom(zoom, 0);
     }
@@ -452,7 +451,6 @@ function GraphView({
   // === 그래프 준비 완료 시 콜백 ===
   // graphReady가 바뀔 때마다 부모에 전달
   useEffect(() => {
-    console.log('graphReady changed:', graphReady);
     if (onGraphReady) onGraphReady(graphReady);
   }, [graphReady, onGraphReady]);
 
@@ -496,7 +494,6 @@ function GraphView({
 
   // === 참고노드(referencedNodes) 하이라이트 처리 ===
   useEffect(() => {
-    console.log('referencedNodes:', referencedNodesState);
     setReferencedSet(new Set(referencedNodesState));
     if (referencedNodesState.length > 0) {
       setRefPulseStartTime(Date.now());

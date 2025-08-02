@@ -37,7 +37,6 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
       try {
         // 삭제된 메모도 포함하여 조회
         const memos = await getMemosByBrain(projectId);
-        console.log('조회된 메모들:', memos);
         setMemos(memos);
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);

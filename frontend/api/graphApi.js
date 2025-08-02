@@ -5,9 +5,6 @@ export const fetchGraphData = async (brainId) => {
   try {
     const response = await api.get(`/brainGraph/getNodeEdge/${brainId}`);
 
-    // API 응답 데이터 로깅
-    console.log('API 응답 데이터:', response.data);
-
     // 응답 데이터 정규화
     const normalizedData = normalizeGraphData(response.data);
     return normalizedData;
