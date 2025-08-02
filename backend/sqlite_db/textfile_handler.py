@@ -4,7 +4,7 @@ from .base_handler import BaseHandler
 
 
 class TextFileHandler(BaseHandler):
-    def create_textfile(self, txt_title: str, txt_path: str, type: Optional[str] = None, brain_id: Optional[int] = None) -> dict:
+    def create_textfile(self, txt_title: str, txt_path: str, type: Optional[str] = None, brain_id: Optional[int] = None, txt_text: Optional[str] = None) -> dict:
         """새 텍스트 파일 생성"""
         try:
             conn = sqlite3.connect(self.db_path)
@@ -13,8 +13,8 @@ class TextFileHandler(BaseHandler):
             txt_id = self._get_next_id()
             
             cursor.execute(
-                "INSERT INTO TextFile (txt_id, txt_title, txt_path, type, brain_id) VALUES (?, ?, ?, ?, ?)",
-                (txt_id, txt_title, txt_path, type, brain_id)
+                "INSERT INTO TextFile (txt_id, txt_title, txt_path, type, brain_id, txt_text) VALUES (?, ?, ?, ?, ?, ?)",
+                (txt_id, txt_title, txt_path, type, brain_id, txt_text)
             )
             
             cursor.execute("SELECT txt_date FROM TextFile WHERE txt_id = ?", (txt_id,))
@@ -31,7 +31,8 @@ class TextFileHandler(BaseHandler):
                 "txt_path": txt_path,
                 "txt_date": txt_date,
                 "type": type,
-                "brain_id": brain_id
+                "brain_id": brain_id,
+                "txt_text": txt_text
             }
         except ValueError as e:
             logging.error("텍스트 파일 생성 실패: %s", str(e))
@@ -62,7 +63,7 @@ class TextFileHandler(BaseHandler):
             logging.error("텍스트 파일 삭제 오류: %s", str(e))
             raise RuntimeError(f"텍스트 파일 삭제 오류: {str(e)}")
 
-    def update_textfile(self, txt_id: int, txt_title: str = None, txt_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None) -> bool:
+    def update_textfile(self, txt_id: int, txt_title: str = None, txt_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None, txt_text: Optional[str] = None) -> bool:
         """텍스트 파일 정보 업데이트"""
         try:
             # 대상 텍스트 파일 존재 확인
@@ -93,6 +94,10 @@ class TextFileHandler(BaseHandler):
             if type is not None:
                 update_fields.append("type = ?")
                 params.append(type)
+                
+            if txt_text is not None:
+                update_fields.append("txt_text = ?")
+                params.append(txt_text)
 
             # brain_id 처리: null 또는 값
             if brain_id is None or brain_id == "null":
@@ -136,7 +141,7 @@ class TextFileHandler(BaseHandler):
             cursor = conn.cursor()
             
             cursor.execute(
-                "SELECT txt_id, txt_title, txt_path, txt_date, type, brain_id FROM TextFile WHERE txt_id = ?", 
+                "SELECT txt_id, txt_title, txt_path, txt_date, type, brain_id, txt_text FROM TextFile WHERE txt_id = ?", 
                 (txt_id,)
             )
             textfile = cursor.fetchone()
@@ -150,7 +155,8 @@ class TextFileHandler(BaseHandler):
                     "txt_path": textfile[2],
                     "txt_date": textfile[3],
                     "type": textfile[4],
-                    "brain_id" : textfile[5]
+                    "brain_id" : textfile[5],
+                    "txt_text": textfile[6]
                 }
             else:
                 return None
@@ -159,13 +165,9 @@ class TextFileHandler(BaseHandler):
             return None
 
     def get_textfiles_by_brain(self, brain_id: int) -> List[dict]:
-        """
-        주어진 brain_id에 해당하는 모든 텍스트 파일(txt) 목록을 반환합니다.
-        폴더 여부와 관계없이 brain_id로만 필터링합니다.
-        """
+        """특정 brain_id에 해당하는 모든 텍스트 파일 목록 반환"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-
         sql = """
             SELECT
                 txt_id,
@@ -173,7 +175,8 @@ class TextFileHandler(BaseHandler):
                 txt_path,
                 txt_date,
                 type,
-                brain_id
+                brain_id,
+                txt_text
             FROM TextFile
             WHERE brain_id = ?
             ORDER BY txt_date DESC
@@ -181,7 +184,6 @@ class TextFileHandler(BaseHandler):
         cursor.execute(sql, (brain_id,))
         rows = cursor.fetchall()
         cols = [c[0] for c in cursor.description]
-
         conn.close()
         return [dict(zip(cols, row)) for row in rows]
 

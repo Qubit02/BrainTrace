@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useCallback } from 'react';
 
 // 하이라이팅 데이터 삭제 유틸리티 함수
-export const clearHighlightingData = (type, fileUrl, memoId, docxId) => {
+export const clearHighlightingData = (type, fileUrl, memoId, docxId, pdfId, txtId, mdId) => {
     // 기존 키와 새로운 키 모두 삭제
     const keysToDelete = [];
     
@@ -10,12 +10,12 @@ export const clearHighlightingData = (type, fileUrl, memoId, docxId) => {
         keysToDelete.push(`highlight:memo:${memoId}`);
     } else if (type === 'docx') {
         keysToDelete.push(`highlight:docx:${docxId}`);
-    } else if (type === 'txt') {
-        keysToDelete.push(`highlight:txt:${fileUrl}`);
-    } else if (type === 'md') {
-        keysToDelete.push(`highlight:md:${fileUrl}`);
     } else if (type === 'pdf') {
-        keysToDelete.push(`highlight:pdf:${fileUrl}`);
+        keysToDelete.push(`highlight:pdf:${pdfId}`);
+    } else if (type === 'txt') {
+        keysToDelete.push(`highlight:txt:${txtId}`);
+    } else if (type === 'md') {
+        keysToDelete.push(`highlight:md:${mdId}`);
     } else {
         keysToDelete.push(`highlight:${fileUrl}`);
     }
@@ -42,7 +42,7 @@ export const clearAllHighlightingData = () => {
     });
 };
 
-export const Highlighting = (type, fileUrl, memoId, docxId) => {
+export const Highlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdId) => {
     const [highlights, setHighlights] = useState([]);
     const [popup, setPopup] = useState(null);
 
@@ -57,16 +57,16 @@ export const Highlighting = (type, fileUrl, memoId, docxId) => {
             return `highlight:memo:${memoId}`;
         } else if (type === 'docx') {
             return `highlight:docx:${docxId}`;
-        } else if (type === 'txt') {
-            return `highlight:txt:${fileUrl}`;
-        } else if (type === 'md') {
-            return `highlight:md:${fileUrl}`;
         } else if (type === 'pdf') {
-            return `highlight:pdf:${fileUrl}`;
+            return `highlight:pdf:${pdfId}`;
+        } else if (type === 'txt') {
+            return `highlight:txt:${txtId}`;
+        } else if (type === 'md') {
+            return `highlight:md:${mdId}`;
         } else {
             return `highlight:${fileUrl}`;
         }
-    }, [type, fileUrl, memoId, docxId]);
+    }, [type, fileUrl, memoId, docxId, pdfId, txtId, mdId]);
 
     // 저장된 하이라이트 불러오기
     const loadHighlights = useCallback(() => {

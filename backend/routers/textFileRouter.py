@@ -17,12 +17,14 @@ class TextFileCreate(BaseModel):
     txt_path:  str = Field(..., description="텍스트 파일 경로")
     type:      Optional[str] = Field(None, description="파일 확장자명")
     brain_id:  Optional[int] = Field(None, description="연결할 Brain ID")
+    txt_text:  Optional[str] = Field(None, description="추출된 텍스트")
 
 class TextFileUpdate(BaseModel):
     txt_title: Optional[str] = Field(None, description="새 텍스트 파일 제목")
     txt_path:  Optional[str] = Field(None, description="새 텍스트 파일 경로")
     type:      Optional[str] = Field(None, description="파일 확장자명")
     brain_id:  Optional[int] = Field(None, description="새로운 Brain ID")
+    txt_text:  Optional[str] = Field(None, description="새 텍스트")
 
 class TextFileResponse(BaseModel):
     txt_id:    int
@@ -31,6 +33,7 @@ class TextFileResponse(BaseModel):
     txt_date:  str
     type:      Optional[str]
     brain_id:  Optional[int]
+    txt_text:  Optional[str]
 
 # ───────── 텍스트 파일 생성 ─────────
 @router.post("/", response_model=TextFileResponse, status_code=status.HTTP_201_CREATED)
@@ -45,7 +48,8 @@ async def create_textfile(textfile_data: TextFileCreate):
             txt_title=textfile_data.txt_title,
             txt_path=textfile_data.txt_path,
             type=textfile_data.type,
-            brain_id=textfile_data.brain_id
+            brain_id=textfile_data.brain_id,
+            txt_text=textfile_data.txt_text
         )
     except Exception as e:
         logging.error("텍스트 파일 생성 오류: %s", e)
@@ -90,17 +94,18 @@ async def update_textfile(txt_id: int, textfile_data: TextFileUpdate):
 
     try:
         updated = sqlite_handler.update_textfile(
-            txt_id=txt_id,
-            txt_title=textfile_data.txt_title,
-            txt_path=textfile_data.txt_path,
-            type=textfile_data.type,
-            brain_id=textfile_data.brain_id
+            txt_id,
+            textfile_data.txt_title,
+            textfile_data.txt_path,
+            textfile_data.type,
+            textfile_data.brain_id,
+            textfile_data.txt_text
         )
         if not updated:
             raise HTTPException(status_code=400, detail="업데이트할 정보가 없습니다")
         return sqlite_handler.get_textfile(txt_id)
     except Exception as e:
-        logging.error("텍스트 파일 업데이트 오류: %s", e)
+        logging.error("텍스트 파일 수정 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 # ───────── 텍스트 파일 삭제 ─────────
@@ -148,9 +153,7 @@ async def upload_textfiles(
     files: List[UploadFile] = File(...),
     brain_id: Optional[int] = Form(None)
 ):
-    """TXT 파일 업로드 후 DB에 등록"""
     uploaded_textfiles = []
-
     if brain_id is not None and not sqlite_handler.get_brain(brain_id):
         raise HTTPException(status_code=404, detail="해당 Brain이 존재하지 않습니다.")
 
@@ -158,6 +161,7 @@ async def upload_textfiles(
         try:
             ext = os.path.splitext(file.filename)[1].lower()
             if ext != ".txt":
+                logging.warning(f"업로드 무시: {file.filename} (txt만 지원)")
                 continue
 
             safe_name = sanitize_filename(file.filename)
@@ -167,14 +171,24 @@ async def upload_textfiles(
             with open(file_path, "wb") as f:
                 f.write(await file.read())
 
+            # TXT 텍스트 읽기
+            text = ""
+            try:
+                with open(file_path, 'r', encoding='utf-8') as txt_file:
+                    text = txt_file.read()
+            except Exception as e:
+                logging.warning(f"TXT 텍스트 읽기 실패 ({file.filename}): {e}")
+                text = ""
+
             created = sqlite_handler.create_textfile(
                 txt_title=safe_name,
                 txt_path=file_path,
                 type="txt",
-                brain_id=brain_id
+                brain_id=brain_id,
+                txt_text=text
             )
             uploaded_textfiles.append(created)
         except Exception as e:
-            logging.error("TXT 업로드 실패 (%s): %s", file.filename, e)
+            logging.error("텍스트 파일 업로드 실패 (%s): %s", file.filename, e)
 
     return uploaded_textfiles
