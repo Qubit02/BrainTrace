@@ -1,6 +1,6 @@
 // src/components/panels/MemoListPanel.jsx
 import React, { useState, useRef, useMemo } from 'react';
-import './MemoList.css';
+import './MemoListPanel.css';
 import { CiMemoPad } from 'react-icons/ci';
 import micOff from '../../../../assets/icons/mic_off.png';
 import micOn from '../../../../assets/icons/mic_on.png';
