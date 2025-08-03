@@ -52,3 +52,8 @@ export const deleteChatSession = session_id =>
 // 세션 이름 수정
 export const renameChatSession = (session_id, session_name) =>
     api.patch(`/chatsession/${session_id}/rename`, { session_name }).then(r => r.data);
+
+export const getSourceContent = (source_id, brain_id) =>
+    api.get(`/brainGraph/getSourceContent`, {
+        params: { source_id, brain_id }
+    }).then(r => r.data);
