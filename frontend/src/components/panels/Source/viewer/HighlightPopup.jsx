@@ -1,28 +1,148 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// 하이라이트 색상 옵션 목록
-const colors = ['#fff7a3', '#ffd8c2', '#c9ffd9', '#cfe9ff', '#f2ccff'];
+// 하이라이트 색상 옵션
+const HIGHLIGHT_COLORS = [
+  { id: 'yellow', color: '#fff7a3', name: '노란색' },
+  { id: 'orange', color: '#ffd8c2', name: '주황색' },
+  { id: 'green', color: '#c9ffd9', name: '초록색' },
+  { id: 'blue', color: '#cfe9ff', name: '파란색' },
+  { id: 'purple', color: '#f2ccff', name: '보라색' }
+];
+
+// 팝업 스타일
+const POPUP_STYLE = {
+  position: 'absolute',
+  padding: '12px 16px',
+  backgroundColor: '#ffffff',
+  borderRadius: '16px',
+  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08)',
+  zIndex: 9999,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  border: '1px solid #f1f3f4',
+  backdropFilter: 'blur(8px)',
+  minWidth: '200px'
+};
+
+// 색상 원 스타일
+const COLOR_CIRCLE_STYLE = {
+  width: '24px',
+  height: '24px',
+  borderRadius: '50%',
+  cursor: 'pointer',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  border: '2px solid transparent',
+  position: 'relative'
+};
+
+// 버튼 공통 스타일
+const BUTTON_BASE_STYLE = {
+  border: 'none',
+  padding: '8px 16px',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontSize: '13px',
+  fontWeight: '500',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '77px',
+  height: '32px'
+};
+
+// 색상 원 컴포넌트
+const ColorCircle = ({ color, onClick, isSelected = false }) => (
+  <div
+    style={{
+      ...COLOR_CIRCLE_STYLE,
+      backgroundColor: color.color,
+      borderColor: isSelected ? '#4f46e5' : 'transparent',
+      transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+    }}
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick(color);
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'scale(1.15)';
+      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = isSelected ? 'scale(1.1)' : 'scale(1)';
+      e.currentTarget.style.boxShadow = 'none';
+    }}
+    title={color.name}
+  />
+);
+
+// 액션 버튼 컴포넌트
+const ActionButton = ({ onClick, variant = 'primary', children, icon }) => {
+  const getButtonStyle = () => {
+    const baseStyle = { ...BUTTON_BASE_STYLE };
+    
+    switch (variant) {
+      case 'danger':
+        return {
+          ...baseStyle,
+          backgroundColor: '#ef4444',
+          color: '#ffffff',
+          ':hover': { backgroundColor: '#dc2626' }
+        };
+      default:
+        return {
+          ...baseStyle,
+          backgroundColor: '#4f46e5',
+          color: '#ffffff',
+          ':hover': { backgroundColor: '#4338ca' }
+        };
+    }
+  };
+
+  return (
+    <button
+      style={getButtonStyle()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-1px)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {icon && <span>{icon}</span>}
+      {children}
+    </button>
+  );
+};
 
 const HighlightPopup = ({
-  position,              // 팝업의 초기 위치
-  containerRef,          // 팝업이 위치할 기준 컨테이너 (스크롤 기준)
-  onSelectColor,         // 색상 클릭 시 호출되는 콜백
-  onCopyText,            // 복사 버튼 클릭 시 호출
-  onClose,               // 팝업 외부 클릭 시 닫기
-  onDeleteHighlight,     // 기존 하이라이트 제거 콜백
-  isExistingHighlight,   // 기존 하이라이트인지 여부
-  highlightId            // 하이라이트 ID (제거용)
+  position,
+  containerRef,
+  onSelectColor,
+  onCopyText,
+  onClose,
+  onDeleteHighlight,
+  isExistingHighlight,
+  highlightId
 }) => {
-  const popupRef = useRef(null);               // 팝업 요소 참조
-  const [dragging, setDragging] = useState(false); // 드래그 중인지 여부
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); // 드래그 시작 위치 기준 오프셋
+  const popupRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedColor, setSelectedColor] = useState(null);
 
   const [currentPos, setCurrentPos] = useState({
     x: position.x,
     y: position.y + (containerRef?.current?.scrollTop || 0)
   });
 
-  // position 변경 시 위치 초기화 (단, 드래그 중이 아닐 때만)
+  // position 변경 시 위치 초기화 (드래그 중이 아닐 때만)
   useEffect(() => {
     if (!dragging) {
       setCurrentPos({
@@ -30,7 +150,7 @@ const HighlightPopup = ({
         y: position.y + (containerRef?.current?.scrollTop || 0)
       });
     }
-  }, [position]);
+  }, [position, dragging]);
 
   // 외부 클릭 시 팝업 닫기
   useEffect(() => {
@@ -41,9 +161,7 @@ const HighlightPopup = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
   // 드래그 시작 처리
@@ -79,7 +197,7 @@ const HighlightPopup = ({
   // 드래그 종료 처리
   const handleMouseUp = () => setDragging(false);
 
-  // 드래그 시 이벤트 리스너 등록/해제
+  // 드래그 이벤트 리스너 관리
   useEffect(() => {
     if (dragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -95,86 +213,61 @@ const HighlightPopup = ({
     };
   }, [dragging]);
 
-  // 팝업 스타일 설정
-  const style = {
-    position: 'absolute',
-    left: currentPos.x,
-    top: currentPos.y,
-    padding: '10px 14px',
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-    zIndex: 9999,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    border: '1px solid #e6e8eb',
-    cursor: dragging ? 'grabbing' : 'grab'
+  // 색상 선택 처리
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    onSelectColor(color.color);
   };
 
-  // 색상 원 스타일
-  const circleStyle = (color) => ({
-    width: '22px',
-    height: '22px',
-    borderRadius: '50%',
-    backgroundColor: color,
-    cursor: 'pointer',
-    transition: 'transform 0.2s ease',
-  });
+  // 복사 처리
+  const handleCopy = () => {
+    onCopyText();
+    onClose?.();
+  };
+
+  // 하이라이트 제거 처리
+  const handleDelete = () => {
+    onDeleteHighlight(highlightId);
+    onClose?.();
+  };
 
   return (
-    <div ref={popupRef} style={style} onMouseDown={handleMouseDown}>
-      {/* 신규 하이라이트인 경우 색상 선택 버튼 표시 */}
-      {!isExistingHighlight && colors.map((color) => (
-        <div
-          key={color}
-          style={circleStyle(color)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelectColor(color);
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        />
-      ))}
-
-      {/* 복사 버튼 */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onCopyText();
-        }}
-        style={{
-          border: 'none',
-          backgroundColor: '#4f46e5',
-          color: '#ffffff',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-        }}
-      >
-        복사
-      </button>
-
-      {/* 기존 하이라이트일 경우 제거 버튼 표시 */}
-      {isExistingHighlight && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteHighlight(highlightId);
-          }}
-          style={{
-            border: 'none',
-            backgroundColor: '#ef4444',
-            color: '#ffffff',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-          }}
-        >
-          하이라이팅 제거
-        </button>
+    <div
+      ref={popupRef}
+      style={{
+        ...POPUP_STYLE,
+        left: currentPos.x,
+        top: currentPos.y,
+        cursor: dragging ? 'grabbing' : 'grab'
+      }}
+      onMouseDown={handleMouseDown}
+    >
+      {/* 색상 선택 영역 */}
+      {!isExistingHighlight && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {HIGHLIGHT_COLORS.map((color) => (
+            <ColorCircle
+              key={color.id}
+              color={color}
+              onClick={handleColorSelect}
+              isSelected={selectedColor?.id === color.id}
+            />
+          ))}
+        </div>
       )}
+
+      {/* 액션 버튼들 */}
+      <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+        <ActionButton onClick={handleCopy}>
+          복사
+        </ActionButton>
+
+        {isExistingHighlight && (
+          <ActionButton onClick={handleDelete} variant="danger">
+            제거
+          </ActionButton>
+        )}
+      </div>
     </div>
   );
 };
