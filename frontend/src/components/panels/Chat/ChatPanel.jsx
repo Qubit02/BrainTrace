@@ -18,7 +18,7 @@
  * - LoadingIndicator: 로딩 상태 표시
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './ChatPanel.css';
 import {
   getReferencedNodes,
@@ -29,8 +29,10 @@ import {
   fetchChatHistoryBySession, 
   deleteAllChatsBySession
 } from '../../../../api/chat';
+import { createSourceViewClickHandler, extractOriginalSentencesForHover } from './sourceViewUtils';
 import { requestAnswer, getSourceCountByBrain } from '../../../../api/graphApi';
 import { listModels, installModel } from '../../../../api/model';
+import SourceHoverTooltip from './SourceHoverTooltip';
 
 // UI 컴포넌트 import
 import ConfirmDialog from '../../common/ConfirmDialog';
@@ -407,8 +409,10 @@ const ChatMessage = ({
   handleCopyMessage,
   copiedMessageId,
   onReferencedNodesUpdate,
-  onOpenSource
+  onOpenSource,
+  selectedBrainId
 }) => {
+
   return (
     <div
       className={`chat-panel-message-wrapper ${message.is_ai ? 'chat-panel-bot-message' : 'chat-panel-user-message'}`}
@@ -449,16 +453,18 @@ const ChatMessage = ({
                       <ul className="chat-panel-source-title-list">
                         {openSourceNodes[`${message.chat_id}_${nodeName}`].map((item, sourceIndex) => (
                           <li key={sourceIndex} className="chat-panel-source-title-item">
-                            <span
-                              className="chat-panel-source-title-content"
-                              onClick={() => {
-                                console.log('소스 title 클릭:', item.title, 'id:', item.id);
-                                if (item.id) onOpenSource(item.id);
-                              }}
-                              style={{ cursor: item.id ? 'pointer' : 'default' }}
+                            <SourceHoverTooltip
+                              originalSentences={extractOriginalSentencesForHover(item, message, nodeName)}
+                              sourceTitle={item.title}
                             >
-                              {item.title}
-                            </span>
+                              <span
+                                className="chat-panel-source-title-content"
+                                onClick={createSourceViewClickHandler(item, message, nodeName, selectedBrainId, onOpenSource)}
+                                style={{ cursor: item.id ? 'pointer' : 'default' }}
+                              >
+                                {item.title}
+                              </span>
+                            </SourceHoverTooltip>
                           </li>
                         ))}
                       </ul>
@@ -523,6 +529,8 @@ const ChatMessage = ({
           </div>
         )}
       </div>
+      
+
     </div>
   );
 };
@@ -1008,6 +1016,7 @@ function ChatPanel({
                 copiedMessageId={copiedMessageId}
                 onReferencedNodesUpdate={onReferencedNodesUpdate}
                 onOpenSource={onOpenSource}
+                selectedBrainId={selectedBrainId}
               />
             ))}
             {isLoading && (
