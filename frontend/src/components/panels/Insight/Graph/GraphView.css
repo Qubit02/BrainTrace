@@ -427,6 +427,13 @@
     min-width: 0;
 }
 
+/* 전체화면 모드에서 툴팁 위치 조정 */
+.graph-hover-tooltip.fullscreen {
+    bottom: 150px !important;
+    transform: translateY(100%);
+    font-size: 18px;
+}
+
 .tooltip-content {
     display: flex;
     flex-direction: column;

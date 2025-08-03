@@ -722,12 +722,11 @@ function GraphView({
         switch (e.key) {
           case '+':
           case '=':
-          case '1':
             e.preventDefault();
             fg.zoom(currZoom * zoomStep, 300);
             break;
           case '-':
-          case '2':
+          case '_':
             e.preventDefault();
             fg.zoom(currZoom / zoomStep, 300);
             break;
@@ -853,12 +852,12 @@ function GraphView({
 
       {(hoveredNode || hoveredLink) && (
         <div 
-          className="graph-hover-tooltip"
+          className={`graph-hover-tooltip ${isFullscreen ? 'fullscreen' : ''}`}
           style={{
             left: hoveredLink ? '8px' : '16px'
           }}
         >
-          {hoveredNode && !hoveredLink && !draggedNode && !isFullscreen && (
+          {hoveredNode && !hoveredLink && !draggedNode  && (
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-label">노드:</span> 
@@ -869,7 +868,7 @@ function GraphView({
               </div>
             </div>
           )}
-          {(hoveredLink && !isFullscreen) && (
+          {(hoveredLink) && (
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-value">{hoveredLink.source?.name || hoveredLink.source}</span>

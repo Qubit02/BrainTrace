@@ -204,10 +204,10 @@ function GraphViewForFullscreen(props) {
                         <button
                             onClick={() => setShowAdvancedControls(prev => !prev)}
                             className={`fullscreen-control-btn advanced-toggle ${showAdvancedControls ? 'active' : ''}`}
-                            title="고급 컨트롤 토글"
+                            title="설정 컨트롤 토글"
                         >
                             <span className="fullscreen-btn-icon"><FiSettings color={ICON_COLOR} /></span>
-                            <span className="btn-text">고급</span>
+                            <span className="btn-text">설정</span>
                         </button>
 
                         <button
@@ -435,12 +435,12 @@ function GraphViewForFullscreen(props) {
 
                     <div className="fullscreen-status-right">
                         <div className="fullscreen-keyboard-shortcuts">
-                            <span className="fullscreen-shortcut">Ctrl + 1</span>
                             <span className="fullscreen-shortcut">Ctrl + +</span>
                             <span className="fullscreen-shortcut-desc">줌인</span>
-                            <span className="fullscreen-shortcut">Ctrl + 2</span>
                             <span className="fullscreen-shortcut">Ctrl + -</span>
                             <span className="fullscreen-shortcut-desc">줌아웃</span>
+                            <span className="fullscreen-shortcut">Ctrl + K</span>
+                            <span className="fullscreen-shortcut-desc">설정</span>
                             <span className="fullscreen-shortcut">ESC</span>
                             <span className="fullscreen-shortcut-desc">전체화면 종료</span>
                         </div>
