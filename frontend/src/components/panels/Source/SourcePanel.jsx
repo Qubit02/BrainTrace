@@ -32,6 +32,7 @@ export default function SourcePanel({
   onSourceCountRefresh,       // 소스 개수 새로고침 콜백
   onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
   focusSource,                // 포커스할 소스 정보
+  highlightingInfo,           // 하이라이팅 정보
   onSourcePanelReady,         // SourcePanel 준비 완료 콜백
   openSourceId,
   isNodeViewLoading,
@@ -421,23 +422,24 @@ export default function SourcePanel({
             {openedFile ? (
               // 모든 파일 타입을 GenericViewer로 통합 처리
               <div className="pdf-viewer-wrapper" style={{ height: '100%' }}>
-                <GenericViewer
-                  type={openedFile.type}
-                  fileUrl={
-                    openedFile.type === 'txt' ? `http://localhost:8000/${openedFile.txt_path}` :
-                      openedFile.type === 'md' ? `http://localhost:8000/${openedFile.md_path}` :
-                        openedFile.type === 'docx' ? `http://localhost:8000/${openedFile.docx_path}` :
-                          openedFile.type === 'pdf' ? `http://localhost:8000/${openedFile.pdf_path}` :
-                            undefined
-                  }
-                  memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
-                  onBack={closeSource}
-                  title={openedFile.title}
-                  docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
-                  pdfId={openedFile.type === 'pdf' ? openedFile.pdf_id : undefined}
-                  txtId={openedFile.type === 'txt' ? openedFile.txt_id : undefined}
-                  mdId={openedFile.type === 'md' ? openedFile.md_id : undefined}
-                />
+                              <GenericViewer
+                type={openedFile.type}
+                fileUrl={
+                  openedFile.type === 'txt' ? `http://localhost:8000/${openedFile.txt_path}` :
+                    openedFile.type === 'md' ? `http://localhost:8000/${openedFile.md_path}` :
+                      openedFile.type === 'docx' ? `http://localhost:8000/${openedFile.docx_path}` :
+                        openedFile.type === 'pdf' ? `http://localhost:8000/${openedFile.pdf_path}` :
+                          undefined
+                }
+                memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
+                onBack={closeSource}
+                title={openedFile.title}
+                docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
+                pdfId={openedFile.type === 'pdf' ? openedFile.pdf_id : undefined}
+                txtId={openedFile.type === 'txt' ? openedFile.txt_id : undefined}
+                mdId={openedFile.type === 'md' ? openedFile.md_id : undefined}
+                highlightingInfo={highlightingInfo}
+              />
               </div>
             ) : (
               // 파일 목록 뷰 (FileView 컴포넌트)
