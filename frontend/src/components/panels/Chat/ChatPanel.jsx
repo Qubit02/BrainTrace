@@ -953,15 +953,28 @@ function ChatPanel({
   const handleCopyMessage = async (m) => {
     try {
       let messageToCopy = m.message;
-      if (m.chat_id) {
-        const serverMessage = await getChatMessageById(m.chat_id);
-        if (serverMessage) messageToCopy = serverMessage;
+      
+      // chat_id가 있고 유효한 숫자인 경우에만 서버에서 메시지를 가져옴
+      if (m.chat_id && !isNaN(Number(m.chat_id))) {
+        try {
+          const serverMessage = await getChatMessageById(m.chat_id);
+          if (serverMessage) {
+            messageToCopy = serverMessage;
+          }
+        } catch (serverErr) {
+          console.warn('서버에서 메시지를 가져오는데 실패했습니다. 로컬 메시지를 사용합니다:', serverErr);
+          // 서버에서 가져오기 실패 시 로컬 메시지 사용
+          messageToCopy = m.message;
+        }
       }
+      
       await navigator.clipboard.writeText(messageToCopy);
       setCopiedMessageId(m.chat_id || m.message);
       setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
       console.error('복사 실패:', err);
+      // 복사 실패 시 사용자에게 알림
+      alert('메시지 복사에 실패했습니다.');
     }
   };
 
