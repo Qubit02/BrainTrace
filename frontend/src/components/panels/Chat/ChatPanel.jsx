@@ -687,8 +687,23 @@ function ChatPanel({
 
   // ===== 스크롤을 맨 아래로 내리는 함수 =====
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // 채팅 내역이 변경될 때마다 맨 아래로 스크롤
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [chatHistory]);
+
+  // ===== 채팅 내역 로드 후 자동 스크롤 =====
+  useEffect(() => {
+    if (!isInitialLoading && chatHistory.length > 0) {
+      // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 스크롤
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, [isInitialLoading, chatHistory.length]);
 
   // ===== 드롭다운 외부 클릭 시 닫기 =====
   useEffect(() => {
