@@ -1,7 +1,54 @@
-import React, { useEffect } from 'react';
+/**
+ * Highlighting.jsx - 텍스트 하이라이트 기능 관리 훅 및 유틸리티
+ * 
+ * 기능:
+ * - 텍스트 선택 기반 하이라이트 추가/삭제
+ * - 출처보기 모드 전용 하이라이트 관리
+ * - 하이라이트 데이터 로컬 스토리지 저장/불러오기
+ * - 하이라이트 렌더링 및 시각적 표현
+ * - 텍스트 복사 기능
+ * - 하이라이트 겹침 처리 및 충돌 방지
+ * 
+ * 주요 컴포넌트:
+ * - useHighlighting: 메인 하이라이트 관리 훅
+ * - useSourceViewHighlighting: 출처보기 전용 하이라이트 훅
+ * - clearHighlightingData: 특정 파일의 하이라이트 데이터 삭제
+ * - clearAllHighlightingData: 모든 하이라이트 데이터 삭제
+ * 
+ * 지원 파일 형식:
+ * - docx: Word 문서 하이라이트
+ * - pdf: PDF 문서 하이라이트
+ * - txt: 텍스트 파일 하이라이트
+ * - md: 마크다운 파일 하이라이트
+ * - memo: 메모 하이라이트
+ * 
+ * 모드:
+ * - 일반 모드: 사용자가 직접 선택한 텍스트 하이라이트
+ * - 출처보기 모드: 자동 생성된 하이라이트 (회색 배경)
+ * 
+ * 사용법:
+ * const {
+ *   popup,
+ *   addHighlight,
+ *   deleteHighlight,
+ *   renderHighlightedContent
+ * } = useHighlighting(type, fileUrl, memoId, docxId, pdfId, txtId, mdId, isFromSourceView, highlightingInfo);
+ */
+
+import React, { useEffect, useMemo } from 'react';
 import { useState, useCallback } from 'react';
 
-// 하이라이팅 데이터 삭제 유틸리티 함수
+/**
+ * 하이라이트 데이터 삭제 유틸리티 함수
+ * 
+ * @param {string} type - 파일 타입
+ * @param {string} fileUrl - 파일 URL
+ * @param {string} memoId - 메모 ID
+ * @param {string} docxId - DOCX 파일 ID
+ * @param {string} pdfId - PDF 파일 ID
+ * @param {string} txtId - TXT 파일 ID
+ * @param {string} mdId - MD 파일 ID
+ */
 export const clearHighlightingData = (type, fileUrl, memoId, docxId, pdfId, txtId, mdId) => {
     const keysToDelete = [];
     
@@ -24,7 +71,9 @@ export const clearHighlightingData = (type, fileUrl, memoId, docxId, pdfId, txtI
     });
 };
 
-// 브레인 삭제 시 모든 하이라이팅 데이터 삭제
+/**
+ * 브레인 삭제 시 모든 하이라이트 데이터 삭제
+ */
 export const clearAllHighlightingData = () => {
     const keys = Object.keys(localStorage);
     const highlightKeys = keys.filter(key => key.startsWith('highlight:'));
@@ -34,7 +83,12 @@ export const clearAllHighlightingData = () => {
     });
 };
 
-// 출처보기 전용 하이라이팅 훅
+/**
+ * 출처보기 전용 하이라이트 훅
+ * 
+ * @param {Object} highlightingInfo - 출처보기 정보
+ * @returns {Object} 하이라이트 상태 및 설정 함수
+ */
 const useSourceViewHighlighting = (highlightingInfo) => {
     const [highlights, setHighlights] = useState([]);
     
@@ -55,7 +109,20 @@ const useSourceViewHighlighting = (highlightingInfo) => {
     return { highlights, setHighlights };
 };
 
-// 메인 하이라이팅 커스텀 훅
+/**
+ * 메인 하이라이팅 커스텀 훅
+ * 
+ * @param {string} type - 파일 타입
+ * @param {string} fileUrl - 파일 URL
+ * @param {string} memoId - 메모 ID
+ * @param {string} docxId - DOCX 파일 ID
+ * @param {string} pdfId - PDF 파일 ID
+ * @param {string} txtId - TXT 파일 ID
+ * @param {string} mdId - MD 파일 ID
+ * @param {boolean} isFromSourceView - 출처보기 모드 여부
+ * @param {Object} highlightingInfo - 출처보기 정보
+ * @returns {Object} 하이라이트 관련 함수 및 상태
+ */
 export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdId, isFromSourceView = false, highlightingInfo = null) => {
     const [highlights, setHighlights] = useState([]);
     const [popup, setPopup] = useState(null);
@@ -67,13 +134,13 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
     const currentHighlights = isFromSourceView ? sourceViewHighlights.highlights : highlights;
     const setCurrentHighlights = isFromSourceView ? sourceViewHighlights.setHighlights : setHighlights;
 
-    // 범위 겹침 여부 판별 함수
+    // 범위 겹침 여부 판별 함수 - useCallback으로 최적화
     const isOverlapping = useCallback((start1, end1, start2, end2) => {
         return Math.max(start1, start2) < Math.min(end1, end2);
     }, []);
 
-    // 하이라이트 저장 키 생성
-    const getStorageKey = useCallback(() => {
+    // 하이라이트 저장 키 생성 - useMemo로 최적화
+    const getStorageKey = useMemo(() => {
         if (type === 'memo') {
             return `highlight:memo:${memoId}`;
         } else if (type === 'docx') {
@@ -89,15 +156,14 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }
     }, [type, fileUrl, memoId, docxId, pdfId, txtId, mdId]);
 
-    // 저장된 하이라이트 불러오기
+    // 저장된 하이라이트 불러오기 - useCallback으로 최적화
     const loadHighlights = useCallback(() => {
         if (isFromSourceView) {
             return; // 출처보기에서는 로컬 저장소 사용 안함
         }
         
         try {
-            const storageKey = getStorageKey();
-            const saved = localStorage.getItem(storageKey);
+            const saved = localStorage.getItem(getStorageKey);
             if (saved) {
                 setHighlights(JSON.parse(saved));
             }
@@ -106,25 +172,24 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }
     }, [getStorageKey, isFromSourceView]);
 
-    // 하이라이트 저장 함수
+    // 하이라이트 저장 함수 - useCallback으로 최적화
     const saveHighlights = useCallback((highlightsToSave) => {
         if (isFromSourceView) {
             return; // 출처보기에서는 저장하지 않음
         }
         
         try {
-            const storageKey = getStorageKey();
             if (highlightsToSave.length === 0) {
-                localStorage.removeItem(storageKey);
+                localStorage.removeItem(getStorageKey);
             } else {
-                localStorage.setItem(storageKey, JSON.stringify(highlightsToSave));
+                localStorage.setItem(getStorageKey, JSON.stringify(highlightsToSave));
             }
         } catch (error) {
             console.error('하이라이트 저장 실패:', error);
         }
     }, [getStorageKey, isFromSourceView]);
 
-    // 하이라이트 추가 및 기존 겹침 제거 후 저장
+    // 하이라이트 추가 및 기존 겹침 제거 후 저장 - useCallback으로 최적화
     const addHighlight = useCallback((color) => {
         if (!popup || isFromSourceView) return;
         
@@ -145,7 +210,7 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         setPopup(null);
     }, [popup, isOverlapping, saveHighlights, isFromSourceView]);
 
-    // 프로그램적으로 하이라이트 추가 (원본 문장 하이라이팅용)
+    // 프로그램적으로 하이라이트 추가 (원본 문장 하이라이팅용) - useCallback으로 최적화
     const addHighlightProgrammatically = useCallback((highlightData) => {
         if (isFromSourceView) {
             // 출처보기에서는 전용 하이라이트에 추가
@@ -182,7 +247,7 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }
     }, [isOverlapping, saveHighlights, isFromSourceView, setCurrentHighlights]);
 
-    // 하이라이트 개별 삭제
+    // 하이라이트 개별 삭제 - useCallback으로 최적화
     const deleteHighlight = useCallback((idToDelete) => {
         if (isFromSourceView) {
             setCurrentHighlights(prevHighlights => 
@@ -198,7 +263,7 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         setPopup(null);
     }, [saveHighlights, isFromSourceView, setCurrentHighlights]);
 
-    // 전체 하이라이트 초기화
+    // 전체 하이라이트 초기화 - useCallback으로 최적화
     const clearHighlights = useCallback(() => {
         if (isFromSourceView) {
             setCurrentHighlights([]);
@@ -208,7 +273,7 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }
     }, [saveHighlights, isFromSourceView, setCurrentHighlights]);
 
-    // 텍스트 선택 시 팝업 표시
+    // 텍스트 선택 시 팝업 표시 - useCallback으로 최적화
     const onTextSelection = useCallback((containerRef) => {
         if (isFromSourceView) return; // 출처보기에서는 텍스트 선택 비활성화
         
@@ -244,7 +309,7 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         });
     }, [isFromSourceView]);
 
-    // 선택 이벤트 핸들러
+    // 선택 이벤트 핸들러 - useCallback으로 최적화
     const handleSelection = useCallback((containerRef) => {
         if (isFromSourceView) return; // 출처보기에서는 텍스트 선택 비활성화
         
@@ -253,7 +318,44 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }, 100);
     }, [onTextSelection, isFromSourceView]);
 
-    // 하이라이트 렌더링
+    // 하이라이트 스타일 생성 - useMemo로 최적화
+    const getHighlightStyle = useCallback((isAutoHighlight, color) => {
+        if (isAutoHighlight) {
+            return {
+                backgroundColor: '#E8E8E8',
+                borderRadius: '6px',
+                padding: '2px 4px',
+                cursor: 'default',
+                fontWeight: '700',
+                fontSize: 'inherit',
+                color: '#1a1a1a',
+                textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                boxShadow: '0 2px 4px rgba(128, 128, 128, 0.3)',
+                border: '1px solid #C0C0C0',
+                display: 'inline-block',
+                lineHeight: '1.4',
+                letterSpacing: '0.5px',
+            };
+        } else {
+            return {
+                backgroundColor: color,
+                borderRadius: '6px',
+                padding: '0 2px',
+                cursor: 'pointer',
+                fontWeight: 'normal',
+                fontSize: 'inherit',
+                color: 'inherit',
+                textShadow: 'none',
+                boxShadow: 'none',
+                border: 'none',
+                display: 'inline',
+                lineHeight: 'inherit',
+                letterSpacing: 'normal',
+            };
+        }
+    }, []);
+
+    // 하이라이트 렌더링 - useCallback으로 최적화
     const renderHighlightedContent = useCallback((content, onHighlightClick) => {
         if (!currentHighlights.length) {
             return content;
@@ -271,24 +373,14 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
             }
             
             const isAutoHighlight = h.id && String(h.id).startsWith('auto-highlight-');
+            const highlightStyle = getHighlightStyle(isAutoHighlight, h.color);
             
             elements.push(
                 <span
                     key={`highlight-${i}`}
                     style={{
-                        backgroundColor: isAutoHighlight ? '#E8E8E8' : h.color, // 출처보기 하이라이트는 회색
-                        borderRadius: '6px',
-                        padding: isAutoHighlight ? '2px 4px' : '0 2px',
+                        ...highlightStyle,
                         cursor: isFromSourceView ? 'default' : (onHighlightClick ? 'pointer' : 'default'),
-                        fontWeight: isAutoHighlight ? '700' : 'normal', // 더 굵게
-                        fontSize: isAutoHighlight ? 'inherit' : 'inherit', // 원래 크기
-                        color: isAutoHighlight ? '#1a1a1a' : 'inherit', // 더 진한 텍스트 색상
-                        textShadow: isAutoHighlight ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', // 텍스트 그림자
-                        boxShadow: isAutoHighlight ? '0 2px 4px rgba(128, 128, 128, 0.3)' : 'none', // 회색 박스 그림자
-                        border: isAutoHighlight ? '1px solid #C0C0C0' : 'none', // 회색 테두리
-                        display: isAutoHighlight ? 'inline-block' : 'inline',
-                        lineHeight: isAutoHighlight ? '1.4' : 'inherit',
-                        letterSpacing: isAutoHighlight ? '0.5px' : 'normal',
                     }}
                     onClick={(e) => {
                         if (isFromSourceView) return; // 출처보기에서는 클릭 비활성화
@@ -322,14 +414,27 @@ export const useHighlighting = (type, fileUrl, memoId, docxId, pdfId, txtId, mdI
         }
         
         return elements;
-    }, [currentHighlights, isFromSourceView]);
+    }, [currentHighlights, isFromSourceView, getHighlightStyle]);
 
-    // 선택 텍스트 복사
-    const copyText = useCallback(() => {
+    // 선택 텍스트 복사 - useCallback으로 최적화
+    const copyText = useCallback(async () => {
         if (popup) {
-            navigator.clipboard.writeText(popup.text);
-            setPopup(null);
-            window.getSelection().removeAllRanges();
+            try {
+                await navigator.clipboard.writeText(popup.text);
+                setPopup(null);
+                window.getSelection().removeAllRanges();
+            } catch (error) {
+                console.error('텍스트 복사 실패:', error);
+                // fallback: 구식 방식
+                const textArea = document.createElement('textarea');
+                textArea.value = popup.text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                setPopup(null);
+                window.getSelection().removeAllRanges();
+            }
         }
     }, [popup]);
 
