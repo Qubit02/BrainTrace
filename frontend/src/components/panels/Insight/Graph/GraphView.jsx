@@ -7,7 +7,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
-import { fetchGraphData } from '../../../../../api/graphApi';
+import { fetchGraphData } from '../../../../../api/services/graphApi';
 import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
 import { toast } from 'react-toastify';

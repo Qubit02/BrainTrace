@@ -1,6 +1,42 @@
-// src/api/graphApi.js
-import { api } from '../api/api';
+/**
+ * graphApi.js - 그래프 데이터 및 지식 그래프 관리 API
+ * 
+ * 기능:
+ * - 그래프 데이터 조회 및 정규화
+ * - 노드 및 소스 관련 API
+ * - 텍스트 처리 및 AI 관련 API
+ * - 데이터 관리 API
+ * 
+ * API 엔드포인트:
+ * - GET /brainGraph/getNodeEdge/{brainId} - 그래프 데이터 조회
+ * - GET /brainGraph/getNodesBySourceId - 소스별 노드 조회
+ * - GET /brainGraph/getSourceIds - 노드별 소스 조회
+ * - POST /search/getSimilarSourceIds - 유사 소스 검색
+ * - POST /brainGraph/process_text - 텍스트 처리
+ * - POST /brainGraph/answer - AI 답변 요청
+ * - DELETE /brains/{brainId}/deleteDB/{sourceId} - DB 삭제
+ * - GET /brainGraph/getSourceDataMetrics/{brainId} - 소스 메트릭 조회
+ * - GET /brainGraph/sourceCount/{brain_id} - 소스 개수 조회
+ * 
+ * 사용법:
+ * import { fetchGraphData, getNodesBySourceId, processText } from './services/graphApi';
+ * 
+ * // 그래프 데이터 조회
+ * const graphData = await fetchGraphData(brainId);
+ * 
+ * // 소스별 노드 조회
+ * const nodes = await getNodesBySourceId(sourceId, brainId);
+ */
 
+import { api } from '../config/axiosConfig';
+
+// === 그래프 데이터 관련 API ===
+
+/**
+ * 브레인별 그래프 데이터 조회 및 정규화
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Object>} 정규화된 그래프 데이터 { nodes: [...], links: [...] }
+ */
 export const fetchGraphData = async (brainId) => {
   try {
     const response = await api.get(`/brainGraph/getNodeEdge/${brainId}`);
@@ -16,7 +52,12 @@ export const fetchGraphData = async (brainId) => {
   }
 };
 
-// 그래프 데이터 정규화 함수
+/**
+ * 그래프 데이터 정규화 함수
+ * 다양한 API 응답 구조를 일관된 형태로 변환
+ * @param {Object} data - 원본 그래프 데이터
+ * @returns {Object} 정규화된 그래프 데이터
+ */
 function normalizeGraphData(data) {
   if (!data || typeof data !== 'object') {
     console.log("데이터가 없거나, 객체가 아닙니다.");
@@ -124,7 +165,10 @@ function normalizeGraphData(data) {
   }
 }
 
-// 기본 그래프 데이터 (API 실패 또는 데이터 없음 시)
+/**
+ * 기본 그래프 데이터 (API 실패 또는 데이터 없음 시)
+ * @returns {Object} 기본 그래프 데이터
+ */
 function getDefaultGraphData() {
   return {
     nodes: [
@@ -139,6 +183,67 @@ function getDefaultGraphData() {
   };
 }
 
+// === 노드 및 소스 관련 API ===
+
+/**
+ * 특정 소스 ID로부터 생성된 노드 목록 조회
+ * @param {string|number} sourceId - 소스 ID
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Array>} 노드 목록
+ */
+export const getNodesBySourceId = (sourceId, brainId) =>
+    api.get(`/brainGraph/getNodesBySourceId`, {
+        params: { source_id: sourceId, brain_id: brainId }
+    })
+        .then(r => r.data)
+        .catch(error => {
+            console.error(`소스별 노드 조회 실패 (소스 ID: ${sourceId}, 브레인 ID: ${brainId}):`, error);
+            throw error;
+        });
+
+/**
+ * 특정 노드 이름과 관련된 소스 ID 목록 조회
+ * @param {string} nodeName - 노드 이름
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Array>} 소스 ID 목록
+ */
+export const getSourceIdsByNodeName = (nodeName, brainId) =>
+    api.get(`/brainGraph/getSourceIds`, {
+        params: { node_name: nodeName, brain_id: brainId }
+    })
+        .then(r => r.data)
+        .catch(error => {
+            console.error(`노드별 소스 조회 실패 (노드: ${nodeName}, 브레인 ID: ${brainId}):`, error);
+            throw error;
+        });
+
+/**
+ * 유사 설명 기반으로 관련 소스 ID 목록 검색
+ * @param {string} query - 검색 쿼리
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Array>} 유사 소스 ID 목록
+ */
+export const getSimilarSourceIds = (query, brainId) =>
+    api.post('/search/getSimilarSourceIds', {
+        query: query,
+        brain_id: String(brainId)
+    })
+        .then(res => res.data)
+        .catch(error => {
+            console.error(`유사 소스 검색 실패 (쿼리: ${query}, 브레인 ID: ${brainId}):`, error);
+            throw error;
+        });
+
+// === 텍스트 처리 및 AI 관련 API ===
+
+/**
+ * 텍스트 처리 (AI 모델을 통한 분석)
+ * @param {string} text - 처리할 텍스트
+ * @param {string|number} sourceId - 소스 ID
+ * @param {string|number} brainId - 브레인 ID
+ * @param {string} model - 사용할 모델 (기본값: "gpt")
+ * @returns {Promise<Object>} 처리 결과
+ */
 export const processText = async (text, sourceId, brainId, model = "gpt") => {
   try {
     const response = await api.post(
@@ -157,6 +262,15 @@ export const processText = async (text, sourceId, brainId, model = "gpt") => {
   }
 };
 
+/**
+ * AI 답변 요청
+ * @param {string} question - 질문
+ * @param {string|number} session_id - 세션 ID
+ * @param {string|number} brain_id - 브레인 ID
+ * @param {string} model - 사용할 모델
+ * @param {string} model_name - 모델 이름
+ * @returns {Promise<Object>} AI 답변
+ */
 export const requestAnswer = async (question, session_id, brain_id, model, model_name) => {
   try {
     const response = await api.post(`/brainGraph/answer`,
@@ -175,6 +289,14 @@ export const requestAnswer = async (question, session_id, brain_id, model, model
   }
 };
 
+// === 데이터 관리 API ===
+
+/**
+ * 벡터 DB 또는 그래프 DB 삭제
+ * @param {string|number} brainId - 브레인 ID
+ * @param {string|number} sourceId - 소스 ID
+ * @returns {Promise<Object>} 삭제 결과
+ */
 export const deleteDB = async (brainId, sourceId) => {
   try {
     const response = await api.delete(`/brains/${brainId}/deleteDB/${sourceId}`);
@@ -185,7 +307,11 @@ export const deleteDB = async (brainId, sourceId) => {
   }
 };
 
-// 소스별 데이터 메트릭 조회
+/**
+ * 소스별 데이터 메트릭 조회
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Object>} 소스 메트릭 정보
+ */
 export const getSourceDataMetrics = async (brainId) => {
   try {
     const response = await api.get(`/brainGraph/getSourceDataMetrics/${brainId}`);
@@ -196,6 +322,15 @@ export const getSourceDataMetrics = async (brainId) => {
   }
 };
 
-// 해당 brain의 모든 소스 개수 조회
+/**
+ * 해당 brain의 모든 소스 개수 조회
+ * @param {string|number} brain_id - 브레인 ID
+ * @returns {Promise<number>} 소스 개수
+ */
 export const getSourceCountByBrain = brain_id =>
-  api.get(`/brainGraph/sourceCount/${brain_id}`).then(r => r.data); 
+  api.get(`/brainGraph/sourceCount/${brain_id}`)
+      .then(r => r.data)
+      .catch(error => {
+          console.error(`소스 개수 조회 실패 (브레인 ID: ${brain_id}):`, error);
+          throw error;
+      }); 

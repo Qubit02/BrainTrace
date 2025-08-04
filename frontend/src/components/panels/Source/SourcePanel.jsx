@@ -7,7 +7,7 @@ import {
   getMDFilesByBrain,
   getSourceDataMetrics,
   getDocxFilesByBrain
-} from '../../../../api/backend';
+} from '../../../../api/config/apiIndex';
 import { toast } from 'react-toastify';
 import FileView from './FileView';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
@@ -126,18 +126,7 @@ export default function SourcePanel({
       }
     }
   }, [localFocusSource]);
-
-  // // openSourceId가 변경될 때 해당 소스를 자동으로 연다
-  // useEffect(() => {
-  //   if (!openSourceId || !allFiles.length) return;
-  //   const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(openSourceId));
-  //   if (targetFile) {
-  //     if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-  //     else setOpenedFile(targetFile);
-  //     setIsSourceOpen(true);
-  //   }
-  // }, [openSourceId, allFiles]);
-
+  
   /**
    * 모든 소스(PDF, TXT, Memo) 파일들을 비동기로 불러오는 함수
    * 서버에서 파일 목록을 가져와서 allFiles 상태를 업데이트

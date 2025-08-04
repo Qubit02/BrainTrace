@@ -10,7 +10,7 @@
  * 4. 호버 툴팁용 원본 문장 추출
  */
 
-import { getSourceContent } from '../../../../api/chat';
+import { getSourceContent } from '../../../../api/services/chatApi';
 
 /**
  * 원본 문장과 소스 텍스트를 비교하여 하이라이팅 정보를 생성합니다.

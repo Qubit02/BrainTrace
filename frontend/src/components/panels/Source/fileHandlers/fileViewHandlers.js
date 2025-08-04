@@ -1,6 +1,6 @@
 // fileViewHandlers.js
 import { toast } from 'react-toastify';
-import { deleteDB } from '../../../../../api/graphApi';
+import { deleteDB } from '../../../../../api/services/graphApi';
 import deleteHandlers from './deleteHandlers';
 import nameUpdateHandlers from './nameUpdateHandlers';
 
@@ -126,7 +126,7 @@ export const handleDelete = async (f, brainId, onGraphRefresh, onSourceCountRefr
       await deleteDB(brainId, f.id);
       console.log('✅ 벡터 DB 및 그래프 DB 삭제 성공');
     } catch (dbError) {
-      console.error('⚠️ 벡터/그래프 DB 삭제 실패 (계속 진행):', dbError);
+      console.error('벡터/그래프 DB 삭제 실패 (계속 진행):', dbError);
     }
 
     // 2) 실제 파일 삭제 (파일 시스템 또는 DB에서)
@@ -136,7 +136,7 @@ export const handleDelete = async (f, brainId, onGraphRefresh, onSourceCountRefr
       const fileUrl = f.fileUrl || f.url || f.path || null;
       deleted = await deleteHandlers[f.filetype](f.id, fileUrl);
     } else {
-      throw new Error('지원하지 않는 파일 타입');
+      throw new Error(`지원하지 않는 파일 타입: ${f.filetype}`);
     }
     // 삭제 실패 시 에러 처리
     if (!deleted) {
@@ -153,7 +153,7 @@ export const handleDelete = async (f, brainId, onGraphRefresh, onSourceCountRefr
     // 5) 파일 목록 다시 로드
     await refresh();
   } catch (e) {
-    console.error('❌ 삭제 실패:', e);
-    alert('삭제 실패');
+    console.error('삭제 실패:', e);
+    toast.error(`삭제 실패: ${e.message}`);
   }
 }; 
