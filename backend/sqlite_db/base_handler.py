@@ -38,7 +38,8 @@ class BaseHandler:
             CREATE TABLE IF NOT EXISTS Brain (
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
-                created_at TEXT
+                created_at TEXT,
+                is_important BOOLEAN DEFAULT 0
             )
             ''')
             
@@ -52,6 +53,7 @@ class BaseHandler:
                 is_source BOOLEAN DEFAULT 0,
                 type TEXT,          
                 brain_id INTEGER,
+                is_deleted INTEGER DEFAULT 0,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -117,6 +119,7 @@ class BaseHandler:
                 is_ai BOOLEAN NOT NULL,
                 message TEXT,
                 referenced_nodes TEXT,
+                accuracy REAL,  -- 정확도 정보 추가
                 FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)
             )
             ''')

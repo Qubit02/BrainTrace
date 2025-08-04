@@ -9,6 +9,7 @@
     padding: 30px;
     font-family: 'Noto Sans KR', sans-serif;
     box-sizing: border-box;
+    padding-bottom: 50px;
 }
 
 /* ====== 제목 입력 ====== */
@@ -69,8 +70,7 @@
 
 .small-top-left {
     /* 추가적인 작은 크기와 위치 조정이 필요한 경우 */
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+    width: 35px;
+    height: 35px;
     padding: 0;
 }

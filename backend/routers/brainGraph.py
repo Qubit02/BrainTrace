@@ -160,22 +160,24 @@ async def answer_endpoint(request_data: AnswerRequest):
     <br> GPT 사용 → (model: "gpt")
     """
     question = request_data.question
-    brain_id = request_data.brain_id  # 요청에서 brain_id 받아오기
-    model =  request_data.model
-    
+    session_id = request_data.session_id
+    brain_id = str(request_data.brain_id)  # 문자열로 변환
+    model = request_data.model
+    model_name = request_data.model_name
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
      # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
-    if model == "gpt":
+    if model == "openai":
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
-        ai_service = get_ai_service_Ollama()
+        ai_service = get_ai_service_Ollama(model_name)
+    else:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
-    
-    logging.info("질문 접수: %s, brain_id: %s", question, brain_id)
+    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s, model_name: %s", question, session_id, brain_id, model, model_name)
     
     try:
         # 사용자 질문 저장
@@ -228,10 +230,42 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-            
-        # AI 답변 저장
+        accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id)
+        logging.info(f"정확도 : {accuracy}")
+        # node의 출처 소스 id들 가져오기
+        node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+        logging.info(f"node_to_ids: {node_to_ids}")
+        # 모든 source_id 집합 수집
+        all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
+        logging.info(f"all_ids: {all_ids}")
+        # SQLite batch 조회로 id→title 매핑
+        id_to_title = db_handler.get_titles_by_ids(all_ids)
+               
+        # 최종 구조화
+        enriched = []
+        for node in referenced_nodes:
+            # 중복 제거된 source_id 리스트
+            unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
+            sources = []
+            for sid in unique_sids:
+                if sid not in id_to_title:
+                    continue
+                # Neo4j 에서 이 (node, sid) 조합의 original_sentences 가져오기
+                orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
+
+                sources.append({
+                    "id": str(sid),
+                    "title": id_to_title[sid],
+                    "original_sentences": orig_sents  # 여기에 리스트 형태로 들어감
+                })
+
+            enriched.append({
+                    "name": node,
+                    "source_ids": sources
+            })
+
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(True, final_answer, brain_id, referenced_nodes)
+        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
 
         return {
             "answer": final_answer,

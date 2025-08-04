@@ -29,12 +29,14 @@ class BrainResponse(BaseModel):
     brain_id: int = Field(..., description="브레인 ID", example=1)
     brain_name: str = Field(..., description="브레인 이름", example="파이썬 학습")
     created_at: str | None = None
+    is_important: bool = Field(False, description="중요도 여부", example=False)
     
     class Config:
         json_schema_extra = {
             "example": {
                 "brain_id": 1,
-                "brain_name": "파이썬 학습"
+                "brain_name": "파이썬 학습",
+                "is_important": False
             }
         }
 
@@ -142,6 +144,28 @@ async def delete_brain(brain_id: int):
             
     except Exception as e:
         raise HTTPException(500, str(e))
+
+@router.patch(
+    "/{brain_id}/toggle-importance",
+    response_model=BrainResponse,
+    summary="브레인 중요도 토글",
+    description="브레인의 중요도 상태를 토글합니다."
+)
+async def toggle_brain_importance(brain_id: int):
+    try:
+        # 중요도 토글
+        if not sqlite_handler.toggle_importance(brain_id):
+            raise HTTPException(404, "브레인을 찾을 수 없습니다")
+        
+        # 업데이트된 브레인 정보 반환
+        updated_brain = sqlite_handler.get_brain(brain_id)
+        if not updated_brain:
+            raise HTTPException(404, "브레인을 찾을 수 없습니다")
+        
+        return updated_brain
+    except Exception as e:
+        logging.error("브레인 중요도 토글 오류: %s", e)
+        raise HTTPException(500, "내부 서버 오류")
 
 @router.delete(
     "/{brain_id}/deleteDB/{source_id}",

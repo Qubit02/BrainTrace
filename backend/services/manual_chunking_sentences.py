@@ -168,6 +168,7 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
                     keywords.append("None")
     
     
+    # 재귀적으로 각 청크 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
         result, graph, already_made_updated = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.1,
@@ -201,8 +202,11 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     topic_vectors = np.array(topic_distributions)
     sim_matrix = cosine_similarity(topic_vectors)
 
-    top_topic_terms = lda_model.show_topic(0, topn=1)
-    top_keyword = top_topic_terms[0][0] if top_topic_terms else ""
+    # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
+    top_topic_terms = lda_model.show_topic(0, topn=topn)
+    # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+    # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+    top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
 
     return top_keyword, lda_model ,sim_matrix
 
@@ -274,11 +278,11 @@ def manual_chunking(text:str):
     for c in chunks:
         chunk=""
         for idx in c["chunks"]:
+            print(sentences[idx])
             chunk+=sentences[idx]
         final_chunks.append(chunk)
 
     return final_chunks
-
 
 
 text = """1. 개요[편집]

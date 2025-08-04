@@ -5,26 +5,24 @@ import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
-import { RiDeleteBinLine } from 'react-icons/ri';
-import { processText, deleteDB } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
+import { LuGitPullRequestClosed } from "react-icons/lu";
+
 import {
   getPdfsByBrain,
   getTextfilesByBrain,
   getMemosByBrain,
-  setMemoAsSource,
   getNodesBySourceId,
   getMDFilesByBrain,
-  getDocxFilesByBrain
+  getDocxFilesByBrain,
+  convertMemoToSource
 } from '../../../../api/backend';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import fileHandlers from './fileHandlers/fileHandlers';
-import deleteHandlers from './fileHandlers/deleteHandlers';
-import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
 import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
 import { processMemoTextAsGraph } from './fileHandlers/memoHandlers';
 import { handleDrop, handleNameChange, handleDelete } from './fileHandlers/fileViewHandlers';
@@ -46,7 +44,9 @@ export default function FileView({
   searchText,                 // 검색 텍스트
   onFileUploaded,             // 파일 업로드 완료 시 호출할 콜백
   isNodeViewLoading,
-  setIsNodeViewLoading
+  setIsNodeViewLoading,
+  externalUploadQueue = [],    // 외부에서 전달받은 업로드 큐
+  setExternalUploadQueue = () => {}  // 외부 업로드 큐 초기화 함수
 }) {
   // === 상태 관리 ===
   const [selectedFile, setSelectedFile] = useState(null)        // 현재 선택된 파일 ID
@@ -74,6 +74,20 @@ export default function FileView({
     fileMetaExtractors[f.type] ? fileMetaExtractors[f.type](f) : f
   );
 
+  // 외부 업로드 큐가 변경될 때 내부 업로드 큐에 추가
+  useEffect(() => {
+    if (externalUploadQueue.length > 0) {
+      // 중복 제거를 위해 기존 큐와 병합
+      setUploadQueue(prev => {
+        const existingKeys = prev.map(item => item.key);
+        const newItems = externalUploadQueue.filter(item => !existingKeys.includes(item.key));
+        return [...prev, ...newItems];
+      });
+      // 외부 업로드 큐 초기화 (중복 방지)
+      setExternalUploadQueue([]);
+    }
+  }, [externalUploadQueue]);
+  
   // 업로드 중인 파일의 고유 key 목록
   const uploadingKeys = uploadQueue.map(item => item.key);
 
@@ -113,9 +127,12 @@ export default function FileView({
     const file = uploadQueue[0];
     try {
       if (file.filetype === 'memo' && file.memoId && file.memoContent) {
-        // 메모를 소스로 변환
-        await setMemoAsSource(file.memoId);
-        await processMemoTextAsGraph(file.memoContent, file.memoId, brainId);
+        // 메모를 소스로 변환하고 새로운 메모 ID 받기
+        const newSourceMemo = await convertMemoToSource(file.memoId);
+        const newSourceMemoId = newSourceMemo.memo_id;
+        
+        // 새로운 메모 ID로 그래프 생성
+        await processMemoTextAsGraph(file.memoContent, newSourceMemoId, brainId);
         if (onGraphRefresh) onGraphRefresh();
         if (onSourceCountRefresh) onSourceCountRefresh();
       } else {
@@ -242,18 +259,27 @@ export default function FileView({
         </div>
       )}
       {/* 업로드 진행 표시 */}
-      {uploadQueue.map(item => (
-        <div key={item.key} className="file-item uploading">
-          <FileIcon fileName={item.name} />
-          <span className="file-name">{item.name}</span>
-          {item.status === 'processing' && (
-            <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-              <span style={{ marginLeft: 4 }}>그래프 변환 중</span>
-              <AiOutlineLoading3Quarters className="loading-spinner" />
-            </span>
-          )}
-        </div>
-      ))}
+      {uploadQueue.length > 0 && (
+        <>
+          <div className="section-divider uploading-section"></div>
+          {uploadQueue.map(item => (
+            <div key={item.key} className="file-item uploading">
+              <FileIcon fileName={item.name} />
+              <span className="file-name">{item.name}</span>
+              {item.status === 'processing' && (
+                <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+                  <span style={{ marginLeft: 4 }}>그래프 변환 중</span>
+                  <AiOutlineLoading3Quarters className="loading-spinner" />
+                </span>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+      {/* 기존 파일들과 구분선 */}
+      {uploadQueue.length > 0 && visibleFiles.length > 0 && (
+        <div className="section-divider existing-section"></div>
+      )}
       {/* 소스패널에 파일들 렌더링 */}
       {visibleFiles.map(f => {
         return (
@@ -310,7 +336,9 @@ export default function FileView({
                     onClick={async () => {
                       setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
-                        const names = await getNodesBySourceId(f.id, brainId);
+                        const response = await getNodesBySourceId(f.id, brainId);
+                        
+                        const names = response?.nodes || [];
                         if (names && names.length > 0) {
                           if (onFocusNodeNamesUpdate) {
                             onFocusNodeNamesUpdate(names);
@@ -348,7 +376,7 @@ export default function FileView({
                     <GoPencil size={14} style={{ marginRight: 4 }} /> 소스 이름 바꾸기
                   </div>
                   <div className="popup-item" onClick={() => openDeleteConfirm(f)}>
-                    <RiDeleteBinLine size={14} style={{ marginRight: 4 }} /> 소스 삭제
+                    <LuGitPullRequestClosed size={14} style={{ marginRight: 4 }} /> 소스 삭제
                   </div>
                 </div>
               )}
@@ -356,16 +384,16 @@ export default function FileView({
           </div>
         );
       })}
-      {/* 파일이 하나도 없을 때 */}
-      {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && (
+      {/* 파일이 하나도 없을 때 (업로드 중이 아닐 때만) */}
+      {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && uploadQueue.length === 0 && (
         <div className="empty-state">
           <p className="empty-sub">
             이 영역에 파일을 <strong>드래그해서 추가</strong>해보세요!
           </p>
         </div>
       )}
-      {/* 검색 결과가 없을 때 */}
-      {filteredSourceIds && processedFiles.length === 0 && (
+      {/* 검색 결과가 없을 때 (업로드 중이 아닐 때만) */}
+      {filteredSourceIds && processedFiles.length === 0 && uploadQueue.length === 0 && (
         <div className="empty-state">
           <p className="empty-sub">검색 결과가 없습니다.</p>
         </div>

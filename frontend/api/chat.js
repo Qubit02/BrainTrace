@@ -21,8 +21,8 @@ export const deleteAllChatsBySession = session_id =>
     api.delete(`/chat/session/${session_id}`).then(r => r.data);
 
 // === 채팅(질문/답변) 저장 ===
-export const saveChatToSession = (session_id, { is_ai, message, referenced_nodes }) =>
-    api.post(`/chat/session/${session_id}`, { is_ai, message, referenced_nodes }).then(r => r.data);
+export const saveChatToSession = (session_id, { is_ai, message, referenced_nodes, accuracy }) =>
+    api.post(`/chat/session/${session_id}`, { is_ai, message, referenced_nodes, accuracy }).then(r => r.data);
 
 // === 채팅(질문/답변) 메시지 조회 ===
 export const getChatMessageById = chat_id =>

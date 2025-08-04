@@ -13,16 +13,28 @@
     font-family: 'Noto Sans KR', sans-serif;
     color: #222;
     background-color: #fff;
+    flex: 1;
 }
 
 /* ====== 헤더/타이틀/애니메이션 ====== */
 .project-header {
     text-align: center;
-    margin-bottom: 40px;
+    margin: 35px 0 16px;
+    transform: translateY(25vh);
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.project-header.animation-complete {
+    transform: translateY(0);
 }
 
 .page-highlight {
-    font-size: 36px;
+    font-size: 40px;
+    line-height: 1.4;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 700;
     margin: 0;
     color: #222;
@@ -62,6 +74,8 @@
     padding-right: 20px;
     opacity: 0;
     transform: translateY(-10px);
+    transition: all 0.5s ease;
+    position: relative;
     z-index: 1000;
 }
 
@@ -89,10 +103,6 @@
     min-width: 120px;
 }
 
-.dropdown-arrow {
-    margin-left: 8px;
-}
-
 .sort-menu {
     position: absolute;
     top: 100%;
@@ -111,6 +121,15 @@
 
 .sort-dropdown:hover .sort-menu {
     display: block;
+}
+
+.dropdown-arrow {
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}
+
+.sort-dropdown:hover .dropdown-arrow {
+    transform: rotate(180deg);
 }
 
 .sort-menu-item {
@@ -161,6 +180,57 @@
     transition-delay: 0s !important;
 }
 
+/* ====== 별 아이콘 스타일 ====== */
+.importance-star {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    cursor: pointer;
+    z-index: 9999;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+/* 별 아이콘 hover 효과 */
+.importance-star:hover {
+    background-color: transparent;
+    transform: scale(1.1);
+}
+
+/* 별 아이콘 클릭 효과 */
+.importance-star:active {
+    background-color: transparent;
+    transform: scale(1.1);
+}
+
+/* 별 아이콘에 hover할 때 카드의 hover 효과 방지 */
+.project-card:hover .importance-star:hover {
+    transform: scale(1.1) !important;
+}
+
+.project-card:hover .importance-star:hover ~ * {
+    pointer-events: none;
+}
+
+/* 별 아이콘 클릭 시 카드의 active 효과 방지 */
+.project-card:active .importance-star:active {
+    transform: scale(1.1) !important;
+}
+
+/* 별 아이콘 클릭 시 카드의 active 효과 완전 차단 */
+.project-card:has(.importance-star:active) {
+    background-color: #f9f9f9 !important;
+    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.15) !important;
+    transform: none !important;
+    pointer-events: none;
+}
+
+.project-card:has(.importance-star:active) .importance-star {
+    pointer-events: auto;
+}
+
 .project-card.add-card {
     display: flex;
     align-items: center;
@@ -191,6 +261,8 @@
 .project-icon {
     margin-bottom: 10px;
 }
+
+
 
 .project-name {
     position: relative;
@@ -229,6 +301,15 @@
     font-size: 12px;
     color: #777;
     margin-top: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.source-count {
+    margin-left: auto;
+    color: #888;
+    font-size: 1.02em;
+    font-weight: 550;
 }
 
 /* ====== 카드 메뉴/팝업 ====== */

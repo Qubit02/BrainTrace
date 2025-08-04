@@ -1,4 +1,9 @@
-# services/ai_service.py
+"""
+base_ai_service.py
+
+LLMService 구현체에 대한 인터페이스입니다.
+"""
+
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
 
