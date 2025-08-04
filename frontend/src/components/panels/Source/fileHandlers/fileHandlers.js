@@ -1,4 +1,4 @@
-import { uploadPdfs, uploadTextfiles, createMemo, uploadMDFiles, createTextToGraph, uploadDocxFiles } from '../../../../../api/backend';
+import { uploadPdfs, uploadTextfiles, createMemo, uploadMDFiles, createTextToGraph, uploadDocxFiles } from '../../../../../api/config/apiIndex';
 
 const fileHandlers = {
   pdf: async (f, brainId) => {

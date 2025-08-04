@@ -28,10 +28,10 @@ import {
   fetchChatSession,
   fetchChatHistoryBySession, 
   deleteAllChatsBySession
-} from '../../../../api/chat';
+} from '../../../../api/services/chatApi';
 import { createSourceViewClickHandler, extractOriginalSentencesForHover } from './sourceViewUtils';
-import { requestAnswer, getSourceCountByBrain } from '../../../../api/graphApi';
-import { listModels, installModel } from '../../../../api/model';
+import { requestAnswer, getSourceCountByBrain } from '../../../../api/services/graphApi';
+import { listModels, installModel } from '../../../../api/services/aiModelApi';
 import SourceHoverTooltip from './SourceHoverTooltip';
 
 // UI 컴포넌트 import

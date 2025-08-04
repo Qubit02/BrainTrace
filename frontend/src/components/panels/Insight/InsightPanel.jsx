@@ -19,7 +19,7 @@ import {
   restoreMemo,
   hardDeleteMemo,
   emptyTrash
-} from '../../../../api/backend';
+} from '../../../../api/config/apiIndex';
 
 function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady, setReferencedNodes, setFocusNodeNames, setNewlyAddedNodeNames }) {
   const projectId = selectedBrainId;

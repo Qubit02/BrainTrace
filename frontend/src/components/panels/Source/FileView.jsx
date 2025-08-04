@@ -18,7 +18,7 @@ import {
   getMDFilesByBrain,
   getDocxFilesByBrain,
   convertMemoToSource
-} from '../../../../api/backend';
+} from '../../../../api/config/apiIndex';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

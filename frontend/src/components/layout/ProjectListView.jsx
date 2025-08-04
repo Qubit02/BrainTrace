@@ -37,8 +37,8 @@ import {
     renameBrain,
     createBrain,
     toggleBrainImportance
-} from '../../../api/backend';
-import { getSourceCountByBrain } from '../../../api/graphApi';
+} from '../../../api/config/apiIndex';
+import { getSourceCountByBrain } from '../../../api/services/graphApi';
 import { clearAllHighlightingData } from '../panels/Source/viewer/Highlighting.jsx';
 
 import AppHeader from './AppHeader';
