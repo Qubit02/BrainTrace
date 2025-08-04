@@ -40,7 +40,7 @@ import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
 import { MdOutlineSource } from "react-icons/md";
-import { getDocxFile, getMemo, getPdf, getTextFile, getMDFile } from '../../../../../api/backend';
+import { getDocxFile, getMemo, getPdf, getTextFile, getMDFile } from '../../../../../api/config/apiIndex';
 
 /**
  * GenericViewer - 범용 파일 뷰어 컴포넌트
