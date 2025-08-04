@@ -4,7 +4,7 @@
 // - 외부 상태(참고노드, 포커스노드 등)와 동기화
 // - 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 조정 지원
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
 import { fetchGraphData } from '../../../../../api/graphApi';
@@ -198,12 +198,17 @@ function GraphView({
   }, [fgRef, containerRef, graphData, visibleNodes, isAnimating, loading, hoveredNode]);
 
   // === 하이라이트/포커스/신규노드 관련 ===
-  const [referencedSet, setReferencedSet] = useState(new Set()); // 참고노드 집합(빠른 lookup용)
   const [showReferenced, setShowReferenced] = useState(() => !localStorage.getItem('참고노드팝업닫힘')); // 참고노드 하이라이트 표시 여부
   const [showFocus, setShowFocus] = useState(() => !localStorage.getItem('포커스노드팝업닫힘')); // 포커스노드 하이라이트 표시 여부
   const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]); // 새로 추가된 노드 이름 목록
   const [showNewlyAdded, setShowNewlyAdded] = useState(() => !localStorage.getItem('추가노드팝업닫힘')); // 신규노드 하이라이트 표시 여부
   const [referencedNodesState, setReferencedNodesState] = useState(referencedNodes || []); // referencedNodes를 state로 관리
+  
+  // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
+  const referencedSet = useMemo(() => new Set(referencedNodesState), [referencedNodesState]);
+  
+  // 검색 결과를 위한 별도의 Set
+  const [searchReferencedSet, setSearchReferencedSet] = useState(new Set());
 
   // === 더블클릭/이벤트 관련 ===
   const lastClickRef = useRef({ node: null, time: 0 }); // 노드 더블클릭 감지용
@@ -428,7 +433,7 @@ function GraphView({
       onNewlyAddedNodes(newlyAddedNodeNames);
       prevGraphDataRef.current = { ...prevGraphDataRef.current, nodes: [...prevGraphDataRef.current.nodes, ...graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name))] };
     }
-  }, [newlyAddedNodeNames, graphData.nodes]);
+  }, [newlyAddedNodeNames, onNewlyAddedNodes]);
 
   useEffect(() => {
     updateDimensions();
@@ -526,7 +531,6 @@ function GraphView({
 
   // === 참고노드(referencedNodes) 하이라이트 처리 ===
   useEffect(() => {
-    setReferencedSet(new Set(referencedNodesState));
     if (referencedNodesState.length > 0) {
       setRefPulseStartTime(Date.now());
       setShowReferenced(true);
@@ -557,7 +561,7 @@ function GraphView({
   useEffect(() => {
     if (!showReferenced || referencedNodesState.length === 0 || !graphData.nodes.length) return;
 
-    const referenced = graphData.nodes.filter(n => referencedSet.has(n.name));
+    const referenced = graphData.nodes.filter(n => (searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)));
     if (referenced.length === 0) return;
 
     const timer = setTimeout(() => {
@@ -688,14 +692,14 @@ function GraphView({
   useEffect(() => {
     if (searchQuery === '') {
       setShowReferenced(false);
-      setReferencedSet(new Set());
+      setSearchReferencedSet(new Set());
       setRefPulseStartTime(null);
       return;
     }
     if (searchResults.length === 0) return;
     // 여러 노드 모두 하이라이트
     setShowReferenced(true);
-    setReferencedSet(new Set(searchResults));
+    setSearchReferencedSet(new Set(searchResults));
     setRefPulseStartTime(Date.now());
   }, [searchQuery, searchResults]);
 
@@ -948,11 +952,11 @@ function GraphView({
               ctx.globalAlpha = node.__opacity ?? 1;
             }
             const label = node.name || node.id;
-            const isReferenced = showReferenced && referencedSet.has(node.name);
+            const isReferenced = showReferenced && (searchQuery ? searchReferencedSet.has(node.name) : referencedSet.has(node.name));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
-            const isRef = showReferenced && referencedSet.has(label);
+            const isRef = showReferenced && (searchQuery ? searchReferencedSet.has(label) : referencedSet.has(label));
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
             const baseSize = customNodeSize;
