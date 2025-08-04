@@ -14,9 +14,10 @@ from fastapi.exceptions import RequestValidationError
 from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 
+from run_ollama import run_ollama, wait_for_port
+
 # 기존 라우터
 from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, chatsessionRouter, searchRouter, voiceRouter, mdRouter, docxRouter
-
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -46,8 +47,18 @@ async def lifespan(app: FastAPI):
             logging.error("❌ Neo4j 실행 실패")
     except Exception as e:
         logging.error("Neo4j 실행 중 오류: %s", e)
+
+    try:
+        ollama_proc = run_ollama()
+        logging.info("⏳ Ollama 기동 중…")
+        await wait_for_port("localhost", 11434, timeout=60)
+        logging.info("✅ Ollama 준비 완료")
+    except Exception as e:
+        logging.error("Ollama 실행 중 오류: %s", e)
+        raise
+
     yield
-    # 3) 종료 시 Neo4j 정리
+
     if neo4j_process:
         logging.info("🛑 Neo4j 프로세스를 종료합니다...")
         try:
@@ -59,6 +70,12 @@ async def lifespan(app: FastAPI):
             logging.info("✅ Neo4j 정상 종료 완료")
         except Exception as e:
             logging.error("Neo4j 종료 중 오류 발생: %s", e)
+
+    try:
+        ollama_proc.terminate()
+        logging.info("🛑 Ollama 프로세스를 종료했습니다.")
+    except:
+        pass
 
 # ─── FastAPI 앱 생성 ─────────────────────────────────
 app = FastAPI(
