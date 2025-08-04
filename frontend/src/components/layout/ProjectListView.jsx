@@ -49,6 +49,7 @@ import { FaStar, FaRegStar } from "react-icons/fa";
 import ConfirmDialog from '../common/ConfirmDialog';
 import './ProjectListView.css';
 import { FaPlus } from "react-icons/fa";
+import { IoIosArrowDown } from "react-icons/io";
 
 export default function ProjectListView() {
     const navigate = useNavigate();
@@ -281,6 +282,7 @@ export default function ProjectListView() {
     // ===== 중요도 토글 함수 =====
     const handleToggleImportance = async (brain, e) => {
         e.stopPropagation();
+        e.preventDefault();
         try {
             const updatedBrain = await toggleBrainImportance(brain.brain_id);
             setBrains(prev =>
@@ -310,12 +312,9 @@ export default function ProjectListView() {
                     <div className="sort-dropdown">
                         <button className="sort-button">
                             {sortOption}
-                            <img
-                                src="/src/assets/icons/arrow-down.png"
-                                alt="dropdown"
+                            <IoIosArrowDown
+                                size={14}
                                 className="dropdown-arrow"
-                                width={12}
-                                height={12}
                             />
                         </button>
                             <div className="sort-menu">
@@ -370,6 +369,8 @@ export default function ProjectListView() {
                              <div 
                                  className="importance-star"
                                  onClick={(e) => handleToggleImportance(project, e)}
+                                 onMouseDown={(e) => e.stopPropagation()}
+                                 onMouseUp={(e) => e.stopPropagation()}
                                  title={project.is_important ? "중요 해제" : "중요로 설정"}
                              >
                                  {project.is_important ? (

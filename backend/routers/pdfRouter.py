@@ -21,12 +21,14 @@ class PdfCreate(BaseModel):
     pdf_path: str
     type: Optional[str] = None
     brain_id: Optional[int] = None
+    pdf_text: Optional[str] = None
 
 class PdfUpdate(BaseModel):
     pdf_title: Optional[str] = None
     pdf_path: Optional[str] = None
     type: Optional[str] = None
     brain_id: Optional[int] = None
+    pdf_text: Optional[str] = None
 
 class PdfResponse(BaseModel):
     pdf_id: int
@@ -35,6 +37,7 @@ class PdfResponse(BaseModel):
     pdf_date: str
     type: Optional[str]
     brain_id: Optional[int]
+    pdf_text: Optional[str]
 
 # ───────── CREATE PDF ─────────
 @router.post("/", response_model=PdfResponse, status_code=status.HTTP_201_CREATED)
@@ -50,7 +53,8 @@ async def create_pdf(pdf_data: PdfCreate):
             pdf_title=pdf_data.pdf_title,
             pdf_path=pdf_data.pdf_path,
             type=pdf_data.type,
-            brain_id=pdf_data.brain_id
+            brain_id=pdf_data.brain_id,
+            pdf_text=pdf_data.pdf_text
         )
         return pdf
     except Exception as e:
@@ -100,17 +104,18 @@ async def update_pdf(pdf_id: int, pdf_data: PdfUpdate):
 
     try:
         updated = sqlite_handler.update_pdf(
-            pdf_id=pdf_id,
-            pdf_title=pdf_data.pdf_title,
-            pdf_path=pdf_data.pdf_path,
-            type=pdf_data.type,
-            brain_id=pdf_data.brain_id
+            pdf_id,
+            pdf_data.pdf_title,
+            pdf_data.pdf_path,
+            pdf_data.type,
+            pdf_data.brain_id,
+            pdf_data.pdf_text
         )
         if not updated:
             raise HTTPException(status_code=400, detail="업데이트할 정보가 없습니다")
         return sqlite_handler.get_pdf(pdf_id)
     except Exception as e:
-        logging.error("PDF 업데이트 오류: %s", e)
+        logging.error("PDF 수정 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 # ───────── DELETE PDF ─────────
@@ -180,15 +185,27 @@ async def upload_pdfs(
             unique_name = f"{uuid.uuid4().hex}_{safe_name}"
             file_path = os.path.join(UPLOAD_DIR, unique_name)
 
-            content = await file.read()
             with open(file_path, "wb") as f:
-                f.write(content)
+                f.write(await file.read())
+
+            # PDF 텍스트 추출
+            import PyPDF2
+            text = ""
+            try:
+                with open(file_path, 'rb') as pdf_file:
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    for page in pdf_reader.pages:
+                        text += page.extract_text() + "\n\n"
+            except Exception as e:
+                logging.warning(f"PDF 텍스트 추출 실패 ({file.filename}): {e}")
+                text = ""
 
             created = sqlite_handler.create_pdf(
                 pdf_title=safe_name,
                 pdf_path=file_path,
                 type="pdf",
-                brain_id=brain_id
+                brain_id=brain_id,
+                pdf_text=text
             )
             uploaded_pdfs.append(created)
         except Exception as e:

@@ -58,7 +58,6 @@ export default function FileView({
   const [uploadQueue, setUploadQueue] = useState([]);           // 업로드/변환 대기 큐
   const [isProcessing, setIsProcessing] = useState(false);      // 변환 작업 진행 중 여부
   const [isDeleting, setIsDeleting] = useState(false);          // 삭제 작업 진행 중 여부
-  // const [isNodeViewLoading, setIsNodeViewLoading] = useState(null); // 노드 보기 로딩 상태
 
   // === 파일 목록 처리 ===
   // 검색 필터링된 파일 목록 계산
@@ -292,7 +291,14 @@ export default function FileView({
                 return;
               }
               setSelectedFile(f.id);
-              onOpenFile(f.id, f.filetype);
+              // 변환된 파일 객체에서 원본 메타데이터의 ID를 가져오기
+              const fileId = f.meta ? 
+                (f.filetype === 'pdf' ? f.meta.pdf_id : 
+                 f.filetype === 'txt' ? f.meta.txt_id :
+                 f.filetype === 'md' ? f.meta.md_id :
+                 f.filetype === 'docx' ? f.meta.docx_id :
+                 f.filetype === 'memo' ? f.meta.memo_id : f.id) : f.id;
+              onOpenFile(fileId, f.filetype);
             }}
           >
             <FileIcon fileName={f.name} />

@@ -10,9 +10,8 @@ import {
 } from '../../../../api/backend';
 import { toast } from 'react-toastify';
 import FileView from './FileView';
-import PDFViewer from './viewer/PDFViewer';
 import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
-import toggleIcon from '../../../assets/icons/toggle-view.png';
+import { VscLayoutSidebarRightOff, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import './SourcePanel.css';
 import { MdSearch } from "react-icons/md";
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
@@ -47,8 +46,7 @@ export default function SourcePanel({
   const [fileMap, setFileMap] = useState({});          // file_id → file 메타데이터 매핑
 
   // === 파일 뷰어 상태 ===
-  const [openedPDF, setOpenedPDF] = useState(null);    // 열람 중인 PDF
-  const [openedFile, setOpenedFile] = useState(null); // txt, md, memo 모두 이걸로
+  const [openedFile, setOpenedFile] = useState(null); // 모든 파일 타입 통합
   const [uploadKey, setUploadKey] = useState(0);       // 리렌더 트리거
   const [dataMetrics, setDataMetrics] = useState({     // 데이터 메트릭
     textLength: 0,
@@ -65,7 +63,6 @@ export default function SourcePanel({
   const [allFiles, setAllFiles] = useState([]);                    // 모든 파일 리스트 (PDF, TXT, MEMO)
   const [localFocusSource, setLocalFocusSource] = useState(null);  // 클릭 포커스 대상
   const [pendingFocusSource, setPendingFocusSource] = useState(null); // 업로드 후 포커스 대상
-  const [uploadQueue, setUploadQueue] = useState([]);              // 업로드 진행상황 상태
   const [externalUploadQueue, setExternalUploadQueue] = useState([]); // 외부에서 전달할 업로드 큐
 
   // === 반응형 UI 설정 ===
@@ -111,7 +108,6 @@ export default function SourcePanel({
     if (selectedBrainId) {
       loadAllFiles();
     }
-    setOpenedPDF(null);
     setOpenedFile(null);
   }, [selectedBrainId]);
 
@@ -120,8 +116,7 @@ export default function SourcePanel({
     if (focusSource) {
       const targetFile = allFiles.find(f => String(typeMeta[f.type]?.id(f)) === String(focusSource.id));
       if (targetFile) {
-        if (targetFile.type === 'pdf') setOpenedPDF(targetFile);
-        else setOpenedFile(targetFile);
+        setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
       } else {
@@ -196,24 +191,47 @@ export default function SourcePanel({
    * 모든 뷰어 상태를 초기화하고 소스 패널을 닫음
    */
   const closeSource = () => {
-    setOpenedPDF(null);
-    setOpenedFile(null); // 통합 변수로 변경
+    setOpenedFile(null);
     setIsSourceOpen(false);
     onBackFromSource?.();
   };
 
-  // 파일 열기 핸들러: pdf는 그대로, 나머지는 모두 openedFile로
+  // 파일 열기 핸들러: 모든 파일 타입을 통합 처리
   const handleOpenFile = (id, type) => {
-    if (uploadQueue.length > 0) {
-      toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');
-      return;
+    
+    // 파일 타입에 따라 ID 필드명 결정
+    let idField;
+    switch (type) {
+      case 'pdf':
+        idField = 'pdf_id';
+        break;
+      case 'txt':
+        idField = 'txt_id';
+        break;
+      case 'md':
+        idField = 'md_id';
+        break;
+      case 'docx':
+        idField = 'docx_id';
+        break;
+      case 'memo':
+        idField = 'memo_id';
+        break;
+      default:
+        idField = 'id';
     }
-    const file = allFiles.find(f => f.type === type && String(typeMeta[type]?.id(f)) === String(id));
+    
+    const file = allFiles.find(f => {
+      const fileId = f[idField];
+      const matches = f.type === type && String(fileId) === String(id);
+      return matches;
+    });
+    
     if (file) {
-      if (type === 'pdf') setOpenedPDF(file);
-      else setOpenedFile(file);
+      setOpenedFile(file);
       setIsSourceOpen(true);
     } else {
+      console.log('파일을 찾을 수 없음:', { id, type, allFiles });
       alert('파일을 찾을 수 없습니다.');
     }
   };
@@ -296,19 +314,26 @@ export default function SourcePanel({
         {!collapsed && <span className="header-title">Source</span>}
         <div className="header-right-icons" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* 사이드패널 접기/펴기 버튼 */}
-          <img
-            src={toggleIcon}
-            alt="Toggle"
-            style={{ width: '23px', height: '23px', cursor: 'pointer' }}
-            onClick={() => setCollapsed(prev => !prev)}
-          />
+          {collapsed ? (
+            <VscLayoutSidebarLeftOff
+              size={18}
+              style={{ cursor: 'pointer'}}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          ) : (
+            <VscLayoutSidebarRightOff
+              size={18}
+              style={{ cursor: 'pointer'}}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          )}
         </div>
       </div>
       {!collapsed && (
         <>
           <div>
             {/* 소스가 열려있지 않을 때만 표시 */}
-            {(!openedPDF && !openedFile) && (
+            {!openedFile && (
               <div className="action-buttons">
                 {/* 소스 추가 버튼 (아이콘/텍스트 토글) */}
                 <button
@@ -393,18 +418,8 @@ export default function SourcePanel({
           )}
           {/* === 메인 콘텐츠 영역 === */}
           <div className="panel-content" style={{ flexGrow: 1, overflow: 'auto' }}>
-            {openedPDF ? (
-              // PDF 뷰어
-              <div className="pdf-viewer-wrapper" style={{ height: '100%' }}>
-                <PDFViewer
-                  file={`http://localhost:8000/${openedPDF.pdf_path}`}
-                  containerWidth={panelWidth}
-                  onBack={closeSource}
-                  title={openedPDF.title}
-                />
-              </div>
-            ) : openedFile ? (
-              // TXT/MD/기타 텍스트 뷰어
+            {openedFile ? (
+              // 모든 파일 타입을 GenericViewer로 통합 처리
               <div className="pdf-viewer-wrapper" style={{ height: '100%' }}>
                 <GenericViewer
                   type={openedFile.type}
@@ -412,12 +427,16 @@ export default function SourcePanel({
                     openedFile.type === 'txt' ? `http://localhost:8000/${openedFile.txt_path}` :
                       openedFile.type === 'md' ? `http://localhost:8000/${openedFile.md_path}` :
                         openedFile.type === 'docx' ? `http://localhost:8000/${openedFile.docx_path}` :
-                          undefined
+                          openedFile.type === 'pdf' ? `http://localhost:8000/${openedFile.pdf_path}` :
+                            undefined
                   }
                   memoId={openedFile.type === 'memo' ? openedFile.memo_id : undefined}
                   onBack={closeSource}
                   title={openedFile.title}
                   docxId={openedFile.type === 'docx' ? openedFile.docx_id : undefined}
+                  pdfId={openedFile.type === 'pdf' ? openedFile.pdf_id : undefined}
+                  txtId={openedFile.type === 'txt' ? openedFile.txt_id : undefined}
+                  mdId={openedFile.type === 'md' ? openedFile.md_id : undefined}
                 />
               </div>
             ) : (
@@ -454,7 +473,7 @@ export default function SourcePanel({
       )}
 
       {/* KnowledgeGraphStatusBar: 소스가 열려있지 않을 때만 표시 */}
-      {!collapsed && !openedPDF && !openedFile && ( // 통합 변수로 변경
+      {!collapsed && !openedFile && (
         <KnowledgeGraphStatusBar
           textLength={dataMetrics.textLength}
           nodesCount={dataMetrics.nodesCount}

@@ -17,7 +17,7 @@ from sqlite_db import SQLiteHandler
 from run_ollama import run_ollama, wait_for_port
 
 # 기존 라우터
-from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, chatsessionRouter, searchRouter, voiceRouter, mdRouter, docxRouter
+from routers import brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter, chatRouter, chatsessionRouter, searchRouter, voiceRouter, mdRouter, docxRouter, model_router
 
 # ─── 로깅 설정 ─────────────────────────────────────
 logging.basicConfig(
@@ -120,6 +120,7 @@ app.include_router(chatsessionRouter.router)
 app.include_router(searchRouter.router)
 app.include_router(voiceRouter.router)
 app.include_router(docxRouter.router)
+app.include_router(model_router.router)
 
 app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
 app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")
