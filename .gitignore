@@ -55,3 +55,4 @@ package-lock.json
 # =========================
 .env
 .gitignore
+build/
