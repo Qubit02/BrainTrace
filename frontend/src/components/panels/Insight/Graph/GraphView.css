@@ -434,7 +434,32 @@
     font-size: 18px;
 }
 
+/* 전체화면 모드에서 다크모드일 때 툴팁 스타일 */
+.graph-area.dark-mode .graph-hover-tooltip.fullscreen {
+    color: #ffffff;
+    background: none;
+    box-shadow: none;
+}
+
+/* 다크모드에서 툴팁 텍스트 색상 */
+.graph-area.dark-mode .tooltip-label {
+    color: #ffffff;
+}
+
+.graph-area.dark-mode .tooltip-value {
+    color: #ffffff;
+}
+
+.graph-area.dark-mode .tooltip-info {
+    color: #e2e8f0;
+}
+
+.graph-area.dark-mode .tooltip-arrow {
+    color: #ffffff;
+}
+
 .tooltip-content {
+    margin-bottom: 25px;
     display: flex;
     flex-direction: column;
     gap: 2px;
