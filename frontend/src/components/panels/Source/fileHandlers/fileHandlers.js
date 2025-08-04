@@ -1,5 +1,4 @@
 import { uploadPdfs, uploadTextfiles, createMemo, uploadMDFiles, createTextToGraph, uploadDocxFiles } from '../../../../../api/backend';
-import { pdfjs } from 'react-pdf';
 
 const fileHandlers = {
   pdf: async (f, brainId) => {

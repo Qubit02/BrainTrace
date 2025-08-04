@@ -52,9 +52,8 @@ export default function GraphViewWithModal({
         setReferencedNodesState(referencedNodes || []);
     }, [referencedNodes]);
 
-    // ✅ 수정: focusNodeNames 변화 감지 - 안전한 의존성 배열 사용
+    // focusNodeNames 변화 감지 - 안전한 의존성 배열 사용
     useEffect(() => {
-        console.log('🎯 focusNodeNames 변화 감지:', focusNodeNames);
         if (focusNodeNames && focusNodeNames.length > 0) {
             console.log('✅ showFocus를 true로 설정');
             setShowFocus(true);

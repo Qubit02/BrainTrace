@@ -48,7 +48,7 @@ export default function FileView({
   externalUploadQueue = [],    // 외부에서 전달받은 업로드 큐
   setExternalUploadQueue = () => {}  // 외부 업로드 큐 초기화 함수
 }) {
-  // === 상태 관리 ===
+  
   const [selectedFile, setSelectedFile] = useState(null)        // 현재 선택된 파일 ID
   const [isDrag, setIsDrag] = useState(false)                   // 드래그 중 여부
   const [menuOpenId, setMenuOpenId] = useState(null);           // 열린 메뉴의 파일 ID
@@ -396,6 +396,15 @@ export default function FileView({
           <p className="empty-sub">
             이 영역에 파일을 <strong>드래그해서 추가</strong>해보세요!
           </p>
+            <div className="supported-formats">
+             <p className="format-title">지원하는 파일 형식</p>
+             <div className="format-list">
+               <span className="format-item">PDF</span>
+               <span className="format-item">TXT</span>
+               <span className="format-item">DOCX</span>
+               <span className="format-item">MARKDOWN</span>
+             </div>
+           </div>
         </div>
       )}
       {/* 검색 결과가 없을 때 (업로드 중이 아닐 때만) */}

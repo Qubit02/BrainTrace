@@ -4,28 +4,60 @@
 // - 외부 상태(참고노드, 포커스노드 등)와 동기화
 // - 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 조정 지원
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
 import { fetchGraphData } from '../../../../../api/graphApi';
 import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
-import { FiSearch, FiX } from 'react-icons/fi';
-import { MdOutlineSearch } from "react-icons/md";
 import { toast } from 'react-toastify';
 
 // 노드 상태 팝업 컴포넌트
-const NodeStatusPopup = ({ type, color, nodes, onClose }) => (
-  <div className="graph-popup">
-    <div className="popup-content">
-      <span className="popup-tag" style={{ background: color }}>
-        {type}
-      </span>
-      <span className="popup-text">{nodes.join(', ')}</span>
+const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      const element = textRef.current;
+      // 접힌 상태에서 텍스트가 넘치는지 확인 (말줄임표가 나타나는지)
+      const isOverflowing = element.scrollWidth > element.clientWidth;
+      setCanExpand(isOverflowing);
+      
+      // 펼칠 수 없으면 항상 접힌 상태로 유지
+      if (!isOverflowing) {
+        setIsExpanded(false);
+      }
+    }
+  }, [nodes]);
+
+  const toggleExpand = () => {
+    if (canExpand) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  return (
+    <div 
+      className={`graph-popup ${isExpanded ? 'expanded' : ''} ${canExpand ? 'expandable' : ''}`} 
+      onClick={toggleExpand}
+    >
+      <div className="popup-content">
+        <span className="popup-tag" style={{ background: color }}>
+          {type}
+        </span>
+        <span 
+          ref={textRef}
+          className="popup-text"
+        >
+          {nodes.join(', ')}
+        </span>
+      </div>
+      <span className="close-x" onClick={onClose}>×</span>
     </div>
-    <span className="close-x" onClick={onClose}>×</span>
-  </div>
-);
+  );
+};
 
 function GraphView({
   brainId = 'default-brain-id',
@@ -166,12 +198,17 @@ function GraphView({
   }, [fgRef, containerRef, graphData, visibleNodes, isAnimating, loading, hoveredNode]);
 
   // === 하이라이트/포커스/신규노드 관련 ===
-  const [referencedSet, setReferencedSet] = useState(new Set()); // 참고노드 집합(빠른 lookup용)
   const [showReferenced, setShowReferenced] = useState(() => !localStorage.getItem('참고노드팝업닫힘')); // 참고노드 하이라이트 표시 여부
   const [showFocus, setShowFocus] = useState(() => !localStorage.getItem('포커스노드팝업닫힘')); // 포커스노드 하이라이트 표시 여부
   const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]); // 새로 추가된 노드 이름 목록
   const [showNewlyAdded, setShowNewlyAdded] = useState(() => !localStorage.getItem('추가노드팝업닫힘')); // 신규노드 하이라이트 표시 여부
   const [referencedNodesState, setReferencedNodesState] = useState(referencedNodes || []); // referencedNodes를 state로 관리
+  
+  // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
+  const referencedSet = useMemo(() => new Set(referencedNodesState), [referencedNodesState]);
+  
+  // 검색 결과를 위한 별도의 Set
+  const [searchReferencedSet, setSearchReferencedSet] = useState(new Set());
 
   // === 더블클릭/이벤트 관련 ===
   const lastClickRef = useRef({ node: null, time: 0 }); // 노드 더블클릭 감지용
@@ -396,7 +433,7 @@ function GraphView({
       onNewlyAddedNodes(newlyAddedNodeNames);
       prevGraphDataRef.current = { ...prevGraphDataRef.current, nodes: [...prevGraphDataRef.current.nodes, ...graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name))] };
     }
-  }, [newlyAddedNodeNames, graphData.nodes]);
+  }, [newlyAddedNodeNames, onNewlyAddedNodes]);
 
   useEffect(() => {
     updateDimensions();
@@ -411,7 +448,6 @@ function GraphView({
   useEffect(() => {
     if (!loading && graphData.nodes.length > 0 && fgRef.current) {
       const zoom = getInitialZoomScale(graphData.nodes.length);
-      console.log("노드의 갯수 : ", graphData.nodes.length)
       fgRef.current.centerAt(0, 0, 0);
       fgRef.current.zoom(zoom, 0);
     }
@@ -452,7 +488,6 @@ function GraphView({
   // === 그래프 준비 완료 시 콜백 ===
   // graphReady가 바뀔 때마다 부모에 전달
   useEffect(() => {
-    console.log('graphReady changed:', graphReady);
     if (onGraphReady) onGraphReady(graphReady);
   }, [graphReady, onGraphReady]);
 
@@ -496,8 +531,6 @@ function GraphView({
 
   // === 참고노드(referencedNodes) 하이라이트 처리 ===
   useEffect(() => {
-    console.log('referencedNodes:', referencedNodesState);
-    setReferencedSet(new Set(referencedNodesState));
     if (referencedNodesState.length > 0) {
       setRefPulseStartTime(Date.now());
       setShowReferenced(true);
@@ -528,7 +561,7 @@ function GraphView({
   useEffect(() => {
     if (!showReferenced || referencedNodesState.length === 0 || !graphData.nodes.length) return;
 
-    const referenced = graphData.nodes.filter(n => referencedSet.has(n.name));
+    const referenced = graphData.nodes.filter(n => (searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)));
     if (referenced.length === 0) return;
 
     const timer = setTimeout(() => {
@@ -659,14 +692,14 @@ function GraphView({
   useEffect(() => {
     if (searchQuery === '') {
       setShowReferenced(false);
-      setReferencedSet(new Set());
+      setSearchReferencedSet(new Set());
       setRefPulseStartTime(null);
       return;
     }
     if (searchResults.length === 0) return;
     // 여러 노드 모두 하이라이트
     setShowReferenced(true);
-    setReferencedSet(new Set(searchResults));
+    setSearchReferencedSet(new Set(searchResults));
     setRefPulseStartTime(Date.now());
   }, [searchQuery, searchResults]);
 
@@ -693,12 +726,11 @@ function GraphView({
         switch (e.key) {
           case '+':
           case '=':
-          case '1':
             e.preventDefault();
             fg.zoom(currZoom * zoomStep, 300);
             break;
           case '-':
-          case '2':
+          case '_':
             e.preventDefault();
             fg.zoom(currZoom / zoomStep, 300);
             break;
@@ -824,12 +856,12 @@ function GraphView({
 
       {(hoveredNode || hoveredLink) && (
         <div 
-          className="graph-hover-tooltip"
+          className={`graph-hover-tooltip ${isFullscreen ? 'fullscreen' : ''}`}
           style={{
             left: hoveredLink ? '8px' : '16px'
           }}
         >
-          {hoveredNode && !hoveredLink && !draggedNode && !isFullscreen && (
+          {hoveredNode && !hoveredLink && !draggedNode  && (
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-label">노드:</span> 
@@ -840,7 +872,7 @@ function GraphView({
               </div>
             </div>
           )}
-          {(hoveredLink && !isFullscreen) && (
+          {(hoveredLink) && (
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-value">{hoveredLink.source?.name || hoveredLink.source}</span>
@@ -920,11 +952,11 @@ function GraphView({
               ctx.globalAlpha = node.__opacity ?? 1;
             }
             const label = node.name || node.id;
-            const isReferenced = showReferenced && referencedSet.has(node.name);
+            const isReferenced = showReferenced && (searchQuery ? searchReferencedSet.has(node.name) : referencedSet.has(node.name));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
-            const isRef = showReferenced && referencedSet.has(label);
+            const isRef = showReferenced && (searchQuery ? searchReferencedSet.has(label) : referencedSet.has(label));
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
             const baseSize = customNodeSize;

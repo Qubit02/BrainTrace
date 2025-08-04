@@ -37,7 +37,6 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
       try {
         // 삭제된 메모도 포함하여 조회
         const memos = await getMemosByBrain(projectId);
-        console.log('조회된 메모들:', memos);
         setMemos(memos);
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);
@@ -252,7 +251,9 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
             <div
               style={{
                 height: showMemo ? `${graphHeight}px` : '100%',
-                transition: isResizing ? 'none' : 'height 0.3s ease'
+                transition: isResizing ? 'none' : 'height 0.3s ease',
+                position: 'relative',
+                zIndex: 10,
               }}
             >
               <GraphViewWithModal
@@ -278,6 +279,8 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
                 cursor: 'ns-resize',
                 borderBottom: '2px solid #ccc',
                 backgroundColor: '#fafafa',
+                position: 'relative',
+                zIndex: 100,
               }}
               onMouseDown={() => setIsResizing(true)}
             />
@@ -290,6 +293,8 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
               flexDirection: 'column',
               overflow: 'hidden',
               borderTop: '1px solid #eaeaea',
+              position: 'relative',
+              zIndex: 50,
             }}>
               {selectedMemoId != null && selectedMemo ? (
                 <MemoEditor

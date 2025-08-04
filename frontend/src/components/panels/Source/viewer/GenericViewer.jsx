@@ -1,17 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
-import HighlightPopup from '../HighlightPopup';
-import { Highlighting } from './Highlighting.jsx';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import HighlightPopup from './HighlightPopup.jsx';
+import { useHighlighting } from './Highlighting.jsx';
 import './Viewer.css';
 import { FaArrowLeftLong, FaMinus, FaPlus } from "react-icons/fa6";
 import { TbRefresh } from "react-icons/tb";
+import { MdOutlineSource } from "react-icons/md";
 import { getDocxFile, getMemo, getPdf, getTextFile, getMDFile } from '../../../../../api/backend';
 
-export default function GenericViewer({ type, fileUrl, memoId, onBack, title, docxId, pdfId, txtId, mdId }) {
+export default function GenericViewer({ type, fileUrl, memoId, onBack, title, docxId, pdfId, txtId, mdId, highlightingInfo }) {
     const [content, setContent] = useState('');
     const [fontSize, setFontSize] = useState(16);
     const containerRef = useRef(null);
 
-    // 하이라이팅 훅 사용
+    // 출처보기를 통해 들어온 경우인지 확인 (highlightingInfo가 있으면 출처보기)
+    const isFromSourceView = !!highlightingInfo;
+
+    // 하이라이팅 훅 사용 - highlightingInfo를 전달하여 출처보기 모드 지원
     const {
         popup,
         setPopup,
@@ -22,11 +26,9 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
         renderHighlightedContent,
         copyText,
         loadHighlights
-    } = Highlighting(type, fileUrl, memoId, docxId, pdfId, txtId, mdId);
+    } = useHighlighting(type, fileUrl, memoId, docxId, pdfId, txtId, mdId, isFromSourceView, highlightingInfo);
 
-
-
-    // 파일/메모 불러오기 및 하이라이트 불러오기
+    // 파일/메모 불러오기
     useEffect(() => {
         const loadContent = async () => {
             try {
@@ -86,44 +88,67 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
         };
 
         loadContent();
-        
-        // 하이라이트 불러오기
-        loadHighlights();
-    }, [type, fileUrl, memoId, docxId, pdfId, txtId, mdId, loadHighlights]);
+    }, [type, fileUrl, memoId, docxId, pdfId, txtId, mdId]);
+
+    // 출처보기가 아닌 경우에만 기존 하이라이트 불러오기
+    useEffect(() => {
+        if (!isFromSourceView) {
+            loadHighlights();
+        }
+    }, [isFromSourceView, loadHighlights]);
+
+    // 모든 모드에서 텍스트 선택 활성화
+    const handleTextSelection = useCallback((containerRef) => {
+        handleSelection(containerRef);
+    }, [handleSelection]);
+
+    // 출처보기를 통해 들어온 경우 하이라이트 클릭 비활성화
+    const handleHighlightClick = useCallback((highlight) => {
+        if (isFromSourceView) {
+            return; // 출처보기에서는 하이라이트 클릭 기능 비활성화
+        }
+    }, [isFromSourceView]);
 
     return (
-        <div className="viewer-container" data-file-type={type}>
-            {/* 상단 바: 뒤로가기, 글꼴 크기 조절, 초기화 */}
-            <div className="viewer-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 48 }}>
+        <div className="viewer-container" data-file-type={type} data-source-view={isFromSourceView}>
+            {/* 상단 바: 뒤로가기, 제목, 글꼴 크기 조절, 초기화 */}
+            <div className="viewer-header viewer-header-container">
                 <FaArrowLeftLong 
                     onClick={onBack} 
-                    style={{ 
-                        cursor: 'pointer', 
-                        fontSize: '18px', 
-                        color: type === 'md' ? 'white' : '#333', 
-                        position: 'absolute', 
-                        left: 16, 
-                        top: '50%', 
-                        transform: 'translateY(-50%)' 
-                    }} 
+                    className={`viewer-back-button ${type === 'md' ? 'md' : ''}`}
                 />
-                <div className="viewer-controls" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                
+                {/* 제목을 헤더 가운데에 표시 */}
+                <div className="viewer-title-header">
+                    <span className="viewer-title-text">{title}</span>
+                </div>
+                
+                <div className="viewer-controls viewer-controls-container">
                     <FaMinus className="viewer-button" onClick={() => setFontSize(prev => Math.max(prev - 2, 12))} />
                     <FaPlus className="viewer-button" onClick={() => setFontSize(prev => Math.min(prev + 2, 48))} />
                     <span className="viewer-fontsize">{fontSize}px</span>
-                    <TbRefresh className="viewer-button" onClick={clearHighlights} title="하이라이트 모두 지우기" />
+                    {/* 출처보기가 아닌 경우에만 하이라이트 초기화 버튼 표시 */}
+                    {!isFromSourceView && (
+                        <TbRefresh className="viewer-button" onClick={clearHighlights} title="하이라이트 모두 지우기" />
+                    )}
                 </div>
             </div>
 
             {/* 텍스트 콘텐츠 영역 */}
             <div className="viewer-content" ref={containerRef}>
-                {/* 제목 표시 */}
-                <div className="viewer-title-content">
-                    <h1 className="viewer-title-text">{title}</h1>
-                </div>
+                {/* 출처보기 안내 메시지 */}
+                {isFromSourceView && (
+                    <div className="source-view-notice">
+                        <MdOutlineSource className="source-view-notice-icon" />
+                        <span className="source-view-notice-text">
+                            이 소스는 <strong>출처보기</strong>를 통해 열렸습니다. 
+                            하이라이트된 부분이 답변의 근거가 되는 내용입니다.
+                        </span>
+                    </div>
+                )}
 
-                {/* 하이라이트 팝업 표시 */}
-                {popup && (
+                {/* 하이라이트 팝업 표시 - 출처보기가 아닌 경우에만 */}
+                {popup && !isFromSourceView && (
                     <HighlightPopup
                         position={popup.position}
                         containerRef={containerRef}
@@ -140,17 +165,16 @@ export default function GenericViewer({ type, fileUrl, memoId, onBack, title, do
 
                 {/* 텍스트 본문 렌더링 */}
                 <div
-                    className="viewer-pre"
+                    className="viewer-pre viewer-text-content"
                     style={{
                         fontSize: `${fontSize}px`,
-                        whiteSpace: 'pre-wrap',
-                        fontFamily: 'inherit',
-                        userSelect: 'text',
+                        userSelect: 'text', // 모든 모드에서 텍스트 선택 활성화
+                        cursor: 'text', // 모든 모드에서 텍스트 커서
                     }}
-                    onSelect={() => handleSelection(containerRef)}
-                    onMouseUp={() => handleSelection(containerRef)}
+                    onSelect={() => handleTextSelection(containerRef)}
+                    onMouseUp={() => handleTextSelection(containerRef)}
                 >
-                    {renderHighlightedContent(content)}
+                    {renderHighlightedContent(content, handleHighlightClick)}
                 </div>
             </div>
         </div>
