@@ -9,6 +9,7 @@ from examples.error_examples import ErrorExamples
 from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
 from services.accuracy_service import compute_accuracy
+from services import manual_chunking_sentences
 
 router = APIRouter(
     prefix="/brainGraph",
@@ -97,9 +98,14 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
         ai_service = get_ai_service_Ollama()
+    else:
+        ai_service=None
 
     # Step 1: 텍스트에서 노드/엣지 추출 (AI 서비스)
-    nodes, edges = ai_service.extract_graph_components(text, source_id)
+    if ai_service==None:
+        nodes, edges=manual_chunking_sentences.extract_graph_components(text, source_id)
+    else:
+        nodes, edges = ai_service.extract_graph_components(text, source_id)
     logging.info("추출된 노드: %s", nodes)
     logging.info("추출된 엣지: %s", edges)
 
@@ -154,14 +160,11 @@ async def answer_endpoint(request_data: AnswerRequest):
     <br> GPT 사용 → (model: "gpt")
     """
     question = request_data.question
-    session_id = request_data.session_id
-    brain_id = str(request_data.brain_id)  # 문자열로 변환
-    model = request_data.model
+    brain_id = request_data.brain_id  # 요청에서 brain_id 받아오기
+    model =  request_data.model
     
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id 파라미터가 필요합니다.")
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
@@ -170,15 +173,14 @@ async def answer_endpoint(request_data: AnswerRequest):
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
         ai_service = get_ai_service_Ollama()
-    else:
-        raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
 
-    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s", question, session_id, brain_id, model)
+    
+    logging.info("질문 접수: %s, brain_id: %s", question, brain_id)
     
     try:
         # 사용자 질문 저장
         db_handler = SQLiteHandler()
-        chat_id = db_handler.save_chat(session_id, False, question)
+        chat_id = db_handler.save_chat(False, question, brain_id)
         
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):
@@ -191,15 +193,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색
         similar_nodes = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
-            # 안내 메시지도 DB에 저장
-            guide_message = "질문과 유사한 노드를 찾지 못했습니다."
-            guide_chat_id = db_handler.save_chat(session_id, True, guide_message, [])
-            return {
-                "answer": "",
-                "referenced_nodes": [],
-                "chat_id": guide_chat_id,
-                "message": guide_message
-            }
+            raise QdrantException("질문과 유사한 노드를 찾지 못했습니다.")
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]
@@ -234,34 +228,15 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-        accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id)
-        logging.info(f"정확도 : {accuracy}")
-        # node의 출처 소스 id들 가져오기
-        node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
-        logging.info(f"node_to_ids: {node_to_ids}")
-        # 모든 source_id 집합 수집
-        all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
-        logging.info(f"all_ids: {all_ids}")
-        # SQLite batch 조회로 id→title 매핑
-        id_to_title = db_handler.get_titles_by_ids(all_ids)
-               
-        # 최종 구조화
-        enriched = []
-        for node in referenced_nodes:
-            sources = [
-                {"id": str(sid), "title": id_to_title.get(sid)}
-                for sid in node_to_ids.get(node, [])
-                if sid in id_to_title
-            ]
-            enriched.append({"name": node, "source_ids": sources})
+            
+        # AI 답변 저장
         # AI 답변 저장 및 chat_id 획득
-        chat_id = db_handler.save_chat(session_id, True, final_answer, enriched)
+        chat_id = db_handler.save_chat(True, final_answer, brain_id, referenced_nodes)
 
         return {
             "answer": final_answer,
-            "referenced_nodes": enriched,
-            "chat_id": chat_id  ,
-            "accuracy": accuracy
+            "referenced_nodes": referenced_nodes,
+            "chat_id": chat_id   # ✅ 반드시 포함!
         }
     except Exception as e:
         logging.error("answer 오류: %s", str(e))
@@ -306,12 +281,11 @@ async def get_source_ids(node_name: str, brain_id: str):
                 if source_id not in seen_ids:
                     seen_ids.add(source_id)
                     
-                    # PDF와 TextFile, Memo, MD, DocsFile 테이블에서 모두 조회
+                    # PDF와 TextFile 테이블에서 모두 조회
                     pdf = db.get_pdf(int(source_id))
                     textfile = db.get_textfile(int(source_id))
                     memo = db.get_memo(int(source_id))
                     md = db.get_mdfile(int(source_id))
-                    docx = db.get_docxfile(int(source_id))
                     
                     title = None
                     if pdf:
@@ -322,8 +296,6 @@ async def get_source_ids(node_name: str, brain_id: str):
                         title = memo['memo_title']
                     elif md:
                         title = md['md_title']
-                    elif docx:
-                        title = docx['docx_title']
                     
                     if title:
                         sources.append({
@@ -490,25 +462,6 @@ async def get_source_data_metrics(brain_id: str):
             except Exception as e:
                 logging.error(f"MEMO 메트릭 계산 오류 (ID: {memo['memo_id']}): {str(e)}")
         
-        # DOCX 소스들 조회
-        docxfiles = db_handler.get_docxfiles_by_brain(brain_id)
-        for docx in docxfiles:
-            try:
-                text_length = len(docx['docx_text'] or '')
-                docx_nodes = neo4j_handler.get_nodes_by_source_id(docx['docx_id'], brain_id)
-                docx_edges = neo4j_handler.get_edges_by_source_id(docx['docx_id'], brain_id)
-                source_metrics.append({
-                    "source_id": docx['docx_id'],
-                    "source_type": "docx",
-                    "title": docx['docx_title'],
-                    "text_length": text_length,
-                    "nodes_count": len(docx_nodes),
-                    "edges_count": len(docx_edges)
-                })
-                total_text_length += text_length
-            except Exception as e:
-                logging.error(f"DOCX 메트릭 계산 오류 (ID: {docx['docx_id']}): {str(e)}")
-        
         return {
             "total_text_length": total_text_length,
             "total_nodes": total_nodes,
@@ -534,14 +487,12 @@ async def get_source_count(brain_id: int):
         txts = db.get_textfiles_by_brain(brain_id)
         mds = db.get_mds_by_brain(brain_id)
         memos = db.get_memos_by_brain(brain_id, is_source=True)  # is_source가 True인 메모만 조회
-        docxfiles = db.get_docxfiles_by_brain(brain_id)
-        total_count = len(pdfs) + len(txts) + len(mds) + len(memos) + len(docxfiles)
+        total_count = len(pdfs) + len(txts) + len(mds) + len(memos)
         return {
             "pdf_count": len(pdfs),
             "txt_count": len(txts),
             "md_count": len(mds),
             "memo_count": len(memos),
-            "docx_count": len(docxfiles),
             "total_count": total_count
         }
     except Exception as e:
