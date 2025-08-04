@@ -251,7 +251,9 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
             <div
               style={{
                 height: showMemo ? `${graphHeight}px` : '100%',
-                transition: isResizing ? 'none' : 'height 0.3s ease'
+                transition: isResizing ? 'none' : 'height 0.3s ease',
+                position: 'relative',
+                zIndex: 10,
               }}
             >
               <GraphViewWithModal
@@ -277,6 +279,8 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
                 cursor: 'ns-resize',
                 borderBottom: '2px solid #ccc',
                 backgroundColor: '#fafafa',
+                position: 'relative',
+                zIndex: 100,
               }}
               onMouseDown={() => setIsResizing(true)}
             />
@@ -289,6 +293,8 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
               flexDirection: 'column',
               overflow: 'hidden',
               borderTop: '1px solid #eaeaea',
+              position: 'relative',
+              zIndex: 50,
             }}>
               {selectedMemoId != null && selectedMemo ? (
                 <MemoEditor
