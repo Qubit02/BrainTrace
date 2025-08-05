@@ -12,9 +12,9 @@ from neo4j_db.utils import run_neo4j
 from sqlite_db import SQLiteHandler
 from run_ollama import run_ollama, wait_for_port
 from routers import (
-    brainGraph, brainRouter, memoRouter, pdfRouter, textFileRouter,
-    chatRouter, chatsessionRouter, searchRouter, voiceRouter,
-    mdRouter, docxRouter, model_router
+    brain_graph, brain_router, memo_router, pdf_router, text_file_router,
+    chat_router, chat_session_router, search_router, voice_router,
+    md_router, docx_router, model_router
 )
 
 # ── Docker 감지 유틸 ────────────────────────────────
@@ -88,7 +88,7 @@ async def lifespan(app: FastAPI):
 
     # 5. 서비스 시작
     yield
-    
+
     if neo4j_process:
         logging.info("🛑 Neo4j 종료 중…")
         try:
@@ -142,10 +142,10 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 # 라우터
 for r in (
-    brainGraph.router, brainRouter.router, memoRouter.router, pdfRouter.router,
-    textFileRouter.router, mdRouter.router, chatRouter.router,
-    chatsessionRouter.router, searchRouter.router, voiceRouter.router,
-    docxRouter.router, model_router.router
+    brain_graph.router, brain_router.router, memo_router.router, pdf_router.router,
+    text_file_router.router, md_router.router, chat_router.router,
+    chat_session_router.router, search_router.router, voice_router.router,
+    docx_router.router, model_router.router
 ):
     app.include_router(r)
 
