@@ -531,3 +531,75 @@ async def get_source_count(brain_id: int):
         }
     except Exception as e:
         raise HTTPException(500, f"소스 개수 조회 중 오류: {str(e)}")
+
+@router.get("/getSourceContent",
+    summary="소스 파일의 텍스트 내용 조회",
+    description="특정 source_id의 파일 타입에 따라 텍스트 내용을 반환합니다.",
+    response_description="소스 파일의 텍스트 내용을 반환합니다.",
+    responses={
+        404: ErrorExamples[40401],
+        500: ErrorExamples[50001]
+    }
+)
+async def get_source_content(source_id: str, brain_id: str):
+    """
+    소스 파일의 텍스트 내용을 조회합니다:
+    
+    - **source_id**: 조회할 소스 ID
+    - **brain_id**: 브레인 ID
+    
+    반환값:
+    - **content**: 소스 파일의 텍스트 내용
+    - **title**: 소스 파일의 제목
+    - **type**: 파일 타입 (pdf, textfile, memo, md, docx)
+    """
+    logging.info(f"getSourceContent 엔드포인트 호출됨 - source_id: {source_id}, brain_id: {brain_id}")
+    try:
+        db = SQLiteHandler()
+        
+        # PDF와 TextFile, Memo, MD, DocsFile 테이블에서 모두 조회
+        pdf = db.get_pdf(int(source_id))
+        textfile = db.get_textfile(int(source_id))
+        memo = db.get_memo(int(source_id))
+        md = db.get_mdfile(int(source_id))
+        docx = db.get_docxfile(int(source_id))
+        
+        content = None
+        title = None
+        file_type = None
+        
+        if pdf:
+            content = pdf.get('pdf_text', '')
+            title = pdf.get('pdf_title', '')
+            file_type = 'pdf'
+        elif textfile:
+            content = textfile.get('txt_text', '')
+            title = textfile.get('txt_title', '')
+            file_type = 'textfile'
+        elif memo:
+            content = memo.get('memo_text', '')
+            title = memo.get('memo_title', '')
+            file_type = 'memo'
+        elif md:
+            content = md.get('md_text', '')
+            title = md.get('md_title', '')
+            file_type = 'md'
+        elif docx:
+            content = docx.get('docx_text', '')
+            title = docx.get('docx_title', '')
+            file_type = 'docx'
+        
+        if content is None:
+            raise HTTPException(status_code=404, detail="해당 source_id의 파일을 찾을 수 없습니다.")
+        
+        return {
+            "content": content,
+            "title": title,
+            "type": file_type
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error("소스 내용 조회 오류: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"소스 내용 조회 중 오류가 발생했습니다: {str(e)}")

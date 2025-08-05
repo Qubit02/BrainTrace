@@ -1,31 +1,41 @@
-# 웹 서버 및 API
-fastapi==0.104.1
-uvicorn==0.24.0
+# =============================================================================
+# BrainTrace Backend Requirements
+# =============================================================================
+
+# 웹 서버 및 API 프레임워크
+fastapi==0.104.1          # FastAPI 웹 프레임워크
+uvicorn==0.24.0           # ASGI 서버
 
 # 데이터베이스
-neo4j==5.14.1
+neo4j==5.14.1             # 그래프 데이터베이스
 
-# LLM 기반 처리
-langchain==0.1.0
-openai==1.78.1
-sentence-transformers>=2.3.1
-transformers>=4.40.0  # 명시적으로 버전 추가 추천
-huggingface_hub>=0.30.0
+# LLM 및 AI 처리
+langchain==0.1.0          # LLM 프레임워크
+openai==1.78.1            # OpenAI API 클라이언트
+sentence-transformers>=2.3.1  # 문장 임베딩
+transformers>=4.40.0      # Hugging Face 모델
+huggingface_hub>=0.30.0   # Hugging Face Hub
 
 # 벡터 검색
-qdrant-client==1.7.0
+qdrant-client==1.7.0      # 벡터 데이터베이스 클라이언트
 
 # 오디오 처리
-librosa==0.10.1
-soundfile==0.12.1
-torch==2.2.2  # CUDA 사용 시 버전에 주의
+librosa==0.10.1           # 오디오 분석 라이브러리
+soundfile==0.12.1         # 오디오 파일 처리
 
-# 기타 필수 의존성
-numpy>=1.24.0
-scipy>=1.10.0
-tqdm
-ollama  
-dotenv
-python-multipart
-markdown>=3.5.0
-python-docx
+# 딥러닝 및 수치 계산
+torch==2.2.2              # PyTorch (CUDA 사용 시 버전 주의)
+numpy>=1.24.0             # 수치 계산
+scipy>=1.10.0             # 과학 계산
+
+# 유틸리티
+tqdm                       # 진행률 표시
+python-dotenv              # 환경변수 관리
+python-multipart           # 파일 업로드 처리
+markdown>=3.5.0           # 마크다운 처리
+python-docx               # Word 문서 처리
+
+# =============================================================================
+# 설치 명령어
+# =============================================================================
+# pip install -r requirements.txt

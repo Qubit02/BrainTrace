@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlite_db import SQLiteHandler
@@ -18,12 +18,14 @@ class MDFileCreate(BaseModel):
     md_path: str = Field(..., description="MD 파일 경로")
     type: Optional[str] = Field(None, description="파일 확장자명")
     brain_id: Optional[int] = Field(None, description="연결할 Brain ID")
+    md_text: Optional[str] = Field(None, description="추출된 텍스트")
 
 class MDFileUpdate(BaseModel):
     md_title: Optional[str] = Field(None, description="새 MD 파일 제목")
     md_path: Optional[str] = Field(None, description="새 MD 파일 경로")
     type: Optional[str] = Field(None, description="파일 확장자명")
     brain_id: Optional[int] = Field(None, description="새로운 Brain ID")
+    md_text: Optional[str] = Field(None, description="새 텍스트")
 
 class MDFileResponse(BaseModel):
     md_id: int
@@ -32,6 +34,7 @@ class MDFileResponse(BaseModel):
     md_date: str
     type: Optional[str]
     brain_id: Optional[int]
+    md_text: Optional[str]
 
 # ───────── MD 파일 생성 ─────────
 @router.post("/", response_model=MDFileResponse, status_code=status.HTTP_201_CREATED)
@@ -46,7 +49,8 @@ async def create_mdfile(mdfile_data: MDFileCreate):
             md_title=mdfile_data.md_title,
             md_path=mdfile_data.md_path,
             type=mdfile_data.type,
-            brain_id=mdfile_data.brain_id
+            brain_id=mdfile_data.brain_id,
+            md_text=mdfile_data.md_text
         )
     except Exception as e:
         logging.error("MD 파일 생성 오류: %s", e)
@@ -94,13 +98,14 @@ async def update_mdfile(md_id: int, mdfile_data: MDFileUpdate):
             md_title=mdfile_data.md_title,
             md_path=mdfile_data.md_path,
             type=mdfile_data.type,
-            brain_id=mdfile_data.brain_id
+            brain_id=mdfile_data.brain_id,
+            md_text=mdfile_data.md_text
         )
         if not updated:
             raise HTTPException(status_code=400, detail="업데이트할 정보가 없습니다")
         return sqlite_handler.get_mdfile(md_id)
     except Exception as e:
-        logging.error("MD 파일 업데이트 오류: %s", e)
+        logging.error("MD 파일 수정 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
 # ───────── MD 파일 삭제 ─────────
@@ -123,7 +128,8 @@ async def delete_mdfile(md_id: int):
             logging.warning(f"⚠️ 파일이 존재하지 않음: {file_path}")
     except Exception as e:
         logging.error(f"❌ 로컬 파일 삭제 실패: {e}")
-    return
+    
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # ───────── Brain 기준 MD 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[MDFileResponse])
@@ -148,9 +154,7 @@ async def upload_mdfiles(
     files: List[UploadFile] = File(...),
     brain_id: Optional[int] = Form(None)
 ):
-    """MD 파일 업로드 후 DB에 등록"""
     uploaded_mdfiles = []
-
     if brain_id is not None and not sqlite_handler.get_brain(brain_id):
         raise HTTPException(status_code=404, detail="해당 Brain이 존재하지 않습니다.")
 
@@ -158,6 +162,7 @@ async def upload_mdfiles(
         try:
             ext = os.path.splitext(file.filename)[1].lower()
             if ext != ".md":
+                logging.warning(f"업로드 무시: {file.filename} (md만 지원)")
                 continue
 
             safe_name = sanitize_filename(file.filename)
@@ -167,15 +172,25 @@ async def upload_mdfiles(
             with open(file_path, "wb") as f:
                 f.write(await file.read())
 
+            # MD 텍스트 읽기
+            text = ""
+            try:
+                with open(file_path, 'r', encoding='utf-8') as md_file:
+                    text = md_file.read()
+            except Exception as e:
+                logging.warning(f"MD 텍스트 읽기 실패 ({file.filename}): {e}")
+                text = ""
+
             created = sqlite_handler.create_mdfile(
                 md_title=safe_name,
                 md_path=file_path,
                 type="md",
-                brain_id=brain_id
+                brain_id=brain_id,
+                md_text=text
             )
             uploaded_mdfiles.append(created)
         except Exception as e:
-            logging.error("MD 업로드 실패 (%s): %s", file.filename, e)
+            logging.error("MD 파일 업로드 실패 (%s): %s", file.filename, e)
 
     return uploaded_mdfiles
 

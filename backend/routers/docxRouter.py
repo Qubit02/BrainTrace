@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlite_db import SQLiteHandler
@@ -131,7 +132,8 @@ async def delete_docxfile(docx_id: int):
             logging.warning(f"⚠️ 파일이 존재하지 않음: {file_path}")
     except Exception as e:
         logging.error(f"❌ 로컬 파일 삭제 실패: {e}")
-    return
+    
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # ───────── Brain 기준 DOCX 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[DocxFileResponse])

@@ -12,6 +12,7 @@ from .node_gen_ver5 import extract_nodes
 from .node_gen_ver5 import extract_noun_phrases
 
 okt = Okt()
+
 # 불용어 정의 
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나", "나름", "아마", "대한"]
 
@@ -248,9 +249,19 @@ def extract_graph_components(text: str, source_id: str):
     logging.info("chunking없이 노드와 엣지를 추출합니다.")
 
     #chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
+    # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
-        if node["description"] != "":
-            node["description"] = "".join(sentences[idx] for idx in node["description"])
+        # description이 비어있지 않고 리스트 형태인지 확인
+        # (description이 문자열이거나 빈 값일 수 있음)
+        if node["description"]!="" and isinstance(node["description"], list):
+            descriptions=""
+            # description 리스트의 각 인덱스를 실제 문장으로 변환
+            for idx in node["description"]:
+                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+                # (인덱스 오류 방지)
+                if idx < len(sentences):
+                    descriptions+=sentences[idx]
+            node["description"]=descriptions
 
     for c in chunks:
         if "chunks" in c:
@@ -277,9 +288,13 @@ def manual_chunking(text:str):
     final_chunks=[]
     for c in chunks:
         chunk=""
+        # 각 청크의 문장 인덱스들을 실제 텍스트로 변환
         for idx in c["chunks"]:
-            print(sentences[idx])
-            chunk+=sentences[idx]
+            # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+            # (인덱스 오류 방지)
+            if idx < len(sentences):
+                print(sentences[idx])
+                chunk+=sentences[idx]
         final_chunks.append(chunk)
 
     return final_chunks
