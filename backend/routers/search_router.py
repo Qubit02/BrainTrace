@@ -1,3 +1,39 @@
+"""
+search_router.py
+
+검색 관련 API 엔드포인트를 관리하는 라우터 모듈입니다.
+
+주요 기능:
+- 유사도 기반 소스 검색
+- 텍스트 기반 제목 검색
+- 벡터 데이터베이스 검색
+- 검색 결과 중복 제거 및 정렬
+
+지원하는 엔드포인트:
+- POST /search/getSimilarSourceIds : 유사도 기반 소스 검색
+
+검색 방식:
+1. 텍스트 기반 제목 검색 (우선)
+   - SQLite에서 제목에 검색어가 포함된 파일 검색
+   - 정확한 키워드 매칭 우선
+2. 벡터 데이터베이스 검색
+   - 검색어를 임베딩으로 변환
+   - 유사도 기반으로 유사한 문장 검색
+3. 결과 병합 및 중복 제거
+   - 제목 검색 결과를 우선으로 배치
+   - 중복된 source_id 제거
+
+데이터베이스:
+- SQLite: 제목 기반 검색
+- Qdrant: 벡터 데이터베이스 (유사도 검색)
+
+의존성:
+- FastAPI: 웹 프레임워크
+- Pydantic: 데이터 검증 및 직렬화
+- embedding_service: 텍스트 임베딩 및 벡터 검색
+- SQLiteHandler: SQLite 데이터베이스 작업
+"""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict
@@ -5,18 +41,40 @@ import logging
 from services import embedding_service
 from sqlite_db import SQLiteHandler
 
+# ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
     prefix="/search",
     tags=["search"],
     responses={404: {"description": "Not found"}}
 )
 
+# ───────── Pydantic 모델 정의 ───────── #
+
 class SearchRequest(BaseModel):
+    """
+    검색 요청 모델
+    
+    검색을 수행할 때 사용되는 데이터 모델입니다.
+    
+    Attributes:
+        query (str): 검색할 설명이나 키워드
+        brain_id (str): 검색할 브레인 ID
+    """
     query: str
     brain_id: str
 
 class SearchResponse(BaseModel):
+    """
+    검색 응답 모델
+    
+    검색 결과를 반환할 때 사용되는 데이터 모델입니다.
+    
+    Attributes:
+        source_ids (List[str]): 중복 제거된 source_id 목록
+    """
     source_ids: List[str]  # 중복 제거된 source_id 목록
+
+# ───────── API 엔드포인트 ───────── #
 
 @router.post("/getSimilarSourceIds",
     summary="유사도 기반 소스 검색",
@@ -24,13 +82,37 @@ class SearchResponse(BaseModel):
     response_model=SearchResponse)
 async def search_similar_descriptions(request: SearchRequest):
     """
-    설명이나 키워드로 유사한 문장을 검색하고 source_id를 반환합니다:
+    설명이나 키워드로 유사한 문장을 검색하고 source_id를 반환합니다.
     
-    - **query**: 검색할 설명이나 키워드
-    - **brain_id**: 브레인 ID
+    처리 과정:
+    1. 텍스트 기반 제목 검색 (우선)
+       - SQLite에서 제목에 검색어가 포함된 파일 검색
+       - 정확한 키워드 매칭 우선
+    2. 벡터 데이터베이스 검색
+       - 검색어를 임베딩으로 변환
+       - 유사도 기반으로 유사한 문장 검색
+    3. 결과 병합 및 중복 제거
+       - 제목 검색 결과를 우선으로 배치
+       - 중복된 source_id 제거
     
-    반환값:
-    - **source_ids**: 유사도 순으로 정렬된 source_id 목록 (중복 제거됨)
+    Args:
+        request (SearchRequest): 검색 요청 정보
+            - query: 검색할 설명이나 키워드
+            - brain_id: 브레인 ID
+    
+    Returns:
+        SearchResponse: 검색 결과
+            - source_ids: 유사도 순으로 정렬된 source_id 목록 (중복 제거됨)
+    
+    Raises:
+        HTTPException: 500 - 검색 중 오류 발생
+    
+    Example:
+        POST /search/getSimilarSourceIds
+        {
+            "query": "파이썬 프로그래밍",
+            "brain_id": "1"
+        }
     """
     logging.info(f"유사 문장 검색 시작 - query: {request.query}, brain_id: {request.brain_id}")
     
