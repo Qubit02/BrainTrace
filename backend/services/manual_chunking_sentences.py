@@ -258,6 +258,8 @@ def extract_graph_components(text: str, source_id: str):
             node["original_sentences"]={"description":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}
+        else:
+            node["descriptions"]=[{"description":"", "source_id":source_id}]
             
 
     for c in chunks:
