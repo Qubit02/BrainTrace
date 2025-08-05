@@ -6,11 +6,7 @@ from .chunk_service import chunk_text
 from .base_ai_service import BaseAIService
 from typing import List
 from .manual_chunking_sentences import manual_chunking
-<<<<<<< HEAD
-
-=======
 import numpy as np
->>>>>>> 6bb427e21aa833aa08380e88411a41d625ea4e78
 import os
 from dotenv import load_dotenv  # dotenv 추가
 from .embedding_service import encode_text
