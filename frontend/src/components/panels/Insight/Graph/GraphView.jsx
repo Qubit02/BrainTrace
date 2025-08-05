@@ -181,7 +181,7 @@ function GraphView({
       if (!fgRef.current || !hoveredNode) return;
       // 노드 중심으로 카메라 이동 및 확대
       fgRef.current.centerAt(hoveredNode.x, hoveredNode.y, 800);
-      fgRef.current.zoom(2, 800);
+      fgRef.current.zoom(1.5, 800);
     };
     const container = containerRef.current;
     if (container) {
@@ -323,7 +323,7 @@ function GraphView({
 
       if (fgRef.current) {
         fgRef.current.centerAt(node.x, node.y, 800);
-        fgRef.current.zoom(2, 800);
+        fgRef.current.zoom(1.5, 800);
       }
     } else {
       lastClickRef.current = { node, time: now };
@@ -427,8 +427,8 @@ function GraphView({
 
     const handleDoubleClick = (e) => {
       // 노드가 아닌 곳에서 더블클릭 시 줌인
-      // 예외적으로 마우스 커서가 노드 위가 아니었는지 확인하는 조건 필요
-      if (!document.body.style.cursor.includes('pointer')) {
+      // hoveredNode가 없을 때만 실행 (노드가 아닌 곳)
+      if (!hoveredNode) {
         const fg = fgRef.current;
         const boundingRect = container.getBoundingClientRect();
         const mouseX = e.clientX - boundingRect.left;
@@ -436,7 +436,7 @@ function GraphView({
 
         const graphCoords = fg.screen2GraphCoords(mouseX, mouseY);
         fg.centerAt(graphCoords.x, graphCoords.y, 800);
-        fg.zoom(fg.zoom() * 2, 800); // 현재 줌에서 1.5배 확대
+        fg.zoom(fg.zoom() * 2, 800); // 현재 줌에서 2배 확대
       }
     };
 
@@ -1170,10 +1170,24 @@ function GraphView({
               const isConnected = connectedNodeSet.has(sourceId) && connectedNodeSet.has(targetId);
               ctx.save();
               ctx.globalAlpha = isConnected ? 1 : 0.13;
+              
+              // 연결된 링크는 흰색 계열로 표시
+              if (isConnected) {
+                ctx.strokeStyle = isDarkMode ? '#ffffff' : '#444444';
+                ctx.lineWidth = customLinkWidth * 2;
+                ctx.shadowColor = isDarkMode ? '#ffffff' : '#000000';
+                ctx.shadowBlur = 8;
+              } else {
+                ctx.strokeStyle = isDarkMode ? '#64748b' : '#dedede';
+                ctx.lineWidth = customLinkWidth;
+                ctx.shadowBlur = 0;
+              }
+              
               ctx.beginPath();
               ctx.moveTo(link.source.x, link.source.y);
               ctx.lineTo(link.target.x, link.target.y);
               ctx.stroke();
+              
               // hover 효과는 항상 마지막에 한 번만
               if (isHovered) {
                 ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
