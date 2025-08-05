@@ -171,11 +171,17 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
 
 def make_node(name, phrase_info, sentences:list[str], source_id:int):
     description=[]
+    ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
-        description.append({"description":"".join([sentences[idx] for idx in s_indices]),
+        des="".join([sentences[idx] for idx in s_indices])
+        description.append({"description":des,
                             "source_id":source_id})
-    node={"label":name, "name":name, "descriptions":description}
+        ori_sentences.append({"description":des,
+                            "source_id":source_id,
+                            "score": 1.0})
+        
+    node={"label":name, "name":name, "descriptions":description, "original_sentence":ori_sentences}
 
     return node
         

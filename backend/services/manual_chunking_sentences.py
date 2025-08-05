@@ -252,8 +252,13 @@ def extract_graph_components(text: str, source_id: str):
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
         if node["descriptions"] != []:
-            node["descriptions"].append({"description":"".join([sentences[idx] for idx in node["descriptions"]]),
-                                         "source_id":source_id})
+            resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
+            node["descriptions"]={"description":resolved_description,
+                                    "source_id":source_id}
+            node["original_sentences"]={"description":resolved_description,
+                                    "source_id":source_id,
+                                    "score": 1.0}
+            
 
     for c in chunks:
         if "chunks" in c:
@@ -613,6 +618,6 @@ There was a time when the newspapers said that only twelve men understood the th
 사실 빛보다 빠르다는 것 자체만으로는 상대성이론에 위배되지 않는다. 다만 이런 물체는 보통 물질들과 (즉 측정 기구와도) 상호 작용하지 않아야 한다는 전제가 필요하다. 즉, 초광속으로 움직일 수 없는 우리에게는 없는 것이나 마찬가지이다. 그렇지 않으면 말 그대로 초광속 정보전달이 가능해지기 때문. 예로부터 이를 가상입자 타키온(Tachyon)이라고 부르며 이에 대한 (단순한 재미정도로 보이지만) 논문도 많이 쓰여져있다.
 """
 nodes, edges=extract_graph_components(text, "1234")
-#print(nodes)
+print(nodes)
 #print(edges)
 texts="사실 빛보다 빠르다는 것 자체만으로는 상대성이론에 위배되지 않는다. 다만 이런 물체는 보통 물질들과 (즉 측정 기구와도) 상호 작용하지 않아야 한다는 전제가 필요하다. 즉, 초광속으로 움직일 수 없는 우리에게는 없는 것이나 마찬가지이다. 그렇지 않으면 말 그대로 초광속 정보전달이 가능해지기 때문. 예로부터 이를 가상입자 타키온(Tachyon)이라고 부르며 이에 대한 (단순한 재미정도로 보이지만) 논문도 많이 쓰여져있다."
