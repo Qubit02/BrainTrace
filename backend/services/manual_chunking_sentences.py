@@ -10,6 +10,7 @@ from .chunk_service import chunk_text
 from .node_gen_ver5 import extract_nodes
 
 okt = Okt()
+
 # 불용어 정의 
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나"]
 
@@ -219,11 +220,18 @@ def extract_graph_components(text: str, source_id: str):
     all_nodes=nodes_and_edges["nodes"]
     all_edges=nodes_and_edges["edges"]
 
+    # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
-        if node["description"]!="":
+        # description이 비어있지 않고 리스트 형태인지 확인
+        # (description이 문자열이거나 빈 값일 수 있음)
+        if node["description"]!="" and isinstance(node["description"], list):
             descriptions=""
+            # description 리스트의 각 인덱스를 실제 문장으로 변환
             for idx in node["description"]:
-                descriptions+=sentences[idx]
+                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+                # (인덱스 오류 방지)
+                if idx < len(sentences):
+                    descriptions+=sentences[idx]
             node["description"]=descriptions
     
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
@@ -257,12 +265,17 @@ def manual_chunking(text:str):
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
 
+    # 최종 청크들을 생성
     final_chunks=[]
     for c in chunks:
         chunk=""
+        # 각 청크의 문장 인덱스들을 실제 텍스트로 변환
         for idx in c["chunks"]:
-            print(sentences[idx])
-            chunk+=sentences[idx]
+            # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+            # (인덱스 오류 방지)
+            if idx < len(sentences):
+                print(sentences[idx])
+                chunk+=sentences[idx]
         final_chunks.append(chunk)
         print(final_chunks)
     return final_chunks

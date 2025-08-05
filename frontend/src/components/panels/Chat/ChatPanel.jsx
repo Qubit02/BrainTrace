@@ -18,7 +18,7 @@
  * - LoadingIndicator: 로딩 상태 표시
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './ChatPanel.css';
 import {
   getReferencedNodes,
@@ -28,9 +28,11 @@ import {
   fetchChatSession,
   fetchChatHistoryBySession, 
   deleteAllChatsBySession
-} from '../../../../api/chat';
-import { requestAnswer, getSourceCountByBrain } from '../../../../api/graphApi';
-import { listModels, installModel } from '../../../../api/model';
+} from '../../../../api/services/chatApi';
+import { createSourceViewClickHandler, extractOriginalSentencesForHover } from './sourceViewUtils';
+import { requestAnswer, getSourceCountByBrain } from '../../../../api/services/graphApi';
+import { listModels, installModel } from '../../../../api/services/aiModelApi';
+import SourceHoverTooltip from './SourceHoverTooltip';
 
 // UI 컴포넌트 import
 import ConfirmDialog from '../../common/ConfirmDialog';
@@ -407,8 +409,10 @@ const ChatMessage = ({
   handleCopyMessage,
   copiedMessageId,
   onReferencedNodesUpdate,
-  onOpenSource
+  onOpenSource,
+  selectedBrainId
 }) => {
+
   return (
     <div
       className={`chat-panel-message-wrapper ${message.is_ai ? 'chat-panel-bot-message' : 'chat-panel-user-message'}`}
@@ -449,16 +453,18 @@ const ChatMessage = ({
                       <ul className="chat-panel-source-title-list">
                         {openSourceNodes[`${message.chat_id}_${nodeName}`].map((item, sourceIndex) => (
                           <li key={sourceIndex} className="chat-panel-source-title-item">
-                            <span
-                              className="chat-panel-source-title-content"
-                              onClick={() => {
-                                console.log('소스 title 클릭:', item.title, 'id:', item.id);
-                                if (item.id) onOpenSource(item.id);
-                              }}
-                              style={{ cursor: item.id ? 'pointer' : 'default' }}
+                            <SourceHoverTooltip
+                              originalSentences={extractOriginalSentencesForHover(item, message, nodeName)}
+                              sourceTitle={item.title}
                             >
-                              {item.title}
-                            </span>
+                              <span
+                                className="chat-panel-source-title-content"
+                                onClick={createSourceViewClickHandler(item, message, nodeName, selectedBrainId, onOpenSource)}
+                                style={{ cursor: item.id ? 'pointer' : 'default' }}
+                              >
+                                {item.title}
+                              </span>
+                            </SourceHoverTooltip>
                           </li>
                         ))}
                       </ul>
@@ -523,6 +529,8 @@ const ChatMessage = ({
           </div>
         )}
       </div>
+      
+
     </div>
   );
 };
@@ -679,8 +687,23 @@ function ChatPanel({
 
   // ===== 스크롤을 맨 아래로 내리는 함수 =====
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // 채팅 내역이 변경될 때마다 맨 아래로 스크롤
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [chatHistory]);
+
+  // ===== 채팅 내역 로드 후 자동 스크롤 =====
+  useEffect(() => {
+    if (!isInitialLoading && chatHistory.length > 0) {
+      // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 스크롤
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, [isInitialLoading, chatHistory.length]);
 
   // ===== 드롭다운 외부 클릭 시 닫기 =====
   useEffect(() => {
@@ -930,15 +953,28 @@ function ChatPanel({
   const handleCopyMessage = async (m) => {
     try {
       let messageToCopy = m.message;
-      if (m.chat_id) {
-        const serverMessage = await getChatMessageById(m.chat_id);
-        if (serverMessage) messageToCopy = serverMessage;
+      
+      // chat_id가 있고 유효한 숫자인 경우에만 서버에서 메시지를 가져옴
+      if (m.chat_id && !isNaN(Number(m.chat_id))) {
+        try {
+          const serverMessage = await getChatMessageById(m.chat_id);
+          if (serverMessage) {
+            messageToCopy = serverMessage;
+          }
+        } catch (serverErr) {
+          console.warn('서버에서 메시지를 가져오는데 실패했습니다. 로컬 메시지를 사용합니다:', serverErr);
+          // 서버에서 가져오기 실패 시 로컬 메시지 사용
+          messageToCopy = m.message;
+        }
       }
+      
       await navigator.clipboard.writeText(messageToCopy);
       setCopiedMessageId(m.chat_id || m.message);
       setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
       console.error('복사 실패:', err);
+      // 복사 실패 시 사용자에게 알림
+      alert('메시지 복사에 실패했습니다.');
     }
   };
 
@@ -1008,6 +1044,7 @@ function ChatPanel({
                 copiedMessageId={copiedMessageId}
                 onReferencedNodesUpdate={onReferencedNodesUpdate}
                 onOpenSource={onOpenSource}
+                selectedBrainId={selectedBrainId}
               />
             ))}
             {isLoading && (

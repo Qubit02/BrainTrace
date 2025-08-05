@@ -3,15 +3,15 @@ from typing import List, Dict, Optional
 from .base_handler import BaseHandler
 
 class MDFileHandler(BaseHandler):
-    def create_mdfile(self, md_title: str, md_path: str, type: Optional[str] = None, brain_id: Optional[int] = None) -> dict:
+    def create_mdfile(self, md_title: str, md_path: str, type: Optional[str] = None, brain_id: Optional[int] = None, md_text: Optional[str] = None) -> dict:
         """새 MD 파일 생성"""
         try:
             md_id = self._get_next_id()  # 직접 id 생성
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO MDFile (md_id, md_title, md_path, type, brain_id) VALUES (?, ?, ?, ?, ?)",
-                (md_id, md_title, md_path, type, brain_id)
+                "INSERT INTO MDFile (md_id, md_title, md_path, type, brain_id, md_text) VALUES (?, ?, ?, ?, ?, ?)",
+                (md_id, md_title, md_path, type, brain_id, md_text)
             )
             cursor.execute("SELECT md_date FROM MDFile WHERE md_id = ?", (md_id,))
             md_date = cursor.fetchone()[0]
@@ -24,7 +24,8 @@ class MDFileHandler(BaseHandler):
                 "md_path": md_path,
                 "md_date": md_date,
                 "type": type,
-                "brain_id": brain_id
+                "brain_id": brain_id,
+                "md_text": md_text
             }
         except Exception as e:
             logging.error("MD 파일 생성 오류: %s", str(e))
@@ -48,7 +49,7 @@ class MDFileHandler(BaseHandler):
             logging.error("MD 파일 삭제 오류: %s", str(e))
             raise RuntimeError(f"MD 파일 삭제 오류: {str(e)}")
 
-    def update_mdfile(self, md_id: int, md_title: str = None, md_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None) -> bool:
+    def update_mdfile(self, md_id: int, md_title: str = None, md_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None, md_text: Optional[str] = None) -> bool:
         """MD 파일 정보 업데이트"""
         try:
             mdfile = self.get_mdfile(md_id)
@@ -72,6 +73,9 @@ class MDFileHandler(BaseHandler):
             if type is not None:
                 update_fields.append("type = ?")
                 params.append(type)
+            if md_text is not None:
+                update_fields.append("md_text = ?")
+                params.append(md_text)
             if brain_id is None or brain_id == "null":
                 update_fields.append("brain_id = NULL")
             else:
@@ -102,7 +106,7 @@ class MDFileHandler(BaseHandler):
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT md_id, md_title, md_path, md_date, type, brain_id FROM MDFile WHERE md_id = ?",
+                "SELECT md_id, md_title, md_path, md_date, type, brain_id, md_text FROM MDFile WHERE md_id = ?",
                 (md_id,)
             )
             mdfile = cursor.fetchone()
@@ -114,7 +118,8 @@ class MDFileHandler(BaseHandler):
                     "md_path": mdfile[2],
                     "md_date": mdfile[3],
                     "type": mdfile[4],
-                    "brain_id": mdfile[5]
+                    "brain_id": mdfile[5],
+                    "md_text": mdfile[6]
                 }
             else:
                 return None
@@ -133,7 +138,8 @@ class MDFileHandler(BaseHandler):
                 md_path,
                 md_date,
                 type,
-                brain_id
+                brain_id,
+                md_text
             FROM MDFile
             WHERE brain_id = ?
             ORDER BY md_date DESC

@@ -1,5 +1,5 @@
 // src/api/model.js
-import { api } from './api';
+import { api } from '../config/axiosConfig';
 
 // 모델 관련 API 함수들
 export const listModels = async () => {
