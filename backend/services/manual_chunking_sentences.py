@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 from collections import defaultdict
-from .node_gen_ver5 import extract_nodes
+from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import extract_noun_phrases
 
 okt = Okt()
@@ -53,7 +53,7 @@ def tokenization(paragraphs: list[dict]) -> list[list[str]]:
     return tokenized
 
 
-def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], top_keyword:str, threshold: int,
+def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
                         lda_model=None, dictionary=None, num_topics=5):
     
     # 종료 조건
@@ -142,37 +142,40 @@ def recurrsive_chunking(chunk: list[dict], depth: int, already_made:list[str], t
     #현재 chunk를 대표하는 top keyword를 노드로 생성
     #top keyword는 depth가 0일 경우 lda 모델이 추출한 전체 텍스트의 주제 키워드이다
     #depth가 0이 아닐 경우에는 이전 depth에서 전달한 tf-idf 방식으로 구한 해당 chunk의 키워드이다.
-    top_node={"label":top_keyword,
-              "name":top_keyword,
-              "description":""
-    }
-    already_made.append(top_keyword)
-    nodes_and_edges["nodes"].append(top_node)
-    chunk_topics=extract_keywords_by_tfidf(get_topics, 7)
+    if source_id != -1:
+        top_node={"label":top_keyword,
+                "name":top_keyword,
+                "descriptions":[]
+        }
+        already_made.append(top_keyword)
+        nodes_and_edges["nodes"].append(top_node)
+        chunk_topics=extract_keywords_by_tfidf(get_topics, 7)
 
-    #tf-idf방식으로 추출한 topic keyword 중 중복없이 하나를 뽑아 각 chunk의 대표 키워드로 삼는다
-    for idx, topics in enumerate(chunk_topics):
-        for t_idx in range(len(topics)):
-            if topics[t_idx] not in already_made:
-                if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
-                    chunk_node={"label":topics[t_idx],"name":topics[t_idx],"description":[c["index"] for c in go_chunk[idx]]}
+        #tf-idf방식으로 추출한 topic keyword 중 중복없이 하나를 뽑아 각 chunk의 대표 키워드로 삼는다
+        for idx, topics in enumerate(chunk_topics):
+            for t_idx in range(len(topics)):
+                if topics[t_idx] not in already_made:
+                    if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
+                        chunk_node={"label":topics[t_idx],"name":topics[t_idx],
+                                    "descriptions":[c["index"] for c in go_chunk[idx]]}
+                    else:
+                        chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[]}
+                    edge={"source": top_keyword, "target": topics[t_idx], "relation":""}
+                    nodes_and_edges["nodes"].append(chunk_node)
+                    nodes_and_edges["edges"].append(edge)
+                    already_made.append(topics[t_idx])
+                    keywords.append(topics[t_idx])
+                    break
                 else:
-                    chunk_node={"label":topics[t_idx],"name":topics[t_idx],"description":""}
-                edge={"source": top_keyword, "target": topics[t_idx], "relation":""}
-                nodes_and_edges["nodes"].append(chunk_node)
-                nodes_and_edges["edges"].append(edge)
-                already_made.append(topics[t_idx])
-                keywords.append(topics[t_idx])
-                break
-            else:
-                if t_idx==len(topics):
-                    keywords.append("None")
-    
+                    if t_idx==len(topics):
+                        keywords.append("None")
+    else:
+        keywords+=[""]*len(go_chunk)
     
     # 재귀적으로 각 청크 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
-        result, graph, already_made_updated = recurrsive_chunking(c, depth+1, already_made, keywords[idx],threshold*1.1,
+        result, graph, already_made_updated = recurrsive_chunking(c, source_id ,depth+1, already_made, keywords[idx],threshold*1.1,
                                       lda_model=lda_model, dictionary=dictionary, num_topics=num_topics)
         #중복되는 노드가 만들어지지 않도록 already_made를 업데이트
         already_made=already_made_updated
@@ -204,7 +207,7 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     sim_matrix = cosine_similarity(topic_vectors)
 
     # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
-    top_topic_terms = lda_model.show_topic(0, topn=topn)
+    top_topic_terms = lda_model.show_topic(0, topn= 1)
     # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
     # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
     top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
@@ -235,14 +238,11 @@ def extract_graph_components(text: str, source_id: str):
     # 모든 노드와 엣지를 저장할 리스트
     all_nodes = []
     all_edges = []
-
     tokenized, sentences = split_into_tokenized_sentence(text)
+    
     if len(text)>=2000:
-        chunks, nodes_and_edges, already_made=recurrsive_chunking(tokenized, 0, [], "", 0,)
+        chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, [], "", 0,)
         logging.info("chunking이 완료되었습니다.")
-        print(chunks)
-        print(len(chunks))
-
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
 
@@ -251,17 +251,14 @@ def extract_graph_components(text: str, source_id: str):
     #chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
-        # description이 비어있지 않고 리스트 형태인지 확인
-        # (description이 문자열이거나 빈 값일 수 있음)
-        if node["description"]!="" and isinstance(node["description"], list):
-            descriptions=""
-            # description 리스트의 각 인덱스를 실제 문장으로 변환
-            for idx in node["description"]:
-                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
-                # (인덱스 오류 방지)
-                if idx < len(sentences):
-                    descriptions+=sentences[idx]
-            node["description"]=descriptions
+        if node["descriptions"] != []:
+            resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
+            node["descriptions"]={"description":resolved_description,
+                                    "source_id":source_id}
+            node["original_sentences"]={"description":resolved_description,
+                                    "source_id":source_id,
+                                    "score": 1.0}
+            
 
     for c in chunks:
         if "chunks" in c:
@@ -269,9 +266,10 @@ def extract_graph_components(text: str, source_id: str):
             if len(current_chunk)<=2:
                 continue
             relevant_sentences = [sentences[idx] for idx in current_chunk]
-            nodes, edges, already_made = extract_nodes(relevant_sentences, c["keyword"], already_made)
+            nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id,c["keyword"], already_made)
             all_nodes += nodes
             all_edges += edges
+
 
 
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
@@ -280,9 +278,7 @@ def extract_graph_components(text: str, source_id: str):
 
 def manual_chunking(text:str):
     tokenized, sentences = split_into_tokenized_sentence(text)
-    chunks, nodes_and_edges=recurrsive_chunking(tokenized, 0, {}, "", 0)
-    nodes=nodes_and_edges["nodes"]
-    edges=nodes_and_edges["edges"]
+    chunks, _ =recurrsive_chunking(tokenized, -1 , 0, {}, "", 0)
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
     final_chunks=[]
@@ -621,6 +617,7 @@ There was a time when the newspapers said that only twelve men understood the th
 
 사실 빛보다 빠르다는 것 자체만으로는 상대성이론에 위배되지 않는다. 다만 이런 물체는 보통 물질들과 (즉 측정 기구와도) 상호 작용하지 않아야 한다는 전제가 필요하다. 즉, 초광속으로 움직일 수 없는 우리에게는 없는 것이나 마찬가지이다. 그렇지 않으면 말 그대로 초광속 정보전달이 가능해지기 때문. 예로부터 이를 가상입자 타키온(Tachyon)이라고 부르며 이에 대한 (단순한 재미정도로 보이지만) 논문도 많이 쓰여져있다.
 """
-#extract_graph_components(text, "1234")
+nodes, edges=extract_graph_components(text, "1234")
+print(nodes)
+#print(edges)
 texts="사실 빛보다 빠르다는 것 자체만으로는 상대성이론에 위배되지 않는다. 다만 이런 물체는 보통 물질들과 (즉 측정 기구와도) 상호 작용하지 않아야 한다는 전제가 필요하다. 즉, 초광속으로 움직일 수 없는 우리에게는 없는 것이나 마찬가지이다. 그렇지 않으면 말 그대로 초광속 정보전달이 가능해지기 때문. 예로부터 이를 가상입자 타키온(Tachyon)이라고 부르며 이에 대한 (단순한 재미정도로 보이지만) 논문도 많이 쓰여져있다."
-extract_nodes([texts], "빛", [])

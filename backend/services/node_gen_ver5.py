@@ -164,15 +164,29 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
             if source_keyword in sentences[s_idx]:
                 description+=sentences[s_idx]
         edges.append({"source":source_keyword, 
-                      "target":target_keywords,
+                      "target":t,
                       "relation":description})
         
     return edges
 
+def make_node(name, phrase_info, sentences:list[str], source_id:int):
+    description=[]
+    ori_sentences=[]
+    s_indices=[idx for idx in phrase_info[name]]
+    if len(s_indices)<=2:
+        des="".join([sentences[idx] for idx in s_indices])
+        description.append({"description":des,
+                            "source_id":source_id})
+        ori_sentences.append({"description":des,
+                            "source_id":source_id,
+                            "score": 1.0})
+        
+    node={"label":name, "name":name, "descriptions":description, "original_sentence":ori_sentences}
 
+    return node
         
 
-def extract_nodes(sentences: list[str], keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(sentences: list[str], source_id:int ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     nodes=[]
     edges=[]
 
@@ -194,7 +208,7 @@ def extract_nodes(sentences: list[str], keyword: str, already_made:list[str]) ->
     for t in sorted_keywords:
         edges+=make_edges(sentences, keyword, [t], phrase_info)
         if t not in already_made:
-            nodes.append({"label":t, "name":t, "description":""})
+            nodes.append(make_node(t, phrase_info, sentences, source_id))
             already_made.append(t)
             cnt+=1
             if t in groups:
@@ -203,8 +217,9 @@ def extract_nodes(sentences: list[str], keyword: str, already_made:list[str]) ->
                     if phrases[idx] not in already_made:
                         related_keywords.append(phrases[idx])
                         already_made.append(phrases[idx])
-                edges+=make_edges(sentences, t, related_keywords, phrase_info)   
-                nodes.append({"label":phrases[idx], "name":phrases[idx], "description":""})
+                        nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                        edges+=make_edges(sentences, t, related_keywords, phrase_info)   
+                    
         if cnt==5:
             break
 
