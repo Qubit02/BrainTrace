@@ -11,6 +11,7 @@ import { fetchGraphData } from '../../../../../api/services/graphApi';
 import './GraphView.css';
 import { startTimelapse } from './graphTimelapse';
 import { toast } from 'react-toastify';
+import SpaceBackground from './SpaceBackground';
 
 // 노드 상태 팝업 컴포넌트
 const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
@@ -333,26 +334,90 @@ function GraphView({
   };
 
   // === 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 적용 ===
-  // 슬라이더 등으로 조정된 값이 바로 반영되도록 d3Force 설정
-  //슬라이더 물리 효과 조절
-  // 3개 물리 설정만 처리하는 useEffect
+  // 물리 설정 변경 시 업데이트 - 올바른 ForceGraph2D 방식
   useEffect(() => {
-    if (fgRef.current) {
+    if (fgRef.current && graphData && graphData.nodes) {
       const fg = fgRef.current;
 
-      // 반발력 공식 (0% = 가까이 모임, 100% = 멀리 퍼짐)
-      const repelForce = -10 - (repelStrength / 100) * 290;    // 0% = -10, 100% = -300
-      const linkDist = 50 + (linkDistance / 100) * 250;        // 50 to 300
-      const linkForce = 0.1 + (linkStrength / 100) * 0.9;      // 0.1 to 1.0
+      // 물리 설정 계산
+      const repelForce = -10 - (repelStrength / 100) * 290;
+      const linkDist = 30 + (linkDistance / 100) * 270;
+      const linkForce = 0.1 + (linkStrength / 100) * 0.9;
 
-      // 해당 force만 업데이트
+      console.log('🔧 물리 설정 업데이트:', {
+        repelStrength,
+        linkDistance,
+        linkStrength,
+        repelForce,
+        linkDist,
+        linkForce
+      });
+
+      // 올바른 ForceGraph2D 방식으로 물리 설정 변경
       fg.d3Force("charge", d3.forceManyBody().strength(repelForce));
       fg.d3Force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
-
-      // 시뮬레이션 재시작
+      
+      // 노드들의 고정 상태 해제
+      graphData.nodes.forEach(node => {
+        delete node.fx;
+        delete node.fy;
+      });
+      
+      // 시뮬레이션 완전 재시작
       fg.d3ReheatSimulation();
+      
+      // 강제로 시뮬레이션 활성화
+      setTimeout(() => {
+        const simulation = fg.d3Force();
+        if (simulation) {
+          // 시뮬레이션 alpha 값을 높여서 활성화
+          simulation.alpha(1);
+          simulation.alphaDecay(0.02);
+          simulation.velocityDecay(0.4);
+          
+          // 추가로 시뮬레이션 재시작
+          fg.d3ReheatSimulation();
+          
+          const chargeForce = simulation.force("charge");
+          const linkForce = simulation.force("link");
+          
+          console.log('🔍 물리 설정 확인:', {
+            chargeStrength: chargeForce ? chargeForce.strength() : 'N/A',
+            linkDistance: linkForce ? linkForce.distance() : 'N/A',
+            linkStrength: linkForce ? linkForce.strength() : 'N/A',
+            targetCharge: repelForce,
+            targetLinkDist: linkDist,
+            targetLinkStrength: linkForce,
+            simulationAlpha: simulation.alpha(),
+            nodeCount: graphData.nodes.length
+          });
+        }
+      }, 100);
+      
+      // 추가 지연으로 한 번 더 재시작
+      setTimeout(() => {
+        fg.d3ReheatSimulation();
+        
+        // 모든 노드의 고정 상태 완전 해제
+        graphData.nodes.forEach(node => {
+          delete node.fx;
+          delete node.fy;
+        });
+        
+        // 시뮬레이션 강제 활성화
+        const simulation = fg.d3Force();
+        if (simulation) {
+          simulation.alpha(1);
+          simulation.alphaDecay(0.01);
+          simulation.velocityDecay(0.3);
+        }
+        
+        console.log('🔄 최종 시뮬레이션 재시작 완료');
+      }, 300);
+      
+      console.log('✅ 물리 설정 적용 완료');
     }
-  }, [repelStrength, linkDistance, linkStrength]);
+  }, [repelStrength, linkDistance, linkStrength, graphData]);
 
   // === 더블클릭 시 그래프 줌인 ===
   // 노드가 아닌 곳 더블클릭 시 해당 위치로 카메라 이동 및 확대
@@ -765,9 +830,10 @@ function GraphView({
       className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
       ref={containerRef}
       style={{
-        backgroundColor: isDarkMode ? '#0f172a' : '#fafafa'
+        backgroundColor: isDarkMode ? 'transparent' : '#fafafa'
       }}
     >
+      {isFullscreen && <SpaceBackground isVisible={true} isDarkMode={isDarkMode} />}
 
       {/* 상단에 검색 인풋 표시 (showSearch prop이 true일 때만) */}
       {showSearch && (
@@ -933,13 +999,10 @@ function GraphView({
           d3Force={fg => {
             fg.force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
             fg.force("collide", d3.forceCollide(50));
-
-            const repelForce = 10 - (repelStrength / 100) * 290;
-            const linkDist = 40 + (linkDistance / 100) * 250;
-            const linkForce = 0.1 + (linkStrength / 100) * 0.9;
-
-            fg.force("charge", d3.forceManyBody().strength(repelForce));
-            fg.force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
+            
+            // 초기 물리 설정 - 기본값 사용
+            fg.force("charge", d3.forceManyBody().strength(-30));
+            fg.force("link", d3.forceLink().id(d => d.id).distance(100).strength(0.5));
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
             ctx.save();
@@ -1080,6 +1143,12 @@ function GraphView({
               const repelForce = -10 - (repelStrength / 100) * 290;
               fg.d3Force('charge', d3.forceManyBody().strength(repelForce));
               fg.d3ReheatSimulation();
+              
+              // 시뮬레이션 활성화
+              const simulation = fg.d3Force();
+              if (simulation) {
+                simulation.alpha(1);
+              }
             }
           }}
           onNodeDrag={node => {
