@@ -70,35 +70,52 @@ export const generateHighlightingInfo = async (item, message, nodeName, selected
         const trimmedSentence = sentence.trim();
         if (trimmedSentence.length === 0) return;
         
-        // 정확한 매칭 찾기
-        const exactMatchIndex = sourceText.indexOf(trimmedSentence);
+        // 모든 매칭을 찾는 함수
+        const findAllMatches = (text, searchText) => {
+          const matches = [];
+          let startIndex = 0;
+          while (true) {
+            const index = text.indexOf(searchText, startIndex);
+            if (index === -1) break;
+            matches.push({
+              start: index,
+              end: index + searchText.length,
+              text: searchText
+            });
+            startIndex = index + 1;
+          }
+          return matches;
+        };
         
-        if (exactMatchIndex !== -1) {
-          highlightingInfo.highlightedRanges.push({
-            start: exactMatchIndex,
-            end: exactMatchIndex + trimmedSentence.length,
-            text: trimmedSentence,
-            type: 'exact'
+        // 정확한 매칭 찾기 (모든 매칭)
+        const exactMatches = findAllMatches(sourceText, trimmedSentence);
+        if (exactMatches.length > 0) {
+          exactMatches.forEach(match => {
+            highlightingInfo.highlightedRanges.push({
+              ...match,
+              type: 'exact'
+            });
           });
         } else {
           // 1단계: 공백 정리 후 매칭
           const cleanOriginal = trimmedSentence.replace(/\s+/g, ' ').trim();
           const cleanSource = sourceText.replace(/\s+/g, ' ').trim();
           
-          const partialMatchIndex = cleanSource.indexOf(cleanOriginal);
+          const partialMatches = findAllMatches(cleanSource, cleanOriginal);
           
-          if (partialMatchIndex !== -1) {
-            // 원본 텍스트에서 해당 부분 찾기
-            const originalIndex = sourceText.indexOf(cleanOriginal);
-            
-            if (originalIndex !== -1) {
-              highlightingInfo.highlightedRanges.push({
-                start: originalIndex,
-                end: originalIndex + cleanOriginal.length,
-                text: cleanOriginal,
-                type: 'partial'
-              });
-            }
+          if (partialMatches.length > 0) {
+            // 원본 텍스트에서 해당 부분들 찾기
+            partialMatches.forEach(match => {
+              const originalIndex = sourceText.indexOf(cleanOriginal, match.start);
+              if (originalIndex !== -1) {
+                highlightingInfo.highlightedRanges.push({
+                  start: originalIndex,
+                  end: originalIndex + cleanOriginal.length,
+                  text: cleanOriginal,
+                  type: 'partial'
+                });
+              }
+            });
           } else {
             // 2단계: 더 유연한 매칭 (특수문자 제거, 대소문자 무시)
             const flexibleOriginal = trimmedSentence
@@ -113,41 +130,60 @@ export const generateHighlightingInfo = async (item, message, nodeName, selected
               .trim()
               .toLowerCase();
             
-            const flexibleMatchIndex = flexibleSource.indexOf(flexibleOriginal);
+            const flexibleMatches = findAllMatches(flexibleSource, flexibleOriginal);
             
-            if (flexibleMatchIndex !== -1) {
-              // 원본 텍스트에서 해당 부분 찾기 (대략적인 위치 추정)
-              const estimatedStart = Math.max(0, flexibleMatchIndex - 10);
-              const estimatedEnd = Math.min(sourceText.length, flexibleMatchIndex + flexibleOriginal.length + 10);
-              const searchRange = sourceText.substring(estimatedStart, estimatedEnd);
-              
-              // 가장 유사한 부분 찾기
-              for (let i = 0; i <= searchRange.length - flexibleOriginal.length; i++) {
-                const candidate = searchRange.substring(i, i + flexibleOriginal.length);
-                const candidateClean = candidate
-                  .replace(/[^\w\s가-힣]/g, '')
-                  .replace(/\s+/g, ' ')
-                  .trim()
-                  .toLowerCase();
+            if (flexibleMatches.length > 0) {
+              // 원본 텍스트에서 해당 부분들 찾기
+              flexibleMatches.forEach(match => {
+                const estimatedStart = Math.max(0, match.start - 10);
+                const estimatedEnd = Math.min(sourceText.length, match.start + flexibleOriginal.length + 10);
+                const searchRange = sourceText.substring(estimatedStart, estimatedEnd);
                 
-                if (candidateClean === flexibleOriginal) {
-                  const actualStart = estimatedStart + i;
-                  const actualEnd = actualStart + flexibleOriginal.length;
+                // 가장 유사한 부분 찾기
+                for (let i = 0; i <= searchRange.length - flexibleOriginal.length; i++) {
+                  const candidate = searchRange.substring(i, i + flexibleOriginal.length);
+                  const candidateClean = candidate
+                    .replace(/[^\w\s가-힣]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase();
                   
-                  highlightingInfo.highlightedRanges.push({
-                    start: actualStart,
-                    end: actualEnd,
-                    text: sourceText.substring(actualStart, actualEnd),
-                    type: 'flexible'
-                  });
-                  break;
+                  if (candidateClean === flexibleOriginal) {
+                    const actualStart = estimatedStart + i;
+                    const actualEnd = actualStart + flexibleOriginal.length;
+                    
+                    highlightingInfo.highlightedRanges.push({
+                      start: actualStart,
+                      end: actualEnd,
+                      text: sourceText.substring(actualStart, actualEnd),
+                      type: 'flexible'
+                    });
+                    break;
+                  }
                 }
-              }
+              });
             }
           }
         }
       });
     });
+    
+    // 중복된 범위 제거 및 정렬
+    const uniqueRanges = [];
+    const seenRanges = new Set();
+    
+    highlightingInfo.highlightedRanges.forEach(range => {
+      const key = `${range.start}-${range.end}`;
+      if (!seenRanges.has(key)) {
+        seenRanges.add(key);
+        uniqueRanges.push(range);
+      }
+    });
+    
+    // 시작 위치로 정렬
+    uniqueRanges.sort((a, b) => a.start - b.start);
+    
+    highlightingInfo.highlightedRanges = uniqueRanges;
     
     return highlightingInfo;
     
