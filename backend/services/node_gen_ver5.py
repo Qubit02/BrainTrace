@@ -154,7 +154,7 @@ def group_phrases(
 
     return group_infos
 
-def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info: DefaultDict[str, Set[int]]):
+def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
     #edge의 source와 target이 함께 등장한 문장을 찾습니다.
     #해당 문장을 edge의 relation으로 삼습니다.
     edges=[]
@@ -164,15 +164,23 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
             if source_keyword in sentences[s_idx]:
                 description+=sentences[s_idx]
         edges.append({"source":source_keyword, 
-                      "target":target_keywords,
+                      "target":t,
                       "relation":description})
         
     return edges
 
+def make_node(name, phrase_info, sentences:list[str], source_id:int):
+    description=[]
+    s_indices=[idx for idx in phrase_info[name]]
+    if len(s_indices)<=2:
+        description.append({"description":"".join([sentences[idx] for idx in s_indices]),
+                            "source_id":source_id})
+    node={"label":name, "name":name, "descriptions":description}
 
+    return node
         
 
-def _extract_from_chunk(sentences: list[str], keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(sentences: list[str], source_id:int ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     nodes=[]
     edges=[]
 
@@ -194,7 +202,7 @@ def _extract_from_chunk(sentences: list[str], keyword: str, already_made:list[st
     for t in sorted_keywords:
         edges+=make_edges(sentences, keyword, [t], phrase_info)
         if t not in already_made:
-            nodes.append({"label":t, "name":t, "description":""})
+            nodes.append(make_node(t, phrase_info, sentences, source_id))
             already_made.append(t)
             cnt+=1
             if t in groups:
@@ -203,8 +211,9 @@ def _extract_from_chunk(sentences: list[str], keyword: str, already_made:list[st
                     if phrases[idx] not in already_made:
                         related_keywords.append(phrases[idx])
                         already_made.append(phrases[idx])
-                edges+=make_edges(sentences, t, related_keywords, phrase_info)   
-                nodes.append({"label":phrases[idx], "name":phrases[idx], "description":""})
+                        nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                        edges+=make_edges(sentences, t, related_keywords, phrase_info)   
+                    
         if cnt==5:
             break
 
