@@ -11,6 +11,7 @@
 ## 🚀 기술 스택
 
 ### Backend
+
 - FastAPI
 - Neo4j (그래프 데이터베이스)
 - SQLite
@@ -19,10 +20,16 @@
 - PyTorch
 
 ### Frontend
+
 - React 19
 - Electron
 - D3.js (그래프 시각화)
 - Vite
+
+## Getting Started
+
+git clone https://github.com/OSSBrainTrace/OSSBrainTrace.git
+docker-compose up -d --build
 
 ## 📄 라이선스
 
@@ -60,4 +67,4 @@ SOFTWARE.
 
 ## 📞 문의
 
-프로젝트에 대한 문의사항이 있으시면 이슈를 생성해주세요. 
+프로젝트에 대한 문의사항이 있으시면 이슈를 생성해주세요.
