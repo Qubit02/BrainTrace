@@ -24,7 +24,7 @@ librosa==0.10.1           # 오디오 분석 라이브러리
 soundfile==0.12.1         # 오디오 파일 처리
 
 # 딥러닝 및 수치 계산
-torch==2.2.2              # PyTorch (CUDA 사용 시 버전 주의)
+torch==2.7.1              # PyTorch (CUDA 사용 시 버전 주의)
 numpy>=1.24.0             # 수치 계산
 scipy>=1.10.0             # 과학 계산
 
