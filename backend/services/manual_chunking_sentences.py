@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 from collections import defaultdict
-from .node_gen_ver5 import extract_nodes
+from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import extract_noun_phrases
 
 okt = Okt()
@@ -203,7 +203,7 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     sim_matrix = cosine_similarity(topic_vectors)
 
     # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
-    top_topic_terms = lda_model.show_topic(0, topn=topn)
+    top_topic_terms = lda_model.show_topic(0, topn= 1)
     # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
     # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
     top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
@@ -237,7 +237,7 @@ def extract_graph_components(text: str, source_id: str):
 
     tokenized, sentences = split_into_tokenized_sentence(text)
     if len(text)>=2000:
-        chunks, nodes_and_edges, already_made=recurrsive_chunking(tokenized, 0, [], "", 0,)
+        chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, 0, [], "", 0,)
         logging.info("chunking이 완료되었습니다.")
         print(chunks)
         print(len(chunks))
@@ -258,7 +258,7 @@ def extract_graph_components(text: str, source_id: str):
             if len(current_chunk)<=2:
                 continue
             relevant_sentences = [sentences[idx] for idx in current_chunk]
-            nodes, edges, already_made = extract_nodes(relevant_sentences, c["keyword"], already_made)
+            nodes, edges, already_made = _extract_from_chunk(relevant_sentences, c["keyword"], already_made)
             all_nodes += nodes
             all_edges += edges
 

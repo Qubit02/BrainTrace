@@ -172,7 +172,7 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
 
         
 
-def extract_nodes(sentences: list[str], keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(sentences: list[str], keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     nodes=[]
     edges=[]
 
