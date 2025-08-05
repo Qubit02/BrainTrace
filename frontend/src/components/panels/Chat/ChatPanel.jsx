@@ -954,8 +954,9 @@ function ChatPanel({
     try {
       let messageToCopy = m.message;
       
-      // chat_id가 있고 유효한 숫자인 경우에만 서버에서 메시지를 가져옴
-      if (m.chat_id && !isNaN(Number(m.chat_id))) {
+      // chat_id가 있고 유효한 숫자이며, 임시 ID가 아닌 경우에만 서버에서 메시지를 가져옴
+      // 임시 ID는 Date.now()로 생성되므로 매우 큰 숫자입니다
+      if (m.chat_id && !isNaN(Number(m.chat_id)) && m.chat_id < 1000000) {
         try {
           const serverMessage = await getChatMessageById(m.chat_id);
           if (serverMessage) {
