@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  backend:
+    working_dir: /app
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev # Dockerfile 단계 중 'dev'
+    environment:
+      - IN_DOCKER=true
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app # 소스 코드 바인딩
+    ports:
+      - '8000:8000'
+    env_file: ./backend/.env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+    command: ['npx', 'vite', '--host', '0.0.0.0', '--port', '5173']
+    ports:
+      - '5173:5173'
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      - NEO4J_AUTH=none
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - '11434:11434'
+    # 필요 모델은 처음 기동 후 'ollama run llama3b_kr' 등으로 다운로드
+
+volumes:
+  neo4j_data:
+  ollama_models:
+  frontend_node_modules:
+
+# (선택) Docker Compose Watch – 자동 재시작
+x-develop:
+  watch:
+    - action: sync
+      path: ./backend
+      target: /app
+    - action: sync
+      path: ./frontend
+      target: /app

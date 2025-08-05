@@ -18,7 +18,7 @@ qdrant-client==1.7.0
 # 오디오 처리
 librosa==0.10.1
 soundfile==0.12.1
-torch==2.2.2  # CUDA 사용 시 버전에 주의
+torch==2.7.1
 
 # 기타 필수 의존성
 numpy>=1.24.0
@@ -29,3 +29,7 @@ dotenv
 python-multipart
 markdown>=3.5.0
 python-docx
+
+# libraries for embedding
+gensim
+konlpy

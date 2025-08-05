@@ -22,8 +22,16 @@ enc_data = collect_data_files("encodings")
 # ── 3) transformers 패키지 전체 (모델 코드 포함) 수집 ───────────────────────
 transformers_datas, transformers_binaries, transformers_hiddenimports = collect_all("transformers")
 
-# ── 4) datas, binaries, hiddenimports 합치기 ─────────────────────────────────
-datas = neo4j_datas + enc_data + transformers_datas
+# ── 4) konlpy 패키지 내부의 JAR 자동 수집 ─────────────────────────────────
+all_konlpy_data = collect_data_files("konlpy")
+konlpy_jars = []
+for src, dest in all_konlpy_data:
+    if src.lower().endswith(".jar") and os.path.normpath(src).replace("\\", "/").find("/java/") != -1:
+        # JAR 은 konlpy/java/ 하위로 복사
+        konlpy_jars.append((src, os.path.join("konlpy", "java", os.path.basename(src))))
+
+# ── 5) datas, binaries, hiddenimports 합치기 ─────────────────────────────────
+datas = neo4j_datas + enc_data + transformers_datas + konlpy_jars
 binaries = transformers_binaries
 hiddenimports = (
     enc_subs
@@ -32,10 +40,20 @@ hiddenimports = (
         "uvicorn.main",
         "starlette.routing",
         "neo4j._impl.network",
+        # JPype core 및 Okt 로더
+        "jpype",
+        "jpype.imports",
+        "jpype._core",
+        "jpype._jvmfinder",
+        # konlpy JVM 및 Okt 태거
+        "konlpy.jvm",
+        "konlpy.tag._okt",
+        # Java 패키지 네임스페이스
+        "kr.lucypark.okt",
     ]
 )
 
-# ── 5) 불필요 폴더·모듈 제외 ────────────────────────────────────────────
+# ── 6) 불필요 폴더·모듈 제외 ────────────────────────────────────────────
 excludes = [
     "tkinter",
     "__pycache__",
@@ -45,6 +63,8 @@ excludes = [
     ".vscode", ".idea",
 ]
 
+runtime_hooks = [os.path.join(here, "runtime_hook_konlpy.py")]
+
 # ===== Analysis =====
 a = Analysis(
     ["main.py"],        # 패키징할 엔트리 스크립트
@@ -52,6 +72,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
+    runtime_hooks=runtime_hooks,   # ← 여기에 추가
     hookspath=[],
     excludes=excludes,
     win_no_prefer_redirects=False,
@@ -62,7 +83,7 @@ a = Analysis(
 # ===== PYZ =====
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# ===== EXE (one-file) =====
+# ===== EXE (one-dir + debug) =====
 exe = EXE(
     pyz,
     a.scripts,
