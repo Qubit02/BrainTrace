@@ -69,7 +69,7 @@ class OpenAIService(BaseAIService) :
         
         # 텍스트가 2000자 이상이면 청킹
         if len(text) >= 2000:
-            chunks = chunk_text(text)
+            chunks = manual_chunking(text)
             logging.info(f"✅ 텍스트가 {len(chunks)}개의 청크로 분할되어 처리됩니다.")
             
             # 각 청크별로 노드와 엣지 추출
