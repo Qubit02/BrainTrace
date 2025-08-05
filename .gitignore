@@ -19,6 +19,7 @@ backend/uploaded_mds/
 backend/uploaded_docx/
 .data/
 /data/
+backend/neo4j/
 
 # =========================
 # Node.js/Frontend 관련 무시
@@ -54,4 +55,4 @@ package-lock.json
 # =========================
 .env
 .gitignore
-/neo4j/
+build/

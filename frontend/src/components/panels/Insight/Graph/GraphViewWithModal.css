@@ -10,7 +10,7 @@
 /* ====== 전체화면 버튼 ====== */
 .fullscreen-btn {
     position: absolute;
-    top: 50px;
+    top: 15px;
     right: 11px;
     padding: 6px;
     cursor: pointer;
@@ -68,7 +68,7 @@
 /* ====== 타임랩스 버튼 ====== */
 .timelapse-button-container {
     position: absolute;
-    top: 77px;
+    top: 45px;
     right: 15px;
     z-index: 50;
 }

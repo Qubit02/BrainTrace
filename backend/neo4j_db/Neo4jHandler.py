@@ -42,7 +42,7 @@ class Neo4jHandler:
                         n.label = $label,
                         n.brain_id = $brain_id,
                         n.descriptions = $new_descriptions,
-                        n.brain_id = $brain_id
+                        n.original_sentences = $new_originals
                     ON MATCH SET 
                         n.label = $label, 
                         n.brain_id = $brain_id,

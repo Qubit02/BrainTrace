@@ -1,4 +1,4 @@
-import { updatePdf, updateTextFile, updateMemo, updateDocxFile, updateMDFile } from '../../../../../api/backend';
+import { updatePdf, updateTextFile, updateMemo, updateDocxFile, updateMDFile } from '../../../../../api/config/apiIndex';
 
 const nameUpdateHandlers = {
   pdf: async (id, newName, brainId) => {

@@ -1,5 +1,5 @@
 // memoHandlers.js
-import { processText } from '../../../../../api/graphApi';
+import { processText } from '../../../../../api/services/graphApi';
 
 /**
  * 메모 텍스트를 그래프 지식으로 변환하는 함수
