@@ -17,9 +17,9 @@ import Spinner from '../common/Spinner';
 
 // 패널 사이즈 상수
 const PANEL = {
-  SOURCE: { DEFAULT: 19, MIN: 10, COLLAPSED: 5 },
-  CHAT: { DEFAULT: 50, MIN: 30 },
-  INSIGHT: { DEFAULT: 40, MIN: 10, COLLAPSED: 5 },
+  SOURCE: { DEFAULT: 20, MIN: 10, COLLAPSED: 5 },
+  CHAT: { DEFAULT: 45, MIN: 30 },
+  INSIGHT: { DEFAULT: 35, MIN: 10, COLLAPSED: 5 },
 };
 
 // 리사이즈 핸들 컴포넌트
@@ -111,6 +111,7 @@ function MainLayout() {
   // 소스 뷰에서 뒤로가기 눌렀을 때 초기 상태로 복구
   const handleBackFromSource = () => {
     setIsSourceOpen(false);
+    setHighlightingInfo(null); // 하이라이팅 정보 초기화
     firstSourceExpand.current = true;
     if (sourcePanelRef.current) {
       sourcePanelRef.current.resize(PANEL.SOURCE.DEFAULT);
@@ -129,6 +130,7 @@ function MainLayout() {
     setFocusSourceId(null);
     setSelectedChatSession(null);
     setSessionInfo(null);
+    setHighlightingInfo(null); // 하이라이팅 정보 초기화
     firstSourceExpand.current = true;
     setIsSourceOpen(false);
     setSourcePanelSize(PANEL.SOURCE.DEFAULT);
@@ -175,10 +177,12 @@ function MainLayout() {
 
   // 특정 소스를 열 때 포커스 ID와 타임스탬프를 기록
   const [openSourceId, setOpenSourceId] = useState(null);
+  const [highlightingInfo, setHighlightingInfo] = useState(null);
 
-  const handleOpenSource = (sourceId) => {
+  const handleOpenSource = (sourceId, highlightingData = null) => {
     setOpenSourceId(sourceId);
     setFocusSourceId({ id: sourceId, timestamp: Date.now() });
+    setHighlightingInfo(highlightingData);
   };
 
   // 채팅 세션 선택 핸들러
@@ -289,6 +293,7 @@ function MainLayout() {
               onFocusNodeNamesUpdate={handleFocusNodeNames}
               focusSource={focusSourceId}
               openSourceId={openSourceId}
+              highlightingInfo={highlightingInfo}
               onSourcePanelReady={() => setSourcePanelReady(true)}
               isNodeViewLoading={isNodeViewLoading}
               setIsNodeViewLoading={setIsNodeViewLoading}

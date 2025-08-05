@@ -1,4 +1,4 @@
-/* MemoList.css - 메모 리스트/목록 전용 스타일 */
+/* MemoListPanel.css - 메모 리스트/목록 전용 스타일 */
 
 /* ====== 메모 리스트 전체 래퍼 ====== */
 .memo-list-wrapper {
@@ -85,8 +85,28 @@
 .mic-wrapper {
     position: relative;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    gap: 8px;
+}
+
+/* 녹음 상태 왼쪽 표시 */
+.recording-status-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 60px;
+}
+
+/* 텍스트 변환 상태 왼쪽 표시 */
+.transcribing-status-left {
+    color: #666;
+    font-size: 12px;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: right;
+    animation: blink 1.5s infinite;
 }
 
 @keyframes blink {
@@ -526,67 +546,45 @@
 }
 
 /* ====== 볼륨/녹음 ====== */
-.volume-bar-wrapper {
-    width: 60px;
-    height: 6px;
-    margin-bottom: 4px;
-    background-color: #eee;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
 .volume-bar-bg {
-    width: 100px;
-    height: 10px;
-    background-color: #eee;
-    border-radius: 5px;
+    width: 40px;
+    height: 3px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
     overflow: hidden;
-    position: relative;
-    margin-right: 8px;
 }
 
 .volume-bar-fill {
     height: 100%;
-    background: linear-gradient(to right, rgb(179, 181, 184), rgb(62, 87, 96));
-    transition: width 0.1s ease-out;
+    background-color: #4CAF50;
+    transition: width 0.1s ease;
 }
 
 .recording-indicator-timer {
-    position: absolute;
-    margin-left: 13px;
-    top: -10px;
-    transform: translateY(-50%);
-    font-size: 10.5px;
-    font-weight: bold;
+    font-size: 11px;
+    color: #666;
+    font-weight: 500;
+    text-align: right;
 }
 
-.transcribing-indicator {
-    animation: blink 1.5s infinite;
-}
-
-/* ====== 휴지통 비우기 버튼 ====== */
 .empty-trash-button {
-    background-color: white;
-    color: #313030;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 6px 8px;
-    font-size: 14px;
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 4px;
-    transition: all 0.2s ease;
-    margin-left: auto;
+    padding: 6px 12px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .empty-trash-button:hover {
-    background-color: #f5f5f5;
-    border-color: #ccc;
-    color: #333;
+    background-color: #d32f2f;
 }
 
 .empty-trash-button:active {
-    background-color: #e8e8e8;
-    transform: translateY(1px);
+    background-color: #b71c1c;
 }

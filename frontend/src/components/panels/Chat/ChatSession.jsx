@@ -7,7 +7,7 @@ import {
   createChatSession,
   deleteChatSession,
   renameChatSession
-} from '../../../../api/chat';
+} from '../../../../api/services/chatApi';
 import ChatPanel from './ChatPanel';
 import { PiChatsCircle } from "react-icons/pi";
 import { RiDeleteBinLine } from 'react-icons/ri';

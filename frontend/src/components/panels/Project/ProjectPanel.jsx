@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /* API ─ backend */
-import { listBrains } from '../../../../api/brains';
+import { listBrains } from '../../../../api/config/apiIndex';
 
 /* style */
 import './ProjectPanel.css';

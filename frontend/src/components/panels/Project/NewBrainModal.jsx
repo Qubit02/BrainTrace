@@ -1,6 +1,6 @@
 // src/components/NewBrainModal.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import { createBrain } from '../../../../api/backend';
+import { createBrain } from '../../../../api/config/apiIndex';
 import './NewBrainModal.css';
 import { RiDeleteBack2Line } from "react-icons/ri";
 export default function NewBrainModal({ onClose, onCreated }) {

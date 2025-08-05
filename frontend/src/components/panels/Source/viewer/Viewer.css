@@ -85,19 +85,25 @@
 
 .viewer-pre {
     white-space: pre-wrap;
-    font-family: 'Courier New', monospace;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
     user-select: text;
     padding: 12px;
     background: white;
     color: #000;
-    text-align: center;
+    text-align: left;
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
-    min-height: 100%;
+    min-height: calc(100vh - 120px);
     box-sizing: border-box;
     cursor: text;
+}
+
+.viewer-pre > * {
+    text-align: left;
+    width: 100%;
+    max-width: 800px;
 }
 
 .viewer-pre:hover {
@@ -125,316 +131,68 @@
     letter-spacing: -0.5px;
 }
 
-/* ====== 파일 타입별 스타일 (웹사이트 참고) ====== */
+/* ====== 통합된 뷰어 스타일 ====== */
 
-/* PDF 파일 스타일 - Adobe Acrobat, Google Docs PDF 뷰어 참고 */
-.viewer-container[data-file-type="pdf"] .viewer-content {
+/* 모든 파일 타입에 대한 통합 스타일 */
+.viewer-container .viewer-content {
     background: white;
 }
 
-.viewer-container[data-file-type="pdf"] .viewer-pre {
-    font-family: 'Times New Roman', 'Georgia', serif;
+.viewer-container .viewer-pre {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     color: #000;
     background: white;
     border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border-radius: 6px;
     margin: 16px auto;
     padding: 20px;
     line-height: 1.6;
-    font-size: 14px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    text-align: left;
-    max-width: 800px;
-    width: calc(100% - 32px);
-    min-height: calc(100vh - 200px);
-    box-sizing: border-box;
-    cursor: text;
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-pre:hover {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-pre:active {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-header {
-    background: #e74c3c;
-    color: white;
-    border-bottom: 1px solid #c0392b;
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-title-text {
-    color: #2c3e50;
-    font-family: 'Times New Roman', 'Georgia', serif;
-    font-weight: 700;
-    font-size: 26px;
-    letter-spacing: -0.3px;
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-button {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.viewer-container[data-file-type="pdf"] .viewer-fontsize {
-    color: white;
-}
-
-/* DOCX 파일 스타일 - Microsoft Word Online, Google Docs 참고 */
-.viewer-container[data-file-type="docx"] .viewer-content {
-    background: white;
-}
-
-.viewer-container[data-file-type="docx"] .viewer-pre {
-    font-family: 'Calibri', 'Arial', sans-serif;
-    color: #000;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    margin: 16px auto;
-    padding: 24px;
-    line-height: 1.5;
     font-size: 16px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     text-align: left;
-    max-width: 800px;
     width: calc(100% - 32px);
-    min-height: calc(100vh - 200px);
+    height: calc(100vh - 200px);
     box-sizing: border-box;
     cursor: text;
+    overflow-y: auto;
 }
 
-.viewer-container[data-file-type="docx"] .viewer-pre:hover {
+.viewer-container .viewer-pre:hover {
     cursor: text;
 }
 
-.viewer-container[data-file-type="docx"] .viewer-pre:active {
+.viewer-container .viewer-pre:active {
     cursor: text;
 }
 
-.viewer-container[data-file-type="docx"] .viewer-header {
-    background: #2b579a;
-    color: white;
-    border-bottom: 1px solid #1e3a8a;
-}
-
-.viewer-container[data-file-type="docx"] .viewer-title-text {
-    color: #000;
-    font-family: 'Calibri', 'Arial', sans-serif;
-    font-weight: 600;
-    font-size: 22px;
-    letter-spacing: -0.2px;
-}
-
-.viewer-container[data-file-type="docx"] .viewer-button {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.viewer-container[data-file-type="docx"] .viewer-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.viewer-container[data-file-type="docx"] .viewer-fontsize {
-    color: white;
-}
-
-/* TXT 파일 스타일 - VS Code, Sublime Text, Notepad++ 참고 */
-.viewer-container[data-file-type="txt"] .viewer-content {
+.viewer-container .viewer-header {
     background: white;
+    color: #333;
+    border-bottom: 1px solid #e0e0e0;
 }
 
-.viewer-container[data-file-type="txt"] .viewer-pre {
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    color: #000;
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    margin: 16px auto;
-    padding: 20px;
-    line-height: 1.4;
-    font-size: 13px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    text-align: left;
-    max-width: 800px;
-    width: calc(100% - 32px);
-    min-height: calc(100vh - 200px);
-    box-sizing: border-box;
-    cursor: text;
-}
-
-.viewer-container[data-file-type="txt"] .viewer-pre:hover {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="txt"] .viewer-pre:active {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="txt"] .viewer-header {
-    background: #088be2;
-    color: white;
-    border-bottom: 1px solid #026ec0;
-}
-
-.viewer-container[data-file-type="txt"] .viewer-title-text {
-    color: #000;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-weight: 600;
-    font-size: 22px;
-    letter-spacing: 0px;
-}
-
-.viewer-container[data-file-type="txt"] .viewer-button {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.viewer-container[data-file-type="txt"] .viewer-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.viewer-container[data-file-type="txt"] .viewer-fontsize {
-    color: white;
-}
-
-/* MD 파일 스타일 - GitHub, GitLab, Notion 참고 */
-.viewer-container[data-file-type="md"] .viewer-content {
-    background: white;
-}
-
-.viewer-container[data-file-type="md"] .viewer-pre {
+.viewer-container .viewer-title-text {
+    color: #333;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    color: #000;
-    background: white;
-    border: 1px solid #e1e4e8;
-    border-radius: 6px;
-    margin: 16px auto;
-    padding: 24px;
-    line-height: 1.6;
-    font-size: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    text-align: left;
-    max-width: 800px;
-    width: calc(100% - 32px);
-    min-height: calc(100vh - 200px);
-    box-sizing: border-box;
-    cursor: text;
-}
-
-.viewer-container[data-file-type="md"] .viewer-pre:hover {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="md"] .viewer-pre:active {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="md"] .viewer-header {
-    background: #24292e;
-    color: white;
-    border-bottom: 1px solid #1b1f23;
-}
-
-.viewer-container[data-file-type="md"] .viewer-title-text {
-    color: #000;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    font-weight: 700;
-    font-size: 22px;
+    font-weight: 600;
+    font-size: 28px;
     letter-spacing: -0.3px;
 }
 
-.viewer-container[data-file-type="md"] .viewer-button {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
+.viewer-container .viewer-button {
+    color: #333;
+    border-color: #ddd;
+    background-color: white;
 }
 
-.viewer-container[data-file-type="md"] .viewer-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.5);
+.viewer-container .viewer-button:hover {
+    background: #f5f5f5;
+    color: #111;
+    border-color: #ccc;
 }
 
-.viewer-container[data-file-type="md"] .viewer-fontsize {
-    color: white;
-}
-
-/* MEMO 파일 스타일 - Apple Notes, Evernote, Notion 참고 */
-.viewer-container[data-file-type="memo"] .viewer-content {
-    background: white;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-pre {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    color: #000;
-    background: white;
-    border: 1px solid #e5e5e7;
-    border-radius: 8px;
-    margin: 16px auto;
-    padding: 24px;
-    line-height: 1.6;
-    font-size: 16px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    text-align: left;
-    max-width: 800px;
-    width: calc(100% - 32px);
-    min-height: calc(100vh - 200px);
-    box-sizing: border-box;
-    cursor: text;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-pre:hover {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-pre:active {
-    cursor: text;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-header {
-    background: #3794f8;
-    color: white;
-    border-bottom: 1px solid #1375ff;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-title-text {
-    color: #000;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    font-weight: 600;
-    font-size: 22px;
-    letter-spacing: -0.2px;
-}
-
-.viewer-container[data-file-type="memo"] .viewer-button {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.viewer-container[data-file-type="memo"] .viewer-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.viewer-container[data-file-type="memo"] .viewer-fontsize {
-    color: white;
+.viewer-container .viewer-fontsize {
+    color: #333;
 }
 
 /* MD 파일 뷰어 스타일 */
@@ -559,5 +317,346 @@
     justify-content: center;
     align-items: center;
     height: 100%;
-    color: #d73a49;
+    color: #e74c3c;
+    text-align: center;
+    padding: 20px;
+    font-size: 16px;
+}
+
+/* 출처보기 하이라이팅 강조 스타일 */
+.viewer-container[data-source-view="true"] .viewer-pre {
+    /* 출처보기 모드에서도 텍스트 선택 활성화 */
+    user-select: text;
+    cursor: text;
+}
+
+/* 모든 모드에서 텍스트 커서 활성화 */
+.viewer-container .viewer-pre {
+    cursor: text;
+    user-select: text;
+}
+
+/* 출처보기 하이라이트 애니메이션 */
+@keyframes sourceHighlightPulse {
+    0% {
+        box-shadow: 0 2px 4px rgba(128, 128, 128, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 8px rgba(128, 128, 128, 0.5);
+    }
+    100% {
+        box-shadow: 0 2px 4px rgba(128, 128, 128, 0.3);
+    }
+}
+
+/* 출처보기 하이라이트 호버 효과 */
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"]:hover {
+    animation: sourceHighlightPulse 2s infinite;
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+/* 출처보기 하이라이트 강조 스타일 개선 */
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"] {
+    position: relative;
+    z-index: 10;
+}
+
+/* 출처보기 하이라이트 배경 그라데이션 */
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"] {
+    background: linear-gradient(135deg, #E8E8E8 0%, #D3D3D3 100%) !important;
+    border: 2px solid #C0C0C0 !important;
+    box-shadow: 
+        0 2px 4px rgba(128, 128, 128, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 출처보기 하이라이트 텍스트 강조 */
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"] {
+    font-weight: 800 !important;
+    font-size: inherit !important;
+    color: #1a1a1a !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+    letter-spacing: 0.8px !important;
+    line-height: 1.5 !important;
+}
+
+/* 출처보기 전용 스타일 */
+.viewer-container[data-source-view="true"] {
+    background: white;
+    border-left: none;
+    position: relative;
+    overflow: visible;
+}
+
+.viewer-container[data-source-view="true"]::before {
+    content: none;
+}
+
+.viewer-container[data-source-view="true"] .viewer-header {
+    background: white;
+    border-bottom: 1px solid #ddd;
+    box-shadow: none;
+    position: relative;
+}
+
+.viewer-container[data-source-view="true"] .viewer-header::after {
+    content: none;
+}
+
+.viewer-container[data-source-view="true"] .viewer-content {
+    background: white;
+    border-left: none;
+    position: relative;
+}
+
+.viewer-container[data-source-view="true"] .viewer-content::before {
+    content: none;
+}
+
+.viewer-container[data-source-view="true"] .viewer-pre {
+    background: white;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0 auto;
+    position: relative;
+    backdrop-filter: none;
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    flex-direction: initial;
+    min-height: calc(100vh - 120px);
+    padding: 15px;
+    color: #000;
+    text-align: left;
+    max-width: 800px;
+    width: 96%;
+    box-sizing: border-box;
+    cursor: text;
+}
+
+.viewer-container .viewer-pre {
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    flex-direction: initial;
+    min-height: initial;
+}
+
+.viewer-container .viewer-pre > * {
+    text-align: initial;
+    width: initial;
+    max-width: initial;
+}
+
+.viewer-container[data-source-view="true"] .viewer-pre:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+
+.viewer-container[data-source-view="true"] .viewer-title-text {
+    color: #000;
+    text-shadow: none;
+    position: relative;
+}
+
+.viewer-container[data-source-view="true"] .viewer-title-text::after {
+    content: none;
+}
+
+.viewer-container[data-source-view="true"] .viewer-button {
+    border-color: #ccc;
+    color: #333;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.viewer-container[data-source-view="true"] .viewer-button:hover {
+    background: #cecdcd;
+    border-color: #ccc;
+    color: #111;
+    transform: scale(1.02);
+}
+
+.viewer-container[data-source-view="true"] .viewer-fontsize {
+    color: #333;
+    font-weight: normal;
+}
+
+/* 출처보기 표시기 애니메이션 */
+.source-view-indicator {
+    animation: sourceViewPulse 3s ease-in-out infinite;
+    transition: all 0.3s ease;
+}
+
+.source-view-indicator:hover {
+    transform: translate(-50%, -50%) scale(1.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+@keyframes sourceViewPulse {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    50% {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    }
+}
+
+/* 출처보기에서 하이라이트된 텍스트 스타일 강화 */
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"] {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%) !important;
+    border: 1px solid #ffd54f;
+    border-radius: 4px;
+    padding: 2px 4px;
+    box-shadow: 0 1px 3px rgba(255, 193, 7, 0.2);
+    position: relative;
+    animation: highlightGlow 3s ease-in-out infinite;
+}
+
+@keyframes highlightGlow {
+    0%, 100% {
+        box-shadow: 0 1px 3px rgba(255, 193, 7, 0.2);
+    }
+    50% {
+        box-shadow: 0 1px 6px rgba(255, 193, 7, 0.3);
+    }
+}
+
+.viewer-container[data-source-view="true"] .viewer-pre span[style*="auto-highlight"]:hover {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffe082 100%) !important;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* 출처보기에서 통합된 배경 스타일 */
+.viewer-container[data-source-view="true"] .viewer-content {
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+}
+
+/* 출처보기 안내 메시지 스타일 */
+.viewer-container[data-source-view="true"] .viewer-content > div:first-child {
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.viewer-container[data-source-view="true"] .viewer-pre {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin: 8px;
+    position: relative;
+    backdrop-filter: blur(5px);
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    flex-direction: initial;
+    min-height: calc(100vh - 120px);
+}
+
+.viewer-container[data-source-view="true"] .viewer-pre > * {
+    text-align: initial;
+    width: initial;
+    max-width: initial;
+}
+
+/* 출처보기 안내 메시지 스타일 */
+.source-view-info-tooltip {
+    position: absolute;
+    right: 120px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: #878787;
+    font-style: italic;
+}
+
+.source-view-notice {
+    padding: 15px 16px;
+    margin: 8px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #424242;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(10px);
+    width: 96%;
+}
+
+.source-view-notice-icon {
+    font-size: 16px;
+    color: #757575;
+}
+
+.source-view-notice-text strong {
+    color: #424242;
+}
+
+.viewer-header-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.viewer-title-header {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0 16px;
+}
+
+.viewer-title-header .viewer-title-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.viewer-back-button {
+    cursor: pointer;
+    font-size: 18px;
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #333;
+}
+
+.viewer-controls-container {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+}
+
+.viewer-text-content {
+    font-size: inherit;
+    white-space: pre-wrap;
+    font-family: inherit;
 }
