@@ -97,26 +97,46 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
     #depth가 0인 경우 모든 문장들의 유사도들의 평균을 초기 threshold로 설정
     #이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
     if depth==0:
-        flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
-        threshold = np.quantile(flattened, 0.25)
+        try:
+            if similarity_matrix.size > 0:
+                flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
+                threshold = np.quantile(flattened, 0.25)
+            else:
+                threshold = 0.5  # 기본값 설정
+        except Exception as e:
+            logging.error(f"threshold 계산 중 오류: {e}")
+            threshold = 0.5  # 기본값 설정
 
     # 유사도 기반 chunk 묶기
     new_chunk_groups = []
     visited = set()
-    for idx, _ in enumerate(chunk):
-        if idx in visited:
-            continue
-        new_chunk = [idx]
-        visited.add(idx)
-        for next_idx in range(idx + 1, len(chunk)):
-            if next_idx in visited:
-                continue
-            if similarity_matrix[next_idx][next_idx-1]>=threshold:
-                new_chunk.append(next_idx)
-                visited.add(next_idx)
-            else:
-                break
-        new_chunk_groups.append(new_chunk)
+    
+    # similarity_matrix가 비어있거나 크기가 충분하지 않은 경우 처리
+    try:
+        if similarity_matrix.size == 0 or similarity_matrix.shape[0] < 2:
+            # 각 chunk를 개별 그룹으로 처리
+            for idx, _ in enumerate(chunk):
+                new_chunk_groups.append([idx])
+        else:
+            for idx, _ in enumerate(chunk):
+                if idx in visited:
+                    continue
+                new_chunk = [idx]
+                visited.add(idx)
+                for next_idx in range(idx + 1, len(chunk)):
+                    if next_idx in visited:
+                        continue
+                    if similarity_matrix[next_idx][next_idx-1]>=threshold:
+                        new_chunk.append(next_idx)
+                        visited.add(next_idx)
+                    else:
+                        break
+                new_chunk_groups.append(new_chunk)
+    except Exception as e:
+        logging.error(f"유사도 기반 chunk 묶기 중 오류: {e}")
+        # 오류 발생 시 각 chunk를 개별 그룹으로 처리
+        for idx, _ in enumerate(chunk):
+            new_chunk_groups.append([idx])
 
     # 새롭게 나눠진 chunk group을 바탕으로 text를 분할하여 go_chunk를 만듦
     # go_chunk는 다시 한 번 chunking하기 위해 제귀적으로 호출되는 함수의 argument가 됨
@@ -188,31 +208,39 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
 
 def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     tokens = [c["tokens"] for c in chunk]
-     
-    # LDA 모델이 없으면 학습하고, 있으면 재사용
-    if lda_model is None or dictionary is None:
-        dictionary = corpora.Dictionary(tokens)
-        corpus = [dictionary.doc2bow(text) for text in tokens]
-        lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+    logging.info(f"LDA 처리 중 토큰: {tokens}")
     
-    corpus = [dictionary.doc2bow(text) for text in tokens]
+    try:
+        # LDA 모델이 없으면 학습하고, 있으면 재사용
+        if lda_model is None or dictionary is None:
+            dictionary = corpora.Dictionary(tokens)
+            corpus = [dictionary.doc2bow(text) for text in tokens]
+            lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+     
+        corpus = [dictionary.doc2bow(text) for text in tokens]
 
-    topic_distributions = []
-    for bow in corpus:
-        dist = lda_model.get_document_topics(bow, minimum_probability=0)
-        dense_vec = [prob for _, prob in sorted(dist, key=lambda x: x[0])]
-        topic_distributions.append(dense_vec)
+        topic_distributions = []
+        for bow in corpus:
+            dist = lda_model.get_document_topics(bow, minimum_probability=0)
+            dense_vec = [prob for _, prob in sorted(dist, key=lambda x: x[0])]
+            topic_distributions.append(dense_vec)
 
-    topic_vectors = np.array(topic_distributions)
-    sim_matrix = cosine_similarity(topic_vectors)
+        topic_vectors = np.array(topic_distributions)
+        sim_matrix = cosine_similarity(topic_vectors)
 
-    # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
-    top_topic_terms = lda_model.show_topic(0, topn= 1)
-    # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
-    # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
-    top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
+        # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
+        top_topic_terms = lda_model.show_topic(0, topn= 1)
+        logging.info(f"top_topic_terms: {top_topic_terms}")
+        # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+        # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+        top_keyword = ""
+        if top_topic_terms and len(top_topic_terms) > 0 and len(top_topic_terms[0]) > 0:
+            top_keyword = top_topic_terms[0][0]
 
-    return top_keyword, lda_model ,sim_matrix
+        return top_keyword, lda_model ,sim_matrix
+    except Exception as e:
+        logging.error(f"LDA 처리 중 오류 발생: {e}")
+        return "", lda_model, np.array([])
 
 
 def split_into_tokenized_sentence(text:str):
@@ -223,7 +251,11 @@ def split_into_tokenized_sentence(text:str):
         texts.append(p.strip())
 
     for idx, sentence in enumerate(texts):
-        tokenized_sentences.append({"tokens":extract_noun_phrases(sentence),
+        tokens = extract_noun_phrases(sentence)
+        # 빈 토큰 배열인 경우 기본 토큰 추가
+        if not tokens:
+            tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
+        tokenized_sentences.append({"tokens": tokens,
                                     "index":idx})
         
     return tokenized_sentences, texts
@@ -239,6 +271,8 @@ def extract_graph_components(text: str, source_id: str):
     all_nodes = []
     all_edges = []
     tokenized, sentences = split_into_tokenized_sentence(text)
+    logging.info(f"토큰화된 문장: {tokenized}")
+    logging.info(f"원본 문장: {sentences}")
     
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, [], "", 0,)
@@ -253,15 +287,27 @@ def extract_graph_components(text: str, source_id: str):
     #chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
-        if node["descriptions"] != []:
-            resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-            node["descriptions"]={"description":resolved_description,
-                                    "source_id":source_id}
-            node["original_sentences"]={"description":resolved_description,
-                                    "source_id":source_id,
-                                    "score": 1.0}
-        else:
-            node["descriptions"]=[{"description":"", "source_id":source_id}]
+        try:
+            if node["descriptions"] != []:
+                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+                valid_indices = [idx for idx in node["descriptions"] if idx < len(sentences)]
+                if valid_indices:
+                    resolved_description="".join([sentences[idx] for idx in valid_indices])
+                    node["descriptions"]={"description":resolved_description,
+                                            "source_id":source_id}
+                    node["original_sentences"]={"description":resolved_description,
+                                            "source_id":source_id,
+                                            "score": 1.0}
+                else:
+                    node["descriptions"]={"description":"", "source_id":source_id}
+                    node["original_sentences"]={"description":"", "source_id":source_id, "score": 1.0}
+            else:
+                node["descriptions"]={"description":"", "source_id":source_id}
+                node["original_sentences"]={"description":"", "source_id":source_id, "score": 1.0}
+        except Exception as e:
+            logging.error(f"노드 description 처리 중 오류: {e}")
+            node["descriptions"]={"description":"", "source_id":source_id}
+            node["original_sentences"]={"description":"", "source_id":source_id, "score": 1.0}
             
     for c in chunks:
         if "chunks" in c:
@@ -286,14 +332,19 @@ def manual_chunking(text:str):
 
     final_chunks=[]
     for c in chunks:
-        chunk=""
-        # 각 청크의 문장 인덱스들을 실제 텍스트로 변환
-        for idx in c["chunks"]:
-            # 인덱스가 sentences 배열의 범위 내에 있는지 확인
-            # (인덱스 오류 방지)
-            if idx < len(sentences):
-                chunk+=sentences[idx]
-        final_chunks.append(chunk)
+        try:
+            chunk=""
+            # 각 청크의 문장 인덱스들을 실제 텍스트로 변환
+            for idx in c["chunks"]:
+                # 인덱스가 sentences 배열의 범위 내에 있는지 확인
+                # (인덱스 오류 방지)
+                if idx < len(sentences):
+                    chunk+=sentences[idx]
+            if chunk:  # 빈 청크는 추가하지 않음
+                final_chunks.append(chunk)
+        except Exception as e:
+            logging.error(f"청크 처리 중 오류: {e}")
+            continue
 
     return final_chunks
 
