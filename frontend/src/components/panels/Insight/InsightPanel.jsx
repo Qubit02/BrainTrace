@@ -206,7 +206,7 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
         )}
         <div className="header-actions">
           {!collapsed && (
-            <div style={{ display: 'flex'}}>
+            <div style={{ display: 'flex' }}>
               <button
                 className={`insight-toggle-btn${showGraph ? ' active' : ''}`}
                 title="그래프 보기 토글"
@@ -218,7 +218,7 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
                 className={`insight-toggle-btn${showMemo ? ' active' : ''}`}
                 title="메모 보기 토글"
                 onClick={() => setShowMemo(prev => !prev)}
-                style={{marginRight: '1px'}}
+                style={{ marginRight: '1px' }}
               >
                 {showMemo ? <PiNoteBlankFill size={19} color={'black'} /> : <CiStickyNote size={19} color={'black'} />}
               </button>
@@ -227,13 +227,13 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
           {collapsed ? (
             <VscLayoutSidebarLeftOff
               size={18}
-              style={{ cursor: 'pointer'}}
+              style={{ cursor: 'pointer' }}
               onClick={() => setCollapsed(prev => !prev)}
             />
           ) : (
             <VscLayoutSidebarRightOff
               size={18}
-              style={{ cursor: 'pointer', marginRight: '2px', marginLeft:'3px' }}
+              style={{ cursor: 'pointer', marginRight: '2px', marginLeft: '3px' }}
               onClick={() => setCollapsed(prev => !prev)}
             />
           )}
@@ -268,6 +268,11 @@ function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNode
                 onClearFocusNodes={handleClearFocusNodes}
                 onClearNewlyAddedNodes={handleClearNewlyAddedNodes}
               />
+              {referencedNodes && referencedNodes.length > 0 && (
+                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '5px', borderRadius: '3px', fontSize: '12px' }}>
+                  참조된 노드: {referencedNodes.join(', ')}
+                </div>
+              )}
             </div>
           )}
 
