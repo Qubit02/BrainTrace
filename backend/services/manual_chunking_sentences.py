@@ -10,6 +10,7 @@ import numpy as np
 from collections import defaultdict
 from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import extract_noun_phrases
+from .chunk_service import chunk_text
 
 okt = Okt()
 
@@ -55,16 +56,19 @@ def tokenization(paragraphs: list[dict]) -> list[list[str]]:
 
 def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
                         lda_model=None, dictionary=None, num_topics=5):
-    
+    flag=-1
+    result=[]
+
+
     # 종료 조건
     if depth > 0:
         # chunk가 세 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
         if len(chunk)<=3 or sum([len(c["tokens"]) for c in chunk])<=20:
-            result = [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
-            return result ,{"nodes":[], "edges":[]}, already_made
+            flag=1
         
         #depth가 5 이상일 경우 더 깊이 탐색하지 않음
         if(depth >= 5):
+            flag=2
             length=len(chunk)
             sizes = sum([len(c["tokens"]) for c in chunk])
             result=[]
@@ -81,24 +85,38 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
                                 "keyword": top_keyword}]
             else:
                 result = [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
- 
+        
+        
+        #chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
+        # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
+        _, _, similarity_matrix = lda_keyword_and_similarity(chunk, lda_model, dictionary)
+        if similarity_matrix.size == 0 or similarity_matrix.shape[0] < 2:
+            flag=3
+        
+        #만족된 종료 조건이 있을 경우
+        if flag != -1:
+            result += [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
+            logging.info("depth {depth} 청킹 종료, flag:{flage}")
             return result ,{"nodes":[], "edges":[]}, already_made
 
-
-    #lda로 전체 텍스트의 키워드와 각 chunk의 주제간의 유사도를 구함
-    # depth가 0일 경우 lda가 추론한 전체 텍스트의 topic이 해당 chunk(==full text)의 top keyword가 됨
-    if depth==0:
-        top_keyword, lda_model, similarity_matrix = lda_keyword_and_similarity(chunk, lda_model, dictionary)
-    # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
     else:
-        _, _, similarity_matrix = lda_keyword_and_similarity(chunk, lda_model, dictionary)
-
-
-    #depth가 0인 경우 모든 문장들의 유사도들의 평균을 초기 threshold로 설정
-    #이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
-    if depth==0:
-        flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
-        threshold = np.quantile(flattened, 0.25)
+        #lda로 전체 텍스트의 키워드와 각 chunk의 주제간의 유사도를 구함
+        # depth가 0일 경우 lda가 추론한 전체 텍스트의 topic이 해당 chunk(==full text)의 top keyword가 됨
+        top_keyword, lda_model, similarity_matrix = lda_keyword_and_similarity(chunk, lda_model, dictionary)
+        
+        #모든 문장들의 유사도들의 평균을 초기 threshold로 설정
+        #이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        try:
+            if similarity_matrix.size > 0:
+                flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
+                threshold = np.quantile(flattened, 0.25)
+            else:
+                logging.error(f"similarity_matrix 생성 오류: {e}")
+                return [], {}, []
+                
+        except Exception as e:
+            logging.error(f"threshold 계산 중 오류: {e}")
+            threshold = 0.5  # 기본값 설정
 
     # 유사도 기반 chunk 묶기
     new_chunk_groups = []
@@ -190,10 +208,15 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     tokens = [c["tokens"] for c in chunk]
      
     # LDA 모델이 없으면 학습하고, 있으면 재사용
-    if lda_model is None or dictionary is None:
-        dictionary = corpora.Dictionary(tokens)
-        corpus = [dictionary.doc2bow(text) for text in tokens]
-        lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+    try:
+        if lda_model is None or dictionary is None:
+            dictionary = corpora.Dictionary(tokens)
+            corpus = [dictionary.doc2bow(text) for text in tokens]
+            lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+    
+    except Exception as e:
+        logging.error(f"LDA 처리 중 오류 발생: {e}")
+        return "", lda_model, np.array([])
     
     corpus = [dictionary.doc2bow(text) for text in tokens]
 
@@ -223,8 +246,13 @@ def split_into_tokenized_sentence(text:str):
         texts.append(p.strip())
 
     for idx, sentence in enumerate(texts):
-        tokenized_sentences.append({"tokens":extract_noun_phrases(sentence),
+        tokens = extract_noun_phrases(sentence)
+        # 빈 토큰 배열인 경우 기본 토큰 추가
+        if not tokens:
+            tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
+        tokenized_sentences.append({"tokens": tokens,
                                     "index":idx})
+
         
     return tokenized_sentences, texts
 
@@ -242,6 +270,9 @@ def extract_graph_components(text: str, source_id: str):
     
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, [], "", 0,)
+        if chunks==[]:
+            logging.info("manual chunking에 실패하여 기계적으로 청킹합니다.")
+            return chunk_text(text)
         logging.info("chunking이 완료되었습니다.")
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
@@ -296,6 +327,7 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-
-
-
+"""
+text="아ㅕㅇ하세요 바갑스비다 제 아름으 장세린입니다. 에바네 한 시간 10분 이라니. 오늘은 별로 안 더워요. airhnjv;ifnm roingjlf;diuerk jifgkrl; 9rkll;fdgrnj;do9hrhjkrhhufdyebkrnriohdjbjkh "
+extract_graph_components(text, 1234)
+manual_chunking(text)"""
