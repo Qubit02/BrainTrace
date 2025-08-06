@@ -26,7 +26,7 @@ import {
   getChatMessageById,
   renameChatSession,
   fetchChatSession,
-  fetchChatHistoryBySession, 
+  fetchChatHistoryBySession,
   deleteAllChatsBySession
 } from '../../../../api/services/chatApi';
 import { createSourceViewClickHandler, extractOriginalSentencesForHover } from './sourceViewUtils';
@@ -46,11 +46,11 @@ import { HiOutlineBars4 } from "react-icons/hi2";
 import { WiCloudRefresh } from "react-icons/wi";
 
 // 모델 관련 유틸리티 import
-import { 
-  getModelData, 
-  addGpt4oToModels, 
-  separateInstalledAndAvailableModels, 
-  sortModelsWithSelectedFirst 
+import {
+  getModelData,
+  addGpt4oToModels,
+  separateInstalledAndAvailableModels,
+  sortModelsWithSelectedFirst
 } from './modelUtils';
 
 /**
@@ -72,12 +72,12 @@ import {
  * @param {boolean} hasChatStarted - 채팅 시작 여부
  * @param {function} onRefreshClick - 새로고침 클릭 핸들러
  */
-const TitleEditor = ({ 
-  sessionName, 
-  isEditingTitle, 
-  editingTitle, 
-  setEditingTitle, 
-  handleEditTitleStart, 
+const TitleEditor = ({
+  sessionName,
+  isEditingTitle,
+  editingTitle,
+  setEditingTitle,
+  handleEditTitleStart,
   handleEditTitleFinish,
   hasChatStarted,
   onRefreshClick
@@ -165,13 +165,13 @@ const ModelDropdown = ({
 }) => {
   return (
     <div className="chat-panel-model-selector-inline">
-      <div 
+      <div
         className="chat-panel-model-dropdown-inline"
         onClick={() => setShowModelDropdown(!showModelDropdown)}
       >
         <span className="chat-panel-model-value-inline">{selectedModel}</span>
-        <IoChevronDown 
-          size={14} 
+        <IoChevronDown
+          size={14}
           className={`chat-panel-dropdown-arrow-inline ${showModelDropdown ? 'rotated' : ''}`}
         />
       </div>
@@ -179,7 +179,7 @@ const ModelDropdown = ({
         <div className="chat-panel-model-menu-inline">
           {/* 설치된 모델 목록 */}
           {sortModelsWithSelectedFirst(
-            availableModels.filter(model => model.installed), 
+            availableModels.filter(model => model.installed),
             selectedModel
           ).map((apiModelInfo) => {
             const model = apiModelInfo.name;
@@ -226,7 +226,7 @@ const ModelDropdown = ({
               </div>
             );
           })}
-          
+
           {/* 구분선 - 설치된 모델과 설치 가능한 모델 사이 */}
           {(() => {
             const { installed, available } = separateInstalledAndAvailableModels(availableModels);
@@ -234,7 +234,7 @@ const ModelDropdown = ({
               <div className="chat-panel-model-separator-inline"></div>
             ) : null;
           })()}
-          
+
           {/* 설치 가능한 모델 목록 */}
           {availableModels.filter(model => !model.installed).map((apiModelInfo) => {
             const model = apiModelInfo.name;
@@ -516,11 +516,11 @@ const ChatMessage = ({
         {message.is_ai && message.accuracy !== null && message.accuracy !== undefined && (
           <div className="chat-panel-accuracy-display">
             <span className="chat-panel-accuracy-label">정확도:</span>
-            <span 
+            <span
               className="chat-panel-accuracy-value"
               data-accuracy={
-                message.accuracy >= 0.8 ? "high" : 
-                message.accuracy >= 0.6 ? "medium" : "low"
+                message.accuracy >= 0.8 ? "high" :
+                  message.accuracy >= 0.6 ? "medium" : "low"
               }
             >
               {(message.accuracy * 100).toFixed(1)}%
@@ -529,7 +529,7 @@ const ChatMessage = ({
           </div>
         )}
       </div>
-      
+
 
     </div>
   );
@@ -597,19 +597,19 @@ function ChatPanel({
 }) {
 
   // ===== 상태 관리 =====
-  
+
   // 채팅 관련 상태
   const [inputText, setInputText] = useState(''); // 입력 텍스트
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태
   const [chatHistory, setChatHistory] = useState([]); // 채팅 내역
   const [copiedMessageId, setCopiedMessageId] = useState(null); // 복사된 메시지 ID
-  
+
   // UI 관련 상태
   const messagesEndRef = useRef(null); // 메시지 끝 참조 (자동 스크롤용)
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 열린 소스 노드 상태
   const [showConfirm, setShowConfirm] = useState(false); // 확인 다이얼로그 표시
   const [isInitialLoading, setIsInitialLoading] = useState(true); // 초기 로딩 상태
-  
+
   // 세션 관련 상태
   const [sessionName, setSessionName] = useState(''); // 세션 이름
   const [isEditingTitle, setIsEditingTitle] = useState(false); // 제목 편집 모드
@@ -634,7 +634,7 @@ function ChatPanel({
         const history = await fetchChatHistoryBySession(selectedSessionId);
         setChatHistory(history);
         if (onChatReady) onChatReady(true);
-        
+
         // 채팅 내역 로드 후 0.5초 더 대기
         setTimeout(() => {
           setIsInitialLoading(false);
@@ -642,7 +642,7 @@ function ChatPanel({
       } catch (error) {
         console.error('채팅 내역 로드 실패:', error);
         if (onChatReady) onChatReady(false);
-        
+
         // 에러가 발생해도 0.5초 후 로딩 종료
         setTimeout(() => {
           setIsInitialLoading(false);
@@ -744,7 +744,7 @@ function ChatPanel({
    */
   const handleInstallModel = async (modelName) => {
     if (installingModel) return; // 이미 설치 중이면 무시
-    
+
     setInstallingModel(modelName);
     try {
       await installModel(modelName);
@@ -818,7 +818,7 @@ function ChatPanel({
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
     setIsLoading(true);
-    
+
     // 1. 사용자 질문을 즉시 UI에 추가 (optimistic update)
     const tempQuestion = {
       chat_id: Date.now(),
@@ -836,13 +836,13 @@ function ChatPanel({
       const model = isGptModel ? 'openai' : 'ollama';
       const model_name = isGptModel ? '' : selectedModel;
       const res = await requestAnswer(inputText, selectedSessionId, selectedBrainId, model, model_name);
-      
+
       // 3. 응답 처리
       const hasRealAnswer = res?.answer && res.answer.trim() !== '';
       const hasGuideMessage = res?.message && res.message.trim() !== '';
-      
+
       if (!hasRealAnswer && !hasGuideMessage) return;
-      
+
       // 4. 실제 답변이 있으면 추가
       if (hasRealAnswer) {
         const tempAnswer = {
@@ -854,7 +854,7 @@ function ChatPanel({
         };
         setChatHistory(prev => [...prev, tempAnswer]);
       }
-      
+
       // 5. 안내 메시지가 있으면 추가
       if (hasGuideMessage) {
         setChatHistory(prev => [
@@ -868,10 +868,14 @@ function ChatPanel({
           }
         ]);
       }
-      
+
       // 6. 참조 노드 정보가 있으면 그래프 업데이트
+      console.log('🔍 전체 응답 구조:', res);
       if (res?.referenced_nodes && res.referenced_nodes.length > 0 && typeof onReferencedNodesUpdate === 'function') {
-        const nodeNames = res.referenced_nodes.map(n => n.name);
+        console.log('📋 referenced_nodes 원본:', res.referenced_nodes);
+        // referenced_nodes가 문자열 배열이므로 직접 사용
+        const nodeNames = res.referenced_nodes.map(n => String(n));
+        console.log('💬 채팅 응답에서 참조된 노드들:', nodeNames);
         onReferencedNodesUpdate(nodeNames);
       }
     } catch (err) {
@@ -932,9 +936,9 @@ function ChatPanel({
         const res = await getNodeSourcesByChat(chatId, nodeName);
         setOpenSourceNodes((prev) => ({
           ...prev,
-          [key]: (res.titles || []).map((title, idx) => ({ 
-            title, 
-            id: (res.ids && res.ids[idx]) || null 
+          [key]: (res.titles || []).map((title, idx) => ({
+            title,
+            id: (res.ids && res.ids[idx]) || null
           })),
         }));
       } catch (err) {
@@ -953,7 +957,7 @@ function ChatPanel({
   const handleCopyMessage = async (m) => {
     try {
       let messageToCopy = m.message;
-      
+
       // chat_id가 있고 유효한 숫자이며, 임시 ID가 아닌 경우에만 서버에서 메시지를 가져옴
       // 임시 ID는 Date.now()로 생성되므로 매우 큰 숫자입니다
       if (m.chat_id && !isNaN(Number(m.chat_id)) && m.chat_id < 1000000) {
@@ -968,7 +972,7 @@ function ChatPanel({
           messageToCopy = m.message;
         }
       }
-      
+
       await navigator.clipboard.writeText(messageToCopy);
       setCopiedMessageId(m.chat_id || m.message);
       setTimeout(() => setCopiedMessageId(null), 2000);
@@ -1063,18 +1067,18 @@ function ChatPanel({
       ) : (
         // 대화가 시작되지 않은 경우 안내 및 입력창
         <div className="chat-panel-empty-content">
-                      <div className="chat-panel-title-container">
-              <TitleEditor
-                sessionName={sessionName}
-                isEditingTitle={isEditingTitle}
-                editingTitle={editingTitle}
-                setEditingTitle={setEditingTitle}
-                handleEditTitleStart={handleEditTitleStart}
-                handleEditTitleFinish={handleEditTitleFinish}
-                hasChatStarted={hasChatStarted}
-                onRefreshClick={() => setShowConfirm(true)}
-              />
-            </div>
+          <div className="chat-panel-title-container">
+            <TitleEditor
+              sessionName={sessionName}
+              isEditingTitle={isEditingTitle}
+              editingTitle={editingTitle}
+              setEditingTitle={setEditingTitle}
+              handleEditTitleStart={handleEditTitleStart}
+              handleEditTitleFinish={handleEditTitleFinish}
+              hasChatStarted={hasChatStarted}
+              onRefreshClick={() => setShowConfirm(true)}
+            />
+          </div>
           <div className="chat-panel-centered-input-container">
             <div className="chat-panel-hero-section">
               <h1 className="chat-panel-hero-title">지식 그래프와 대화하여 인사이트를 발견하세요.</h1>
