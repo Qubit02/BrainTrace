@@ -171,7 +171,7 @@ export default function GraphViewWithModal({
                     <div
                         className="timelapse-button"
                         onClick={handleTimelapse}
-                        title="Start timelapse animation"
+                        title="애니메이션"
                     >
                         <PiMagicWand size={21} color="black" />
                     </div>

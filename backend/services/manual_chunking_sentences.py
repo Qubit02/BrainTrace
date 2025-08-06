@@ -297,6 +297,5 @@ def manual_chunking(text:str):
 
     return final_chunks
 
-text="아ㅕㅇ하세요 바갑스비다 제 아름으 장세린입니다. 에바네 한 시간 10분 이라니. 오늘은 별로 안 더워요. airhnjv;ifnm roingjlf;diuerk jifgkrl; 9rkll;fdgrnj;do9hrhjkrhhufdyebkrnriohdjbjkh "
-extract_graph_components(text, 1234)
-manual_chunking(text)
+
+

@@ -1,41 +1,48 @@
+// === ChatSession: 채팅 세션 관리 컴포넌트 ===
+// - 브레인별 채팅 세션 목록 표시 및 관리
+// - 새 채팅 세션 생성, 기존 세션 삭제, 세션 이름 변경 기능
+// - 세션 선택 시 ChatPanel로 전달하여 채팅 시작
+// - 드롭다운 메뉴를 통한 세션 관리 (Portal 렌더링)
+// - 실시간 세션 상태 업데이트 및 애니메이션 효과
+
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './ChatSession.css';
 import {
-  fetchChatSessions,
   fetchChatSessionsByBrain,
   createChatSession,
   deleteChatSession,
   renameChatSession
 } from '../../../../api/services/chatApi';
-import ChatPanel from './ChatPanel';
 import { PiChatsCircle } from "react-icons/pi";
 import { RiDeleteBinLine } from 'react-icons/ri';
 import { GoPencil } from 'react-icons/go';
 import ConfirmDialog from '../../common/ConfirmDialog';
 
 function ChatSession({
-  selectedBrainId,
-  onSessionSelect,
-  onChatReady
+  selectedBrainId,    // 선택된 브레인 ID
+  onSessionSelect,    // 세션 선택 시 호출되는 콜백
+  onChatReady         // 채팅 준비 상태 변경 시 호출되는 콜백
 }) {
-  const [sessions, setSessions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [isEditingId, setIsEditingId] = useState(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const [newlyCreatedSessionId, setNewlyCreatedSessionId] = useState(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  const [lastClickTime, setLastClickTime] = useState(0);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [sessionToDelete, setSessionToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // === 상태 관리 ===
+  const [sessions, setSessions] = useState([]);                    // 채팅 세션 목록
+  const [selectedSession, setSelectedSession] = useState(null);     // 현재 선택된 세션 ID
+  const [loading, setLoading] = useState(false);                   // 세션 목록 로딩 상태
+  const [creating, setCreating] = useState(false);                 // 새 세션 생성 중 상태
+  const [openMenuId, setOpenMenuId] = useState(null);              // 열린 드롭다운 메뉴의 세션 ID
+  const [isEditingId, setIsEditingId] = useState(null);           // 편집 중인 세션 ID
+  const [editingTitle, setEditingTitle] = useState('');           // 편집 중인 세션 제목
+  const [newlyCreatedSessionId, setNewlyCreatedSessionId] = useState(null); // 새로 생성된 세션 ID (깜빡임 효과용)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });    // 드롭다운 메뉴 위치
+  const [lastClickTime, setLastClickTime] = useState(0);          // 마지막 클릭 시간 (디바운싱용)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // 삭제 확인 다이얼로그 표시 여부
+  const [sessionToDelete, setSessionToDelete] = useState(null);    // 삭제할 세션 정보
+  const [isDeleting, setIsDeleting] = useState(false);             // 세션 삭제 중 상태
 
-  const menuRef = useRef(null);
+  const menuRef = useRef(null); // 메뉴 컨테이너 참조
 
-  // 세션 리스트 불러오기
+  // === 세션 데이터 관리 ===
+  // 브레인별 채팅 세션 목록을 불러오는 함수
   const loadSessions = async () => {
     if (!selectedBrainId) {
       setSessions([]);
@@ -60,7 +67,8 @@ function ChatSession({
     loadSessions();
   }, [selectedBrainId]);
 
-  // 날짜 포맷팅 함수
+  // === 유틸리티 함수 ===
+  // 타임스탬프를 YYYY.MM.DD 형태로 포맷팅하는 함수
   const formatDate = timestamp => {
     if (!timestamp) return '';
     
@@ -84,12 +92,13 @@ function ChatSession({
     return `${year}.${month}.${day}`;
   };
 
-  // 메뉴 토글
+  // === 드롭다운 메뉴 관리 ===
+  // 세션별 드롭다운 메뉴를 토글하는 함수
   const toggleMenu = (sessionId, event) => {
     if (openMenuId === sessionId) {
       setOpenMenuId(null);
     } else {
-      // 메뉴 버튼의 위치 계산
+      // 메뉴 버튼의 위치 계산하여 Portal 렌더링 위치 설정
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
       setMenuPosition({
@@ -100,7 +109,8 @@ function ChatSession({
     }
   };
 
-  // 세션 생성
+  // === 세션 생성 ===
+  // 새로운 채팅 세션을 생성하는 함수 (디바운싱 및 애니메이션 효과 포함)
   const handleCreateSession = async () => {
     // 디바운싱: 1초 내 중복 클릭 방지
     const now = Date.now();
@@ -114,7 +124,7 @@ function ChatSession({
     try {
       const result = await createChatSession('Untitled', selectedBrainId);
       
-      // 새로 생성된 세션을 임시로 리스트에 추가 (undefined 제목으로)
+      // 새로 생성된 세션을 임시로 리스트에 추가 (깜빡임 효과용)
       const tempSession = {
         session_id: result.session_id,
         session_name: 'Untitled',
@@ -148,14 +158,15 @@ function ChatSession({
     }
   };
 
-  // 세션 삭제 확인 다이얼로그 표시
+  // === 세션 삭제 ===
+  // 세션 삭제 확인 다이얼로그를 표시하는 함수
   const handleDeleteSession = (session_id) => {
     setSessionToDelete(session_id);
     setShowDeleteConfirm(true);
     setOpenMenuId(null);
   };
 
-  // 세션 삭제 실행
+  // 세션 삭제를 실제로 실행하는 함수
   const executeDeleteSession = async () => {
     if (!sessionToDelete) return;
     
@@ -174,14 +185,15 @@ function ChatSession({
     }
   };
 
-  // 세션 이름 수정 시작
+  // === 세션 이름 수정 ===
+  // 세션 이름 편집 모드를 시작하는 함수
   const handleEditStart = (session) => {
     setIsEditingId(session.session_id);
     setEditingTitle(session.session_name || 'Untitled');
     setOpenMenuId(null);
   };
 
-  // 세션 이름 수정 완료
+  // 세션 이름 편집을 완료하고 저장하는 함수
   const handleEditFinish = async () => {
     if (editingTitle.trim() && isEditingId) {
       try {
@@ -197,7 +209,8 @@ function ChatSession({
     setEditingTitle('');
   };
 
-  // 외부 클릭 시 메뉴 닫기
+  // === 이벤트 핸들링 ===
+  // 외부 클릭 시 드롭다운 메뉴를 닫는 이벤트 리스너
   useEffect(() => {
     const handleClickOutside = (event) => {
       const isInsideMenuButton = event.target.closest('.chat-session-menu-button');
@@ -219,10 +232,12 @@ function ChatSession({
 
   return (
     <div className="chat-session-panel-container">
+      {/* === 헤더 영역 === */}
       <div className="chat-session-panel-header">
         <span className="chat-session-header-title">Chat</span>
       </div>
 
+      {/* === 새 채팅 버튼 영역 === */}
       <div className="chat-session-sidebar-header">
         <h2>채팅 목록</h2>
         <button 
@@ -234,6 +249,7 @@ function ChatSession({
         </button>
       </div>
 
+      {/* === 세션 목록 영역 === */}
       <ul className="chat-session-list">
         {loading ? (
           <li className="chat-session-loading-item">불러오는 중...</li>
@@ -306,7 +322,7 @@ function ChatSession({
         )}
       </ul>
 
-      {/* Portal로 렌더링되는 메뉴 */}
+      {/* === Portal로 렌더링되는 드롭다운 메뉴 === */}
       {openMenuId && createPortal(
         <div 
           className="chat-session-dropdown-menu" 
@@ -329,12 +345,12 @@ function ChatSession({
         document.body
       )}
 
-      {/* 안내 문구 */}
+      {/* === 안내 문구 === */}
       <p className="chat-session-disclaimer">
         BrainTrace는 학습된 정보 기반으로 응답하며, 실제와 다를 수 있습니다.
       </p>
 
-      {/* 삭제 확인 다이얼로그 */}
+      {/* === 삭제 확인 다이얼로그 === */}
       {showDeleteConfirm && (
         <ConfirmDialog
           message="이 채팅방을 삭제하시겠습니까?"

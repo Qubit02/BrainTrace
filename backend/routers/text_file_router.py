@@ -1,3 +1,37 @@
+"""
+text_file_router.py
+
+텍스트 파일 관련 API 엔드포인트를 관리하는 라우터 모듈입니다.
+
+주요 기능:
+- 텍스트 파일 업로드 및 관리 (CRUD 작업)
+- 텍스트 파일 내용 추출 및 저장
+- 브레인별 텍스트 파일 관리
+- 파일 시스템과 데이터베이스 동기화
+
+지원하는 엔드포인트:
+- POST /textfiles/ : 텍스트 파일 정보 생성
+- GET /textfiles/{txt_id} : 특정 텍스트 파일 조회
+- PUT /textfiles/{txt_id} : 텍스트 파일 정보 수정
+- DELETE /textfiles/{txt_id} : 텍스트 파일 삭제 (DB + 로컬 파일)
+- GET /textfiles/brain/{brain_id} : 브레인별 텍스트 파일 목록 조회
+- POST /textfiles/upload-txt : 텍스트 파일 업로드 및 내용 추출
+
+파일 처리:
+- 업로드된 파일은 uploaded_txts 디렉토리에 저장
+- 파일명은 UUID로 고유화하여 중복 방지
+- 텍스트 파일에서 내용 자동 추출 (UTF-8 인코딩)
+- 파일 시스템과 데이터베이스 동기화
+
+데이터베이스:
+- SQLite: 텍스트 파일 정보 저장 (txt_id, txt_title, txt_path, txt_date, type, brain_id, txt_text)
+
+의존성:
+- FastAPI: 웹 프레임워크
+- Pydantic: 데이터 검증 및 직렬화
+- SQLiteHandler: SQLite 데이터베이스 작업
+"""
+
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -5,15 +39,31 @@ from typing import List, Optional
 from sqlite_db import SQLiteHandler
 import logging, uuid, os, re
 
+# ───────── 데이터베이스 핸들러 초기화 ───────── #
 sqlite_handler = SQLiteHandler()
+
+# ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
     prefix="/textfiles",
     tags=["textfiles"],
     responses={404: {"description": "Not found"}}
 )
 
-# ───────── Pydantic 모델 ─────────
+# ───────── Pydantic 모델 정의 ───────── #
+
 class TextFileCreate(BaseModel):
+    """
+    텍스트 파일 생성 요청 모델
+    
+    새로운 텍스트 파일 정보를 생성할 때 사용되는 데이터 모델입니다.
+    
+    Attributes:
+        txt_title (str): 텍스트 파일 제목 (1-100자)
+        txt_path (str): 텍스트 파일 경로
+        type (Optional[str]): 파일 확장자명
+        brain_id (Optional[int]): 연결할 Brain ID
+        txt_text (Optional[str]): 추출된 텍스트
+    """
     txt_title: str = Field(..., description="텍스트 파일 제목", min_length=1, max_length=100)
     txt_path:  str = Field(..., description="텍스트 파일 경로")
     type:      Optional[str] = Field(None, description="파일 확장자명")
@@ -21,6 +71,19 @@ class TextFileCreate(BaseModel):
     txt_text:  Optional[str] = Field(None, description="추출된 텍스트")
 
 class TextFileUpdate(BaseModel):
+    """
+    텍스트 파일 수정 요청 모델
+    
+    기존 텍스트 파일 정보를 수정할 때 사용되는 데이터 모델입니다.
+    Optional 필드들로 구성되어 있어 필요한 필드만 수정 가능합니다.
+    
+    Attributes:
+        txt_title (Optional[str]): 새로운 텍스트 파일 제목
+        txt_path (Optional[str]): 새로운 텍스트 파일 경로
+        type (Optional[str]): 파일 확장자명
+        brain_id (Optional[int]): 새로운 Brain ID
+        txt_text (Optional[str]): 새로운 텍스트
+    """
     txt_title: Optional[str] = Field(None, description="새 텍스트 파일 제목")
     txt_path:  Optional[str] = Field(None, description="새 텍스트 파일 경로")
     type:      Optional[str] = Field(None, description="파일 확장자명")
@@ -28,6 +91,20 @@ class TextFileUpdate(BaseModel):
     txt_text:  Optional[str] = Field(None, description="새 텍스트")
 
 class TextFileResponse(BaseModel):
+    """
+    텍스트 파일 응답 모델
+    
+    API 응답으로 사용되는 텍스트 파일 정보 모델입니다.
+    
+    Attributes:
+        txt_id (int): 텍스트 파일 고유 ID
+        txt_title (str): 텍스트 파일 제목
+        txt_path (str): 텍스트 파일 경로
+        txt_date (str): 생성 날짜
+        type (Optional[str]): 파일 확장자명
+        brain_id (Optional[int]): 연결된 Brain ID
+        txt_text (Optional[str]): 추출된 텍스트
+    """
     txt_id:    int
     txt_title: str
     txt_path:  str
@@ -36,10 +113,34 @@ class TextFileResponse(BaseModel):
     brain_id:  Optional[int]
     txt_text:  Optional[str]
 
-# ───────── 텍스트 파일 생성 ─────────
+# ───────── API 엔드포인트 ───────── #
+
 @router.post("/", response_model=TextFileResponse, status_code=status.HTTP_201_CREATED)
 async def create_textfile(textfile_data: TextFileCreate):
-    """새로운 텍스트 파일을 DB에 등록합니다."""
+    """
+    새로운 텍스트 파일 정보를 생성합니다.
+    
+    처리 과정:
+    1. brain_id가 제공된 경우 해당 브레인 존재 여부 확인
+    2. 텍스트 파일 정보를 데이터베이스에 저장
+    3. 생성된 텍스트 파일 정보 반환
+    
+    Args:
+        textfile_data (TextFileCreate): 텍스트 파일 생성 정보
+            - txt_title: 파일 제목 (필수, 1-100자)
+            - txt_path: 파일 경로 (필수)
+            - type: 파일 확장자명 (선택)
+            - brain_id: 연결할 브레인 ID (선택)
+            - txt_text: 추출된 텍스트 (선택)
+        
+    Returns:
+        TextFileResponse: 생성된 텍스트 파일 정보
+        
+    Raises:
+        HTTPException: 
+            - 404: 브레인을 찾을 수 없음
+            - 500: 서버 내부 오류
+    """
     if textfile_data.brain_id is not None:
         if not sqlite_handler.get_brain(textfile_data.brain_id):
             raise HTTPException(status_code=404, detail="Brain 엔티티를 찾을 수 없습니다")
@@ -56,19 +157,54 @@ async def create_textfile(textfile_data: TextFileCreate):
         logging.error("텍스트 파일 생성 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
-# ───────── 텍스트 파일 단건 조회 ─────────
 @router.get("/{txt_id}", response_model=TextFileResponse)
 async def get_textfile(txt_id: int):
-    """텍스트 파일 ID로 단일 조회"""
+    """
+    특정 텍스트 파일 정보를 조회합니다.
+    
+    처리 과정:
+    1. txt_id로 텍스트 파일 정보 조회
+    2. 파일이 존재하면 정보 반환, 없으면 404 오류
+    
+    Args:
+        txt_id (int): 조회할 텍스트 파일 ID
+        
+    Returns:
+        TextFileResponse: 텍스트 파일 정보
+        
+    Raises:
+        HTTPException: 404 - 텍스트 파일을 찾을 수 없음
+    """
     textfile = sqlite_handler.get_textfile(txt_id)
     if not textfile:
         raise HTTPException(status_code=404, detail="텍스트 파일을 찾을 수 없습니다")
     return textfile
 
-# ───────── 텍스트 파일 수정 ─────────
 @router.put("/{txt_id}", response_model=TextFileResponse)
 async def update_textfile(txt_id: int, textfile_data: TextFileUpdate):
-    """텍스트 파일의 제목, 경로, brain_id 등을 수정"""
+    """
+    텍스트 파일 정보를 수정합니다.
+    
+    처리 과정:
+    1. txt_id로 기존 텍스트 파일 존재 여부 확인
+    2. brain_id가 제공된 경우 해당 브레인 존재 여부 확인
+    3. 파일명 유효성 검사 (길이, 특수문자, 공백 등)
+    4. 요청된 필드만 업데이트
+    5. 수정된 텍스트 파일 정보 반환
+    
+    Args:
+        txt_id (int): 수정할 텍스트 파일 ID
+        textfile_data (TextFileUpdate): 수정할 데이터
+        
+    Returns:
+        TextFileResponse: 수정된 텍스트 파일 정보
+        
+    Raises:
+        HTTPException: 
+            - 404: 텍스트 파일 또는 브레인을 찾을 수 없음
+            - 400: 파일명 유효성 검사 실패
+            - 500: 서버 내부 오류
+    """
     if not sqlite_handler.get_textfile(txt_id):
         raise HTTPException(status_code=404, detail="텍스트 파일을 찾을 수 없습니다")
 
@@ -109,10 +245,30 @@ async def update_textfile(txt_id: int, textfile_data: TextFileUpdate):
         logging.error("텍스트 파일 수정 오류: %s", e)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
 
-# ───────── 텍스트 파일 삭제 ─────────
 @router.delete("/{txt_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_textfile(txt_id: int):
-    """텍스트 파일 삭제 (DB + 로컬 파일 시스템)"""
+    """
+    텍스트 파일을 삭제합니다 (DB + 로컬 파일 시스템).
+    
+    처리 과정:
+    1. txt_id로 텍스트 파일 존재 여부 확인
+    2. 데이터베이스에서 텍스트 파일 정보 삭제
+    3. 로컬 파일 시스템에서 실제 파일 삭제
+    4. 삭제 결과 로깅
+    
+    주의사항:
+    - 이 작업은 되돌릴 수 없습니다
+    - 데이터베이스와 파일 시스템 모두에서 삭제됩니다
+    
+    Args:
+        txt_id (int): 삭제할 텍스트 파일 ID
+        
+    Returns:
+        Response: 204 No Content
+        
+    Raises:
+        HTTPException: 404 - 텍스트 파일을 찾을 수 없음
+    """
     txt = sqlite_handler.get_textfile(txt_id)
     if not txt:
         raise HTTPException(status_code=404, detail="텍스트 파일을 찾을 수 없습니다")
@@ -132,22 +288,47 @@ async def delete_textfile(txt_id: int):
     
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# ───────── Brain 기준 텍스트 파일 목록 조회 ─────────
 @router.get("/brain/{brain_id}", response_model=List[TextFileResponse])
 async def get_textfiles_by_brain(brain_id: int):
-    """특정 Brain에 속한 텍스트 파일 목록 전체 조회"""
+    """
+    특정 브레인에 속한 모든 텍스트 파일 목록을 조회합니다.
+    
+    처리 과정:
+    1. brain_id로 해당 브레인에 연결된 모든 텍스트 파일 조회
+    2. 브레인별로 그룹화된 텍스트 파일 목록 반환
+    
+    Args:
+        brain_id (int): 조회할 브레인 ID
+        
+    Returns:
+        List[TextFileResponse]: 해당 브레인의 텍스트 파일 목록
+        
+    Raises:
+        HTTPException: 500 - 서버 내부 오류
+    """
     try:
         return sqlite_handler.get_textfiles_by_brain(brain_id)
     except Exception as e:
         logging.error("텍스트 파일 조회 오류: %s", e)
         raise HTTPException(status_code=500, detail="서버 오류")
 
-# ───────── 텍스트 파일 업로드 ─────────
+# ───────── 파일 업로드 관련 ───────── #
+
 UPLOAD_TXT_DIR = "uploaded_txts"
 os.makedirs(UPLOAD_TXT_DIR, exist_ok=True)
 
 def sanitize_filename(name):
-    """파일명에서 위험한 문자 제거"""
+    """
+    파일명을 안전하게 정리합니다.
+    
+    특수문자를 언더스코어로 변경하여 파일 시스템 호환성을 보장합니다.
+    
+    Args:
+        name (str): 원본 파일명
+        
+    Returns:
+        str: 정리된 파일명
+    """
     return re.sub(r'[^\w\-_\. ]', '_', name)
 
 @router.post("/upload-txt", response_model=List[TextFileResponse])
@@ -155,6 +336,29 @@ async def upload_textfiles(
     files: List[UploadFile] = File(...),
     brain_id: Optional[int] = Form(None)
 ):
+    """
+    텍스트 파일을 업로드하고 내용을 추출합니다.
+    
+    처리 과정:
+    1. brain_id가 제공된 경우 해당 브레인 존재 여부 확인
+    2. 각 파일에 대해:
+       - 파일 확장자 검증 (.txt만 허용)
+       - 안전한 파일명 생성 (UUID + 원본명)
+       - 파일을 로컬 디렉토리에 저장
+       - UTF-8 인코딩으로 텍스트 읽기
+       - 데이터베이스에 파일 정보 저장
+    3. 업로드된 모든 파일 정보 반환
+    
+    Args:
+        files (List[UploadFile]): 업로드할 텍스트 파일 목록
+        brain_id (Optional[int]): 연결할 브레인 ID (선택)
+        
+    Returns:
+        List[TextFileResponse]: 업로드된 텍스트 파일 정보 목록
+        
+    Raises:
+        HTTPException: 404 - 브레인이 존재하지 않음
+    """
     uploaded_textfiles = []
     if brain_id is not None and not sqlite_handler.get_brain(brain_id):
         raise HTTPException(status_code=404, detail="해당 Brain이 존재하지 않습니다.")
