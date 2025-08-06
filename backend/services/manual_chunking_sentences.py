@@ -246,8 +246,13 @@ def split_into_tokenized_sentence(text:str):
         texts.append(p.strip())
 
     for idx, sentence in enumerate(texts):
-        tokenized_sentences.append({"tokens":extract_noun_phrases(sentence),
+        tokens = extract_noun_phrases(sentence)
+        # 빈 토큰 배열인 경우 기본 토큰 추가
+        if not tokens:
+            tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
+        tokenized_sentences.append({"tokens": tokens,
                                     "index":idx})
+
         
     return tokenized_sentences, texts
 
