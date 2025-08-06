@@ -1,3 +1,46 @@
+"""
+brain_graph.py
+
+브레인 그래프 관련 API 엔드포인트를 관리하는 라우터 모듈입니다.
+
+주요 기능:
+- 브레인 그래프 데이터 조회 및 관리
+- 텍스트 처리 및 그래프 생성
+- 질문-답변 시스템
+- 소스 데이터 메트릭 및 통계
+- 노드-소스 관계 관리
+
+지원하는 엔드포인트:
+- GET /brainGraph/getNodeEdge/{brain_id} : 브레인의 그래프 데이터 조회
+- POST /brainGraph/process_text : 텍스트 처리 및 그래프 생성
+- POST /brainGraph/answer : 질문에 대한 답변 생성
+- GET /brainGraph/getSourceIds : 노드의 모든 source_id와 제목 조회
+- GET /brainGraph/getNodesBySourceId : source_id로 노드 조회
+- GET /brainGraph/getSourceDataMetrics/{brain_id} : 브레인의 소스별 데이터 메트릭 조회
+- GET /brainGraph/sourceCount/{brain_id} : 브레인별 전체 소스 개수 조회
+- GET /brainGraph/getSourceContent : 소스 파일의 텍스트 내용 조회
+
+그래프 처리:
+- Neo4j: 그래프 데이터베이스 (노드, 엣지, 관계)
+- Qdrant: 벡터 데이터베이스 (임베딩 검색)
+- AI 모델: GPT/Ollama를 사용한 텍스트 처리
+
+데이터베이스:
+- Neo4j: 그래프 데이터 저장 및 조회
+- Qdrant: 벡터 임베딩 저장 및 유사도 검색
+- SQLite: 소스 파일 정보 및 메타데이터
+
+의존성:
+- FastAPI: 웹 프레임워크
+- Neo4jHandler: Neo4j 그래프 데이터베이스 작업
+- embedding_service: 벡터 임베딩 및 검색
+- AI 서비스: GPT/Ollama 모델 연동
+- SQLiteHandler: SQLite 데이터베이스 작업
+
+작성자: BrainT 개발팀
+최종 수정일: 2024년
+"""
+
 from fastapi import APIRouter, HTTPException
 from models.request_models import ProcessTextRequest, AnswerRequest, GraphResponse
 from services import embedding_service
@@ -11,11 +54,14 @@ from dependencies import get_ai_service_Ollama
 from services.accuracy_service import compute_accuracy
 from services import manual_chunking_sentences
 
+# ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
     prefix="/brainGraph",
     tags=["brainGraph"],
     responses={404: {"description": "Not found"}}
 )
+
+# ───────── API 엔드포인트 ───────── #
 
 @router.get(
     "/getNodeEdge/{brain_id}",
@@ -30,13 +76,23 @@ router = APIRouter(
 )
 async def get_brain_graph(brain_id: str):
     """
-    특정 브레인의 그래프 데이터를 반환합니다:
+    특정 브레인의 그래프 데이터를 반환합니다.
     
-    - **brain_id**: 그래프를 조회할 브레인 ID
+    처리 과정:
+    1. brain_id로 Neo4j에서 그래프 데이터 조회
+    2. 노드와 엣지 정보를 구조화하여 반환
+    3. 데이터가 없는 경우 빈 그래프 반환
     
-    반환값:
-    - **nodes**: 노드 목록 (각 노드는 name 속성을 가짐)
-    - **links**: 엣지 목록 (각 엣지는 source, target, relation 속성을 가짐)
+    Args:
+        brain_id (str): 그래프를 조회할 브레인 ID
+    
+    Returns:
+        GraphResponse: 그래프 데이터
+            - nodes: 노드 목록 (각 노드는 name 속성을 가짐)
+            - links: 엣지 목록 (각 엣지는 source, target, relation 속성을 가짐)
+    
+    Raises:
+        Neo4jException: Neo4j 데이터베이스 오류
     """
     logging.info(f"getNodeEdge 엔드포인트 호출됨 - brain_id: {brain_id}")
     try:
@@ -76,8 +132,29 @@ async def get_brain_graph(brain_id: str):
 async def process_text_endpoint(request_data: ProcessTextRequest):
     """
     텍스트를 받아 노드/엣지 추출, Neo4j 저장, 벡터 DB 임베딩까지 전체 파이프라인 실행
-    <br> Ollama 사용 → (model: "ollama")  
-    <br> GPT 사용 → (model: "gpt")
+    
+    처리 과정:
+    1. 텍스트 입력 검증
+    2. AI 모델 선택 (GPT 또는 Ollama)
+    3. 텍스트에서 노드와 엣지 추출
+    4. Neo4j에 그래프 데이터 저장
+    5. 벡터 데이터베이스에 임베딩 저장
+    6. 처리 결과 반환
+    
+    Args:
+        request_data (ProcessTextRequest): 텍스트 처리 요청
+            - text: 처리할 텍스트
+            - source_id: 소스 ID
+            - brain_id: 브레인 ID
+            - model: 사용할 모델 ("gpt" 또는 "ollama")
+    
+    Returns:
+        dict: 처리된 노드와 엣지 정보
+    
+    Raises:
+        HTTPException: 
+            - 400: 필수 파라미터 누락
+            - 500: 처리 중 오류 발생
     """
     text = request_data.text
     source_id = request_data.source_id

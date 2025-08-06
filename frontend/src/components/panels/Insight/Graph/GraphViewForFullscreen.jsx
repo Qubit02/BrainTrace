@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import GraphView from './GraphView';
+import SpaceBackground from './SpaceBackground';
 import './GraphViewForFullscreen.css';
-import { FiSearch, FiX, FiSun, FiMoon, FiSettings, FiRefreshCw, FiMapPin } from 'react-icons/fi';
+import './SpaceBackground.css';
+import { FiSearch, FiX, FiSun, FiMoon, FiSettings, FiRefreshCw, FiMapPin, FiLoader } from 'react-icons/fi';
 
 function GraphViewForFullscreen(props) {
     const { isFullscreen = true, ...restProps } = props;
@@ -11,6 +13,7 @@ function GraphViewForFullscreen(props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [localReferencedNodes, setLocalReferencedNodes] = useState(props.referencedNodes || []);
     const [showAdvancedControls, setShowAdvancedControls] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
     const [graphStats, setGraphStats] = useState({ nodes: 0, links: 0 });
     const [newlyAddedNodes, setNewlyAddedNodes] = useState([]);
     const [clearTrigger, setClearTrigger] = useState(0);
@@ -28,7 +31,7 @@ function GraphViewForFullscreen(props) {
         textZoomThreshold: 0.5,     // 텍스트 표시 시작점
         textAlpha: 1.0,             // 텍스트 투명도(신규)
         // 3개 물리 설정 (0-100 범위)
-        repelStrength: 5,          // 반발력
+        repelStrength: 1,          // 반발력
         linkDistance: 40,           // 링크 거리
         linkStrength: 40,           // 링크 장력
     });
@@ -80,7 +83,13 @@ function GraphViewForFullscreen(props) {
     const handleSearchInput = (e) => {
         const query = e.target.value;
         setSearchQuery(query);
-        handleSearch(query);
+        setIsSearching(true);
+        
+        // Simulate search delay for animation
+        setTimeout(() => {
+            handleSearch(query);
+            setIsSearching(false);
+        }, 300);
     };
 
     const clearSearch = () => {
@@ -131,6 +140,8 @@ function GraphViewForFullscreen(props) {
 
     return (
         <div className={`graph-fullscreen-container ${isDarkMode ? 'dark-mode' : ''}`}>
+            {/* 우주 배경 - 다크모드일 때만 표시 */}
+            <SpaceBackground isVisible={isDarkMode} />
             <GraphView
                 {...restProps}
                 isFullscreen={isFullscreen}
@@ -159,7 +170,11 @@ function GraphViewForFullscreen(props) {
                     <div className="toolbar-left">
                         <div className="fullscreen-search-container">
                             <div className="fullscreen-search-input-wrapper">
-                                <FiSearch style={{ marginRight: 4, fontSize: 18, verticalAlign: 'middle', color: ICON_COLOR }} />
+                                {isSearching ? (
+                                    <FiLoader className="fullscreen-search-icon search-loading" style={{ color: ICON_COLOR }} />
+                                ) : (
+                                    <FiSearch className="fullscreen-search-icon" style={{ color: ICON_COLOR }} />
+                                )}
                                 <input
                                     id="fullscreen-node-search"
                                     type="text"
@@ -180,7 +195,7 @@ function GraphViewForFullscreen(props) {
                                 )}
                             </div>
                             {searchQuery && (
-                                <div className="fullscreen-search-results">
+                                <div className={`fullscreen-search-results ${localReferencedNodes.length > 0 ? 'search-found' : ''}`}>
                                     {localReferencedNodes.length}개 노드 발견
                                 </div>
                             )}

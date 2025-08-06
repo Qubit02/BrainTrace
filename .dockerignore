@@ -1,0 +1,19 @@
+# ── 공통 ──────────────────────────
+.DS_Store
+*.log
+.vscode/
+
+# ── Python backend ───────────────
+backend/venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/build/
+backend/dist/
+backend/neo4j/data/
+backend/uploaded_*/
+
+# ── Node frontend ────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/installer\ tools/
