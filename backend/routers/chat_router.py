@@ -68,8 +68,10 @@ class ChatResponse(BaseModel):
     
     Attributes:
         answer (str): AI가 생성한 답변 내용
+        referenced_nodes (list[dict]): 참조된 노드 목록
     """
     answer: str = Field(..., description="AI가 생성한 답변")
+    referenced_nodes: list[dict] = Field(default=[], description="참조된 노드 목록")
 
 # ───────── AI 챗봇 관련 엔드포인트 ───────── #
 
@@ -117,8 +119,16 @@ async def chat_endpoint(
         raise HTTPException(400, "question을 입력해주세요.")
     
     # AI 응답 생성
-    answer = ai_service.chat(req.question)  
-    return ChatResponse(answer=answer)
+    answer = ai_service.chat(req.question)
+    
+    # referenced_nodes 추출 (Ollama 서비스인 경우에만)
+    referenced_nodes = []
+    if hasattr(ai_service, 'extract_referenced_nodes'):
+        referenced_nodes = ai_service.extract_referenced_nodes(answer)
+        # 문자열 리스트를 딕셔너리 리스트로 변환
+        referenced_nodes = [{"name": node_name} for node_name in referenced_nodes if node_name]
+    
+    return ChatResponse(answer=answer, referenced_nodes=referenced_nodes)
 
 # ───────── 채팅 내역 관리 엔드포인트 ───────── #
 
