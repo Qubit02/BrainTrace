@@ -268,12 +268,17 @@ class OllamaAIService(BaseAIService):
     def chat(self, message: str) -> str:
         """
         단일 프롬프트를 Ollama LLM에 보내고,
-        모델 응답 문자열만 리턴합니다.
+        모델 응답 문자열과 referenced_nodes를 포함한 응답을 리턴합니다.
         """
         try:
+            prompt = (
+                f"{message}\n\n"
+                "EOF\n"
+                "{\n  \"referenced_nodes\": [\"노드1\", \"노드2\", ...]\n}\n"
+            )
             resp = chat(
                 model=self.model_name,
-                messages=[{"role": "user", "content": message}],
+                messages=[{"role": "user", "content": prompt}],
                 stream=False
             )
             return resp["message"]["content"].strip()
