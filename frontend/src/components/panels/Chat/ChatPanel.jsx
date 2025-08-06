@@ -873,8 +873,8 @@ function ChatPanel({
       console.log('🔍 전체 응답 구조:', res);
       if (res?.referenced_nodes && res.referenced_nodes.length > 0 && typeof onReferencedNodesUpdate === 'function') {
         console.log('📋 referenced_nodes 원본:', res.referenced_nodes);
-        // referenced_nodes가 문자열 배열이므로 직접 사용
-        const nodeNames = res.referenced_nodes.map(n => String(n));
+        // enriched 구조에서 노드 이름만 추출
+        const nodeNames = res.referenced_nodes.map(n => n.name || String(n));
         console.log('💬 채팅 응답에서 참조된 노드들:', nodeNames);
         onReferencedNodesUpdate(nodeNames);
       }

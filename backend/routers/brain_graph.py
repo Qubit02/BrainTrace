@@ -346,7 +346,7 @@ async def answer_endpoint(request_data: AnswerRequest):
 
         return {
             "answer": final_answer,
-            "referenced_nodes": referenced_nodes,
+            "referenced_nodes": enriched,
             "chat_id": chat_id,
             "accuracy": accuracy
         }
