@@ -166,6 +166,7 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         edges.append({"source":source_keyword, 
                       "target":t,
                       "relation":description})
+        description="관련" if description==1 else "" 
         
     return edges
 
@@ -208,7 +209,8 @@ def _extract_from_chunk(sentences: list[str], source_id:int ,keyword: str, alrea
 
     cnt=0
     for t in sorted_keywords:
-        edges+=make_edges(sentences, keyword, [t], phrase_info)
+        if keyword != "":
+            edges+=make_edges(sentences, keyword, [t], phrase_info)
         if t not in already_made:
             nodes.append(make_node(t, phrase_info, sentences, source_id))
             already_made.append(t)
