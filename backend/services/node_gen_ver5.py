@@ -154,7 +154,7 @@ def group_phrases(
 
     return group_infos
 
-def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info: DefaultDict[str, Set[int]]):
+def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
     #edge의 source와 target이 함께 등장한 문장을 찾습니다.
     #해당 문장을 edge의 relation으로 삼습니다.
     edges=[]
