@@ -31,9 +31,6 @@ export default function GraphViewWithModal({
     // ✅ GraphView 내부 상태를 제어하기 위한 콜백 함수들
     const [graphViewCallbacks, setGraphViewCallbacks] = useState({});
 
-    // referencedNodes를 state로 관리
-    const [referencedNodesState, setReferencedNodesState] = useState(referencedNodes || []);
-
     // GraphView의 상태 감지를 위한 useEffect들
     useEffect(() => {
         // graphRefreshTrigger 변화 감지하여 새로 추가된 노드 표시
@@ -43,14 +40,9 @@ export default function GraphViewWithModal({
             setNewlyAddedNodeNames([]);
 
             setShowReferenced(false);
-            setReferencedNodesState([]);
             setShowFocus(false);
         }
     }, [graphRefreshTrigger]);
-
-    useEffect(() => {
-        setReferencedNodesState(referencedNodes || []);
-    }, [referencedNodes]);
 
     // focusNodeNames 변화 감지 - 안전한 의존성 배열 사용
     useEffect(() => {
@@ -139,7 +131,7 @@ export default function GraphViewWithModal({
                 <GraphView
                     brainId={brainId}
                     height={height}
-                    referencedNodes={referencedNodesState}
+                    referencedNodes={referencedNodes}
                     focusNodeNames={focusNodeNames}
                     onTimelapse={timelapseFunctionRef}
                     graphRefreshTrigger={graphRefreshTrigger}
