@@ -257,8 +257,16 @@ def search_similar_nodes(
         # limit 만큼 제한
         top_grouped = filtered_grouped[:limit]
 
-        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과
-        return high_scores + top_grouped
+        final_nodes = high_scores + top_grouped
+
+        # Q = avg(r_i) over final_nodes
+        if final_nodes:
+            Q = sum(node["score"] for node in final_nodes) / len(final_nodes)
+        else:
+            Q = 0.0
+
+        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과 , Q(질문과 노드의 유사도 평균)
+        return final_nodes, round(Q, 4)
 
     except Exception as e:
         logging.error("유사 노드 검색 실패: %s", str(e))
