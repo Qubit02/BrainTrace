@@ -44,11 +44,12 @@ class OllamaAIService(BaseAIService):
         if OLLAMA_PULL_MODEL:
             try:
                 resp = requests.post(
-                    f"{OLLAMA_API_URL}/api/pull",           # 모델 다운로드 엔드포인트 :contentReference[oaicite:3]{index=3}
+                    f"{OLLAMA_API_URL}/api/pull",        # 모델 풀링 엔드포인트 :contentReference[oaicite:6]{index=6}
                     json={"model": self.model_name},
                     timeout=60
                 )
                 resp.raise_for_status()
+                # 스트림 모드라면 여러 JSON이, 아니면 단일 JSON이 반환됨
                 logging.info(f"Ollama 모델 '{self.model_name}' 준비 완료")
             except Exception as e:
                 logging.warning(f"Ollama 모델 '{self.model_name}' 풀링 오류: {e}")
@@ -90,13 +91,13 @@ class OllamaAIService(BaseAIService):
     ) -> Tuple[List[Dict], List[Dict]]:
         prompt = (
             "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
-            # ...중략: 기존 프롬프트 내용 유지...
+            # ...기존 프롬프트 내용 그대로 유지...
             f"텍스트: {chunk}"
         )
         try:
-            # HTTP API를 통한 채팅 요청
+            # Ollama 네이티브 chat 엔드포인트 호출
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",               # Chat 엔드포인트 :contentReference[oaicite:4]{index=4}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:7]{index=7}
                 json={
                     "model": self.model_name,
                     "messages": [
@@ -109,7 +110,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            content = data["choices"][0]["message"]["content"]  # OpenAI 호환 스키마 파싱 :contentReference[oaicite:5]{index=5}
+            content = data["message"]["content"]       # Ollama 응답 스키마 파싱 :contentReference[oaicite:8]{index=8}
             parsed = json.loads(content)
         except Exception as e:
             logging.error(f"_extract_from_chunk 오류: {e}")
@@ -139,7 +140,7 @@ class OllamaAIService(BaseAIService):
             else:
                 logging.warning("스키마 누락 엣지: %s", edge)
 
-        # 이하 original_sentences 계산 로직 (기존과 동일)
+        # original_sentences 계산 로직 (기존과 동일)
         sentences = manual_chunking(chunk)
         if not sentences:
             for node in valid_nodes:
@@ -208,18 +209,19 @@ class OllamaAIService(BaseAIService):
             "{\n  \"referenced_nodes\": [\"노드1\", \"노드2\", ...]\n}\n"
         )
         try:
+            print("debug", schema_text, question)
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",               # Chat 엔드포인트 재사용 :contentReference[oaicite:6]{index=6}
+                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트 :contentReference[oaicite:9]{index=9}
                 json={
                     "model": self.model_name,
-                    "messages": [{"role": "user", "content": prompt}],
+                    "prompt": prompt,
                     "stream": False
                 },
                 timeout=60
             )
             resp.raise_for_status()
-            result = resp.json()
-            return result["choices"][0]["message"]["content"].strip()  # 파싱 방식 동일 :contentReference[oaicite:7]{index=7}
+            data = resp.json()
+            return data["response"].strip()            # Ollama /api/generate 응답 파싱 :contentReference[oaicite:10]{index=10}
         except Exception as e:
             logging.error(f"generate_answer 오류: {e}")
             raise
@@ -230,7 +232,7 @@ class OllamaAIService(BaseAIService):
         related_nodes: List[Dict],
         relationships: List
     ) -> str:
-        # (기존 로직 그대로 유지)
+        # 기존 로직 유지
         all_nodes = {}
         def norm(n):
             return dict(n.items()) if hasattr(n, "items") else (n if isinstance(n, dict) else {})
@@ -270,7 +272,7 @@ class OllamaAIService(BaseAIService):
         """
         try:
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",               # Chat 엔드포인트 재사용 :contentReference[oaicite:8]{index=8}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:11]{index=11}
                 json={
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": message}],
@@ -279,7 +281,8 @@ class OllamaAIService(BaseAIService):
                 timeout=60
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()  # :contentReference[oaicite:9]{index=9}
+            data = resp.json()
+            return data["message"]["content"].strip()  # Ollama /api/chat 응답 파싱 :contentReference[oaicite:12]{index=12}
         except Exception as e:
             logging.error(f"chat 오류: {e}")
             raise

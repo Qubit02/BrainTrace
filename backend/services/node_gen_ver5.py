@@ -170,26 +170,26 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         
     return edges
 
-def make_node(name, phrase_info, sentences:list[str], source_id:int):
+def make_node(name, phrase_info, sentences:list[str], source_id:str):
     description=[]
     ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
-        des="".join([sentences[idx] for idx in s_indices])
-        ori_sentences.append({"description":des,
-                    "source_id":source_id,
-                    "score": 1.0})    
+        des="".join([sentences[idx] for idx in s_indices])   
     else:
         des = ""
     description.append({"description":des,
                         "source_id":source_id})
+    ori_sentences.append({"original_sentence":des,
+                    "source_id":source_id,
+                    "score": 1.0}) 
     
-    node={"label":name, "name":name, "descriptions":description, "original_sentence":ori_sentences}
+    node={"label":name, "name":name, "source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 
     return node
         
 
-def _extract_from_chunk(sentences: list[str], source_id:int ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     nodes=[]
     edges=[]
 

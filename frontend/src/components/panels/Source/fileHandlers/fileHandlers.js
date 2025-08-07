@@ -1,29 +1,36 @@
 /**
  * fileHandlers.js
- * 
+ *
  * 파일 업로드 및 처리 관련 핸들러들을 관리하는 모듈입니다.
- * 
+ *
  * 주요 기능:
  * - 다양한 파일 타입(PDF, TXT, MD, DOCX, MEMO)의 업로드 처리
  * - 각 파일 타입별로 적절한 API 호출 및 텍스트 추출
  * - 추출된 텍스트를 지식 그래프로 변환
  * - 파일 메타데이터 반환
- * 
+ *
  * 지원하는 파일 타입:
  * - pdf: PDF 파일 업로드 및 텍스트 추출
  * - txt: 텍스트 파일 업로드 및 텍스트 읽기
  * - md: 마크다운 파일 업로드 및 텍스트 읽기
  * - memo: 메모 파일 생성 및 텍스트 처리
  * - docx: Word 문서 업로드 및 텍스트 추출
- * 
+ *
  * 각 핸들러는 다음 매개변수를 받습니다:
  * - f: File 객체 또는 파일 정보
  * - brainId: 브레인 ID
- * 
+ *
  * 반환값: { id, filetype, meta } 형태의 객체
  */
 
-import { uploadPdfs, uploadTextfiles, createMemo, uploadMDFiles, createTextToGraph, uploadDocxFiles } from '../../../../../api/config/apiIndex';
+import {
+  uploadPdfs,
+  uploadTextfiles,
+  createMemo,
+  uploadMDFiles,
+  createTextToGraph,
+  uploadDocxFiles,
+} from '../../../../../api/config/apiIndex';
 
 const fileHandlers = {
   /**
@@ -37,12 +44,12 @@ const fileHandlers = {
     try {
       // 서버에서 PDF 텍스트 추출
       const [meta] = await uploadPdfs([f], brainId);
-      
+
       // 텍스트 추출 실패 시 에러 처리
       if (!meta || !meta.pdf_text) {
         throw new Error('PDF 텍스트 추출에 실패했습니다.');
       }
-      
+
       // 추출된 텍스트를 지식 그래프로 변환
       await createTextToGraph({
         text: meta.pdf_text,
@@ -67,12 +74,12 @@ const fileHandlers = {
     try {
       // 서버에서 TXT 텍스트 읽기
       const [meta] = await uploadTextfiles([f], brainId);
-      
+
       // 텍스트 읽기 실패 시 에러 처리
       if (!meta || !meta.txt_text) {
         throw new Error('TXT 텍스트 읽기에 실패했습니다.');
       }
-      
+
       // 읽은 텍스트를 지식 그래프로 변환
       await createTextToGraph({
         text: meta.txt_text,
@@ -123,12 +130,12 @@ const fileHandlers = {
     try {
       // 서버에서 MD 텍스트 읽기
       const [meta] = await uploadMDFiles([f], brainId);
-      
+
       // 텍스트 읽기 실패 시 에러 처리
       if (!meta || !meta.md_text) {
         throw new Error('MD 텍스트 읽기에 실패했습니다.');
       }
-      
+
       // 읽은 텍스트를 지식 그래프로 변환
       await createTextToGraph({
         text: meta.md_text,
@@ -153,12 +160,12 @@ const fileHandlers = {
     try {
       // 서버에서 DOCX 텍스트 추출
       const [meta] = await uploadDocxFiles([f], brainId);
-      
+
       // 텍스트 추출 실패 시 에러 처리
       if (!meta || !meta.docx_text) {
         throw new Error('DOCX 텍스트 추출에 실패했습니다.');
       }
-      
+
       // 추출된 텍스트를 지식 그래프로 변환
       await createTextToGraph({
         text: meta.docx_text,
@@ -173,4 +180,4 @@ const fileHandlers = {
   },
 };
 
-export default fileHandlers; 
+export default fileHandlers;
