@@ -14,35 +14,19 @@
     z-index: 100;
 }
 
-/* ───────── 푸터 내부 컨테이너 ───────── */
-.footer-inner {
+/* ───────── 오픈소스 정보 섹션 ───────── */
+.footer-oss-info {
     max-width: 1280px;
     margin: 0 auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 6px;
-}
-
-/* ───────── 브랜드 텍스트 ───────── */
-.footer-inner .brand {
-    font-weight: 600;
-    color: #333;
-}
-
-/* ───────── 구분선(점) ───────── */
-.footer-inner .divider {
-    color: #c0c0c0;
+    gap: 12px;
     font-size: 12px;
+    color: #888;
 }
 
-/* ───────── 링크 스타일 ───────── */
-.footer-inner a {
-    text-decoration: none;
-    color: #6b6b6b;
-    transition: color 0.15s;
-}
-.footer-inner a:hover {
-    color: #111;
+.footer-oss-info span {
+    white-space: nowrap;
 }
