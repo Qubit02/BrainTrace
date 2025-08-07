@@ -783,22 +783,22 @@
 
 /* 호버 툴팁 */
 .chat-panel-accuracy-help::after {
-  content: '신뢰도는 AI 답변과 참고된 소스 내용의 의미적 유사도를 측정합니다. 높을수록 답변이 소스 내용과 더 일치함을 의미합니다.';
+  content: '정확도는 3가지 지표의 가중 평균으로 계산됩니다:\A\A• Q (검색 품질): 질문과 관련된 노드를 얼마나 잘 찾았는지\A• S (답변 충실도): AI가 참조한 노드들의 설명과 답변의 유사도\A• C (컨텍스트 밀도): 제공된 정보 중 실제 활용된 비율\A\A 정확도 : 0.15×Q + 0.8×S + 0.05×C';
   position: absolute;
   bottom: 100%;
   right: 0;
-  width: 250px;
-  padding: 12px;
+  width: 300px;
+  padding: 16px;
   background: #ffffff;
   color: #333333;
   border-radius: 8px;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.5;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
   z-index: 1000;
-  white-space: normal;
+  white-space: pre-line;
   text-align: left;
   margin-bottom: 8px;
   border: 1px solid #e0e0e0;

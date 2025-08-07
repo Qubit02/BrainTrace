@@ -127,7 +127,7 @@ const TitleEditor = ({
             onClick={onRefreshClick}
             title="대화 초기화"
           >
-            <WiCloudRefresh size={30} />
+            <WiCloudRefresh size={30} color="black"/>
           </button>
         )}
       </div>
@@ -195,7 +195,7 @@ const ModelDropdown = ({
                   <div className="chat-panel-model-header-inline">
                     <span className="chat-panel-model-name-inline">{modelData.name}</span>
                     {selectedModel === model && (
-                      <IoCheckmarkOutline size={16} className="chat-panel-model-checkmark-inline" />
+                      <IoCheckmarkOutline size={16} className="chat-panel-model-checkmark-inline"/>
                     )}
                   </div>
                   <div className="chat-panel-model-description-inline">{modelData.description}</div>
@@ -487,7 +487,7 @@ const ChatMessage = ({
             {copiedMessageId === (message.chat_id || message.message) ? (
               <IoCheckmarkOutline size={18} color="#303030ff" />
             ) : (
-              <IoCopyOutline size={18} />
+              <IoCopyOutline size={18} color="black"/>
             )}
           </button>
           {/* bot 메시지에만 그래프 버튼 표시 */}
@@ -508,7 +508,7 @@ const ChatMessage = ({
                 }
               }}
             >
-              <PiGraph size={19} />
+              <PiGraph size={19} color="black"/>
             </button>
           )}
         </div>
@@ -525,7 +525,10 @@ const ChatMessage = ({
             >
               {(message.accuracy * 100).toFixed(1)}%
             </span>
-            <span className="chat-panel-accuracy-help">?</span>
+            <span 
+              className="chat-panel-accuracy-help" >
+              ?
+            </span>
           </div>
         )}
       </div>
