@@ -7,8 +7,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       target: dev # Dockerfile 단계 중 'dev'
+    depends_on:
+      - neo4j
     environment:
-      - IN_DOCKER=true
+      IN_DOCKER: 'true'
+      NEO4J_URI: 'bolt://neo4j:7687'
+      OLLAMA_API_URL: 'http://ollama:11434'
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app # 소스 코드 바인딩
@@ -28,7 +32,7 @@ services:
   neo4j:
     image: neo4j:5
     environment:
-      - NEO4J_AUTH=none
+      - NEO4J_dbms_security_auth__enabled=false
     volumes:
       - neo4j_data:/data
     ports:

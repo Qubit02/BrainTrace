@@ -159,8 +159,9 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     text = request_data.text
     source_id = request_data.source_id
     brain_id = request_data.brain_id
-    model = request_data.model
+    model = None
     
+    logging.info('model :', model)
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
     if not source_id:

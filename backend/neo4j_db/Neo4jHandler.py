@@ -5,12 +5,22 @@ import json
 from exceptions.custom_exceptions import Neo4jException
 from collections import defaultdict
 
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+NEO4J_URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
+NEO4J_USER     = os.getenv("NEO4J_USER",     "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+
+
+# NEO4J_URI = "bolt://localhost:7687"
+# NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
 from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     def __init__(self):
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
     def close(self):
         self.driver.close()
