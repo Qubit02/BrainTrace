@@ -303,6 +303,13 @@
     font-weight: 800;
     box-shadow: none;
     margin-top: 4px;
+    transition: all 0.2s ease;
+}
+
+.data-metric.total:hover {
+    background: linear-gradient(90deg, #f8f9fa 60%, #f0f0f0 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .data-metric.total .metric-label {
@@ -320,6 +327,23 @@
 
 .data-metric.total .metric-desc {
     color: #444;
+}
+
+/* ====== 등급 아이콘 애니메이션 ====== */
+@keyframes gradeIconPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.data-metric.total svg {
+    animation: gradeIconPulse 2s ease-in-out infinite;
 }
 
 /* ====== 툴팁 시스템 ====== */
@@ -365,7 +389,7 @@
     position: absolute;
     left: auto;
     right: 0;
-    top: -50px;
+    top: -40px; /* 마우스에 더 가깝게 조정 */
     transform: none;
     
     /* 크기 */
@@ -391,6 +415,18 @@
     
     /* 애니메이션 */
     transition: opacity 0.18s ease;
+}
+
+/* 툴팁이 화면 위쪽 경계를 벗어날 경우를 대비한 스타일 */
+.qmark-tooltip .custom-tooltip.bottom {
+    top: auto;
+    bottom: -40px; /* 아래쪽도 조정 */
+}
+
+/* 툴팁이 화면 왼쪽 경계를 벗어날 경우를 대비한 스타일 */
+.qmark-tooltip .custom-tooltip.left {
+    left: 0;
+    right: auto;
 }
 
 /* 툴팁 표시 상태 */
