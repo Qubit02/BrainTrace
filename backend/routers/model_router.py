@@ -27,24 +27,23 @@ Ollama AI 모델 관리 API 라우터 모듈입니다.
 
 의존성:
 - FastAPI: 웹 프레임워크
-- Ollama Python SDK: 모델 다운로드 및 관리
-- subprocess: 시스템 명령어 실행
+- requests: Ollama HTTP API 호출
 """
 
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict
 import os
 from pathlib import Path
-import subprocess
-import json
 import logging
-
-from ollama import pull  # Ollama Python SDK로 모델 풀링(다운로드)
+import requests
 
 # ───────── 모델 파일 저장 디렉터리 설정 ───────── #
 # 기본: 로컬 홈 디렉터리 (Ollama 기본 경로 사용)
 # 환경변수 OLLAMA_MODELS로 override 가능
-DEFAULT_MODELS_DIR = os.getenv("OLLAMA_MODELS", str(Path.home() / ".ollama" / "models"))
+DEFAULT_MODELS_DIR = os.getenv(
+    "OLLAMA_MODELS",
+    str(Path.home() / ".ollama" / "models")
+)
 os.makedirs(DEFAULT_MODELS_DIR, exist_ok=True)
 
 # ───────── 설치 가능 모델 리스트 ───────── #
@@ -61,136 +60,80 @@ AVAILABLE_MODELS = [
 # ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(prefix="/models", tags=["models"])
 
+# Ollama 서버 기본 URL (서비스명:포트)
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://ollama:11434")
+
+
 def get_installed_models() -> List[str]:
     """
-    Ollama에서 현재 설치된 모델 목록을 조회합니다.
-    
-    이 함수는 'ollama list' 명령어를 실행하여 시스템에 설치된
-    모든 모델의 목록을 가져옵니다.
-    
+    Ollama HTTP API(GET /v1/models)로 설치된 모델 목록을 조회합니다.
+
     처리 과정:
-    1. 'ollama list' 명령어 실행 (10초 타임아웃)
-    2. 출력 결과 파싱 (첫 번째 줄 헤더 제외)
-    3. 모델명 추출하여 리스트 반환
-    
+    1. GET {OLLAMA_API_URL}/v1/models 호출 (10초 타임아웃)
+    2. 응답 JSON의 `data` 필드에서 모델 ID 목록 추출
+    3. 모델명 리스트 반환
+
     Returns:
         List[str]: 설치된 모델 이름들의 리스트
-        
+
     Raises:
-        subprocess.TimeoutExpired: 명령어 실행 시간 초과 시
-        FileNotFoundError: ollama 명령어를 찾을 수 없을 때
-        Exception: 기타 예외 상황
-        
-    Example:
-        >>> get_installed_models()
-        ['gemma3:4b', 'mistral:7b', 'qwen3:4b']
+        Exception: API 호출 또는 파싱 중 오류 발생 시
     """
     try:
-        # ollama list 명령어 실행 (10초 타임아웃)
-        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=10)
-        if result.returncode != 0:
-            logging.warning(f"Ollama list 명령어 실패: {result.stderr}")
-            return []
-        
-        # 출력 파싱 (첫 번째 줄은 헤더이므로 제외)
-        lines = result.stdout.strip().split('\n')[1:]
-        installed_models = []
-        
-        for line in lines:
-            if line.strip():
-                # 모델명은 첫 번째 컬럼
-                model_name = line.split()[0]
-                installed_models.append(model_name)
-        
-        return installed_models
+        resp = requests.get(f"{OLLAMA_API_URL}/v1/models", timeout=10)
+        resp.raise_for_status()
+        payload = resp.json()
+        data = payload.get("data") or []
+        installed = []
+        for entry in data:
+            # entry가 dict 형태로 {'id': 'gemma3:4b', ...}
+            if isinstance(entry, dict) and entry.get("id"):
+                installed.append(entry["id"])
+        return installed
     except Exception as e:
         logging.error(f"설치된 모델 목록 조회 실패: {e}")
         return []
+
 
 @router.get("/", response_model=List[Dict])
 def list_models():
     """
     설치 가능한 모델 목록과 각 모델의 설치 상태를 반환합니다.
-    
+
     처리 과정:
     1. 현재 설치된 모델 목록 조회
     2. AVAILABLE_MODELS에 정의된 모든 모델에 대해 설치 여부 확인
     3. 각 모델의 정보를 리스트로 반환
-    
-    Returns:
-        List[Dict]: 모델 정보 리스트
-            - name (str): 모델 이름
-            - installed (bool): 설치 여부
-            
-    Example Response:
-        [
-            {"name": "gemma3:4b", "installed": True},
-            {"name": "mistral:7b", "installed": False},
-            {"name": "qwen3:4b", "installed": True}
-        ]
-        
-    API Endpoint:
-        GET /models/
     """
-    installed_models = get_installed_models()
-    
-    models_info = []
-    for model in AVAILABLE_MODELS:
-        is_installed = model in installed_models
-        models_info.append({
-            "name": model,
-            "installed": is_installed
-        })
-    
-    return models_info
+    installed = set(get_installed_models())
+    return [
+        {"name": model, "installed": (model in installed)}
+        for model in AVAILABLE_MODELS
+    ]
+
 
 @router.post("/{model_name}/install")
 def install_model(model_name: str):
     """
     지정된 AI 모델을 Ollama registry에서 다운로드하여 로컬에 설치합니다.
-    
-    처리 과정:
-    1. 요청된 모델이 AVAILABLE_MODELS에 포함되어 있는지 확인
-    2. 이미 설치되어 있는지 확인
-    3. 설치되지 않은 경우 Ollama Python SDK를 사용하여 다운로드
-    4. 설치 결과 반환
-    
-    Args:
-        model_name (str): 설치할 모델의 이름 (예: "gemma3:4b")
-        
-    Returns:
-        Dict: 설치 결과 메시지
-            - message (str): 성공 또는 이미 설치된 경우의 메시지
-            
-    Raises:
-        HTTPException (404): 모델이 AVAILABLE_MODELS에 없을 때
-        HTTPException (500): 다운로드 중 오류 발생 시
-        
-    Example Request:
-        POST /models/gemma3:4b/install
-        
-    Example Response:
-        {"message": "Model 'gemma3:4b' has been downloaded successfully"}
-        
-    API Endpoint:
-        POST /models/{model_name}/install
     """
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=404, detail="Model not found")
 
+    installed = get_installed_models()
+    if model_name in installed:
+        return {"message": f"Model '{model_name}' is already installed"}
+
     try:
-        # 이미 설치되어 있는지 확인
-        installed_models = get_installed_models()
-        if model_name in installed_models:
-            return {
-                "message": f"Model '{model_name}' is already installed"
-            }
-        
-        # 모델 다운로드
         logging.info(f"모델 '{model_name}' 다운로드 시작...")
-        pull(model_name)
+        # HTTP API를 통한 모델 풀 요청
+        resp = requests.post(
+            f"{OLLAMA_API_URL}/api/pull",
+            json={"model": model_name},
+            timeout=60
+        )
+        resp.raise_for_status()
         logging.info(f"모델 '{model_name}' 다운로드 완료")
-                
     except Exception as e:
         logging.error(f"모델 '{model_name}' 다운로드 실패: {e}")
         raise HTTPException(
@@ -198,6 +141,4 @@ def install_model(model_name: str):
             detail=f"Failed to pull model '{model_name}': {e}"
         )
 
-    return {
-        "message": f"Model '{model_name}' has been downloaded successfully"
-    }
+    return {"message": f"Model '{model_name}' has been downloaded successfully"}

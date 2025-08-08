@@ -54,7 +54,7 @@ def tokenization(paragraphs: list[dict]) -> list[list[str]]:
     return tokenized
 
 
-def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
+def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
                         lda_model=None, dictionary=None, num_topics=5):
     flag=-1
     result=[]
@@ -176,8 +176,13 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
                 if topics[t_idx] not in already_made:
                     if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
                         chunk_node={"label":topics[t_idx],"name":topics[t_idx],
+<<<<<<< HEAD
                                     "source_id":source_id,
                                     "descriptions":[c["index"] for c in go_chunk[idx]]}
+=======
+                                    "descriptions":[c["index"] for c in go_chunk[idx]],
+                                    "source_id":source_id}
+>>>>>>> 3574e87fec381040873e1dcaa7b7a33b8b1c3955
                     else:
                         chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[], "source_id":source_id}
                     edge={"source": top_keyword, "target": topics[t_idx], "relation":"관련"}
@@ -290,16 +295,20 @@ def extract_graph_components(text: str, source_id: str):
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
             node["descriptions"]={"description":resolved_description,
                                     "source_id":source_id}
-            node["original_sentences"]={"description":resolved_description,
+            node["original_sentences"]={"original_sentence":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}
         else:
             node["descriptions"]=[{"description":"", "source_id":source_id}]
+            node["original_sentences"]={"original_sentence":"",
+                                    "source_id":source_id,
+                                    "score": 1.0}
+
             
     for c in chunks:
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
-            if len(current_chunk)<=2:
+            if c["keyword"] !="" and len(current_chunk)<=2:
                 continue
             relevant_sentences = [sentences[idx] for idx in current_chunk]
             nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id,c["keyword"], already_made)
