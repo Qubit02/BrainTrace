@@ -161,9 +161,14 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
         ai_service = get_ai_service_GPT()
     elif model == "ollama":
         ai_service = get_ai_service_Ollama()
+    else:
+        ai_service = None  # 수동 청킹 사용 (manual_chunking_sentences)
     
     # 텍스트에서 노드/엣지 추출
-    nodes, edges = ai_service.extract_graph_components(text, source_id)
+    if ai_service is None:
+        nodes, edges = manual_chunking_sentences.extract_graph_components(text, source_id)
+    else:
+        nodes, edges = ai_service.extract_graph_components(text, source_id)
     
     # Neo4j에 그래프 데이터 저장
     neo4j_handler = Neo4jHandler()
@@ -217,17 +222,28 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200):
 # backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
 def insert_nodes_and_edges(self, nodes, edges, brain_id):
     with self.driver.session() as session:
-        # MERGE를 사용한 중복 노드 처리
+        # MERGE를 사용한 중복 노드 처리 및 original_sentences 관리
         for node in nodes:
             session.run("""
                 MERGE (n:Node {name: $name, brain_id: $brain_id})
-                ON CREATE SET n.label = $label, n.descriptions = $descriptions
-                ON MATCH SET n.descriptions = CASE 
-                    WHEN n.descriptions IS NULL THEN $descriptions 
-                    ELSE n.descriptions + $descriptions 
-                END
+                ON CREATE SET
+                    n.label = $label,
+                    n.brain_id = $brain_id,
+                    n.descriptions = $new_descriptions,
+                    n.original_sentences = $new_originals
+                ON MATCH SET 
+                    n.label = $label, 
+                    n.brain_id = $brain_id,
+                    n.descriptions = CASE 
+                        WHEN n.descriptions IS NULL THEN $new_descriptions 
+                        ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions] 
+                    END,
+                    n.original_sentences = CASE
+                        WHEN n.original_sentences IS NULL THEN $new_originals
+                        ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
+                    END
             """, name=node["name"], brain_id=brain_id, 
-                 label=node["label"], descriptions=node["descriptions"])
+                 label=node["label"], new_descriptions=new_descriptions, new_originals=new_originals)
 ```
 
 #### 4.1.2 정확한 AI 답변 생성
@@ -235,27 +251,73 @@ def insert_nodes_and_edges(self, nodes, edges, brain_id):
 - **출처 추적**: 답변의 근거가 되는 원문 문장 자동 추출
 - **정확도 점수**: 답변의 신뢰도를 수치화하여 제공
 - **다중 모델 지원**: GPT, Ollama 등 다양한 AI 모델 선택 가능
+- **참조 노드 추출**: 답변에서 언급된 노드들을 자동으로 식별
+- **소스 매핑**: 노드와 원본 소스 파일 간의 관계 추적
 
 **답변 생성 프로세스:**
 ```python
 # backend/routers/brain_graph.py - 실제 프로젝트 코드
 async def answer_endpoint(request_data: AnswerRequest):
     # 1. 벡터 검색으로 관련 노드 찾기
-    similar_nodes = embedding_service.search_similar_nodes(
+    similar_nodes, Q = embedding_service.search_similar_nodes(
         question, brain_id, top_k=5
     )
     
-    # 2. Neo4j에서 2단계 깊이 스키마 추출
+    # 2. Neo4j에서 1단계 깊이 스키마 추출
     graph_schema = neo4j_handler.query_schema_by_node_names(
         [node["name"] for node in similar_nodes], brain_id
     )
     
     # 3. AI 모델로 답변 생성
-    ai_service = get_ai_service_GPT() if model == "gpt" else get_ai_service_Ollama()
-    answer = ai_service.generate_answer(question, graph_schema)
+    if model == "openai":
+        ai_service = get_ai_service_GPT()
+    elif model == "ollama":
+        ai_service = get_ai_service_Ollama(model_name)
+    else:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
     
-    # 4. 정확도 점수 계산
-    accuracy_score = compute_accuracy(similar_nodes, answer)
+    # 4. 스키마 텍스트 생성 및 답변 생성
+    raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
+    final_answer = ai_service.generate_answer(raw_schema_text, question)
+    
+    # 5. 참조 노드 추출 및 정확도 점수 계산
+    referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
+    final_answer = final_answer.split("EOF")[0].strip()
+    accuracy = compute_accuracy(final_answer, referenced_nodes, brain_id, Q, raw_schema_text)
+    
+    # 6. 소스 ID와 제목 매핑
+    node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+    all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
+    id_to_title = db_handler.get_titles_by_ids(all_ids)
+    
+    # 7. 최종 구조화된 답변 반환
+    enriched = []
+    for node in referenced_nodes:
+        unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
+        sources = []
+        for sid in unique_sids:
+            if sid not in id_to_title:
+                continue
+            orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
+            sources.append({
+                "id": str(sid),
+                "title": id_to_title[sid],
+                "original_sentences": orig_sents
+            })
+        enriched.append({
+            "name": node,
+            "source_ids": sources
+        })
+    
+    # 8. AI 답변 저장 및 최종 반환
+    chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
+    
+    return {
+        "answer": final_answer,
+        "referenced_nodes": enriched,
+        "chat_id": chat_id,
+        "accuracy": accuracy
+    }
 ```
 
 #### 4.1.3 인터랙티브 시각화
@@ -263,26 +325,39 @@ async def answer_endpoint(request_data: AnswerRequest):
 - **실시간 하이라이팅**: 채팅 답변과 연동된 노드 강조 표시
 - **전체화면 모드**: 집중된 그래프 탐색 환경 제공
 - **애니메이션 효과**: 타임랩스 뷰를 통한 생성 과정 시각화
+- **노드 검색**: 그래프 내 특정 노드 검색 기능
 
 **그래프 데이터 조회:**
 ```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-@router.get("/getNodeEdge/{brain_id}")
-async def get_brain_graph(brain_id: str):
-    neo4j_handler = Neo4jHandler()
-    
-    # 모든 노드 조회
-    nodes_result = session.run("""
-        MATCH (n)
-        WHERE n.brain_id = $brain_id
-        RETURN DISTINCT n.name as name
-    """, brain_id=brain_id)
-    
-    # 모든 엣지 조회
-    edges_result = session.run("""
-        MATCH (source:Node {brain_id: $brain_id})-[r:RELATES_TO]->(target:Node {brain_id: $brain_id})
-        RETURN source.name as source, target.name as target, r.relation as relation
-    """, brain_id=brain_id)
+# backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
+def get_brain_graph(self, brain_id: str) -> Dict[str, List]:
+    with self.driver.session() as session:
+        # 노드 조회
+        nodes_result = session.run("""
+            MATCH (n)
+            WHERE n.brain_id = $brain_id
+            RETURN DISTINCT n.name as name
+        """, brain_id=brain_id)
+        
+        nodes = [{"name": record["name"]} for record in nodes_result]
+        
+        # 엣지(관계) 조회
+        edges_result = session.run("""
+            MATCH (source)-[r]->(target)
+            WHERE source.brain_id = $brain_id AND target.brain_id = $brain_id
+            RETURN DISTINCT source.name as source, target.name as target, r.relation as relation
+        """, brain_id=brain_id)
+        
+        links = [
+            {
+                "source": record["source"],
+                "target": record["target"],
+                "relation": record["relation"]
+            }
+            for record in edges_result
+        ]
+        
+        return {"nodes": nodes, "links": links}
 ```
 
 #### 4.1.4 통합 관리 시스템
@@ -290,6 +365,8 @@ async def get_brain_graph(brain_id: str):
 - **소스 관리**: 문서 업로드, 검색, 삭제 기능
 - **메모 시스템**: 텍스트 및 음성 메모 작성 및 관리
 - **모니터링 대시보드**: 성능 지표 및 사용 통계 실시간 확인
+- **채팅 세션 관리**: 대화 기록 저장 및 관리
+- **정확도 추적**: 답변별 정확도 점수 기록 및 분석
 
 **브레인 생성 및 관리:**
 ```python
@@ -473,143 +550,7 @@ def create_brain(self, brain_name: str, created_at: str | None = None) -> dict:
 </div>
 </details>
 
-<details>
-<summary><b>5. 기대효과 및 활용분야</b></summary>
-<div markdown="1">
 
-### 5.1 프로젝트 결과물의 정량적 성과 (테스트 결과, 성능 개선 정도, 구현된 주요 기능 수 등)
-
-#### 5.1.1 성능 지표
-- **문서 처리 속도**: 평균 1000자당 2-3초 처리 시간
-- **답변 정확도**: 벡터 검색 기반 85% 이상의 정확도 달성
-- **시스템 안정성**: 99% 이상의 가동률 유지
-- **동시 사용자**: 최대 50명 동시 접속 지원
-
-#### 5.1.2 구현된 주요 기능
-- **지식 그래프 자동 생성**: AI 모델 기반 노드/엣지 추출
-- **다중 문서 형식 지원**: PDF, TXT, MD, DOCX 등 4가지 형식
-- **실시간 시각화**: 3D 그래프 인터랙티브 시각화
-- **정확한 답변 생성**: 컨텍스트 기반 AI 답변 시스템
-- **모니터링 대시보드**: 실시간 성능 지표 및 통계
-- **음성 메모 기능**: 음성-텍스트 변환 및 저장
-
-#### 5.1.3 기술적 성과
-- **코드 라인 수**: 백엔드 15,000+ 라인, 프론트엔드 8,000+ 라인
-- **API 엔드포인트**: 20개 이상의 RESTful API 구현
-- **데이터베이스 연동**: 3가지 데이터베이스 시스템 통합
-- **AI 모델 통합**: 2가지 AI 서비스(GPT, Ollama) 연동
-
-### 5.2 향후 개선 방향 및 확장 가능성 (프로젝트를 향후 어떻게 발전시키거나 다른 분야에 적용할 수 있을지 서술)
-
-#### 5.2.1 기술적 개선 방향
-- **다국어 지원**: 영어, 일본어 등 다국어 문서 처리 확장
-- **실시간 협업**: 다중 사용자 동시 편집 및 공유 기능
-- **모바일 앱**: iOS/Android 네이티브 앱 개발
-- **클라우드 배포**: AWS, Azure 등 클라우드 플랫폼 배포
-- **AI 모델 고도화**: 더 정확한 답변을 위한 모델 개선
-
-#### 5.2.2 기능적 확장 가능성
-- **교육 분야**: 온라인 학습 플랫폼으로 확장
-- **기업 문서 관리**: 기업 내부 지식 관리 시스템
-- **연구 지원**: 학술 논문 분석 및 연구 동향 파악
-- **법무 분야**: 법률 문서 분석 및 판례 검색
-- **의료 분야**: 의학 논문 분석 및 진단 지원
-
-#### 5.2.3 상용화 가능성
-- **SaaS 서비스**: 구독 기반 클라우드 서비스 제공
-- **엔터프라이즈 솔루션**: 대기업용 맞춤형 시스템
-- **API 서비스**: 타사 서비스에 지식 그래프 API 제공
-- **오픈소스**: 커뮤니티 기반 개발 및 확장
-
-### 5.3 한계점 및 개선 사항
-
-#### 5.3.1 현재 한계점
-- **한국어 특화**: 다국어 지원의 제한적 구현
-- **대용량 문서**: 매우 큰 문서(100MB 이상) 처리 시 성능 저하
-- **실시간 처리**: 동시 다중 사용자 처리 시 지연 현상
-- **AI 모델 의존성**: 외부 AI 서비스 의존으로 인한 비용 및 안정성 이슈
-
-#### 5.3.2 개선 방안
-- **로컬 AI 모델**: 완전 자체 AI 모델 구축으로 외부 의존성 제거
-- **분산 처리**: 대용량 문서 처리를 위한 분산 시스템 구축
-- **캐싱 시스템**: Redis 등을 활용한 응답 속도 개선
-- **모바일 최적화**: 반응형 디자인 및 터치 인터페이스 개선
-
-</div>
-</details>
-
-<details>
-<summary><b>6. 기타(프로젝트 추가 설명 등)</b></summary>
-<div markdown="1">
-
-### 6.1 프로젝트의 혁신성 및 차별성 (다른 프로젝트와의 차별화된 점이나 독창성을 간단히 설명)
-
-#### 6.1.1 기술적 혁신성
-- **자동 지식 그래프 생성**: 문서 업로드만으로 완전 자동화된 지식 그래프 구축
-- **다중 AI 모델 통합**: GPT와 Ollama를 동시에 활용한 유연한 AI 처리
-- **실시간 시각화**: 3D 그래프를 통한 직관적인 지식 구조 표현
-- **벡터 기반 검색**: 의미적 유사도를 통한 정확한 정보 검색
-
-#### 6.1.2 사용자 경험 혁신
-- **통합 관리 시스템**: 문서 관리부터 답변 생성까지 원스톱 솔루션
-- **인터랙티브 인터페이스**: 드래그 앤 드롭, 실시간 하이라이팅 등 직관적 조작
-- **개인화된 학습**: 사용자별 맞춤형 지식 그래프 및 답변 생성
-- **모니터링 시스템**: 실시간 성능 지표 및 사용 통계 제공
-
-#### 6.1.3 차별화 요소
-- **한국어 특화**: KoNLPy를 활용한 한국어 자연어 처리 최적화
-- **오픈소스 기반**: 상용 라이선스 없이 자유롭게 사용 가능
-- **확장 가능한 아키텍처**: 모듈화된 구조로 쉬운 기능 확장
-- **다양한 문서 형식**: PDF, TXT, MD, DOCX 등 다양한 형식 지원
-
-### 6.2 프로젝트 진행 소감 및 후기
-
-#### 6.2.1 개발 과정에서의 학습
-- **AI/ML 기술 습득**: 자연어 처리, 임베딩, 벡터 검색 등 최신 AI 기술 학습
-- **데이터베이스 설계**: 그래프 DB, 벡터 DB, 관계형 DB의 통합 설계 경험
-- **웹 개발 역량**: React, FastAPI를 활용한 풀스택 개발 경험
-- **프로젝트 관리**: 팀 협업, 버전 관리, 테스트 등 개발 프로세스 경험
-
-#### 6.2.2 기술적 도전과 해결
-- **성능 최적화**: 대용량 문서 처리 시 메모리 및 속도 최적화
-- **AI 모델 통합**: 다양한 AI 서비스의 API 연동 및 에러 처리
-- **실시간 처리**: 비동기 처리와 동시성 제어를 통한 안정성 확보
-- **사용자 경험**: 직관적이고 반응성 좋은 UI/UX 설계
-
-#### 6.2.3 팀 협업의 중요성
-- **역할 분담**: 프론트엔드, 백엔드, AI 모델 등 전문 분야별 역할 분담
-- **의사소통**: 정기적인 회의와 코드 리뷰를 통한 효과적 소통
-- **문제 해결**: 기술적 이슈에 대한 팀원 간 협력적 해결
-- **지속적 개선**: 사용자 피드백을 통한 지속적인 기능 개선
-
-### 6.3 향후 추진 계획(프로젝트 업그레이드 계획)
-
-#### 6.3.1 단기 계획 (3-6개월)
-- **성능 최적화**: 대용량 문서 처리 속도 개선
-- **UI/UX 개선**: 사용자 피드백 반영한 인터페이스 개선
-- **테스트 강화**: 단위 테스트 및 통합 테스트 커버리지 확대
-- **문서화 완성**: API 문서 및 사용자 매뉴얼 작성
-
-#### 6.3.2 중기 계획 (6-12개월)
-- **다국어 지원**: 영어, 일본어 등 다국어 문서 처리 기능 추가
-- **모바일 앱**: iOS/Android 네이티브 앱 개발
-- **클라우드 배포**: AWS, Azure 등 클라우드 플랫폼 배포
-- **API 서비스**: 외부 개발자를 위한 RESTful API 서비스 제공
-
-#### 6.3.3 장기 계획 (1-2년)
-- **상용화 준비**: SaaS 서비스로의 전환 및 비즈니스 모델 구축
-- **AI 모델 고도화**: 자체 AI 모델 개발 및 정확도 향상
-- **기업 솔루션**: 대기업용 맞춤형 엔터프라이즈 솔루션 개발
-- **오픈소스 커뮤니티**: 개발자 커뮤니티 구축 및 생태계 확장
-
-#### 6.3.4 연구 및 개발 방향
-- **학술 연구**: 지식 그래프 생성 및 AI 답변 생성 관련 논문 발표
-- **특허 출원**: 핵심 기술에 대한 특허 출원 및 지적재산권 확보
-- **산학 협력**: 대학 및 연구기관과의 협력을 통한 기술 발전
-- **국제 표준**: 지식 그래프 관련 국제 표준 참여 및 기여
-
-</div>
-</details>
 
 <br/>
 <br/>
