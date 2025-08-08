@@ -163,7 +163,8 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
     if source_id != -1:
         top_node={"label":top_keyword,
                 "name":top_keyword,
-                "descriptions":[]
+                "descriptions":[],
+                "source_id":source_id
         }
         already_made.append(top_keyword)
         nodes_and_edges["nodes"].append(top_node)
@@ -175,9 +176,10 @@ def recurrsive_chunking(chunk: list[dict], source_id:int ,depth: int, already_ma
                 if topics[t_idx] not in already_made:
                     if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
                         chunk_node={"label":topics[t_idx],"name":topics[t_idx],
+                                    "source_id":source_id,
                                     "descriptions":[c["index"] for c in go_chunk[idx]]}
                     else:
-                        chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[]}
+                        chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[], "source_id":source_id}
                     edge={"source": top_keyword, "target": topics[t_idx], "relation":"관련"}
                     nodes_and_edges["nodes"].append(chunk_node)
                     nodes_and_edges["edges"].append(edge)
@@ -327,7 +329,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-"""
-text="아ㅕㅇ하세요 바갑스비다 제 아름으 장세린입니다. 에바네 한 시간 10분 이라니. 오늘은 별로 안 더워요. airhnjv;ifnm roingjlf;diuerk jifgkrl; 9rkll;fdgrnj;do9hrhjkrhhufdyebkrnriohdjbjkh "
-extract_graph_components(text, 1234)
-manual_chunking(text)"""

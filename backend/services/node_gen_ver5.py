@@ -184,7 +184,7 @@ def make_node(name, phrase_info, sentences:list[str], source_id:int):
     description.append({"description":des,
                         "source_id":source_id})
     
-    node={"label":name, "name":name, "descriptions":description, "original_sentence":ori_sentences}
+    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentence":ori_sentences}
 
     return node
         
