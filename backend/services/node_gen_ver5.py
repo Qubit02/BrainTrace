@@ -28,11 +28,13 @@ stopwords = set([
 
 okt = Okt()
 
-def extract_noun_phrases(text: str) -> list[str]:
+def extract_noun_phrases(sentence: str) -> list[str]:
     """
-    명사구를 추출합니다.
+    문장을 입력 받으면 명사구를 추출하고
+    추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
     """
-    words = okt.pos(text, norm=True, stem=True)
+    #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
+    words = okt.pos(sent, norm=True, stem=True)
     phrases=[]
     current_phrase=[]
 
@@ -42,7 +44,7 @@ def extract_noun_phrases(text: str) -> list[str]:
         elif tag in ["Noun", "Alpha"]:
             if word not in stopwords and len(word) > 1:
                 current_phrase.append(word)
-        elif tag == "Adjective" and word[-1] not in '다요죠며지만':
+        elif tag == "Adjective" and len(word)>1 and word[-1] not in '다요죠며지만':
             current_phrase.append(word)
         else:
             if current_phrase:
@@ -175,16 +177,16 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
     ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
-        des="".join([sentences[idx] for idx in s_indices])   
+        des="".join([sentences[idx] for idx in s_indices])
+        ori_sentences.append({"description":des,
+                    "source_id":source_id,
+                    "score": 1.0})    
     else:
         des = ""
     description.append({"description":des,
                         "source_id":source_id})
-    ori_sentences.append({"original_sentence":des,
-                    "source_id":source_id,
-                    "score": 1.0}) 
     
-    node={"label":name, "name":name, "source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
+    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentence":ori_sentences}
 
     return node
         

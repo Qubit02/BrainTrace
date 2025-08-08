@@ -160,7 +160,7 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
     #현재 chunk를 대표하는 top keyword를 노드로 생성
     #top keyword는 depth가 0일 경우 lda 모델이 추출한 전체 텍스트의 주제 키워드이다
     #depth가 0이 아닐 경우에는 이전 depth에서 전달한 tf-idf 방식으로 구한 해당 chunk의 키워드이다.
-    if source_id != -1:
+    if source_id != "-1":
         top_node={"label":top_keyword,
                 "name":top_keyword,
                 "descriptions":[],
@@ -318,7 +318,7 @@ def extract_graph_components(text: str, source_id: str):
 
 def manual_chunking(text:str):
     tokenized, sentences = split_into_tokenized_sentence(text)
-    chunks, _, _ =recurrsive_chunking(tokenized, -1 , 0, {}, "", 0)
+    chunks, _, _ =recurrsive_chunking(tokenized, "-1" , 0, {}, "", 0)
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
     final_chunks=[]
@@ -333,7 +333,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-"""
-text="아ㅕㅇ하세요 바갑스비다 제 아름으 장세린입니다. 에바네 한 시간 10분 이라니. 오늘은 별로 안 더워요. airhnjv;ifnm roingjlf;diuerk jifgkrl; 9rkll;fdgrnj;do9hrhjkrhhufdyebkrnriohdjbjkh "
-extract_graph_components(text, 1234)
-manual_chunking(text)"""
