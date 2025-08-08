@@ -34,7 +34,7 @@ def extract_noun_phrases(sentence: str) -> list[str]:
     추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
     """
     #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
-    words = okt.pos(sent, norm=True, stem=True)
+    words = okt.pos(sentence, norm=True, stem=True)
     phrases=[]
     current_phrase=[]
 
