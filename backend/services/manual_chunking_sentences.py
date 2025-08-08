@@ -160,7 +160,7 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
     #현재 chunk를 대표하는 top keyword를 노드로 생성
     #top keyword는 depth가 0일 경우 lda 모델이 추출한 전체 텍스트의 주제 키워드이다
     #depth가 0이 아닐 경우에는 이전 depth에서 전달한 tf-idf 방식으로 구한 해당 chunk의 키워드이다.
-    if source_id != -1:
+    if source_id != "-1":
         top_node={"label":top_keyword,
                 "name":top_keyword,
                 "descriptions":[],
@@ -176,13 +176,8 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
                 if topics[t_idx] not in already_made:
                     if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
                         chunk_node={"label":topics[t_idx],"name":topics[t_idx],
-<<<<<<< HEAD
-                                    "source_id":source_id,
-                                    "descriptions":[c["index"] for c in go_chunk[idx]]}
-=======
                                     "descriptions":[c["index"] for c in go_chunk[idx]],
                                     "source_id":source_id}
->>>>>>> 3574e87fec381040873e1dcaa7b7a33b8b1c3955
                     else:
                         chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[], "source_id":source_id}
                     edge={"source": top_keyword, "target": topics[t_idx], "relation":"관련"}
@@ -323,7 +318,7 @@ def extract_graph_components(text: str, source_id: str):
 
 def manual_chunking(text:str):
     tokenized, sentences = split_into_tokenized_sentence(text)
-    chunks, _, _ =recurrsive_chunking(tokenized, -1 , 0, {}, "", 0)
+    chunks, _, _ =recurrsive_chunking(tokenized, "-1" , 0, {}, "", 0)
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
     final_chunks=[]
