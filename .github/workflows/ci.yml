@@ -1,6 +1,6 @@
 name: ci
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
   pull_request:
     branches: [dev]
 
@@ -11,12 +11,9 @@ jobs:
     services:
       neo4j:
         image: neo4j:5
-        ports: ['7474:7474', '7687:7687']
         env:
-          NEO4J_AUTH: none
-          # 필요 시 APOC
-          NEO4J_PLUGINS: '["apoc"]'
-        # HTTP 살아날 때까지 대기 (간단 헬스체크)
+          NEO4J_AUTH: none                   # ← 비번 요구 끔(테스트/CI용)
+          NEO4J_PLUGINS: '["apoc"]'          # 개발용 플러그인 자동 설치
         options: >-
           --health-cmd "wget --spider -q http://localhost:7474 || exit 1"
           --health-interval 5s --health-retries 60 --health-timeout 5s
@@ -24,31 +21,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # --- Neo4j 시드: cypher-shell 다운로드 후 실행 ---
-      - name: Install cypher-shell (standalone)
+      # Neo4j 준비되면 컨테이너 안의 cypher-shell로 시드 (파일을 표준입력으로 넘김)
+      - name: Seed Neo4j (no auth)
         run: |
-          curl -L -o cypher-shell.zip https://github.com/neo4j/cypher-shell/releases/download/1.1.15/cypher-shell.zip
-          unzip -q cypher-shell.zip -d ./cypher-shell
-          chmod +x ./cypher-shell/bin/cypher-shell
-      - name: Wait for Bolt & seed schema/data
-        run: |
+          CID=$(docker ps --filter "ancestor=neo4j:5" --format "{{.ID}}" | head -n1)
           for i in {1..60}; do
-            ./cypher-shell/bin/cypher-shell -a bolt://localhost:7687 -u neo4j -p test "RETURN 1" && break
+            docker exec "$CID" cypher-shell -a bolt://localhost:7687 "RETURN 1" && break
             sleep 2
           done
-          ./cypher-shell/bin/cypher-shell -a bolt://localhost:7687 -u neo4j -p test -f backend/seed/00_schema.cypher
-        # 참고: cypher-shell 사용/설치 문서
-        # https://neo4j.com/docs/operations-manual/current/cypher-shell/
+          docker exec -i "$CID" cypher-shell -a bolt://localhost:7687 -f - < backend/seed/00_schema.cypher
 
-      # --- Backend 빌드/스모크 ---
+      # --- Backend ---
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11', cache: 'pip' }
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Backend deps & compile check
         working-directory: backend
         run: |
           pip install -r requirements.txt
           python -m compileall -q .
-      # --- Frontend 빌드 ---
+
+      # --- Frontend ---
       - uses: actions/setup-node@v4
         with:
           node-version: '20.19.0'
