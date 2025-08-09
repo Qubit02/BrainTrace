@@ -35,7 +35,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-package-lock.json
 
 # =========================
 # 에디터/IDE/OS 환경 파일 무시
