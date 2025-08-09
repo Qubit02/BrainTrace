@@ -13,7 +13,7 @@ jobs:
         image: neo4j:5
         ports: ['7474:7474', '7687:7687']
         env:
-          NEO4J_AUTH: neo4j/test
+          NEO4J_AUTH: none
           # 필요 시 APOC
           NEO4J_PLUGINS: '["apoc"]'
         # HTTP 살아날 때까지 대기 (간단 헬스체크)
