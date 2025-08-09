@@ -8,30 +8,10 @@ jobs:
   build-and-check:
     runs-on: ubuntu-latest
 
-    services:
-      neo4j:
-        image: neo4j:5
-        env:
-          NEO4J_AUTH: none                   # ← 비번 요구 끔(테스트/CI용)
-          NEO4J_PLUGINS: '["apoc"]'          # 개발용 플러그인 자동 설치
-        options: >-
-          --health-cmd "wget --spider -q http://localhost:7474 || exit 1"
-          --health-interval 5s --health-retries 60 --health-timeout 5s
-
     steps:
       - uses: actions/checkout@v4
 
-      # Neo4j 준비되면 컨테이너 안의 cypher-shell로 시드 (파일을 표준입력으로 넘김)
-      - name: Seed Neo4j (no auth)
-        run: |
-          CID=$(docker ps --filter "ancestor=neo4j:5" --format "{{.ID}}" | head -n1)
-          for i in {1..60}; do
-            docker exec "$CID" cypher-shell -a bolt://localhost:7687 "RETURN 1" && break
-            sleep 2
-          done
-          docker exec -i "$CID" cypher-shell -a bolt://localhost:7687 -f - < backend/seed/00_schema.cypher
-
-      # --- Backend ---
+      # --- Backend (Python) ---
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -40,10 +20,11 @@ jobs:
       - name: Backend deps & compile check
         working-directory: backend
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m compileall -q .
 
-      # --- Frontend ---
+      # --- Frontend (Node) ---
       - uses: actions/setup-node@v4
         with:
           node-version: '20.19.0'
