@@ -1,3 +1,21 @@
+/**
+ * FileIcon 컴포넌트
+ * 
+ * 이 컴포넌트는 파일 확장자에 따라 적절한 아이콘을 렌더링합니다.
+ * 지원하는 파일 형식:
+ * - PDF (.pdf)
+ * - 텍스트 파일 (.txt)
+ * - 마크다운 (.md)
+ * - Word 문서 (.doc, .docx)
+ * - Excel 파일 (.xls, .xlsx)
+ * - 기타 파일 (기본 아이콘)
+ * 
+ * Props:
+ * - fileName: 파일 이름 (확장자 포함)
+ * 
+ * @param {string} fileName - 파일 이름
+ * @returns {JSX.Element} 파일 확장자에 맞는 아이콘 컴포넌트
+ */
 import {
     TbFileTypePdf,       // PDF 파일 아이콘
     TbFileTypeXls,       // Excel 파일 아이콘

@@ -1,20 +1,30 @@
+/**
+ * AppHeader 컴포넌트
+ * 
+ * 이 컴포넌트는 애플리케이션의 상단 헤더를 렌더링합니다.
+ * 주요 기능:
+ * - 애플리케이션 로고와 이름 표시
+ * - 현재 날짜와 시간을 실시간으로 표시
+ * - 1분마다 시간 자동 업데이트
+ * 
+ * 상태:
+ * - today: 현재 날짜 (YYYY년 MM월 DD일 (요일) 형식)
+ * - currentTime: 현재 시간 (HH:MM 형식)
+ */
 // AppHeader.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import './AppHeader.css';
-import { TbBrandAirtable } from "react-icons/tb";
-import { TbBrandAmongUs } from "react-icons/tb";
-import { TbBrand4Chan } from "react-icons/tb";
-import { TbBrandBilibili } from "react-icons/tb";
-import { DiHtml5DeviceAccess } from "react-icons/di";
-import { DiGoogleAnalytics } from "react-icons/di";
-import { IoLogoOctocat } from "react-icons/io";
-import { BiLogoCodepen } from "react-icons/bi";
 import { PiDropboxLogo } from "react-icons/pi";
+
 export default function AppHeader() {
     const [today, setToday] = useState('');
     const [currentTime, setCurrentTime] = useState('');
 
-    // 날짜와 시간 업데이트 함수
+    /**
+     * 현재 날짜와 시간을 포맷팅하여 상태를 업데이트합니다.
+     * 날짜는 "YYYY년 MM월 DD일 (요일)" 형식으로,
+     * 시간은 "HH:MM" 형식으로 표시됩니다.
+     */
     const updateDateTime = useCallback(() => {
         const date = new Date();
         const year = date.getFullYear();
@@ -33,7 +43,11 @@ export default function AppHeader() {
         setCurrentTime(timeFormatted);
     }, []);
 
-    // 날짜와 시간 초기화
+    /**
+     * 컴포넌트 마운트 시 날짜와 시간을 초기화하고,
+     * 다음 분의 시작부터 1분마다 시간을 업데이트합니다.
+     * 정확한 분 단위 업데이트를 위해 다음 분까지 대기 후 인터벌을 설정합니다.
+     */
     useEffect(() => {
 
         // 초기 실행

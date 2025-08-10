@@ -26,6 +26,7 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
+  padding-top: 30px;
   background-color: #FFFFFF;
   height: 90%;
   max-width: 900px;
@@ -37,6 +38,7 @@
   display: flex;
   flex-direction: column;
   padding: 32px 24px;
+  padding-top: 40px;
   height: 90%;
   position: relative;
   background-color: #FFFFFF;
@@ -45,21 +47,66 @@
 /* ====== 채팅 제목 컨테이너 ====== */
 .chat-panel-title-container {
   margin-bottom: 20px;
+  margin-top: 10px;
   padding: 0 21px;
 }
 
 .chat-panel-title-display {
   margin-left: -21px;
+  margin-top: 10px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   width: 100%;
+  position: relative;
 }
 
 .chat-panel-title-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: absolute;
+  left: 0;
+}
+
+.chat-panel-title-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  right: 0;
+}
+
+/* 환경 배지 스타일 */
+.environment-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: absolute;
+  right: 0;
+  z-index: 10;
+}
+
+.environment-badge.environment-local {
+  color: #FF6B6B;
+}
+
+.environment-badge.environment-cloud {
+  color: #4A90E2;
+}
+
+.environment-badge.environment-unknown {
+  color: #9CA3AF;
+}
+
+.environment-label {
+  font-size: 12.2px;
+  font-weight: 610;
+  letter-spacing: 0.5px;
 }
 
 .chat-panel-title-edit {
@@ -128,9 +175,11 @@
   font-size: 33px;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 70px;
+  margin-bottom: 20px;
   letter-spacing: -0.02em;
 }
+
+/* 배포 타입 안내 메시지 - 제거됨 (TitleEditor에 통합) */
 
 /* ====== 입력 영역 ====== */
 .chat-panel-centered-input-container {
@@ -941,6 +990,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1163,8 +1213,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .chat-panel-install-btn,
@@ -1251,29 +1306,29 @@
     left: 8px;
     bottom: 6px;
   }
-  
+
   .chat-panel-model-dropdown,
   .chat-panel-model-dropdown-inline {
     font-size: 11px;
     padding: 4px 8px;
   }
-  
+
   .chat-panel-model-dropdown {
     font-size: 13px;
     padding: 6px 10px;
   }
-  
+
   .chat-panel-model-dropdown-inline {
     min-width: 75px;
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(229, 231, 235, 0.9);
   }
-  
+
   .chat-panel-model-value,
   .chat-panel-model-value-inline {
     font-size: 11px;
   }
-  
+
   .chat-panel-model-menu,
   .chat-panel-model-menu-inline {
     max-height: 200px;
@@ -1281,50 +1336,50 @@
     border-radius: 10px;
     padding: 6px;
   }
-  
+
   .chat-panel-model-menu {
     max-height: 150px;
     min-width: auto;
     border-radius: 6px;
     padding: 0;
   }
-  
+
   .chat-panel-model-item,
   .chat-panel-model-item-inline {
     padding: 12px;
     margin-bottom: 3px;
   }
-  
+
   .chat-panel-model-item {
     padding: 8px 10px;
     margin-bottom: 0;
   }
-  
+
   .chat-panel-model-name,
   .chat-panel-model-name-inline {
     font-size: 12px;
   }
-  
+
   .chat-panel-model-name {
     font-size: 13px;
   }
-  
+
   .chat-panel-model-description,
   .chat-panel-model-description-inline {
     font-size: 11px;
   }
-  
+
   .chat-panel-model-usage,
   .chat-panel-model-usage-inline {
     font-size: 10px;
   }
-  
+
   .chat-panel-model-meta,
   .chat-panel-model-meta-inline {
     gap: 4px;
     margin-top: 2px;
   }
-  
+
   .chat-panel-model-size,
   .chat-panel-model-size-inline,
   .chat-panel-model-type,
@@ -1334,17 +1389,17 @@
     font-size: 8px;
     padding: 1px 4px;
   }
-  
+
   .chat-panel-install-btn,
   .chat-panel-install-btn-inline {
     font-size: 10px;
     padding: 3px 6px;
   }
-  
+
   .chat-panel-install-btn {
     font-size: 11px;
   }
-  
+
   .chat-panel-model-action-btn,
   .chat-panel-model-action-btn-inline {
     font-size: 11px;
@@ -1430,6 +1485,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1594,8 +1650,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .chat-panel-install-btn-inline {
@@ -1657,7 +1718,7 @@
     left: 8px;
     bottom: 6px;
   }
-  
+
   .chat-panel-model-dropdown-inline {
     font-size: 11px;
     padding: 4px 8px;
@@ -1665,55 +1726,76 @@
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(229, 231, 235, 0.9);
   }
-  
+
   .chat-panel-model-value-inline {
     font-size: 11px;
   }
-  
+
   .chat-panel-model-menu-inline {
     max-height: 200px;
     min-width: 200px;
     border-radius: 10px;
     padding: 6px;
   }
-  
+
   .chat-panel-model-item-inline {
     padding: 12px;
     margin-bottom: 3px;
   }
-  
+
   .chat-panel-model-name-inline {
     font-size: 12px;
   }
-  
+
   .chat-panel-model-description-inline {
     font-size: 11px;
   }
-  
+
   .chat-panel-model-usage-inline {
     font-size: 10px;
   }
-  
+
   .chat-panel-model-meta-inline {
     gap: 4px;
     margin-top: 2px;
   }
-  
+
   .chat-panel-model-size-inline,
   .chat-panel-model-type-inline,
   .chat-panel-model-provider-inline {
     font-size: 8px;
     padding: 1px 4px;
   }
-  
+
   .chat-panel-install-btn-inline {
     font-size: 10px;
     padding: 3px 6px;
   }
-  
+
   .chat-panel-model-action-btn-inline {
     font-size: 11px;
     padding: 4px 8px;
+  }
+}
+
+/* ====== 모바일 반응형 ====== */
+@media (max-width: 768px) {
+  .chat-panel-title-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .chat-panel-title-right {
+    align-self: flex-end;
+  }
+
+  .environment-badge {
+    font-size: 11px;
+  }
+
+  .environment-label {
+    font-size: 10px;
   }
 }
 

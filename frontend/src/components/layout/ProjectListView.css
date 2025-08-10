@@ -66,10 +66,12 @@
     }
 }
 
-/* ====== 정렬/드롭다운 ====== */
+/* ====== 필터/정렬/드롭다운 ====== */
 .project-header-controls {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
     margin-bottom: 20px;
     padding-right: 20px;
     opacity: 0;
@@ -84,6 +86,43 @@
     transform: translateY(0);
 }
 
+/* 필터 탭 */
+.filter-tabs {
+    display: flex;
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 2px;
+}
+
+.filter-tab {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    white-space: nowrap;
+}
+
+.filter-tab:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: #333;
+}
+
+.filter-tab.active {
+    background: white;
+    color: #000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+}
+
+/* 정렬 드롭다운 */
 .sort-dropdown {
     position: relative;
     display: inline-block;
@@ -91,17 +130,28 @@
 }
 
 .sort-button {
+    display: flex;
+    align-items: center;
     background-color: white;
     border: 1px solid #ddd;
     border-radius: 25px;
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 10px 16px;
+    font-size: 13px;
     color: #111;
     cursor: pointer;
     box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
     min-width: 120px;
 }
+
+.sort-button:hover {
+    background-color: #f8f8f8;
+    border-color: #ccc;
+    transform: translateY(-1px);
+    box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+
 
 .sort-menu {
     position: absolute;
@@ -144,20 +194,112 @@
     background: #f5f5f5;
 }
 
+/* ====== 필터 안내 메시지 ====== */
+.filter-info-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 16px;
+    padding: 32px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.6s ease;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+/* 첫 방문 시 애니메이션 */
+[data-first-visit="true"] .filter-info-message {
+    animation: slideInFromBottom 0.8s ease forwards;
+    animation-delay: 1.8s; /* 타이핑 완료 후 1초 + 0.8초 */
+}
+
+/* 이미 방문한 경우 즉시 표시 */
+[data-first-visit="false"] .filter-info-message {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes slideInFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.filter-info-message:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.info-icon {
+    font-size: 48px;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.info-content h3 {
+    margin: 0 0 12px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #212529;
+    letter-spacing: -0.5px;
+}
+
+.info-content p {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: #495057;
+    line-height: 1.6;
+}
+
+.info-content ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.info-content li {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #6c757d;
+    line-height: 1.5;
+}
+
+.all-info {
+    border-left: 4px solid #6c757d;
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+}
+
+.local-info {
+    border-left: 4px solid #2c3e50;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+}
+
+.cloud-info {
+    border-left: 4px solid #4a90e2;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%);
+}
+
 /* ====== 프로젝트 카드 그리드 ====== */
 .project-grid {
     display: grid;
     gap: 22px;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.1s ease;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
 }
 
-.project-grid.cards-visible {
+.project-grid.visible {
     opacity: 1;
     transform: translateY(0);
-    transition-delay: 0s !important;
 }
 
 /* ====== 프로젝트 카드 ====== */
@@ -171,6 +313,33 @@
     position: relative;
     opacity: 0;
     transform: translateY(20px);
+}
+
+/* 첫 방문 시 애니메이션 */
+[data-first-visit="true"] .project-card {
+    animation: cardSlideIn 0.8s ease forwards;
+}
+
+/* 첫 방문 시 카드별 지연 애니메이션 - 동적으로 처리 */
+[data-first-visit="true"] .project-card {
+    animation-delay: calc(2.4s + (var(--card-index, 0) * 0.2s));
+}
+
+/* 이미 방문한 경우 즉시 표시 */
+[data-first-visit="false"] .project-card {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .project-card:hover {
@@ -227,7 +396,7 @@
     transform: scale(1.1) !important;
 }
 
-.project-card:hover .importance-star:hover ~ * {
+.project-card:hover .importance-star:hover~* {
     pointer-events: none;
 }
 
@@ -277,9 +446,51 @@
 /* ====== 카드 내부 요소 ====== */
 .project-icon {
     margin-bottom: 10px;
+    position: relative;
 }
 
+/* 배포 타입 배지 */
+.deployment-badge {
+    position: absolute;
+    top: 3px;
+    left: 40px;
+    color: #666;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    z-index: 5;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
 
+.deployment-badge.local {
+    color: #ffffff;
+    background: #2c3e50;
+    border-color: #1a252f;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* LOCAL 배포 타입 카드 스타일 */
+.project-card.local-deployment {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+    position: relative;
+    overflow: hidden;
+}
+
+/* LOCAL 카드의 보안 표시 - 왼쪽 보더 */
+.project-card.local-deployment::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, #2c3e50, #1a252f);
+    border-radius: 2px 0 0 2px;
+}
 
 .project-name {
     position: relative;
@@ -337,7 +548,7 @@
     font-size: 20px;
     color: #888;
     cursor: pointer;
-    z-index: 10;
+    z-index: 15;
     background: none;
     border: none;
     padding: 2px 6px;
