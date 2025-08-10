@@ -173,7 +173,7 @@ def print_test_file_result(result: Dict[str, any]):
         for method in details["test_methods"][:5]:  # 최대 5개만 출력
             print(f"   • {method}")
         if len(details["test_methods"]) > 5:
-            print(f"   ... 외 {len(details["test_methods"]) - 5}개")
+            print(f"   ... 외 {len(details['test_methods']) - 5}개")
     
     # 성공/실패 통계
     success_count = details.get("success_count", 0)
