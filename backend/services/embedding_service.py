@@ -122,6 +122,11 @@ def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[st
     ]
 
     for node in nodes:
+        # 필수 키 확인
+        if not all(k in node for k in ["source_id", "name", "label", "descriptions"]):
+            logging.warning("필수 필드 누락된 노드: %s", node)
+            continue
+
         source_id = str(node["source_id"])
         name = node["name"]
         label = node["label"]
