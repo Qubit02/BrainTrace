@@ -32,10 +32,11 @@ import { api } from '../config/axiosConfig';
  * 새로운 브레인 생성
  * @param {Object} brainData - 브레인 데이터
  * @param {string} brainData.brain_name - 브레인 이름
+ * @param {string} brainData.deployment_type - 배포 타입 (cloud 또는 local)
  * @returns {Promise<Object>} 생성된 브레인 정보
  */
-export const createBrain = ({ brain_name }) => 
-    api.post('/brains', { brain_name })
+export const createBrain = ({ brain_name, deployment_type }) => 
+    api.post('/brains', { brain_name, deployment_type })
         .then(res => res.data)
         .catch(error => {
             console.error('브레인 생성 실패:', error);
