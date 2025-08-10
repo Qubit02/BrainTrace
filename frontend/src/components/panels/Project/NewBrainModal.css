@@ -6,13 +6,13 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 999;
+    z-index: 9999;
     backdrop-filter: blur(4px);
 }
 
 /* 카드 스타일 */
 .modal-box {
-    width: 420px;
+    width: 520px;
     max-width: 90%;
     background: #ffffff;
     padding: 32px 36px;
@@ -45,6 +45,107 @@
     line-height: 1.5;
 }
 
+/* 배포 타입 선택 섹션 */
+.deployment-type-section {
+    margin-bottom: 20px;
+}
+
+.deployment-type-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333333;
+}
+
+.deployment-options {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.deployment-option {
+    flex: 1;
+    padding: 20px;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    position: relative;
+    overflow: hidden;
+}
+
+.deployment-option:hover {
+    border-color: #cccccc;
+    background: #f8f8f8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.deployment-option.selected {
+    border-color: #000000;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.deployment-option.selected::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #000000;
+}
+
+.deployment-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.deployment-content h5 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333333;
+    text-align: center;
+}
+
+.deployment-content p {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    color: #666666;
+    text-align: center;
+    font-weight: 500;
+}
+
+.deployment-content ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.deployment-content li {
+    font-size: 0.85rem;
+    color: #666666;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+/* 프로젝트 이름 섹션 */
+.project-name-section {
+    margin-bottom: 20px;
+}
+
+.project-name-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333333;
+}
+
 /* 입력 필드 */
 .modal-box input {
     padding: 16px 20px;
@@ -56,6 +157,8 @@
     font-weight: 500;
     transition: all 0.2s ease;
     outline: none;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .modal-box input::placeholder {
