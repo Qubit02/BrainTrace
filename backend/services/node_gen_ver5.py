@@ -44,7 +44,7 @@ def extract_noun_phrases(sentence: str) -> list[str]:
         elif tag in ["Noun", "Alpha"]:
             if word not in stopwords and len(word) > 1:
                 current_phrase.append(word)
-        elif tag == "Adjective" and len(word)>1 and word[-1] not in '다요죠며지만':
+        elif tag in ["Adjective", "Verb"] and len(word)>1 and word[-1] not in '다요죠며지만':
             current_phrase.append(word)
         else:
             if current_phrase:
