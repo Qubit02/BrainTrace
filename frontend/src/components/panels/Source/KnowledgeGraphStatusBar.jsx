@@ -247,7 +247,7 @@ function getEfficiencyGrade(nodeDensity, edgeDensity, avgDegree) {
  */
 function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
     // UI 상태 관리
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
     const [tooltipPosition, setTooltipPosition] = useState({});
     
     // === 기본 계산값들 ===
