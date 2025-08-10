@@ -1,16 +1,9 @@
 **/__pycache__/
 *.pyc
-/neo4j/
 *.log
 .DS_Store
 
-backend/venv
 frontend/node_modules
 
-backend/LLM/genie_bundle_3_2
-backend/data/
-backend/node_modules
-backend/data/qdrant/meta.json
 .env
 node_modules/
-.gitignore

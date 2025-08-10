@@ -1,15 +1,14 @@
-/LLM/genie_bundle_3_2
-/LLM/__pycache__
-/node_modules/
 /venv
-.venv/
 .data/
 /venv
-/LLM/genie_bundle_3_2
-/LLM/__pycache__
-/node_modules/
 /data
 /__pycache__/
 
 /uploaded_txts/
 /uploaded_pdfs/
+/uploaded_docx/
+/uploaded_mds/
+
+neo4j
+build
+dist
