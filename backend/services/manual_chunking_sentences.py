@@ -286,16 +286,12 @@ def extract_graph_components(text: str, source_id: str):
     #chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
+        resolved_description=""
         if node["descriptions"] != []:
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-            node["descriptions"]=[{"description":resolved_description,
-                                    "source_id":source_id}]
-            node["original_sentences"]=[{"original_sentence":resolved_description,
-                                    "source_id":source_id,
-                                    "score": 1.0}]
         else:
-            node["descriptions"]=[{"description":"", "source_id":source_id}]
-            node["original_sentences"]=[{"original_sentence":"",
+            node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
+            node["original_sentences"]=[{"original_sentence":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}]
 
