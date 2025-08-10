@@ -38,7 +38,9 @@ class BaseHandler:
             CREATE TABLE IF NOT EXISTS Brain (
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
-                created_at TEXT
+                created_at TEXT,
+                is_important BOOLEAN DEFAULT 0,
+                deployment_type TEXT DEFAULT 'local'
             )
             ''')
             
@@ -66,6 +68,7 @@ class BaseHandler:
                 pdf_path TEXT,
                 brain_id INTEGER,
                 type TEXT,
+                pdf_text TEXT,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -79,6 +82,7 @@ class BaseHandler:
                 txt_path TEXT,
                 brain_id INTEGER,
                 type TEXT,
+                txt_text TEXT,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -92,6 +96,7 @@ class BaseHandler:
                 md_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 type TEXT,
                 brain_id INTEGER,
+                md_text TEXT,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -114,11 +119,11 @@ class BaseHandler:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS Chat (
                 chat_id INTEGER PRIMARY KEY,
-                session_id INTEGER,  -- 채팅 세션 ID
+                session_id INTEGER,
                 is_ai BOOLEAN NOT NULL,
                 message TEXT,
                 referenced_nodes TEXT,
-                accuracy REAL,  -- 정확도 정보 추가
+                accuracy REAL,
                 FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)
             )
             ''')
@@ -142,7 +147,7 @@ class BaseHandler:
         finally:
             if conn:
                 conn.close()
-    
+
     def _get_next_id(self) -> int:
         """다음 ID 값을 가져옵니다."""
         try:

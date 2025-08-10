@@ -1,6 +1,6 @@
 // src/components/panels/MemoListPanel.jsx
 import React, { useState, useRef, useMemo } from 'react';
-import './MemoList.css';
+import './MemoListPanel.css';
 import { CiMemoPad } from 'react-icons/ci';
 import micOff from '../../../../assets/icons/mic_off.png';
 import micOn from '../../../../assets/icons/mic_on.png';
@@ -117,10 +117,9 @@ function MemoListPanel({
                     {/* 마이크 버튼 및 녹음 상태 UI (휴지통 모드에서는 숨김) */}
                     {!showTrash && (
                         <div className="mic-wrapper">
-
                             {/* 녹음 중일 때 타이머와 볼륨 바 표시 */}
                             {isRecording && (
-                                <div className="volume-bar-wrapper">
+                                <div className="recording-status-left">
                                     <div className="recording-indicator-timer">
                                         {formatTime(elapsedTime)}
                                     </div>
@@ -133,6 +132,13 @@ function MemoListPanel({
                                 </div>
                             )}
 
+                            {/* 음성 텍스트 변환 중 상태 표시 */}
+                            {isTranscribing && (
+                                <div className="transcribing-status-left">
+                                    텍스트 변환 중...
+                                </div>
+                            )}
+
                             {/* 마이크 아이콘 (깜빡이며 상태 표시) */}
                             <img
                                 src={isRecording ? (showOnIcon ? micOn : micOff) : micOff}
@@ -140,16 +146,6 @@ function MemoListPanel({
                                 className={`mic-icon ${isRecording ? 'recording' : ''} ${isTranscribing ? 'disabled' : ''}`}
                                 onClick={handleMicClick}
                             />
-
-                            {/* 음성 텍스트 변환 중 상태 표시 */}
-                            {isTranscribing && (
-                                <div
-                                    className="transcribing-indicator"
-                                    style={{ marginTop: '8px', color: '#666', fontSize: '13px' }}
-                                >
-                                    텍스트 변환 중...
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -291,7 +287,7 @@ function MemoListPanel({
             <div className="memo-footer">
                 <div className="memo-count-footer">총 {displayedMemos.length}개</div>
 
-                <div className="memo-list-header-toggle" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
+                <div className="memo-list-header-toggle" style={{ marginRight: '8px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
                     <div className="memo-header-icons">
                         {!showTrash ? (
                             <BsTrash

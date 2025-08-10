@@ -7,6 +7,8 @@ import sys
 import os
 import time
 import subprocess
+import signal
+import atexit
 from typing import List, Dict
 
 # 테스트 파일 목록 (새로운 폴더 구조)
@@ -23,8 +25,54 @@ TEST_FILES = [
     "memo_tests/test_memo_integration.py"
 ]
 
+# 전역 변수로 현재 실행 중인 프로세스 추적
+current_process = None
+test_results = []
+
+def signal_handler(signum, frame):
+    """시그널 핸들러 - 강제 종료 시 정리"""
+    print(f"\n[중단] 시그널 {signum} 수신. 테스트 실행을 중단하고 정리 중...")
+    
+    # 현재 실행 중인 프로세스 종료
+    if current_process and current_process.poll() is None:
+        try:
+            current_process.terminate()
+            current_process.wait(timeout=10)
+            print("[정리] 현재 테스트 프로세스가 종료되었습니다.")
+        except subprocess.TimeoutExpired:
+            current_process.kill()
+            print("[정리] 현재 테스트 프로세스가 강제 종료되었습니다.")
+        except Exception as e:
+            print(f"[오류] 프로세스 종료 중 오류: {e}")
+    
+    # 결과 출력
+    if test_results:
+        print("\n[결과] 현재까지의 테스트 결과:")
+        print_test_results(test_results)
+    
+    print("[종료] 테스트 스위트가 중단되었습니다.")
+    sys.exit(1)
+
+def cleanup_on_exit():
+    """프로그램 종료 시 정리"""
+    if current_process and current_process.poll() is None:
+        try:
+            current_process.terminate()
+            current_process.wait(timeout=5)
+        except:
+            pass
+
+# 시그널 핸들러 등록
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+# 종료 시 정리 함수 등록
+atexit.register(cleanup_on_exit)
+
 def run_test_file(test_file: str) -> Dict[str, any]:
     """개별 테스트 파일 실행"""
+    global current_process
+    
     print(f"\n{'='*60}")
     print(f"{test_file} 실행 중...")
     print(f"{'='*60}")
@@ -33,13 +81,50 @@ def run_test_file(test_file: str) -> Dict[str, any]:
     
     try:
         # 테스트 파일 실행
-        result = subprocess.run(
+        current_process = subprocess.Popen(
             [sys.executable, test_file],
             cwd=os.path.dirname(os.path.abspath(__file__)),
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=300  # 5분 타임아웃
+            bufsize=1,
+            universal_newlines=True
         )
+        
+        # 실시간 출력 처리
+        stdout_lines = []
+        stderr_lines = []
+        
+        while True:
+            # stdout 읽기
+            stdout_line = current_process.stdout.readline()
+            if stdout_line:
+                stdout_lines.append(stdout_line)
+                print(stdout_line.rstrip())
+            
+            # stderr 읽기
+            stderr_line = current_process.stderr.readline()
+            if stderr_line:
+                stderr_lines.append(stderr_line)
+                print(f"[에러] {stderr_line.rstrip()}")
+            
+            # 프로세스 종료 확인
+            if current_process.poll() is not None:
+                break
+            
+            # 타임아웃 체크 (5분)
+            if time.time() - start_time > 300:
+                current_process.terminate()
+                try:
+                    current_process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    current_process.kill()
+                raise subprocess.TimeoutExpired("테스트 타임아웃", 300)
+        
+        # 남은 출력 읽기
+        remaining_stdout, remaining_stderr = current_process.communicate()
+        stdout_lines.extend(remaining_stdout.splitlines() if remaining_stdout else [])
+        stderr_lines.extend(remaining_stderr.splitlines() if remaining_stderr else [])
         
         end_time = time.time()
         duration = end_time - start_time
@@ -47,12 +132,12 @@ def run_test_file(test_file: str) -> Dict[str, any]:
         # 상세한 결과 분석
         test_result = {
             "file": test_file,
-            "success": result.returncode == 0,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
+            "success": current_process.returncode == 0,
+            "stdout": "\n".join(stdout_lines),
+            "stderr": "\n".join(stderr_lines),
             "duration": duration,
-            "returncode": result.returncode,
-            "details": analyze_test_output(result.stdout, result.stderr, result.returncode)
+            "returncode": current_process.returncode,
+            "details": analyze_test_output("\n".join(stdout_lines), "\n".join(stderr_lines), current_process.returncode)
         }
         
         # 즉시 결과 출력
@@ -85,6 +170,8 @@ def run_test_file(test_file: str) -> Dict[str, any]:
         }
         print_test_file_result(test_result)
         return test_result
+    finally:
+        current_process = None
 
 def analyze_test_output(stdout: str, stderr: str, returncode: int) -> Dict[str, any]:
     """테스트 출력 분석"""
@@ -99,7 +186,8 @@ def analyze_test_output(stdout: str, stderr: str, returncode: int) -> Dict[str, 
         "execution_summary": "",
         "test_start_time": "",
         "test_end_time": "",
-        "data_cleanup_info": []
+        "data_cleanup_info": [],
+        "performance_metrics": {}
     }
     
     # 성공/실패 패턴 분석
@@ -125,6 +213,14 @@ def analyze_test_output(stdout: str, stderr: str, returncode: int) -> Dict[str, 
         # 데이터 정리 정보
         if "정리" in line or "삭제" in line:
             details["data_cleanup_info"].append(line)
+        
+        # 성능 메트릭 추출
+        if "초" in line and any(word in line for word in ["시간", "duration", "실행"]):
+            try:
+                time_value = float([word for word in line.split() if "초" in word][0].replace("초", ""))
+                details["performance_metrics"]["execution_time"] = time_value
+            except:
+                pass
     
     # 에러 분석
     if stderr:
@@ -173,7 +269,7 @@ def print_test_file_result(result: Dict[str, any]):
         for method in details["test_methods"][:5]:  # 최대 5개만 출력
             print(f"   • {method}")
         if len(details["test_methods"]) > 5:
-            print(f"   ... 외 {len(details["test_methods"]) - 5}개")
+            print(f"   ... 외 {len(details['test_methods']) - 5}개")
     
     # 성공/실패 통계
     success_count = details.get("success_count", 0)
@@ -181,6 +277,12 @@ def print_test_file_result(result: Dict[str, any]):
     print(f"\n[통계] 실행 통계:")
     print(f"   • 성공: {success_count}개")
     print(f"   • 실패: {failure_count}개")
+    
+    # 성능 메트릭
+    if details.get("performance_metrics"):
+        print(f"\n[성능] 성능 메트릭:")
+        for metric, value in details["performance_metrics"].items():
+            print(f"   • {metric}: {value}")
     
     # 에러 분석
     if details.get("assertion_errors"):
@@ -263,7 +365,6 @@ def print_test_results(results: List[Dict[str, any]]):
     print(f"[성공] 성공: {passed_tests}개")
     print(f"[실패] 실패: {failed_tests}개")
     
-    
     total_duration = sum(r["duration"] for r in results)
     print(f"[시간] 총 실행 시간: {total_duration:.2f}초")
     
@@ -316,6 +417,8 @@ def check_backend_server():
 
 def main():
     """메인 실행 함수"""
+    global test_results
+    
     print("[시스템] BrainT 채팅 시스템 테스트 스위트")
     print("="*60)
     
@@ -327,16 +430,16 @@ def main():
     print(f"\n[시작] {len(TEST_FILES)}개 테스트 파일 실행 시작...")
     
     # 테스트 실행
-    results = []
+    test_results = []
     for i, test_file in enumerate(TEST_FILES, 1):
         print(f"\n[진행] 진행률: {i}/{len(TEST_FILES)} ({i/len(TEST_FILES)*100:.1f}%)")
         
         if os.path.exists(test_file):
             result = run_test_file(test_file)
-            results.append(result)
+            test_results.append(result)
         else:
             print(f"[경고] {test_file} 파일을 찾을 수 없습니다.")
-            results.append({
+            test_results.append({
                 "file": test_file,
                 "success": False,
                 "stdout": "",
@@ -347,7 +450,7 @@ def main():
             })
     
     # 최종 결과 출력
-    all_passed = print_test_results(results)
+    all_passed = print_test_results(test_results)
     
     # 최종 결과
     print(f"\n{'='*60}")

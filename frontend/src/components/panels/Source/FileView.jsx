@@ -5,10 +5,11 @@ import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
-import { RiDeleteBinLine } from 'react-icons/ri';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
+import { LuGitPullRequestClosed } from "react-icons/lu";
+
 import {
   getPdfsByBrain,
   getTextfilesByBrain,
@@ -17,7 +18,7 @@ import {
   getMDFilesByBrain,
   getDocxFilesByBrain,
   convertMemoToSource
-} from '../../../../api/backend';
+} from '../../../../api/config/apiIndex';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -47,7 +48,7 @@ export default function FileView({
   externalUploadQueue = [],    // 외부에서 전달받은 업로드 큐
   setExternalUploadQueue = () => {}  // 외부 업로드 큐 초기화 함수
 }) {
-  // === 상태 관리 ===
+  
   const [selectedFile, setSelectedFile] = useState(null)        // 현재 선택된 파일 ID
   const [isDrag, setIsDrag] = useState(false)                   // 드래그 중 여부
   const [menuOpenId, setMenuOpenId] = useState(null);           // 열린 메뉴의 파일 ID
@@ -57,7 +58,6 @@ export default function FileView({
   const [uploadQueue, setUploadQueue] = useState([]);           // 업로드/변환 대기 큐
   const [isProcessing, setIsProcessing] = useState(false);      // 변환 작업 진행 중 여부
   const [isDeleting, setIsDeleting] = useState(false);          // 삭제 작업 진행 중 여부
-  // const [isNodeViewLoading, setIsNodeViewLoading] = useState(null); // 노드 보기 로딩 상태
 
   // === 파일 목록 처리 ===
   // 검색 필터링된 파일 목록 계산
@@ -291,7 +291,14 @@ export default function FileView({
                 return;
               }
               setSelectedFile(f.id);
-              onOpenFile(f.id, f.filetype);
+              // 변환된 파일 객체에서 원본 메타데이터의 ID를 가져오기
+              const fileId = f.meta ? 
+                (f.filetype === 'pdf' ? f.meta.pdf_id : 
+                 f.filetype === 'txt' ? f.meta.txt_id :
+                 f.filetype === 'md' ? f.meta.md_id :
+                 f.filetype === 'docx' ? f.meta.docx_id :
+                 f.filetype === 'memo' ? f.meta.memo_id : f.id) : f.id;
+              onOpenFile(fileId, f.filetype);
             }}
           >
             <FileIcon fileName={f.name} />
@@ -375,7 +382,7 @@ export default function FileView({
                     <GoPencil size={14} style={{ marginRight: 4 }} /> 소스 이름 바꾸기
                   </div>
                   <div className="popup-item" onClick={() => openDeleteConfirm(f)}>
-                    <RiDeleteBinLine size={14} style={{ marginRight: 4 }} /> 소스 삭제
+                    <LuGitPullRequestClosed size={14} style={{ marginRight: 4 }} /> 소스 삭제
                   </div>
                 </div>
               )}
@@ -389,6 +396,15 @@ export default function FileView({
           <p className="empty-sub">
             이 영역에 파일을 <strong>드래그해서 추가</strong>해보세요!
           </p>
+            <div className="supported-formats">
+             <p className="format-title">지원하는 파일 형식</p>
+             <div className="format-list">
+               <span className="format-item">PDF</span>
+               <span className="format-item">TXT</span>
+               <span className="format-item">DOCX</span>
+               <span className="format-item">MARKDOWN</span>
+             </div>
+           </div>
         </div>
       )}
       {/* 검색 결과가 없을 때 (업로드 중이 아닐 때만) */}

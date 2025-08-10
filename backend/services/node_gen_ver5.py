@@ -1,8 +1,6 @@
 """
 성능 개선을 위해 gpu 연산을 도입하고, 임베딩을 병렬적으로 처리하도록 수정했습니다.
 """
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 
 #pip install konlpy, pip install transformers torch scikit-learn
@@ -13,12 +11,11 @@ from collections import defaultdict
 from transformers import AutoTokenizer, AutoModel
 from typing import List, Dict
 from konlpy.tag import Okt
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 from tqdm import tqdm
-from collections import Counter
+
 
 MODEL_NAME = "nlpai-lab/KoE5"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -31,12 +28,13 @@ stopwords = set([
 
 okt = Okt()
 
-def extract_noun_phrases(text: str) -> list:
+def extract_noun_phrases(sentence: str) -> list[str]:
     """
-    명사구를 추출합니다.
-
+    문장을 입력 받으면 명사구를 추출하고
+    추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
     """
-    words = okt.pos(text, norm=True, stem=True)
+    #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
+    words = okt.pos(sentence, norm=True, stem=True)
     phrases=[]
     current_phrase=[]
 
@@ -46,7 +44,7 @@ def extract_noun_phrases(text: str) -> list:
         elif tag in ["Noun", "Alpha"]:
             if word not in stopwords and len(word) > 1:
                 current_phrase.append(word)
-        elif tag == "Adjective" and word[-1] not in '다요죠며지만':
+        elif tag in ["Adjective", "Verb"] and len(word)>1 and word[-1] not in '다요죠며지만':
             current_phrase.append(word)
         else:
             if current_phrase:
@@ -81,12 +79,6 @@ def compute_scores(
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
 
     scores = {}
-    phrase_to_indices = defaultdict(set)
-
-    # 각 phrase가 등장한 sentence 인덱스를 수집
-    for info in phrase_info:
-        phrase_to_indices[info["phrase"]].add(info["sentence_index"])
-
     total_sentences = len(sentences)
 
     phrase_embeddings = {}
@@ -96,7 +88,7 @@ def compute_scores(
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
             executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
-            for phrase, indices in phrase_to_indices.items()
+            for phrase, indices in phrase_info.items()
         ]
 
         for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
@@ -119,20 +111,18 @@ def compute_scores(
         tf_list.append(tf_adj)
         emb_list.append(emb)
 
-    topic = sorted(scores.items(), key=lambda x: x[1][0], reverse=True)[:10]
-
     emb_array = np.stack(emb_list)
     sim_matrix = cosine_similarity(emb_array)
 
-    return scores, phrases, sim_matrix, topic
+    return scores, phrases, sim_matrix
 
-
+#유사도를 기반으로 각 명사구를 그룹으로 묶음
 def group_phrases(
     phrases: List[str],
     phrase_scores: List[dict],
     sim_matrix: np.ndarray,
     threshold: float = 0.98
-) -> list[Dict]:
+) ->dict:
     ungrouped = list(range(len(phrases)))  # 인덱스 기반으로
     groups = []
 
@@ -145,6 +135,7 @@ def group_phrases(
             if sim_matrix[i][j] >= threshold:
                 to_check.add(j)
 
+        #같은 그룹이 되기 위해서는 그룹 내 모든 명사구들과 유사도가 임계값 이상이어야함
         valid_members = []
         for j in to_check:
             if all(sim_matrix[j][k] >= threshold for k in group):
@@ -157,40 +148,89 @@ def group_phrases(
         groups.append(group)
 
     # 대표 명사구 설정: 중심성 점수가 가장 높은 것
-    group_infos = []
+    group_infos = {}
     for group in groups:
-        best_idx = max(group, key=lambda idx: phrase_scores[phrases[idx]][0])
-        group_infos.append({
-            "representative": phrases[best_idx],
-            "members": [phrases[idx] for idx in group]
-        })
+        sorted_group =sorted(group, key=lambda idx: phrase_scores[phrases[idx]][0], reverse=True)
+        representative=sorted_group[0]
+        group_infos[phrases[representative]]=sorted_group[1:]
 
     return group_infos
 
+def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
+    #edge의 source와 target이 함께 등장한 문장을 찾습니다.
+    #해당 문장을 edge의 relation으로 삼습니다.
+    edges=[]
+    for t in target_keywords:
+        if t != source_keyword:
+            description=""
+            for s_idx in phrase_info[t]:
+                if source_keyword in sentences[s_idx]:
+                    description+=sentences[s_idx]
+            edges.append({"source":source_keyword, 
+                        "target":t,
+                        "relation":description})
+            description="관련" if description=="" else description
+        
+    return edges
 
-def extract_nodes(text: str) -> str:
-    phrase_info=[]
-    sentences = re.split(r'(?<=[.!?])\s+|(?<=[다요죠오])\s*$|\n', text.strip(), flags=re.MULTILINE)
-    sentences=[s.strip() for s in sentences if s.strip()]
+def make_node(name, phrase_info, sentences:list[str], source_id:str):
+    description=[]
+    ori_sentences=[]
+    s_indices=[idx for idx in phrase_info[name]]
+    if len(s_indices)<=2:
+        des="".join([sentences[idx] for idx in s_indices])
+        ori_sentences.append({"original_sentence":des,
+                    "source_id":source_id,
+                    "score": 1.0})    
+    else:
+        des = ""
+    description.append({"description":des,
+                        "source_id":source_id})
+    
+    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 
-    # 각 문장에서 명사구 추출
+    return node
+        
+
+def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+    nodes=[]
+    edges=[]
+
+    # 각 문장에서 명사구를 추출하고 각 명사구가 등장한 문장의 index를 수집
+    phrase_info = defaultdict(set)
     for s_idx, sentence in enumerate(sentences):
         phrases=extract_noun_phrases(sentence)
         for p in phrases:
-            phrase_info.append({
-                "sentence_index": s_idx,
-                "phrase": p
-            })
-    
-    print(phrase_info)
+            phrase_info[p].add(s_idx)
  
-    phrase_scores, phrases, sim_matrix, topic=compute_scores(phrase_info, sentences)
+    phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
-    print(topic)
-    print("--------------------------------------------------")
-    print("📌 명사구 그룹 정보:")
-    for g in groups:
-        print(f"{g['representative']} ← {g['members']}")
-    
+    #score순으로 topic keyword를 정렬
+    sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
+    sorted_keywords=[k[0] for k in sorted_keywords]
 
+    cnt=0
+    for t in sorted_keywords:
+        if keyword != "":
+            edges+=make_edges(sentences, keyword, [t], phrase_info)
+        if t not in already_made:
+            nodes.append(make_node(t, phrase_info, sentences, source_id))
+            already_made.append(t)
+            cnt+=1
+            if t in groups:
+                related_keywords=[]
+                for idx in range(min(len(groups[t]), 5)):
+                    if phrases[idx] not in already_made:
+                        related_keywords.append(phrases[idx])
+                        already_made.append(phrases[idx])
+                        nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                        edges+=make_edges(sentences, t, related_keywords, phrase_info)   
+                    
+        if cnt==5:
+            break
+
+    return nodes, edges, already_made
+
+
+            

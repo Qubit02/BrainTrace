@@ -4,7 +4,7 @@ from .base_handler import BaseHandler
 
 
 class PdfHandler(BaseHandler):
-    def create_pdf(self, pdf_title: str, pdf_path: str, type: Optional[str] = None, brain_id: Optional[int] = None) -> dict:
+    def create_pdf(self, pdf_title: str, pdf_path: str, type: Optional[str] = None, brain_id: Optional[int] = None, pdf_text: Optional[str] = None) -> dict:
         """새 PDF 생성"""
         try:
             # brain_id 유효성 검사
@@ -20,8 +20,8 @@ class PdfHandler(BaseHandler):
             pdf_id = self._get_next_id()
             
             cursor.execute(
-                "INSERT INTO Pdf (pdf_id, pdf_title, pdf_path, type, brain_id) VALUES (?, ?, ?, ?, ?)",
-                (pdf_id, pdf_title, pdf_path, type, brain_id)
+                "INSERT INTO Pdf (pdf_id, pdf_title, pdf_path, type, brain_id, pdf_text) VALUES (?, ?, ?, ?, ?, ?)",
+                (pdf_id, pdf_title, pdf_path, type, brain_id, pdf_text)
             )
             
             # 현재 날짜 가져오기 (자동 생성됨)
@@ -42,7 +42,8 @@ class PdfHandler(BaseHandler):
                 "pdf_path": pdf_path,
                 "pdf_date": pdf_date,
                 "type": type,
-                "brain_id":  brain_id
+                "brain_id":  brain_id,
+                "pdf_text": pdf_text
             }
         except ValueError as e:
             logging.error("PDF 생성 실패: %s", str(e))
@@ -89,7 +90,8 @@ class PdfHandler(BaseHandler):
                 pdf_path,
                 pdf_date,
                 type,
-                brain_id
+                brain_id,
+                pdf_text
             FROM Pdf
             WHERE brain_id = ?
             ORDER BY pdf_date DESC
@@ -101,7 +103,7 @@ class PdfHandler(BaseHandler):
         conn.close()
         return [dict(zip(cols, row)) for row in rows]
 
-    def update_pdf(self, pdf_id: int, pdf_title: str = None, pdf_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None) -> bool:
+    def update_pdf(self, pdf_id: int, pdf_title: str = None, pdf_path: str = None, type: Optional[str] = None, brain_id: Optional[int] = None, pdf_text: Optional[str] = None) -> bool:
         """PDF 정보 업데이트"""
         try:
             # 대상 PDF 존재 확인
@@ -133,6 +135,10 @@ class PdfHandler(BaseHandler):
             if type is not None:
                 update_fields.append("type = ?")
                 params.append(type)
+                
+            if pdf_text is not None:
+                update_fields.append("pdf_text = ?")
+                params.append(pdf_text)
     
             if not update_fields:
                 return False  # 업데이트할 내용 없음
@@ -180,7 +186,7 @@ class PdfHandler(BaseHandler):
             cursor = conn.cursor()
             
             cursor.execute(
-                "SELECT pdf_id, pdf_title, pdf_path, pdf_date, type, brain_id FROM Pdf WHERE pdf_id = ?", 
+                "SELECT pdf_id, pdf_title, pdf_path, pdf_date, type, brain_id, pdf_text FROM Pdf WHERE pdf_id = ?", 
                 (pdf_id,)
             )
             pdf = cursor.fetchone()
@@ -195,6 +201,7 @@ class PdfHandler(BaseHandler):
                     "pdf_date": pdf[3],
                     "type": pdf[4],
                     "brain_id":  pdf[5],
+                    "pdf_text": pdf[6]
                 }
             else:
                 return None

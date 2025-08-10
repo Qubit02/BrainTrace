@@ -1,0 +1,226 @@
+/* SourceHoverTooltip.css - 출처보기 호버 툴팁 스타일 */
+
+.source-hover-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.source-hover-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.08),
+    0 10px 25px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  max-width: 420px;
+  min-width: 320px;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  animation: sourceHoverTooltipFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.source-hover-tooltip-header {
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  color: #1f2937;
+  padding: 20px 24px;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.source-hover-tooltip-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(203, 213, 225, 0.4), transparent);
+}
+
+.source-hover-tooltip-title {
+  display: block;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+.source-hover-tooltip-subtitle {
+  display: block;
+  font-size: 11px;
+  opacity: 0.6;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.source-hover-tooltip-content {
+  padding: 16px 24px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  border-radius: 0 0 16px 16px;
+}
+
+.source-hover-tooltip-sentence {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 12px;
+  border-left: 3px solid #e5e7eb;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+.source-hover-tooltip-sentence::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 252, 0.8) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.source-hover-tooltip-sentence:hover {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  transform: translateX(6px) translateY(-1px);
+  border-left-color: #d1d5db;
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.source-hover-tooltip-sentence:hover::before {
+  opacity: 1;
+}
+
+.source-hover-tooltip-sentence:last-child {
+  margin-bottom: 0;
+}
+
+
+
+.source-hover-tooltip-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+  flex: 1;
+  word-wrap: break-word;
+  font-weight: 400;
+  position: relative;
+  z-index: 1;
+}
+
+/* 원본 문장이 없을 때의 스타일 */
+.source-hover-tooltip-no-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.source-hover-tooltip-no-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(229, 231, 235, 0.4) 50%, transparent 70%);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.source-hover-tooltip-no-text {
+  font-size: 15px;
+  color: #9ca3af;
+  font-style: italic;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  font-weight: 500;
+}
+
+/* 스크롤바 스타일링 */
+.source-hover-tooltip-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.source-hover-tooltip-content::-webkit-scrollbar-track {
+  background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+  border-radius: 3px;
+}
+
+.source-hover-tooltip-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+  border-radius: 3px;
+  border: 1px solid #f3f4f6;
+}
+
+.source-hover-tooltip-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+}
+
+/* 애니메이션 */
+@keyframes sourceHoverTooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .source-hover-tooltip {
+    max-width: 90vw;
+    min-width: 300px;
+    left: 50% !important;
+    transform: translateX(-50%);
+  }
+  
+  .source-hover-tooltip-content {
+    max-height: 140px;
+  }
+  
+  .source-hover-tooltip-header {
+    padding: 18px 20px;
+  }
+  
+  .source-hover-tooltip-content {
+    padding: 18px 20px;
+  }
+} 
