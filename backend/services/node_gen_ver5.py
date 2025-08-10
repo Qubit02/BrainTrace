@@ -161,14 +161,15 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
     #해당 문장을 edge의 relation으로 삼습니다.
     edges=[]
     for t in target_keywords:
-        description=""
-        for s_idx in phrase_info[t]:
-            if source_keyword in sentences[s_idx]:
-                description+=sentences[s_idx]
-        edges.append({"source":source_keyword, 
-                      "target":t,
-                      "relation":description})
-        description="관련" if description=="" else description
+        if t != source_keyword:
+            description=""
+            for s_idx in phrase_info[t]:
+                if source_keyword in sentences[s_idx]:
+                    description+=sentences[s_idx]
+            edges.append({"source":source_keyword, 
+                        "target":t,
+                        "relation":description})
+            description="관련" if description=="" else description
         
     return edges
 
@@ -178,7 +179,7 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
         des="".join([sentences[idx] for idx in s_indices])
-        ori_sentences.append({"description":des,
+        ori_sentences.append({"original_sentence":des,
                     "source_id":source_id,
                     "score": 1.0})    
     else:
@@ -186,7 +187,7 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
     description.append({"description":des,
                         "source_id":source_id})
     
-    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentence":ori_sentences}
+    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 
     return node
         
