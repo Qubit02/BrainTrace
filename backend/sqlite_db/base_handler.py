@@ -38,7 +38,8 @@ class BaseHandler:
             CREATE TABLE IF NOT EXISTS Brain (
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
-                created_at TEXT
+                created_at TEXT,
+                is_important BOOLEAN DEFAULT 0
             )
             ''')
             
@@ -52,6 +53,7 @@ class BaseHandler:
                 is_source BOOLEAN DEFAULT 0,
                 type TEXT,          
                 brain_id INTEGER,
+                is_deleted INTEGER DEFAULT 0,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -65,6 +67,7 @@ class BaseHandler:
                 pdf_path TEXT,
                 brain_id INTEGER,
                 type TEXT,
+                pdf_text TEXT,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -78,6 +81,35 @@ class BaseHandler:
                 txt_path TEXT,
                 brain_id INTEGER,
                 type TEXT,
+                txt_text TEXT,
+                FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
+            )
+            ''')
+
+            # MDFile 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS MDFile (
+                md_id INTEGER PRIMARY KEY,
+                md_title TEXT NOT NULL,
+                md_path TEXT NOT NULL,
+                md_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                type TEXT,
+                brain_id INTEGER,
+                md_text TEXT,
+                FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
+            )
+            ''')
+
+            # DocxFile 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS DocxFile (
+                docx_id INTEGER PRIMARY KEY,
+                docx_title TEXT NOT NULL,
+                docx_path TEXT NOT NULL,
+                docx_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                type TEXT,
+                brain_id INTEGER,
+                docx_text TEXT,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')
@@ -86,10 +118,22 @@ class BaseHandler:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS Chat (
                 chat_id INTEGER PRIMARY KEY,
+                session_id INTEGER,
                 is_ai BOOLEAN NOT NULL,
                 message TEXT,
-                brain_id INTEGER,
                 referenced_nodes TEXT,
+                accuracy REAL,
+                FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)
+            )
+            ''')
+
+            # ChatSession 테이블 생성
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ChatSession (
+                session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_name TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                brain_id INTEGER,
                 FOREIGN KEY (brain_id) REFERENCES Brain(brain_id)
             )
             ''')

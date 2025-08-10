@@ -12,11 +12,13 @@
     display: flex;
     align-items: center;
 }
+
 .app-logo {
     width: 30px;
     height: 30px;
     margin-right: 10px;
 }
+
 .app-name {
     font-size: 26px;
     font-weight: bold;
@@ -25,10 +27,10 @@
 
 /* ───────── 오른쪽 영역 ───────── */
 .header-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
 }
 
 /* ───────── 유저 정보 블록 ───────── */
@@ -37,6 +39,7 @@
     align-items: center;
     gap: 12px;
 }
+
 .today-text {
     font-size: 1.2rem;
     color: #333;
@@ -46,17 +49,28 @@
 }
 
 .header-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .today-text.strong-date {
-  font-size: 1.0rem;
-  font-weight: bold;
-  color: #545454;
-  letter-spacing: 0.02em;
+    font-size: 1.0rem;
+    font-weight: bold;
+    color: #545454;
+    letter-spacing: 0.02em;
+}
+
+/* ───────── 현재 시간 스타일 ───────── */
+.current-time {
+    font-size: 1.02rem;
+    font-weight: bold;
+    color: #545454;
+    letter-spacing: 0.02em;
+    margin-left: -5px;
+    margin-right: 15px;
+    font-family: inherit;
 }
 
 /* ───────── 이름(아바타) 버튼 ───────── */
@@ -79,6 +93,7 @@
     transition: background-color 0.2s;
     position: relative;
 }
+
 .avatar-round:hover {
     background-color: #f2f2f2;
 }
@@ -89,6 +104,7 @@
     transition: opacity 0.2s;
     font-size: 14px;
 }
+
 .avatar-round:hover .edit-icon {
     opacity: 1;
 }

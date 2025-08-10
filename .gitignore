@@ -1,4 +1,7 @@
-**/__pycache__/
+# =========================
+# Python/Backend 관련 무시
+# =========================
+__pycache__/
 *.pyc
 *.log
 .DS_Store
@@ -7,3 +10,4 @@ frontend/node_modules
 
 .env
 node_modules/
+.gitignore

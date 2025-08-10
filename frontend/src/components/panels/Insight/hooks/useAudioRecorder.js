@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { transcribeAudio } from '../../../../../api/backend';
+import { transcribeAudio } from '../../../../../api/config/apiIndex';
 
 export default function useAudioRecorder(onTranscribe) {
 

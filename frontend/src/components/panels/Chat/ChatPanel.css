@@ -1,70 +1,178 @@
 /* ChatPanel.css - 채팅 패널 전용 스타일 */
 
-/* ====== 채팅 패널 메인 컨테이너 ====== */
-.chat-content {
+/* ====== 초기 로딩 화면 ====== */
+.chat-panel-initial-loading {
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  justify-content: center;
+  align-items: center;
+  height: 90%;
   background-color: #FFFFFF;
-  height: 100%;
-  max-width: 1000px;
+  padding: 20px;
+}
+
+.chat-panel-initial-loading .chat-panel-thinking-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ====== 채팅 패널 메인 컨테이너 ====== */
+.chat-panel-content {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: #FFFFFF;
+  height: 90%;
+  max-width: 900px;
   margin: 0 auto;
 }
 
 /* ====== 빈 채팅 상태 ====== */
-.empty-chat-content {
+.chat-panel-empty-content {
   display: flex;
   flex-direction: column;
   padding: 32px 24px;
-  height: 100%;
+  height: 90%;
   position: relative;
   background-color: #FFFFFF;
 }
 
+/* ====== 채팅 제목 컨테이너 ====== */
+.chat-panel-title-container {
+  margin-bottom: 20px;
+  padding: 0 21px;
+}
+
+.chat-panel-title-display {
+  margin-left: -21px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.chat-panel-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-panel-title-edit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-panel-title-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 23px;
+  font-weight: 600;
+  color: #1f2937;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  caret-color: #000000;
+}
+
+.chat-panel-title-input:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.chat-panel-edit-title-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-panel-edit-title-btn:hover {
+  background-color: #f3f4f6;
+  color: #000000;
+}
+
+.chat-panel-edit-title-btn:active {
+  background-color: #e5e7eb;
+}
+
+.chat-panel-header-title.clickable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.chat-panel-header-title.clickable:hover {
+  color: #000000;
+}
+
 /* ====== 첫 화면 히어로 섹션 ====== */
-.hero-section {
+.chat-panel-hero-section {
   text-align: center;
   margin-bottom: 35px;
 }
-.hero-title {
-  font-size: 32px;
+
+.chat-panel-hero-title {
+  font-size: 33px;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 70px;
   letter-spacing: -0.02em;
 }
 
 /* ====== 입력 영역 ====== */
-.centered-input-container {
+.chat-panel-centered-input-container {
   display: flex;
   justify-content: center;
   align-items: center;
   flex: 1;
   width: 100%;
   flex-direction: column;
+  margin: 0 auto;
 }
-.input-wrapper {
-  width: 100%;
-  max-width: 750px;
-  padding: 24px;
+
+.chat-panel-input-wrapper {
+  width: 100% !important;
+  max-width: 600px !important;
+  padding: 4px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
 }
-.input-with-button {
+
+.chat-panel-input-with-button {
   position: relative;
-  width: 100%;
+  width: 100% !important;
+  max-width: 700px !important;
   display: flex;
   align-items: center;
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 32px;
-  padding: 16px 20px;
+  padding: 20px 15px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   min-height: 56px;
+  margin: 0 auto !important;
 }
-.input-with-button.rounded {
+
+.chat-panel-input-with-button.rounded {
   border-radius: 32px;
 }
-.chat-input {
+
+.chat-panel-input {
   flex: 1;
   border: none;
   resize: none;
@@ -79,18 +187,20 @@
   font-family: inherit;
   font-weight: 400;
 }
-.chat-input::placeholder {
+
+.chat-panel-input::placeholder {
   color: #9ca3af;
   font-weight: 400;
   font-size: 16px;
 }
-.submit-circle-button {
+
+.chat-panel-submit-circle-button {
   position: absolute;
   right: 8px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #363030 0%, #2d2525 100%);
+  background: #000000;
   color: white;
   border: none;
   display: flex;
@@ -100,26 +210,30 @@
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
-.submit-circle-button:hover {
-  background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%);
+
+.chat-panel-submit-circle-button:hover {
+  background: #1a1a1a;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
-.submit-circle-button:active {
+
+.chat-panel-submit-circle-button:active {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
-.send-icon {
+
+.chat-panel-send-icon {
   font-size: 19px;
   padding-left: 2px;
 }
-.stop-icon {
+
+.chat-panel-stop-icon {
   font-size: 19px;
   padding-left: 1px;
 }
 
 /* ====== 채팅 메시지 영역 ====== */
-.chat-messages {
+.chat-panel-messages {
   flex: 1;
   overflow-y: auto;
   padding-right: 8px;
@@ -128,23 +242,25 @@
 }
 
 /* 메시지 래퍼 (유저/봇) */
-.message-wrapper {
+.chat-panel-message-wrapper {
   display: flex;
   margin-bottom: 40px;
   padding: 0 16px;
   width: 100%;
   overflow: visible;
-  animation: messageSlideIn 0.25s ease-out;
+  animation: chatPanelMessageSlideIn 0.25s ease-out;
 }
-.user-message {
+
+.chat-panel-user-message {
   justify-content: flex-end;
 }
-.bot-message {
+
+.chat-panel-bot-message {
   justify-content: flex-start;
 }
 
 /* 말풍선 스타일 */
-.message {
+.chat-panel-message {
   position: relative;
   max-width: 72%;
   padding: 16px 20px;
@@ -155,17 +271,20 @@
   letter-spacing: -0.01em;
   transition: box-shadow 0.2s ease;
 }
-.user-message .message {
+
+.chat-panel-user-message .chat-panel-message {
   background: #fefefe;
   border: 1px solid #e2e8f0;
   border-radius: 18px 18px 6px 18px;
 }
-.bot-message .message {
+
+.chat-panel-bot-message .chat-panel-message {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 18px 18px 18px 6px;
 }
-.message-body {
+
+.chat-panel-message-body {
   font-size: 16px;
   line-height: 1.7;
   color: #1f2937;
@@ -173,7 +292,7 @@
 }
 
 /* 복사 버튼 및 액션 */
-.message-actions {
+.chat-panel-message-actions {
   position: absolute;
   bottom: -15px;
   right: 5px;
@@ -182,19 +301,23 @@
   opacity: 0;
   transition: opacity 0.25s ease;
 }
-.user-message .message-actions {
+
+.chat-panel-user-message .chat-panel-message-actions {
   right: 0;
 }
-.bot-message .message-actions {
+
+.chat-panel-bot-message .chat-panel-message-actions {
   left: 0;
 }
-.message:hover .message-actions,
-.message-actions:hover {
+
+.chat-panel-message:hover .chat-panel-message-actions,
+.chat-panel-message-actions:hover {
   opacity: 1;
 }
-.copy-button {
-  width: 26px;
-  height: 26px;
+
+.chat-panel-copy-button {
+  width: 25px;
+  height: 25px;
   border-radius: 6px;
   background: white;
   border: 1px solid #e2e8f0;
@@ -204,21 +327,28 @@
   justify-content: center;
   transition: all 0.15s ease-in-out;
 }
-.copy-button:hover {
-  background-color: #f3f4f6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+
+.chat-panel-copy-button:hover {
+  background: #f3f4f6;
+  color: #000000;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.13);
 }
-.copy-icon {
+
+.chat-panel-copy-button:active {
+  background: #e5e7eb;
+  color: #000000;
+}
+
+.chat-panel-copy-icon {
   width: 14px;
   height: 14px;
   opacity: 0.8;
 }
 
 /* ====== 그래프/출처/참조 노드 ====== */
-.graph-button {
-  width: 26px;
-  height: 26px;
+.chat-panel-graph-button {
+  width: 25px;
+  height: 25px;
   border-radius: 6px;
   background: white;
   border: 1px solid #e2e8f0;
@@ -227,87 +357,110 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease-in-out;
+  padding: 0;
+  margin: 0;
 }
-.graph-button:hover {
-  background-color: #f3f4f6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+
+.chat-panel-graph-button+.chat-panel-graph-button {
+  margin-left: -1px;
+  /* border가 겹치지 않게 */
 }
-.graph-icon {
+
+.chat-panel-graph-button.active {
+  background: #f3f4f6;
+  border-color: #000000;
+}
+
+.chat-panel-graph-button:hover {
+  background: #f3f4f6;
+  color: #000000;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.13);
+}
+
+.chat-panel-graph-button:active {
+  background: #e5e7eb;
+  color: #000000;
+}
+
+.chat-panel-graph-icon {
   width: 20px;
   height: 20px;
   opacity: 0.75;
 }
-.referenced-line {
+
+.chat-panel-referenced-line {
   padding: 4px 0;
 }
-.referenced-block {
+
+.chat-panel-referenced-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.referenced-header {
+
+.chat-panel-referenced-header {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.referenced-node-text {
-  color: #7f7e7e;
+
+.chat-panel-referenced-node-text {
+  color: #6b7280;
   text-decoration: underline;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
 }
-.referenced-node-text:hover {
-  font-weight: bold;
-  color: #3d3d3e;
-}
-.source-toggle-button {
-  color: #7f7e7e;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  transition: color 0.2s, transform 0.1s;
-  padding: 1px;
-  font-size: 12px;
-  align-items: center;
-  justify-content: center;
-  background-color: white;
-}
-.source-toggle-button:hover {
-  color: #1a1a1a;
-  transform: scale(1.02);
-  background-color: white;
-}
-.source-toggle-button.active {
-  background-color: white;
+
+.chat-panel-referenced-node-text:hover {
+  font-weight: 600;
   color: #000000;
+  background-color: #f3f4f6;
 }
-.source-title-list {
-  margin-top: 6px;
+
+.chat-panel-source-title-list {
+  margin-top: 8px;
   padding-left: 20px;
-  font-size: 14px;
-  list-style-type: circle;
+  font-size: 13px;
+  list-style-type: none;
+  border-left: 2px solid #e5e7eb;
+  padding-left: 12px;
 }
-.source-title-item {
-  margin-bottom: 4px;
+
+.chat-panel-source-title-item {
+  margin-bottom: 6px;
 }
-.source-title-content {
+
+.chat-panel-source-title-content {
   display: inline-block;
-  padding: 6px 10px;
-  background-color: #f8f8f8;
-  transition: background-color 0.2s, transform 0.1s;
-  text-decoration: underline;
+  padding: 4px 8px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: #374151;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
 }
-.source-title-content:hover {
-  transform: scale(1.02);
+
+.chat-panel-source-title-content:hover {
+  background-color: #e5e7eb;
+  color: #000000;
   cursor: pointer;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-.source-title-content:active {
-  transform: scale(0.98);
+
+.chat-panel-source-title-content:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* ====== 하단 안내/디스클레이머 ====== */
-.chat-disclaimer {
-  font-size: 12px;
+.chat-panel-disclaimer {
+  font-size: 13px;
   color: #888;
   text-align: center;
   margin-top: 8px;
@@ -315,7 +468,7 @@
 }
 
 /* ====== 소스 개수 표시 ====== */
-.source-count-text {
+.chat-panel-source-count-text {
   font-size: 12px;
   margin-right: 50px;
   align-self: center;
@@ -323,7 +476,7 @@
 }
 
 /* ====== 로딩/생각중 인디케이터 ====== */
-.thinking-indicator {
+.chat-panel-thinking-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -332,45 +485,1342 @@
   font-style: italic;
   font-size: 13.5px;
 }
-.thinking-dots {
+
+.chat-panel-thinking-dots {
   display: flex;
   gap: 4px;
 }
-.thinking-dot {
+
+.chat-panel-thinking-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #9ca3af;
-  animation: thinkingPulse 1.4s infinite ease-in-out;
+  animation: chatPanelThinkingPulse 1.4s infinite ease-in-out;
 }
-.thinking-dot:nth-child(1) { animation-delay: 0s; }
-.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes thinkingPulse {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+
+.chat-panel-thinking-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.chat-panel-thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chat-panel-thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes chatPanelThinkingPulse {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ====== 메시지 등장 애니메이션 ====== */
-@keyframes messageSlideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes chatPanelMessageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.message-wrapper { animation: messageSlideIn 0.3s ease-out; }
+
+.chat-panel-message-wrapper {
+  animation: chatPanelMessageSlideIn 0.3s ease-out;
+}
+
+.chat-panel-header-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.07);
+  padding: 0 18px 0 18px;
+  min-height: 45px;
+  border-bottom: 1px solid #ececec;
+}
+
+.chat-panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-panel-back-to-list-btn {
+  background: none;
+  border: none;
+  color: #000000;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-panel-back-to-list-btn:hover {
+  background: #f3f4f6;
+  color: #000000;
+}
+
+.chat-panel-menu-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-panel-menu-btn:hover {
+  background: #f3f4f6;
+  color: #000000;
+}
+
+.chat-panel-menu-btn:active {
+  background: #e5e7eb;
+  color: #000000;
+}
+
+.chat-panel-header-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+  letter-spacing: 0.01em;
+  margin-left: 2px;
+}
+
+.chat-panel-header-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
 
 /* ====== 새로고침/초기화 버튼 ====== */
-.refresh-button {
+
+.chat-panel-refresh-btn {
+  background: #fff;
+  color: #444;
   border: none;
-  font-size: 16px;
+  border-radius: 50%;
+  padding: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px 0 rgba(60, 60, 60, 0.06);
   cursor: pointer;
-  color: #333;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid #ccc;
-  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0x;
 }
-.refresh-button:hover {
-  background-color: #e0e0e0;
+
+.chat-panel-refresh-btn:hover {
+  background: #f3f4f6;
+  color: #000000;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.13);
+}
+
+.chat-panel-refresh-btn:active {
+  background: #e5e7eb;
+  color: #000000;
+}
+
+/* 출처보기 modern badge/button 스타일 */
+.chat-panel-modern-source-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  color: #495057;
+  font-weight: 500;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-panel-modern-source-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.chat-panel-modern-source-btn:hover::before {
+  left: 100%;
+}
+
+.chat-panel-modern-source-btn.active,
+.chat-panel-modern-source-btn:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  color: #212529;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.chat-panel-modern-source-btn:active {
+  background: #dee2e6;
+  color: #000000;
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease;
+}
+
+/* ====== 정확도 표시 스타일 ====== */
+.chat-panel-accuracy-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 13px;
+  color: #666666;
+  align-self: flex-end;
+  margin-left: auto;
+  width: fit-content;
+  position: relative;
+}
+
+.chat-panel-accuracy-label {
+  font-weight: 500;
+  color: #333333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-panel-accuracy-label::before {
+  content: '●';
+  font-size: 9px;
+  color: #adadad;
+}
+
+.chat-panel-accuracy-value {
+  font-weight: 600;
+  color: #333333;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+/* 정확도에 따른 색상 변화 */
+.chat-panel-accuracy-value[data-accuracy="high"] {
+  color: #000000;
+}
+
+.chat-panel-accuracy-value[data-accuracy="high"]:hover {
+  color: #333333;
+}
+
+.chat-panel-accuracy-value[data-accuracy="medium"] {
+  color: #666666;
+}
+
+.chat-panel-accuracy-value[data-accuracy="medium"]:hover {
+  color: #555555;
+}
+
+.chat-panel-accuracy-value[data-accuracy="low"] {
+  color: #999999;
+}
+
+.chat-panel-accuracy-value[data-accuracy="low"]:hover {
+  color: #888888;
+}
+
+/* 물음표 아이콘 */
+.chat-panel-accuracy-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #666666;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+  margin-left: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.chat-panel-accuracy-help:hover {
+  background: #e0e0e0;
+  color: #333333;
+}
+
+/* 호버 툴팁 */
+.chat-panel-accuracy-help::after {
+  content: '정확도는 3가지 지표의 가중 평균으로 계산됩니다:\A\A• Q (검색 품질): 질문과 관련된 노드를 얼마나 잘 찾았는지\A• S (답변 충실도): AI가 참조한 노드들의 설명과 답변의 유사도\A• C (컨텍스트 밀도): 제공된 정보 중 실제 활용된 비율\A\A 정확도 : 0.15×Q + 0.8×S + 0.05×C';
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 300px;
+  padding: 16px;
+  background: #ffffff;
+  color: #333333;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  white-space: pre-line;
+  text-align: left;
+  margin-bottom: 8px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chat-panel-accuracy-help:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-4px);
+}
+
+/* ====== 모델 선택 드롭다운 ====== */
+.chat-panel-model-selector,
+.chat-panel-model-selector-inline {
+  position: relative;
+  z-index: 1000;
+}
+
+.chat-panel-model-selector {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-panel-model-selector-inline {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+}
+
+.chat-panel-model-dropdown,
+.chat-panel-model-dropdown-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: #374151;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.chat-panel-model-dropdown {
+  background-color: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 200px;
+  justify-content: flex-start;
+  backdrop-filter: none;
+}
+
+.chat-panel-model-dropdown:hover,
+.chat-panel-model-dropdown-inline:hover {
+  background-color: rgba(255, 255, 255, 1);
+  border-color: rgba(156, 163, 175, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-panel-model-dropdown:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-panel-model-value,
+.chat-panel-model-value-inline {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 12px;
+  letter-spacing: 0.025em;
+}
+
+.chat-panel-model-value {
+  font-size: 13px;
+}
+
+.chat-panel-dropdown-arrow,
+.chat-panel-dropdown-arrow-inline {
+  transition: transform 0.2s ease;
+  color: #6b7280;
+}
+
+.chat-panel-dropdown-arrow-inline {
+  opacity: 0.7;
+}
+
+.chat-panel-dropdown-arrow.rotated,
+.chat-panel-dropdown-arrow-inline.rotated {
+  transform: rotate(180deg);
+}
+
+.chat-panel-model-menu,
+.chat-panel-model-menu-inline {
+  position: absolute;
+  background-color: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
+  z-index: 1001;
+  backdrop-filter: blur(10px);
+  animation: dropdownSlideUp 0.2s ease-out;
+  padding: 8px;
+}
+
+.chat-panel-model-menu {
+  top: 100%;
+  left: 0;
+  right: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  margin-top: 4px;
+  max-height: 200px;
+  animation: none;
+  padding: 0;
+}
+
+.chat-panel-model-menu-inline {
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 8px;
+  max-height: 420px;
+  min-width: 280px;
+}
+
+@keyframes dropdownSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-panel-model-item,
+.chat-panel-model-item-inline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f8f9fa;
+  position: relative;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  gap: 12px;
+}
+
+.chat-panel-model-item {
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  border-radius: 0;
+  margin-bottom: 0;
+  gap: 0;
+}
+
+.chat-panel-model-item:last-child,
+.chat-panel-model-item-inline:last-child {
+  border-bottom: none;
+}
+
+.chat-panel-model-item::before,
+.chat-panel-model-item-inline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chat-panel-model-item:hover,
+.chat-panel-model-item-inline:hover {
+  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-panel-model-item:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-panel-model-item:hover::before,
+.chat-panel-model-item-inline:hover::before {
+  opacity: 1;
+}
+
+.chat-panel-model-item.selected,
+.chat-panel-model-item-inline.selected {
+  background-color: #f8fafc;
+  color: #0369a1;
+  border: 1px solid #e0f2fe;
+}
+
+.chat-panel-model-item.selected {
+  background-color: #eff6ff;
+  color: #1d4ed8;
   border: none;
-  color: black;
+}
+
+.chat-panel-model-item.selected .chat-panel-model-name,
+.chat-panel-model-item-inline.selected .chat-panel-model-name-inline {
+  font-weight: 600;
+  color: #0369a1;
+}
+
+.chat-panel-model-item.selected .chat-panel-model-name {
+  color: #1d4ed8;
+}
+
+.chat-panel-model-item-inline.selected .chat-panel-model-description-inline {
+  color: #0369a1;
+}
+
+.chat-panel-model-item.selected::before,
+.chat-panel-model-item-inline.selected::before {
+  opacity: 1;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.chat-panel-model-item.selected::before {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.chat-panel-model-info,
+.chat-panel-model-info-inline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-panel-model-header,
+.chat-panel-model-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-panel-model-name,
+.chat-panel-model-name-inline {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.chat-panel-model-checkmark,
+.chat-panel-model-checkmark-inline {
+  color: #0ea5e9;
+  flex-shrink: 0;
+}
+
+.chat-panel-model-description,
+.chat-panel-model-description-inline {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.chat-panel-model-usage,
+.chat-panel-model-usage-inline {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.chat-panel-model-meta,
+.chat-panel-model-meta-inline {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.chat-panel-model-size,
+.chat-panel-model-size-inline,
+.chat-panel-model-type,
+.chat-panel-model-type-inline,
+.chat-panel-model-provider,
+.chat-panel-model-provider-inline {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.chat-panel-model-size,
+.chat-panel-model-size-inline {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.chat-panel-model-type,
+.chat-panel-model-type-inline {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.chat-panel-model-provider,
+.chat-panel-model-provider-inline {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.chat-panel-installing,
+.chat-panel-installing-inline {
+  font-size: 11px;
+  color: #059669;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-installing {
+  font-size: 12px;
+  display: block;
+  align-self: auto;
+  margin-top: 0;
+}
+
+.chat-panel-installing::before,
+.chat-panel-installing-inline::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 2px solid #059669;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chat-panel-install-btn,
+.chat-panel-install-btn-inline {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-install-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  align-self: auto;
+  margin-top: 0;
+}
+
+.chat-panel-install-btn:hover,
+.chat-panel-install-btn-inline:hover {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.chat-panel-install-btn:hover {
+  background-color: #2563eb;
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-panel-install-btn:disabled,
+.chat-panel-install-btn-inline:disabled {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-panel-install-btn:disabled {
+  background-color: #9ca3af;
+}
+
+.chat-panel-model-action-btn,
+.chat-panel-model-action-btn-inline {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-model-action-btn:hover,
+.chat-panel-model-action-btn-inline:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .chat-panel-model-selector-inline {
+    left: 8px;
+    bottom: 6px;
+  }
+  
+  .chat-panel-model-dropdown,
+  .chat-panel-model-dropdown-inline {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  .chat-panel-model-dropdown {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+  
+  .chat-panel-model-dropdown-inline {
+    min-width: 75px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(229, 231, 235, 0.9);
+  }
+  
+  .chat-panel-model-value,
+  .chat-panel-model-value-inline {
+    font-size: 11px;
+  }
+  
+  .chat-panel-model-menu,
+  .chat-panel-model-menu-inline {
+    max-height: 200px;
+    min-width: 200px;
+    border-radius: 10px;
+    padding: 6px;
+  }
+  
+  .chat-panel-model-menu {
+    max-height: 150px;
+    min-width: auto;
+    border-radius: 6px;
+    padding: 0;
+  }
+  
+  .chat-panel-model-item,
+  .chat-panel-model-item-inline {
+    padding: 12px;
+    margin-bottom: 3px;
+  }
+  
+  .chat-panel-model-item {
+    padding: 8px 10px;
+    margin-bottom: 0;
+  }
+  
+  .chat-panel-model-name,
+  .chat-panel-model-name-inline {
+    font-size: 12px;
+  }
+  
+  .chat-panel-model-name {
+    font-size: 13px;
+  }
+  
+  .chat-panel-model-description,
+  .chat-panel-model-description-inline {
+    font-size: 11px;
+  }
+  
+  .chat-panel-model-usage,
+  .chat-panel-model-usage-inline {
+    font-size: 10px;
+  }
+  
+  .chat-panel-model-meta,
+  .chat-panel-model-meta-inline {
+    gap: 4px;
+    margin-top: 2px;
+  }
+  
+  .chat-panel-model-size,
+  .chat-panel-model-size-inline,
+  .chat-panel-model-type,
+  .chat-panel-model-type-inline,
+  .chat-panel-model-provider,
+  .chat-panel-model-provider-inline {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+  
+  .chat-panel-install-btn,
+  .chat-panel-install-btn-inline {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .chat-panel-install-btn {
+    font-size: 11px;
+  }
+  
+  .chat-panel-model-action-btn,
+  .chat-panel-model-action-btn-inline {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}
+
+/* ====== 입력창 내부 모델 선택 스타일 ====== */
+.chat-panel-model-selector-inline {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  z-index: 1000;
+}
+
+.chat-panel-model-dropdown-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: #374151;
+  min-width: 90px;
+  justify-content: center;
+  box-shadow: none;
+}
+
+.chat-panel-model-dropdown-inline:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 999px;
+  transform: translateY(-1px);
+}
+
+.chat-panel-model-value-inline {
+  font-weight: 400;
+  color: rgb(137, 136, 136);
+  border: none;
+  outline: none;
+  font-size: 15px;
+  letter-spacing: 0.055em;
+  margin-left: 3px;
+  margin-bottom: 5px;
+  box-shadow: none;
+  background: transparent;
+}
+
+.chat-panel-dropdown-arrow-inline {
+  transition: transform 0.2s ease;
+  color: #6b7280;
+  opacity: 0.7;
+}
+
+.chat-panel-dropdown-arrow-inline.rotated {
+  transform: rotate(180deg);
+}
+
+.chat-panel-model-menu-inline {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  z-index: 1001;
+  min-width: 280px;
+  backdrop-filter: blur(10px);
+  animation: dropdownSlideUp 0.2s ease-out;
+  padding: 8px;
+}
+
+@keyframes dropdownSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-panel-model-item-inline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f8f9fa;
+  position: relative;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  gap: 12px;
+}
+
+.chat-panel-model-item-inline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chat-panel-model-item-inline:last-child {
+  border-bottom: none;
+}
+
+.chat-panel-model-item-inline:hover {
+  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-panel-model-item-inline:hover::before {
+  opacity: 1;
+}
+
+.chat-panel-model-item-inline.selected {
+  background-color: #f8fafc;
+  color: #0369a1;
+  border: 1px solid #e0f2fe;
+}
+
+.chat-panel-model-item-inline.selected .chat-panel-model-name-inline {
+  font-weight: 600;
+  color: #0369a1;
+}
+
+.chat-panel-model-item-inline.selected .chat-panel-model-description-inline {
+  color: #0369a1;
+}
+
+.chat-panel-model-item-inline.selected::before {
+  opacity: 1;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.chat-panel-model-info-inline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-panel-model-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-panel-model-name-inline {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.chat-panel-model-checkmark-inline {
+  color: #0ea5e9;
+  flex-shrink: 0;
+}
+
+.chat-panel-model-description-inline {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.chat-panel-model-usage-inline {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.chat-panel-model-meta-inline {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.chat-panel-model-size-inline,
+.chat-panel-model-type-inline,
+.chat-panel-model-provider-inline {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.chat-panel-model-size-inline {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.chat-panel-model-type-inline {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.chat-panel-model-provider-inline {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.chat-panel-installing-inline {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-installing-inline::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 2px solid #2563eb;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chat-panel-install-btn-inline {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-install-btn-inline:hover {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.chat-panel-install-btn-inline:disabled {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-panel-model-action-btn-inline {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.chat-panel-model-action-btn-inline:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+/* 입력창 내부 모델 선택 반응형 */
+@media (max-width: 768px) {
+  .chat-panel-model-selector-inline {
+    left: 8px;
+    bottom: 6px;
+  }
+  
+  .chat-panel-model-dropdown-inline {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-width: 75px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(229, 231, 235, 0.9);
+  }
+  
+  .chat-panel-model-value-inline {
+    font-size: 11px;
+  }
+  
+  .chat-panel-model-menu-inline {
+    max-height: 200px;
+    min-width: 200px;
+    border-radius: 10px;
+    padding: 6px;
+  }
+  
+  .chat-panel-model-item-inline {
+    padding: 12px;
+    margin-bottom: 3px;
+  }
+  
+  .chat-panel-model-name-inline {
+    font-size: 12px;
+  }
+  
+  .chat-panel-model-description-inline {
+    font-size: 11px;
+  }
+  
+  .chat-panel-model-usage-inline {
+    font-size: 10px;
+  }
+  
+  .chat-panel-model-meta-inline {
+    gap: 4px;
+    margin-top: 2px;
+  }
+  
+  .chat-panel-model-size-inline,
+  .chat-panel-model-type-inline,
+  .chat-panel-model-provider-inline {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+  
+  .chat-panel-install-btn-inline {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .chat-panel-model-action-btn-inline {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}
+
+/* 현재 모델 정보 섹션 */
+.chat-panel-current-model-info-inline {
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 8px 8px 0 0;
+}
+
+.chat-panel-current-model-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.chat-panel-current-model-label-inline {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-panel-current-model-checkmark-inline {
+  color: #10b981;
+}
+
+.chat-panel-current-model-name-inline {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+
+.chat-panel-current-model-description-inline {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.chat-panel-current-model-meta-inline {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chat-panel-current-model-size-inline,
+.chat-panel-current-model-type-inline,
+.chat-panel-current-model-provider-inline {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.chat-panel-current-model-size-inline {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.chat-panel-current-model-type-inline {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.chat-panel-current-model-provider-inline {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* 구분선 */
+.chat-panel-model-separator-inline {
+  height: 2px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%);
+  margin: 12px 16px;
+  border-radius: 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* 선택 버튼 스타일 */
+.chat-panel-select-btn-inline {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chat-panel-select-btn-inline:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.chat-panel-select-btn-inline:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }

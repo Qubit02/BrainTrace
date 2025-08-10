@@ -7,38 +7,63 @@
     display: flex;
     flex-direction: column;
 }
+
 .project-list-view {
     padding: 60px 40px 100px 40px;
     font-family: 'Noto Sans KR', sans-serif;
     color: #222;
     background-color: #fff;
+    flex: 1;
 }
 
 /* ====== 헤더/타이틀/애니메이션 ====== */
 .project-header {
     text-align: center;
-    margin-bottom: 40px;
+    margin: 35px 0 16px;
+    transform: translateY(25vh);
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.project-header.animation-complete {
+    transform: translateY(0);
+}
+
 .page-highlight {
-    font-size: 36px;
+    font-size: 40px;
+    line-height: 1.4;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 700;
     margin: 0;
     color: #222;
     letter-spacing: -0.5px;
     position: relative;
 }
+
 .page-highlight.animation-complete .typing-cursor {
     display: none;
 }
+
 .typing-cursor {
     display: inline-block;
     margin-left: 2px;
     animation: blink 1s infinite;
     font-weight: 300;
 }
+
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
 }
 
 /* ====== 정렬/드롭다운 ====== */
@@ -49,17 +74,22 @@
     padding-right: 20px;
     opacity: 0;
     transform: translateY(-10px);
+    transition: all 0.5s ease;
+    position: relative;
     z-index: 1000;
 }
+
 .project-header-controls.visible {
     opacity: 1;
     transform: translateY(0);
 }
+
 .sort-dropdown {
     position: relative;
     display: inline-block;
     z-index: 1001;
 }
+
 .sort-button {
     background-color: white;
     border: 1px solid #ddd;
@@ -72,9 +102,7 @@
     transition: all 0.2s ease;
     min-width: 120px;
 }
-.dropdown-arrow {
-    margin-left: 8px;
-}
+
 .sort-menu {
     position: absolute;
     top: 100%;
@@ -82,7 +110,7 @@
     background: white;
     border: 1px solid #ddd;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     min-width: 120px;
     margin-top: 1px;
     z-index: 1002;
@@ -90,16 +118,28 @@
     transition: opacity 0.2s;
     display: none;
 }
+
 .sort-dropdown:hover .sort-menu {
     display: block;
 }
+
+.dropdown-arrow {
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}
+
+.sort-dropdown:hover .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
 .sort-menu-item {
     padding: 10px 18px;
     cursor: pointer;
     font-size: 14px;
     color: #222;
-    transition: background 0.15s;
+    transition: background 0.1s;
 }
+
 .sort-menu-item:hover {
     background: #f5f5f5;
 }
@@ -111,11 +151,13 @@
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     opacity: 0;
     transform: translateY(30px);
-    transition: all 0.8s ease;
+    transition: all 0.1s ease;
 }
+
 .project-grid.cards-visible {
     opacity: 1;
     transform: translateY(0);
+    transition-delay: 0s !important;
 }
 
 /* ====== 프로젝트 카드 ====== */
@@ -125,15 +167,87 @@
     padding: 22px;
     cursor: pointer;
     box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.15);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s;
     position: relative;
     opacity: 0;
     transform: translateY(20px);
 }
+
 .project-card:hover {
+    background-color: #e8e7e7;
     transform: translateY(-4px);
     box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.2);
+    transition-delay: 0s !important;
 }
+
+/* ====== 별 아이콘 스타일 ====== */
+.importance-star {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    cursor: pointer;
+    z-index: 9999;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+/* 별 아이콘 hover 효과 */
+.importance-star:hover {
+    background-color: rgba(255, 215, 0, 0.3);
+    transform: scale(1.3);
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+/* 빈 별표에 호버 시 채워진 별표로 변경하는 효과 */
+.importance-star:hover .fa-reg-star {
+    color: #FFD700 !important;
+    opacity: 1;
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+}
+
+/* 채워진 별표에 호버 시 더 밝게 */
+.importance-star:hover .fa-star {
+    color: #FFD700 !important;
+    filter: brightness(1.5) drop-shadow(0 0 10px rgba(255, 215, 0, 0.9));
+    transform: scale(1.2);
+}
+
+/* 별 아이콘 클릭 효과 */
+.importance-star:active {
+    background-color: transparent;
+    transform: scale(1.1);
+}
+
+/* 별 아이콘에 hover할 때 카드의 hover 효과 방지 */
+.project-card:hover .importance-star:hover {
+    transform: scale(1.1) !important;
+}
+
+.project-card:hover .importance-star:hover ~ * {
+    pointer-events: none;
+}
+
+/* 별 아이콘 클릭 시 카드의 active 효과 방지 */
+.project-card:active .importance-star:active {
+    transform: scale(1.1) !important;
+}
+
+/* 별 아이콘 클릭 시 카드의 active 효과 완전 차단 */
+.project-card:has(.importance-star:active) {
+    background-color: #f9f9f9 !important;
+    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.15) !important;
+    transform: none !important;
+    pointer-events: none;
+}
+
+.project-card:has(.importance-star:active) .importance-star {
+    pointer-events: auto;
+}
+
 .project-card.add-card {
     display: flex;
     align-items: center;
@@ -147,11 +261,13 @@
     box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
 }
+
 .project-card.add-card:hover {
     background-color: #ebebeb;
     cursor: pointer;
     box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.15);
 }
+
 .add-card-content {
     display: flex;
     align-items: center;
@@ -162,31 +278,55 @@
 .project-icon {
     margin-bottom: 10px;
 }
+
+
+
 .project-name {
     position: relative;
     color: #222;
     font-weight: 600;
     white-space: pre-wrap;
+    transition: all 0.2s ease;
 }
+
 .project-name.editing:empty:before {
     content: attr(data-placeholder);
     color: #aaa;
     pointer-events: none;
 }
+
 .project-name[contenteditable="true"] {
     border-bottom: 1px dashed #666;
     outline: none;
 }
+
+/* ====== 카드명 비어있을 때 플레이스홀더 ====== */
+.project-name:empty:before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    pointer-events: none;
+}
+
 .editable-placeholder {
     position: absolute;
     color: #aaa;
     pointer-events: none;
     user-select: none;
 }
+
 .project-date {
     font-size: 12px;
     color: #777;
     margin-top: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.source-count {
+    margin-left: auto;
+    color: #888;
+    font-size: 1.02em;
+    font-weight: 550;
 }
 
 /* ====== 카드 메뉴/팝업 ====== */
@@ -202,11 +342,13 @@
     border: none;
     padding: 2px 6px;
     border-radius: 6px;
-    transition: background 0.15s;
+    transition: background 0.1s;
 }
+
 .card-menu:hover {
     background: #f0f0f0;
 }
+
 .card-menu-popup {
     position: absolute;
     top: 28px;
@@ -214,11 +356,12 @@
     background: white;
     border: 1px solid #ddd;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     min-width: 120px;
     z-index: 1003;
     padding: 6px 0;
 }
+
 .popup-item {
     padding: 10px 18px;
     cursor: pointer;
@@ -227,8 +370,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    transition: background 0.15s;
+    transition: background 0.1s;
 }
+
 .popup-item:hover {
     background: #f5f5f5;
 }
@@ -238,10 +382,19 @@
     animation: blinkHighlight 1.2s;
     background-color: #e0f7fa;
 }
+
 @keyframes blinkHighlight {
-    0% { background-color: #e0f7fa; }
-    50% { background-color: #b2ebf2; }
-    100% { background-color: #e0f7fa; }
+    0% {
+        background-color: #e0f7fa;
+    }
+
+    50% {
+        background-color: #b2ebf2;
+    }
+
+    100% {
+        background-color: #e0f7fa;
+    }
 }
 
 /* ====== 기타 ====== */
@@ -250,9 +403,9 @@
     font-size: 13px;
 }
 
-/* ====== 카드명 비어있을 때 플레이스홀더 ====== */
-.project-name:empty:before {
-    content: attr(data-placeholder);
-    color: #aaa;
-    pointer-events: none;
+.project-card:active {
+    background-color: #a4a4a4;
+    box-shadow: 20px 14px 28px rgba(0, 0, 0, 0.22);
+    transform: translateY(-2px) scale(0.98);
+    transition: background 0.12s, box-shadow 0.12s, transform 0.12s;
 }

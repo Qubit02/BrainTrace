@@ -1,79 +1,69 @@
 // src/components/panels/FileView.jsx
-import React, { useState, useEffect } from 'react'
-import { pdfjs } from 'react-pdf';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url';
+import React, { useState, useEffect, useRef } from 'react'
 import './SourcePanel.css';
-import '../styles/Scrollbar.css';
 import './FileView.css';
 import FileIcon from './FileIcon'
 import { TiUpload } from 'react-icons/ti'
 import { GoPencil } from 'react-icons/go';
-import { RiDeleteBinLine } from 'react-icons/ri';
-import { processText, deleteDB } from '../../../../api/graphApi';
-import { fetchGraphData } from '../../../../api/graphApi';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { AiOutlineNodeIndex } from "react-icons/ai";
+import { LuGitPullRequestClosed } from "react-icons/lu";
+
 import {
   getPdfsByBrain,
   getTextfilesByBrain,
   getMemosByBrain,
-  setMemoAsSource,
-  getNodesBySourceId
-} from '../../../../api/backend';
+  getNodesBySourceId,
+  getMDFilesByBrain,
+  getDocxFilesByBrain,
+  convertMemoToSource
+} from '../../../../api/config/apiIndex';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import fileHandlers from './fileHandlers/fileHandlers';
-import deleteHandlers from './fileHandlers/deleteHandlers';
-import nameUpdateHandlers from './fileHandlers/nameUpdateHandlers';
 import fileMetaExtractors from './fileHandlers/fileMetaExtractors';
+import { processMemoTextAsGraph } from './fileHandlers/memoHandlers';
+import { handleDrop, handleNameChange, handleDelete } from './fileHandlers/fileViewHandlers';
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-
-// 메모 텍스트를 그래프 지식으로 변환하는 함수
-async function processMemoTextAsGraph(content, sourceId, brainId) {
-  if (!content || content.trim() === "") {
-    console.warn("📭 메모 내용이 비어 있어 그래프를 생성하지 않습니다.");
-    return;
-  }
-
-  try {
-    const response = await processText(content, String(sourceId), String(brainId));
-    console.log("✅ 그래프 생성 완료:", response);
-  } catch (error) {
-    console.error("❌ 그래프 생성 실패:", error);
-  }
-}
-
-
+/**
+ * 파일 뷰 컴포넌트
+ * 파일 목록 표시, 드래그 앤 드롭, 업로드 큐 관리 등을 담당
+ */
 export default function FileView({
-  brainId,
-  files = [],
-  onOpenPDF,
-  onOpenTXT,
-  onOpenMEMO,
-  fileMap = {},
-  setFileMap = () => { },
-  refreshTrigger,
-  onGraphRefresh,
-  onFocusNodeNamesUpdate,
-  filteredSourceIds,
-  searchText
+  brainId,                    // 현재 브레인 ID
+  files = [],                 // 파일 목록 (PDF, TXT, MEMO)
+  onOpenFile = () => { },     // 파일 열기 콜백
+  setFileMap = () => { },     // fileMap 상태 업데이트 함수
+  refreshTrigger,             // 파일 목록 새로고침 트리거
+  onGraphRefresh,             // 그래프 새로고침 콜백
+  onSourceCountRefresh,       // 소스 개수 새로고침 콜백
+  onFocusNodeNamesUpdate,     // 포커스 노드 이름 업데이트 콜백
+  filteredSourceIds,          // 검색 필터링된 소스 ID 목록
+  searchText,                 // 검색 텍스트
+  onFileUploaded,             // 파일 업로드 완료 시 호출할 콜백
+  isNodeViewLoading,
+  setIsNodeViewLoading,
+  externalUploadQueue = [],    // 외부에서 전달받은 업로드 큐
+  setExternalUploadQueue = () => {}  // 외부 업로드 큐 초기화 함수
 }) {
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [isRootDrag, setIsRootDrag] = useState(false)
-  const [menuOpenId, setMenuOpenId] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [tempName, setTempName] = useState('');
-  const [fileToDelete, setFileToDelete] = useState(null);
-  const [uploadQueue, setUploadQueue] = useState([]);
-  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [selectedFile, setSelectedFile] = useState(null)        // 현재 선택된 파일 ID
+  const [isDrag, setIsDrag] = useState(false)                   // 드래그 중 여부
+  const [menuOpenId, setMenuOpenId] = useState(null);           // 열린 메뉴의 파일 ID
+  const [editingId, setEditingId] = useState(null);             // 이름 편집 중인 파일 ID
+  const [tempName, setTempName] = useState('');                 // 임시 파일명 (편집용)
+  const [fileToDelete, setFileToDelete] = useState(null);       // 삭제할 파일 정보
+  const [uploadQueue, setUploadQueue] = useState([]);           // 업로드/변환 대기 큐
+  const [isProcessing, setIsProcessing] = useState(false);      // 변환 작업 진행 중 여부
+  const [isDeleting, setIsDeleting] = useState(false);          // 삭제 작업 진행 중 여부
 
-  // 보여줄 파일 리스트를 계산: filteredSourceIds가 존재하면 해당 ID만 필터링
+  // === 파일 목록 처리 ===
+  // 검색 필터링된 파일 목록 계산
   const displayedFiles = filteredSourceIds
     ? files.filter(f => {
-      const id = f.memo_id || f.pdf_id || f.txt_id;
+      const id = f.memo_id || f.pdf_id || f.txt_id || f.md_id || f.docx_id;
       return filteredSourceIds.includes(String(id));
     })
     : files;
@@ -83,42 +73,154 @@ export default function FileView({
     fileMetaExtractors[f.type] ? fileMetaExtractors[f.type](f) : f
   );
 
+  // 외부 업로드 큐가 변경될 때 내부 업로드 큐에 추가
+  useEffect(() => {
+    if (externalUploadQueue.length > 0) {
+      // 중복 제거를 위해 기존 큐와 병합
+      setUploadQueue(prev => {
+        const existingKeys = prev.map(item => item.key);
+        const newItems = externalUploadQueue.filter(item => !existingKeys.includes(item.key));
+        return [...prev, ...newItems];
+      });
+      // 외부 업로드 큐 초기화 (중복 방지)
+      setExternalUploadQueue([]);
+    }
+  }, [externalUploadQueue]);
+  
+  // 업로드 중인 파일의 고유 key 목록
+  const uploadingKeys = uploadQueue.map(item => item.key);
+
+  // processedFiles에 key를 임시로 부여 (name, size, type 기준으로 생성)
+  const processedFilesWithKey = processedFiles.map(f => {
+    // 업로드 대기 큐와 동일한 key 생성 방식 사용
+    let ext = f.type;
+    let size = f.size || (f.pdf_size || f.txt_size || f.md_size || f.docx_size || 0);
+    let name = f.name || f.title;
+    if (!name) {
+      if (f.type === 'pdf') name = f.pdf_title;
+      else if (f.type === 'txt') name = f.txt_title;
+      else if (f.type === 'md') name = f.md_title;
+      else if (f.type === 'docx') name = f.docx_title;
+      else if (f.type === 'memo') name = f.memo_title;
+    }
+    if (f.type === 'memo') {
+      size = f.content ? f.content.length : (f.memo_content ? f.memo_content.length : 0);
+      ext = 'memo';
+    }
+    const uploadKey = `${name}-${size}-${ext}`;
+    return { ...f, _uploadKey: uploadKey };
+  });
+
+  // 업로드 중인 파일의 key와 일치하는 파일은 목록에서 제외
+  const visibleFiles = processedFilesWithKey.filter(f => !uploadingKeys.includes(f._uploadKey));
+
+  /**
+   * 변환 작업 함수: 큐에서 하나씩 꺼내서 처리
+   * createFileByType 함수를 호출하여 실제 파일 업로드와 그래프 변환을 수행합니다.
+   * 성공하면 fileMap을 업데이트하고, onFileUploaded 콜백을 호출합니다.
+   * 마지막에 큐에서 해당 파일을 제거합니다.
+   */
+  const processNextInQueue = async () => {
+    if (uploadQueue.length === 0) return;
+    setIsProcessing(true);
+    const file = uploadQueue[0];
+    try {
+      if (file.filetype === 'memo' && file.memoId && file.memoContent) {
+        // 메모를 소스로 변환하고 새로운 메모 ID 받기
+        const newSourceMemo = await convertMemoToSource(file.memoId);
+        const newSourceMemoId = newSourceMemo.memo_id;
+        
+        // 새로운 메모 ID로 그래프 생성
+        await processMemoTextAsGraph(file.memoContent, newSourceMemoId, brainId);
+        if (onGraphRefresh) onGraphRefresh();
+        if (onSourceCountRefresh) onSourceCountRefresh();
+      } else {
+        // 실제 파일 업로드 및 그래프 생성
+        const ext = file.filetype;
+        const f = file.fileObj;
+        const result = await createFileByType(f);
+        if (!result) throw new Error('유효하지 않은 파일');
+        setFileMap(prev => ({
+          ...prev,
+          [result.id]: result.meta,
+        }));
+        if (onGraphRefresh) onGraphRefresh();
+        if (onSourceCountRefresh) onSourceCountRefresh();
+      }
+    } catch (err) {
+      console.error('파일 업로드 실패:', err);
+    } finally {
+      // 큐에서 제거 후 파일 목록 갱신
+      setUploadQueue(q => {
+        const newQueue = q.slice(1);
+        // 업로드가 모두 끝난 후에만 onFileUploaded 호출
+        if (newQueue.length === 0 && typeof onFileUploaded === 'function') {
+          onFileUploaded();
+        }
+        return newQueue;
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  // 큐에 변화가 생길 때마다 자동으로 다음 파일 처리
+  useEffect(() => {
+    if (uploadQueue.length > 0 && !isProcessing) {
+      processNextInQueue(); // uploadQueue에 파일이 추가되면 processNextInQueue 함수가 자동으로 호출
+    }
+  }, [uploadQueue, isProcessing]);
+
+  // 브레인 ID나 refreshTrigger가 변경될 때 파일 목록 새로고침
   useEffect(() => {
     refresh();
   }, [brainId, refreshTrigger]);
 
+  // 메뉴 외부 클릭 시 메뉴 닫기
   useEffect(() => {
     const closeMenu = () => setMenuOpenId(null);
     document.addEventListener('click', closeMenu);
     return () => document.removeEventListener('click', closeMenu);
   }, []);
 
+  /**
+   * 파일 목록 새로고침 함수
+   * 서버에서 최신 파일 목록을 가져와서 fileMap을 업데이트
+   */
   const refresh = async () => {
     if (!brainId) return;
     try {
       // 1) 브레인 기준 전체 파일 조회
-      const [pdfs, txts, memos] = await Promise.all([
+      const [pdfs, txts, memos, mds, docxfiles] = await Promise.all([
         getPdfsByBrain(brainId),
         getTextfilesByBrain(brainId),
         getMemosByBrain(brainId),
+        getMDFilesByBrain(brainId),
+        getDocxFilesByBrain(brainId)
       ]);
-
-      // 2) fileMap 갱신 - 각 파일 ID를 키로 하여 메타데이터를 빠르게 참조 가능하게 구성
       setFileMap(prev => {
         const m = { ...prev };
         pdfs.forEach(p => { m[p.pdf_id] = p; });
         txts.forEach(t => { m[t.txt_id] = t; });
         memos.forEach(memo => { m[memo.memo_id] = memo; });
+        mds.forEach(md => { m[md.md_id] = md; });
+        docxfiles.forEach(docx => { m[docx.docx_id] = docx; });
         return m;
       });
-
     } catch (err) {
       console.error('파일 목록 로딩 실패:', err);
     }
   };
 
-  // 파일을 업로드하고 그래프를 생성하는 함수
+  /**
+   * 파일을 업로드하고 그래프를 생성하는 함수
+   * @param {File} f - 업로드할 파일 객체
+   * @returns {Object|null} 업로드 결과 또는 null
+   */
   const createFileByType = async (f) => {
+    if (!f || !f.name) {
+      console.warn('createFileByType: 파일 객체가 유효하지 않습니다.', f);
+      return null;
+    }
     const ext = f.name.split('.').pop().toLowerCase();
     if (fileHandlers[ext]) {
       return await fileHandlers[ext](f, brainId);
@@ -129,245 +231,101 @@ export default function FileView({
     }
   }
 
-  // 소스를 삭제하는 함수
-  const handleDelete = async f => {
-    try {
-      console.log('삭제할 파일 정보:', {
-        brainId,
-        fileId: f.id,
-        fileType: f.filetype,
-        fileName: f.name
-      });
-
-      // 1) 벡터 DB 및 지식 그래프 DB에서 해당 소스 삭제
-      try {
-        await deleteDB(brainId, f.id);
-        console.log('✅ 벡터 DB 및 그래프 DB 삭제 성공');
-      } catch (dbError) {
-        console.error('⚠️ 벡터/그래프 DB 삭제 실패 (계속 진행):', dbError);
-      }
-
-      // 2) 실제 파일 삭제 (파일 시스템 또는 DB에서)
-      let deleted = false;
-      if (deleteHandlers[f.filetype]) {
-        deleted = await deleteHandlers[f.filetype](f.id);
-      } else {
-        throw new Error('지원하지 않는 파일 타입');
-      }
-
-      // 삭제 실패 시 에러 처리
-      if (!deleted) {
-        throw new Error(`${f.filetype} 파일 삭제 실패`);
-      }
-
-      // 3) 그래프 뷰 새로고침
-      if (onGraphRefresh) {
-        onGraphRefresh();
-      }
-
-      // 4) 파일 목록 다시 로드
-      await refresh();
-    } catch (e) {
-      console.error('❌ 삭제 실패:', e);
-      alert('삭제 실패');
-    }
-  };
-
-  // 소스 이름을 변경하는 함수
-  const handleNameChange = async (f) => {
-    const newName = tempName.trim();
-    if (!newName || newName === f.name) {
-      setEditingId(null);
-      return;
-    }
-
-    try {
-      if (nameUpdateHandlers[f.filetype]) {
-        await nameUpdateHandlers[f.filetype](f.id, newName, brainId);
-      } else {
-        throw new Error('지원하지 않는 파일 타입');
-      }
-      // 2) 파일 목록 갱신
-      await refresh();
-    } catch (e) {
-      alert('이름 변경 실패');
-    } finally {
-      setEditingId(null); // 편집 모드 해제
-    }
-  };
-
-  // 삭제 확인 모달을 띄우기 위해 삭제할 파일 지정
+  /**
+   * 소스를 삭제하는 함수
+   * @param {Object} f - 삭제할 파일 정보
+   */
   const openDeleteConfirm = (f) => {
     setFileToDelete(f);     // 삭제할 파일 정보 저장
     setMenuOpenId(null);    // ⋮ 메뉴 닫기
   };
 
-  // 루트 영역으로 드롭 시 처리하는 로직 (메모 → 소스 변환 또는 외부 파일 업로드)
-  const handleRootDrop = async e => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsRootDrag(false); // 드래그 상태 해제
-
-    // 메모 드래그 처리 (메모 → 소스로 전환)
-    const memoData = e.dataTransfer.getData('application/json-memo');
-    if (memoData) {
-      const { id, name, content } = JSON.parse(memoData);
-      const key = `${name}-${Date.now()}`; // 업로드 큐에서 고유 키
-
-      // (1) 업로드 큐에 "그래프 변환 중" 표시 추가
-      setUploadQueue(q => [...q, {
-        key,
-        name,
-        filetype: 'memo',
-        status: 'processing'
-      }]);
-
-      try {
-        // (2) 메모를 소스로 설정 (is_source: true)
-        await setMemoAsSource(id);
-
-        // (3) 텍스트 → 지식 그래프 변환 처리
-        await processMemoTextAsGraph(content, id, brainId);
-
-        // (4) 완료 처리
-        setUploadQueue(q => q.filter(item => item.key !== key));
-        if (onGraphRefresh) onGraphRefresh();
-        await refresh();
-
-      } catch (err) {
-        console.error('메모 처리 실패', err);
-        setUploadQueue(q => q.filter(item => item.key !== key));
-      }
-      return;
-    }
-
-    // 외부 파일 드래그 앤 드롭 (pdf, txt, memo만 허용)
-    const dropped = Array.from(e.dataTransfer.files); // 드래그한 파일 배열로 변환
-    if (!dropped.length) return; // 비어 있으면 종료
-
-    dropped.forEach(file => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const key = `${file.name}-${Date.now()}`;
-
-      // 지원하지 않는 확장자는 무시
-      if (!['pdf', 'txt', 'memo'].includes(ext)) {
-        console.warn(`❌ 지원되지 않는 파일 형식: .${ext}`);
-        toast.error('지원되지 않는 파일 형식입니다. 소스를 추가할 수 없습니다.');
-        return;
-      }
-
-      // (1) UI 업로드 큐에 "처리중" 상태로 추가 → 사용자에게 진행 상황 표시
-      setUploadQueue(q => [
-        ...q,
-        {
-          key,
-          name: file.name,
-          filetype: ext,
-          status: 'processing'
-        }
-      ]);
-
-      // (2) 실제 파일 업로드 및 그래프 생성
-      createFileByType(file)
-        .then(result => {
-          if (!result) throw new Error('유효하지 않은 파일');
-
-          // (2-1) 업로드 큐 제거
-          setUploadQueue(q => q.filter(item => item.key !== key));
-
-          // (2-2) 메타데이터 갱신
-          setFileMap(prev => ({
-            ...prev,
-            [result.id]: result.meta,
-          }));
-
-          // (2-3) 그래프 뷰 및 파일 목록 갱신
-          if (onGraphRefresh) onGraphRefresh();
-          refresh();
-        })
-        .catch(err => {
-          console.error('파일 업로드 실패:', err);
-          setUploadQueue(q => q.filter(item => item.key !== key));
-        });
-    });
-  }
-
+  // === 기존 목록/업로드 UI ===
   return (
     <div
-      className={`file-explorer modern-explorer${isRootDrag ? ' root-drag-over' : ''}`}
-      onDragEnter={e => { e.preventDefault(); setIsRootDrag(true); }}
-      onDragLeave={e => { e.preventDefault(); setIsRootDrag(false); }}
+      className={`file-explorer modern-explorer${isDrag ? ' drag-over' : ''}`}
+      onDragEnter={e => { e.preventDefault(); setIsDrag(true); }}
+      onDragLeave={e => { e.preventDefault(); setIsDrag(false); }}
       onDragOver={e => e.preventDefault()}
-      onDrop={handleRootDrop}
+      onDrop={e => handleDrop(e, setIsDrag, setUploadQueue)}
     >
       {/* 드래그 중 배경 표시 */}
-      {isRootDrag && (
+      {isDrag && (
         <div className="drop-overlay">
           <div className="drop-icon">
             <TiUpload />
           </div>
         </div>
       )}
-
-      {/* 업로드 진행 표시 (PDF, TXT, MEMO) */}
-      {uploadQueue.map(item => (
-        <div key={item.key} className="file-item uploading">
-          <FileIcon fileName={item.name} />
-          <span className="file-name">{item.name}</span>
-          {item.status === 'processing' && (
-            <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-              <span style={{ marginLeft: 4 }}>그래프 변환 중</span>
-              <AiOutlineLoading3Quarters className="loading-spinner" />
-            </span>
-          )}
-        </div>
-      ))}
-
-      {/* 루트 레벨 파일들 렌더링 */}
-      {processedFiles.map(f => {
+      {/* 업로드 진행 표시 */}
+      {uploadQueue.length > 0 && (
+        <>
+          <div className="section-divider uploading-section"></div>
+          {uploadQueue.map(item => (
+            <div key={item.key} className="file-item uploading">
+              <FileIcon fileName={item.name} />
+              <span className="file-name">{item.name}</span>
+              {item.status === 'processing' && (
+                <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+                  <span style={{ marginLeft: 4 }}>그래프 변환 중</span>
+                  <AiOutlineLoading3Quarters className="loading-spinner" />
+                </span>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+      {/* 기존 파일들과 구분선 */}
+      {uploadQueue.length > 0 && visibleFiles.length > 0 && (
+        <div className="section-divider existing-section"></div>
+      )}
+      {/* 소스패널에 파일들 렌더링 */}
+      {visibleFiles.map(f => {
         return (
           <div
             key={`${f.filetype}-${f.id}`}
             className={`file-item ${selectedFile === f.id ? 'selected' : ''}`}
-            draggable
-            onDragStart={e =>
-              e.dataTransfer.setData(
-                'application/json',
-                JSON.stringify({ id: f.id, filetype: f.filetype })
-              )
-            }
             onClick={() => {
-              setSelectedFile(f.id);
-              // --- 파일 타입별 열기 핸들러 ---
-              const openHandlers = {
-                pdf: onOpenPDF,
-                txt: onOpenTXT,
-                memo: onOpenMEMO,
-              };
-              if (openHandlers[f.filetype] && fileMap[f.id]) {
-                openHandlers[f.filetype](fileMap[f.id]);
+              if (uploadQueue && uploadQueue.length > 0) {
+                toast.info('소스 추가/변환 중에는 파일을 열 수 없습니다.');
+                return;
               }
+              setSelectedFile(f.id);
+              // 변환된 파일 객체에서 원본 메타데이터의 ID를 가져오기
+              const fileId = f.meta ? 
+                (f.filetype === 'pdf' ? f.meta.pdf_id : 
+                 f.filetype === 'txt' ? f.meta.txt_id :
+                 f.filetype === 'md' ? f.meta.md_id :
+                 f.filetype === 'docx' ? f.meta.docx_id :
+                 f.filetype === 'memo' ? f.meta.memo_id : f.id) : f.id;
+              onOpenFile(fileId, f.filetype);
             }}
           >
             <FileIcon fileName={f.name} />
-
-            {/* ✏️ 이름 변경 입력창 */}
+            {/* 이름 변경 입력창 */}
             {editingId === f.id ? (
-              <input
-                autoFocus
-                className="rename-input"
-                defaultValue={f.name}
-                onChange={e => setTempName(e.target.value)}
-                onBlur={() => handleNameChange(f)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleNameChange(f);
-                  if (e.key === 'Escape') setEditingId(null);
-                }}
-              />
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  autoFocus
+                  className="rename-input"
+                  value={tempName.replace(/\.[^/.]+$/, '')}
+                  onChange={e => setTempName(e.target.value.replace(/\.[^/.]+$/, ''))}
+                  onBlur={() => handleNameChange(f, tempName, brainId, setEditingId, refresh, onFileUploaded)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleNameChange(f, tempName, brainId, setEditingId, refresh, onFileUploaded);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  style={{ width: '120px', marginRight: '2px' }}
+                />
+                {f.filetype !== 'memo' && (
+                  <span style={{ color: '#888', fontSize: '0.95em', userSelect: 'none' }}>
+                    {f.name.slice(f.name.lastIndexOf('.'))}
+                  </span>
+                )}
+              </span>
             ) : (
               <span className="file-name">{f.name}</span>
             )}
-
             {/* ⋮ 메뉴 버튼 */}
             <div
               className="file-menu-button"
@@ -382,20 +340,36 @@ export default function FileView({
                   <div
                     className="popup-item"
                     onClick={async () => {
+                      setIsNodeViewLoading && setIsNodeViewLoading(f.id);
                       try {
-                        const names = await getNodesBySourceId(f.id, brainId);
-                        if (onFocusNodeNamesUpdate) {
-                          onFocusNodeNamesUpdate(names);
+                        const response = await getNodesBySourceId(f.id, brainId);
+                        
+                        const names = response?.nodes || [];
+                        if (names && names.length > 0) {
+                          if (onFocusNodeNamesUpdate) {
+                            onFocusNodeNamesUpdate(names);
+                          }
+                        } else {
+                          // 노드가 없을 때 toast 메시지 표시
+                          toast.info(`그래프에 "${f.name}" 파일의 노드가 없습니다.`);
                         }
                       } catch (err) {
                         console.error('노드 조회 실패:', err);
-                        alert('해당 소스에서 생성된 노드를 가져오지 못했습니다.');
+                        toast.error('해당 소스에서 생성된 노드를 가져오지 못했습니다.');
+                      } finally {
+                        // 로딩 상태 해제
+                        setIsNodeViewLoading && setIsNodeViewLoading(null);
                       }
                       setMenuOpenId(null);
                     }}
                   >
                     <AiOutlineNodeIndex size={17} style={{ marginRight: 1 }} />
                     노드 보기
+                    {isNodeViewLoading === f.id && (
+                      <span className="upload-status" style={{ display: 'flex', alignItems: 'center', marginLeft: 10 }}>
+                        <AiOutlineLoading3Quarters className="loading-spinner" />
+                      </span>
+                    )}
                   </div>
                   <div
                     className="popup-item"
@@ -408,7 +382,7 @@ export default function FileView({
                     <GoPencil size={14} style={{ marginRight: 4 }} /> 소스 이름 바꾸기
                   </div>
                   <div className="popup-item" onClick={() => openDeleteConfirm(f)}>
-                    <RiDeleteBinLine size={14} style={{ marginRight: 4 }} /> 소스 삭제
+                    <LuGitPullRequestClosed size={14} style={{ marginRight: 4 }} /> 소스 삭제
                   </div>
                 </div>
               )}
@@ -416,23 +390,29 @@ export default function FileView({
           </div>
         );
       })}
-
-      {/* 파일이 하나도 없을 때 */}
-      {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && (
+      {/* 파일이 하나도 없을 때 (업로드 중이 아닐 때만) */}
+      {processedFiles.length === 0 && (!searchText || searchText.trim() === '') && uploadQueue.length === 0 && (
         <div className="empty-state">
           <p className="empty-sub">
             이 영역에 파일을 <strong>드래그해서 추가</strong>해보세요!
           </p>
+            <div className="supported-formats">
+             <p className="format-title">지원하는 파일 형식</p>
+             <div className="format-list">
+               <span className="format-item">PDF</span>
+               <span className="format-item">TXT</span>
+               <span className="format-item">DOCX</span>
+               <span className="format-item">MARKDOWN</span>
+             </div>
+           </div>
         </div>
       )}
-
-      {/* 검색 결과가 없을 때 */}
-      {filteredSourceIds && processedFiles.length === 0 && (
+      {/* 검색 결과가 없을 때 (업로드 중이 아닐 때만) */}
+      {filteredSourceIds && processedFiles.length === 0 && uploadQueue.length === 0 && (
         <div className="empty-state">
           <p className="empty-sub">검색 결과가 없습니다.</p>
         </div>
       )}
-
       {/* 삭제 확인 모달 */}
       {fileToDelete && (
         <ConfirmDialog
@@ -442,7 +422,7 @@ export default function FileView({
           }}
           onOk={async () => {
             setIsDeleting(true); // 로딩 시작
-            await handleDelete(fileToDelete);
+            await handleDelete(fileToDelete, brainId, onGraphRefresh, onSourceCountRefresh, refresh);
             setIsDeleting(false); // 로딩 종료
             setFileToDelete(null); // 모달 닫기
           }}

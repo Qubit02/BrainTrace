@@ -1,28 +1,28 @@
-// src/components/panels/MemoPanel.jsx
+// src/components/panels/InsightPanel.jsx
 import React, { useState, useEffect } from 'react';
-import './Memo/MemoPanel.css';
-import '../styles/PanelToggle.css';
-import '../styles/Scrollbar.css';
+import './InsightPanel.css';
 
 import MemoEditor from './Memo/MemoEditor';
 import MemoListPanel from './Memo/MemoListPanel';
 import GraphViewWithModal from './Graph/GraphViewWithModal';
-
-import toggleIcon from '../../../assets/icons/toggle-view.png';
-import graphOnIcon from '../../../assets/icons/graph-on.png';
-import graphOffIcon from '../../../assets/icons/graph-off.png';
-import memoOnIcon from '../../../assets/icons/memo-on.png';
-import memoOffIcon from '../../../assets/icons/memo-off.png';
+import { VscLayoutSidebarRightOff, VscLayoutSidebarLeftOff } from "react-icons/vsc";
+import { PiGraphLight } from "react-icons/pi";
+import { CiStickyNote } from "react-icons/ci";
+import { PiGraphBold } from "react-icons/pi";
+import { PiNoteBlankFill } from "react-icons/pi";
 
 import {
   createMemo,
   getMemosByBrain,
   updateMemo,
-  deleteMemo
-} from '../../../../api/backend';
+  deleteMemo,
+  restoreMemo,
+  hardDeleteMemo,
+  emptyTrash
+} from '../../../../api/config/apiIndex';
 
-function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onReady }) {
-  const projectId = activeProject;
+function InsightPanel({ selectedBrainId, collapsed, setCollapsed, referencedNodes = [], graphRefreshTrigger, onGraphDataUpdate, focusNodeNames = [], onGraphReady, setReferencedNodes, setFocusNodeNames, setNewlyAddedNodeNames }) {
+  const projectId = selectedBrainId;
   const [showGraph, setShowGraph] = useState(true);
   const [showMemo, setShowMemo] = useState(true);
   const [memos, setMemos] = useState([]);
@@ -35,12 +35,11 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
     const fetch = async () => {
       if (!projectId) return;
       try {
+        // 삭제된 메모도 포함하여 조회
         const memos = await getMemosByBrain(projectId);
         setMemos(memos);
-        onReady?.();
       } catch (err) {
         console.error('메모/휴지통 불러오기 실패:', err);
-        onReady?.(); // 실패해도 호출
       }
     };
     fetch();
@@ -103,16 +102,13 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
         memo_text: updatedMemo.content,
         brain_id: updatedMemo.brain_id,
       });
-      console.log("updatedMemo.brain_id", updateMemo.brain_id)
-      // 메모 리스트 상태 갱신
-      setMemos(prev =>
-        prev.map(m =>
+      setMemos((prev) =>
+        prev.map((m) =>
           m.memo_id === updatedMemo.memo_id
             ? { ...m, memo_title: updatedMemo.title, memo_text: updatedMemo.content }
             : m
         )
       );
-
       setSelectedMemoId(null);
     } catch (err) {
       console.error('메모 저장 오류:', err);
@@ -123,12 +119,72 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
   const handleDeleteMemo = async (id) => {
     try {
       await deleteMemo(id);
-      setMemos((prev) => prev.filter((m) => m.memo_id !== id));
+      // 메모를 삭제하지 않고 is_deleted 상태만 업데이트
+      setMemos((prev) =>
+        prev.map((m) =>
+          m.memo_id === id ? { ...m, is_deleted: true } : m
+        )
+      );
       if (selectedMemoId === id) setSelectedMemoId(null);
     } catch (err) {
       console.error('삭제 실패:', err);
     }
   };
+
+  const handleRestoreMemo = async (id) => {
+    try {
+      await restoreMemo(id);
+      // 메모를 복구하고 is_deleted 상태를 업데이트
+      setMemos((prev) =>
+        prev.map((m) =>
+          m.memo_id === id ? { ...m, is_deleted: false } : m
+        )
+      );
+    } catch (err) {
+      console.error('복구 실패:', err);
+    }
+  };
+
+  const handleHardDeleteMemo = async (id) => {
+    try {
+      await hardDeleteMemo(id);
+      // 메모를 완전히 삭제하고 리스트에서 제거
+      setMemos((prev) =>
+        prev.filter((m) => m.memo_id !== id)
+      );
+      if (selectedMemoId === id) setSelectedMemoId(null);
+    } catch (err) {
+      console.error('완전 삭제 실패:', err);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    try {
+      await emptyTrash(projectId);
+      // 삭제된 메모들을 모두 리스트에서 제거
+      setMemos((prev) =>
+        prev.filter((m) => m.is_deleted !== true)
+      );
+      // 선택된 메모가 삭제된 메모였다면 선택 해제
+      if (selectedMemoId && memos.find(m => m.memo_id === selectedMemoId)?.is_deleted === true) {
+        setSelectedMemoId(null);
+      }
+    } catch (err) {
+      console.error('휴지통 비우기 실패:', err);
+    }
+  };
+
+  // 팝업 닫기 콜백 정의
+  const handleClearReferencedNodes = () => {
+    if (setReferencedNodes) setReferencedNodes([]);
+  };
+  const handleClearFocusNodes = () => {
+    if (setFocusNodeNames) setFocusNodeNames([]);
+  };
+  const handleClearNewlyAddedNodes = () => {
+    if (setNewlyAddedNodeNames) setNewlyAddedNodeNames([]);
+  };
+  // 추가노드 콜백은 필요시 구현
 
   return (
     <div className={`panel-container ${collapsed ? 'collapsed' : ''}`}>
@@ -145,32 +201,42 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
       >
         {!collapsed && (
           <div className="header-actions2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="header-title" style={{ fontSize: '17px' }}>Insight</span>
+            <span className="header-title">Insight</span>
           </div>
         )}
         <div className="header-actions">
           {!collapsed && (
-            <>
-              <img
-                src={showGraph ? graphOnIcon : graphOffIcon}
-                alt="Graph View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer' }}
+            <div style={{ display: 'flex' }}>
+              <button
+                className={`insight-toggle-btn${showGraph ? ' active' : ''}`}
+                title="그래프 보기 토글"
                 onClick={() => setShowGraph(prev => !prev)}
-              />
-              <img
-                src={showMemo ? memoOnIcon : memoOffIcon}
-                alt="Memo View"
-                style={{ width: '19px', height: '19px', cursor: 'pointer' }}
+              >
+                {showGraph ? <PiGraphBold size={19} color={'black'} /> : <PiGraphLight size={19} color={'black'} />}
+              </button>
+              <button
+                className={`insight-toggle-btn${showMemo ? ' active' : ''}`}
+                title="메모 보기 토글"
                 onClick={() => setShowMemo(prev => !prev)}
-              />
-            </>
+                style={{ marginRight: '1px' }}
+              >
+                {showMemo ? <PiNoteBlankFill size={19} color={'black'} /> : <CiStickyNote size={19} color={'black'} />}
+              </button>
+            </div>
           )}
-          <img
-            src={toggleIcon}
-            alt="Toggle View"
-            style={{ width: '23px', height: '23px', cursor: 'pointer' }}
-            onClick={() => setCollapsed(prev => !prev)}
-          />
+          {collapsed ? (
+            <VscLayoutSidebarLeftOff
+              size={18}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          ) : (
+            <VscLayoutSidebarRightOff
+              size={18}
+              style={{ cursor: 'pointer', marginRight: '2px', marginLeft: '3px' }}
+              onClick={() => setCollapsed(prev => !prev)}
+            />
+          )}
         </div>
       </div>
 
@@ -185,7 +251,9 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
             <div
               style={{
                 height: showMemo ? `${graphHeight}px` : '100%',
-                transition: isResizing ? 'none' : 'height 0.3s ease'
+                transition: isResizing ? 'none' : 'height 0.3s ease',
+                position: 'relative',
+                zIndex: 10,
               }}
             >
               <GraphViewWithModal
@@ -195,7 +263,16 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
                 focusNodeNames={focusNodeNames}
                 graphRefreshTrigger={graphRefreshTrigger}
                 onGraphDataUpdate={onGraphDataUpdate}
+                onGraphReady={onGraphReady}
+                onClearReferencedNodes={handleClearReferencedNodes}
+                onClearFocusNodes={handleClearFocusNodes}
+                onClearNewlyAddedNodes={handleClearNewlyAddedNodes}
               />
+              {referencedNodes && referencedNodes.length > 0 && (
+                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '5px', borderRadius: '3px', fontSize: '12px' }}>
+                  참조된 노드: {referencedNodes.join(', ')}
+                </div>
+              )}
             </div>
           )}
 
@@ -207,6 +284,8 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
                 cursor: 'ns-resize',
                 borderBottom: '2px solid #ccc',
                 backgroundColor: '#fafafa',
+                position: 'relative',
+                zIndex: 100,
               }}
               onMouseDown={() => setIsResizing(true)}
             />
@@ -215,8 +294,12 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
           {showMemo && (
             <div className="memo-body" style={{
               flex: 1,
-              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
               borderTop: '1px solid #eaeaea',
+              position: 'relative',
+              zIndex: 50,
             }}>
               {selectedMemoId != null && selectedMemo ? (
                 <MemoEditor
@@ -231,6 +314,9 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
                   onSelect={setSelectedMemoId}
                   onAdd={handleAddMemo}
                   onDelete={handleDeleteMemo}
+                  onRestore={handleRestoreMemo}
+                  onHardDelete={handleHardDeleteMemo}
+                  onEmptyTrash={handleEmptyTrash}
                 />
               )}
             </div>
@@ -241,4 +327,4 @@ function MemoPanel({ activeProject, collapsed, setCollapsed, referencedNodes = [
   );
 }
 
-export default MemoPanel;
+export default InsightPanel;

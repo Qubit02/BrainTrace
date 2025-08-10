@@ -1,6 +1,6 @@
 // src/components/NewBrainModal.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import { createBrain } from '../../../../api/backend';
+import { createBrain } from '../../../../api/config/apiIndex';
 import './NewBrainModal.css';
 import { RiDeleteBack2Line } from "react-icons/ri";
 export default function NewBrainModal({ onClose, onCreated }) {
@@ -46,10 +46,11 @@ export default function NewBrainModal({ onClose, onCreated }) {
 
                     <h3>새 프로젝트 만들기</h3>
                     <button
+                        type="button"
                         onClick={onClose}
                         className='close-button'
                     >
-                        <RiDeleteBack2Line size={22} />
+                        ✕
                     </button>
                 </div>
 

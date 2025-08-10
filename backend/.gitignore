@@ -1,6 +1,5 @@
 /venv
 .data/
-/venv
 /data
 /__pycache__/
 

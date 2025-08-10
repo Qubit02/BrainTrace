@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,32 @@ app.whenReady().then(() => {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true,
+        }
+    });
+
+    // ✅ 파일 탐색기 IPC 핸들러 등록
+    ipcMain.handle('open-file-dialog', async () => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile', 'multiSelections'],
+            filters: [
+                { name: 'Documents', extensions: ['pdf', 'txt', 'mp3'] }
+            ]
+        });
+        if (canceled) return [];
+        return filePaths;
+    });
+
+    // ✅ 파일 버퍼 읽기 IPC 핸들러 등록
+    ipcMain.handle('read-files-as-buffer', async (event, paths) => {
+        try {
+            const files = paths.map(p => ({
+                name: path.basename(p),
+                buffer: fs.readFileSync(p)
+            }));
+            return files;
+        } catch (e) {
+            console.error('[main] read-files-as-buffer 에러:', e.message, e.stack, paths);
+            return [];
         }
     });
 

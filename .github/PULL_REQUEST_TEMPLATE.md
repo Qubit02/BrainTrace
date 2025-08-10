@@ -1,11 +1,11 @@
-## #️⃣연관된 이슈
+## #️⃣ Related Issues
 
-> #이슈번호
+> #issue-number
 
-## 📝작업 내용
+## 📝 Description of Work
 
-> 이번 PR에서 작업한 내용을 간략히 설명해주세요
+> Briefly describe the changes or features implemented in this PR
 
-## 💬리뷰 요구사항(선택)
+## 💬 Review Notes (Optional)
 
-> 없음
+> None

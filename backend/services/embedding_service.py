@@ -215,8 +215,8 @@ def search_similar_nodes(
             limit=limit * 10
         )
 
-        grouped: Dict[str, Dict] = {}
-        high_scores: List[Dict] = []
+        high_score_group: Dict[str, Dict] = {}
+        grouped_by_name: Dict[str, Dict] = {}
 
         for result in search_results:
             score = result.score
@@ -226,6 +226,7 @@ def search_similar_nodes(
 
             payload = result.payload or {}
             sid = payload.get("source_id", "")
+            name = payload.get("name", "")
 
             entry = {
                 "source_id": sid,
@@ -238,18 +239,34 @@ def search_similar_nodes(
 
             if score >= high_score_threshold:
                 # 고유사도 항목은 모두 무제한 수집
-                high_scores.append(entry)
+                if name not in high_score_group or score > high_score_group[name]["score"]:
+                    high_score_group[name] = entry
             else:
-                # source_id별 최고 점수 항목만 그룹핑
-                prev = grouped.get(sid)
-                if not prev or score > prev["score"]:
-                    grouped[sid] = entry
+                if name not in grouped_by_name or score > grouped_by_name[name]["score"]:
+                    grouped_by_name[name] = entry
 
-        # 그룹핑된 엔트리를 점수 내림차순으로 정렬, limit만큼 선택
-        top_grouped = sorted(grouped.values(), key=lambda x: -x["score"])[:limit]
+        
+        # high_score_group은 무조건 포함, grouped는 limit 만큼 점수 내림차순으로
+        high_scores = list(high_score_group.values())
+        grouped = sorted(grouped_by_name.values(), key=lambda x: -x["score"])
 
-        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과
-        return high_scores + top_grouped
+         # 중복 제거: high_scores에 있는 name은 grouped에서 제외
+        high_score_names = {entry["name"] for entry in high_scores}
+        filtered_grouped = [entry for entry in grouped if entry["name"] not in high_score_names]
+
+        # limit 만큼 제한
+        top_grouped = filtered_grouped[:limit]
+
+        final_nodes = high_scores + top_grouped
+
+        # Q = avg(r_i) over final_nodes
+        if final_nodes:
+            Q = sum(node["score"] for node in final_nodes) / len(final_nodes)
+        else:
+            Q = 0.0
+
+        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과 , Q(질문과 노드의 유사도 평균)
+        return final_nodes, round(Q, 4)
 
     except Exception as e:
         logging.error("유사 노드 검색 실패: %s", str(e))
@@ -314,6 +331,13 @@ def delete_collection(brain_id: str) -> None:
     except Exception as e:
         logging.warning("컬렉션 %s가 존재하지 않을 수 있습니다: %s", collection_name, str(e))
 
+
+def encode(text: str) -> List[float]:
+        """
+        KoE5 모델을 이용해 텍스트를 임베딩합니다.
+        Returns: EMBED_DIM 차원의 float 리스트
+        """
+        return encode_text(text)
 
 def search_similar_descriptions(
     embedding: List[float],

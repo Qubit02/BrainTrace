@@ -1,6 +1,8 @@
 // src/components/GraphViewStandalone.jsx
 import React, { useState, useCallback, useEffect } from 'react';
 import GraphViewForFullscreen from './GraphViewForFullscreen';
+import SpaceBackground from './SpaceBackground';
+import './SpaceBackground.css';
 
 function GraphViewStandalone() {
     const searchParams = new URLSearchParams(window.location.search);
@@ -195,6 +197,8 @@ function GraphViewStandalone() {
             overflow: 'hidden',
             position: 'relative'
         }}>
+            {/* 우주 배경 - Standalone에서는 항상 표시 */}
+            <SpaceBackground isVisible={true} />
             {/* 새로운 GraphViewForFullscreen 사용 */}
             <GraphViewForFullscreen
                 brainId={brainId}
@@ -205,6 +209,7 @@ function GraphViewStandalone() {
                 onGraphDataUpdate={handleGraphDataUpdate}
                 onRefresh={handleRefresh}
                 onClearHighlights={handleClearHighlights}
+                onClose={() => window.close()}
                 // GraphView에 전달할 추가 props
                 isFullscreen={true}
             />

@@ -5,15 +5,16 @@
   position: relative;
   width: 100%;
   height: 100%;
-  background: #f8f9fa;
+  background: transparent;
   overflow: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ✅ 다크모드 메인 컨테이너 */
+/* 다크모드 메인 컨테이너 */
 .graph-fullscreen-container.dark-mode {
-  background: #0f172a;
+  background: transparent;
   color: #f1f5f9;
+  backdrop-filter: none;
 }
 
 .fullscreen-overlay {
@@ -23,7 +24,9 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 20000;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 /* 상단 툴바 */
@@ -37,6 +40,10 @@
   align-items: flex-start;
   pointer-events: auto;
   gap: 20px;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
 }
 
 .toolbar-left,
@@ -44,6 +51,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
 }
 
 /* 검색 컨트롤 */
@@ -51,48 +62,54 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
 }
 
 .fullscreen-search-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
   padding: 0 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: none;
+  border: 1px solid #ddd;
   min-width: 320px;
   transition: all 0.3s ease;
+  color: #222;
 }
 
 /* ✅ 다크모드 검색창 */
 .dark-mode .fullscreen-search-input-wrapper {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+  border-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .fullscreen-search-icon {
   font-size: 16px;
   margin-right: 10px;
-  color: #6b7280;
+  color: #cccccc;
   transition: color 0.3s ease;
 }
 
 .dark-mode .fullscreen-search-icon {
-  color: #94a3b8;
+  color: #cccccc;
 }
 
 .fullscreen-search-input {
   flex: 1;
-  border: none;
+  border: none !important;
   outline: none;
-  padding: 12px 0;
+  padding: 13px 0;
+  margin-left: 10px;
   font-size: 14px;
-  color: #1f2937;
-  background: transparent;
+  color: #222222;
+  background:  transparent !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: color 0.3s ease;
 }
@@ -102,17 +119,17 @@
 }
 
 .fullscreen-search-input::placeholder {
-  color: #9ca3af;
+  color: #666666;
   transition: color 0.3s ease;
 }
 
 .dark-mode .fullscreen-search-input::placeholder {
-  color: #64748b;
+  color: #cccccc;
 }
 
 .fullscreen-clear-search-btn {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ddd;
   color: #6b7280;
   cursor: pointer;
   padding: 4px;
@@ -125,26 +142,28 @@
 }
 
 .dark-mode .fullscreen-clear-search-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: #475569;
   color: #94a3b8;
 }
 
 .dark-mode .fullscreen-clear-search-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 1);
 }
 
 .fullscreen-search-results {
   font-size: 12px;
   color: #6b7280;
-  background: rgba(255, 255, 255, 0.9);
+  background: transparent;
   padding: 6px 12px;
   border-radius: 8px;
-  backdrop-filter: blur(5px);
+  backdrop-filter: none;
   transition: all 0.3s ease;
 }
 
 .dark-mode .fullscreen-search-results {
   color: #94a3b8;
-  background: rgba(30, 41, 59, 0.9);
+  background: transparent;
 }
 
 /* 컨트롤 버튼들 */
@@ -153,36 +172,36 @@
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
   border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   color: #374151;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  backdrop-filter: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ✅ 다크모드 컨트롤 버튼 */
 .dark-mode .fullscreen-control-btn {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.9);
+  border-color: #475569;
   color: #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .fullscreen-control-btn:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .dark-mode .fullscreen-control-btn:hover {
-  background: rgba(30, 41, 59, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .fullscreen-control-btn.active {
@@ -225,6 +244,8 @@
 
 .fullscreen-btn-icon {
   font-size: 16px;
+  margin-top: 5px;
+  
 }
 
 /* 고급 컨트롤 패널 */
@@ -240,6 +261,7 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
   pointer-events: auto;
   transition: all 0.3s ease;
+  z-index: 20000;
 }
 
 .dark-mode .fullscreen-advanced-controls-panel {
@@ -287,11 +309,13 @@
 }
 
 .dark-mode .fullscreen-close-panel-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: #475569;
   color: #94a3b8;
 }
 
 .dark-mode .fullscreen-close-panel-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 1);
 }
 
 .fullscreen-panel-content {
@@ -373,16 +397,17 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: transparent;
+  backdrop-filter: none;
+  border-top: none;
   pointer-events: auto;
   transition: all 0.3s ease;
+  z-index: 20000;
 }
 
 .dark-mode .fullscreen-statusbar {
-  background: rgba(15, 23, 42, 0.95);
-  border-top-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border-top-color: transparent;
 }
 
 .fullscreen-status-left,
@@ -397,6 +422,8 @@
   align-items: center;
   gap: 8px;
   max-width: 400px;
+  border: none !important;
+  background-color: transparent !important;
 }
 
 .fullscreen-status-icon {
@@ -499,7 +526,7 @@
 }
 
 .dark-mode ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: transparent;
   border-radius: 4px;
 }
 
@@ -510,6 +537,23 @@
 
 .dark-mode ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.5);
+}
+
+/* 다크모드에서 우주배경 강화 */
+.dark-mode .fullscreen-toolbar {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.dark-mode .toolbar-left,
+.dark-mode .toolbar-right {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.dark-mode .fullscreen-search-container {
+  background: transparent;
+  backdrop-filter: none;
 }
 
 
