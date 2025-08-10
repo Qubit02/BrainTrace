@@ -288,16 +288,16 @@ def extract_graph_components(text: str, source_id: str):
     for node in all_nodes:
         if node["descriptions"] != []:
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-            node["descriptions"]={"description":resolved_description,
-                                    "source_id":source_id}
-            node["original_sentences"]={"original_sentence":resolved_description,
+            node["descriptions"]=[{"description":resolved_description,
+                                    "source_id":source_id}]
+            node["original_sentences"]=[{"original_sentence":resolved_description,
                                     "source_id":source_id,
-                                    "score": 1.0}
+                                    "score": 1.0}]
         else:
             node["descriptions"]=[{"description":"", "source_id":source_id}]
-            node["original_sentences"]={"original_sentence":"",
+            node["original_sentences"]=[{"original_sentence":"",
                                     "source_id":source_id,
-                                    "score": 1.0}
+                                    "score": 1.0}]
 
             
     for c in chunks:

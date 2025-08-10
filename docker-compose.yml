@@ -1,63 +1,63 @@
-version: '3.9'
+version: "3.9"
 
 services:
   backend:
-    working_dir: /app
     build:
       context: .
       dockerfile: backend/Dockerfile
-      target: dev # Dockerfile 단계 중 'dev'
+      target: dev
     depends_on:
       - neo4j
+      - ollama
     environment:
-      IN_DOCKER: 'true'
-      NEO4J_URI: 'bolt://neo4j:7687'
-      OLLAMA_API_URL: 'http://ollama:11434'
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./backend:/app # 소스 코드 바인딩
-    ports:
-      - '8000:8000'
+      # 컨테이너 환경 플래그(앱 코드에서 분기 시 사용)
+      IN_DOCKER: "true"
+      # 내부 서비스 호스트명 사용
+      NEO4J_URI: "bolt://neo4j:7687"
+      OLLAMA_API_URL: "http://ollama:11434"
+    #일단 .env파일 같이 빌드. 조정해야함
     env_file: ./backend/.env
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
       target: dev
-    command: ['npx', 'vite', '--host', '0.0.0.0', '--port', '5173']
+    environment:
+      # Windows/WSL에서 파일 변경 감지 안정화
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend:/app
+      # node_modules는 컨테이너 쪽에 유지
+      - frontend_node_modules:/app/node_modules
     ports:
-      - '5173:5173'
+      - "5173:5173"
+    depends_on:
+      - backend
 
   neo4j:
     image: neo4j:5
     environment:
-      - NEO4J_dbms_security_auth__enabled=false
+      NEO4J_dbms_security_auth__enabled: false
     volumes:
       - neo4j_data:/data
     ports:
-      - '7474:7474'
-      - '7687:7687'
+      - "7474:7474"
+      - "7687:7687"
 
   ollama:
     image: ollama/ollama:latest
     volumes:
       - ollama_models:/root/.ollama
     ports:
-      - '11434:11434'
-    # 필요 모델은 처음 기동 후 'ollama run llama3b_kr' 등으로 다운로드
+      - "11434:11434"
 
 volumes:
   neo4j_data:
   ollama_models:
   frontend_node_modules:
-
-# (선택) Docker Compose Watch – 자동 재시작
-x-develop:
-  watch:
-    - action: sync
-      path: ./backend
-      target: /app
-    - action: sync
-      path: ./frontend
-      target: /app
