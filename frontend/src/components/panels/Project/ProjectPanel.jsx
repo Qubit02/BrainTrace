@@ -10,6 +10,7 @@ import './ProjectPanel.css';
 
 import { IoHomeOutline } from 'react-icons/io5';
 import { AiOutlinePlus } from 'react-icons/ai';
+import { MdSecurity } from 'react-icons/md';
 
 import NewBrainModal from './NewBrainModal';
 
@@ -38,6 +39,26 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
     nav(`/project/${id}`);
   };
 
+  /* ───────── 프로젝트 타입 판별 ───────── */
+  const getProjectType = (brain) => {
+    // deployment_type 필드가 있으면 우선 사용
+    if (brain.deployment_type) {
+      return brain.deployment_type.toLowerCase();
+    }
+    
+    // brain_name으로 추정 (fallback)
+    if (brain.brain_name?.includes('Cloud') || brain.brain_name?.includes('클라우드')) {
+      return 'cloud';
+    }
+    
+    // 기본값은 로컬
+    return 'local';
+  };
+
+  const getProjectTypeTitle = (type) => {
+    return type === 'cloud' ? '클라우드 프로젝트' : '로컬 프로젝트';
+  };
+
   /* ───────── UI ───────── */
   return (
     <div className="panel-container sidebar-container">
@@ -45,18 +66,27 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
         <div className="sidebar-icons">
           {brains.slice().sort((a, b) => b.brain_id - a.brain_id)
             .map(b => {
+              const projectType = getProjectType(b);
               return (
                 <div
                   key={b.brain_id}
-                  className={`sidebar-icon ${selectedBrainId === b.brain_id ? 'active' : ''}`}
-                  onClick={() => handleProjectClick(b.brain_id)}
+                  className={`sidebar-icon ${selectedBrainId === b.brain_id ? 'active disabled' : ''}`}
+                  onClick={selectedBrainId === b.brain_id ? undefined : () => handleProjectClick(b.brain_id)}
                 >
                   <img
                     width={30}
-                    src={selectedBrainId === b.brain_id ? '/brainbanzzak.png' : '/brain.png'}
+                    src={selectedBrainId === b.brain_id ? '/brainbanzzak.png' : '/brainnormal.png'}
                     style={{ flexShrink: 0 }}
+                    alt={b.brain_name}
                   />
                   <span className="brain-name-ellipsis">{b.brain_name}</span>
+                  
+                  {/* 로컬 프로젝트일 때만 MdSecurity 아이콘 표시 */}
+                  {projectType === 'local' && (
+                    <div className="local-security-icon" title={getProjectTypeTitle(projectType)}>
+                      <MdSecurity size={15} />
+                    </div>
+                  )}
                 </div>
               );
             })}
