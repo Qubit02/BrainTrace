@@ -67,9 +67,11 @@ class BrainCreate(BaseModel):
         brain_name (str): 브레인 이름 (1-50자 제한)
         created_at (Optional[str]): 생성 날짜 (ISO 형식, 예: "2025-05-06")
                                  None인 경우 현재 날짜로 자동 설정
+        deployment_type (Optional[str]): 배포 타입 (기본값: "local")
     """
     brain_name : str = Field(..., min_length=1, max_length=50)
     created_at : Optional[str]  = None        # "2025-05-06" 등
+    deployment_type : Optional[str] = Field("local", description="배포 타입 (local, cloud, docker, kubernetes)")
 
 class BrainUpdate(BaseModel):
     """
@@ -81,9 +83,11 @@ class BrainUpdate(BaseModel):
     Attributes:
         brain_name (Optional[str]): 수정할 브레인 이름
         created_at (Optional[str]): 수정할 생성 날짜
+        deployment_type (Optional[str]): 수정할 배포 타입
     """
     brain_name : Optional[str]  = None
     created_at : Optional[str]  = None
+    deployment_type : Optional[str] = Field(None, description="배포 타입 (local, cloud, docker, kubernetes)")
 
 class BrainResponse(BaseModel):
     """
@@ -96,18 +100,21 @@ class BrainResponse(BaseModel):
         brain_name (str): 브레인 이름
         created_at (str | None): 생성 날짜 (ISO 형식)
         is_important (bool): 중요도 여부 (기본값: False)
+        deployment_type (str): 배포 타입 (기본값: "local")
     """
     brain_id: int = Field(..., description="브레인 ID", example=1)
     brain_name: str = Field(..., description="브레인 이름", example="파이썬 학습")
     created_at: str | None = None
     is_important: bool = Field(False, description="중요도 여부", example=False)
+    deployment_type: str = Field("local", description="배포 타입", example="local")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "brain_id": 1,
                 "brain_name": "파이썬 학습",
-                "is_important": False
+                "is_important": False,
+                "deployment_type": "local"
             }
         }
 
@@ -159,7 +166,8 @@ async def create_brain(brain: BrainCreate):
     try:
         return sqlite_handler.create_brain(
             brain_name = brain.brain_name,
-            created_at = date.today().isoformat()   # ← 오늘 날짜 자동 입력
+            created_at = date.today().isoformat(),   # ← 오늘 날짜 자동 입력
+            deployment_type = brain.deployment_type
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -248,10 +256,15 @@ async def update_brain(brain_id: int, data: BrainUpdate):
         return origin  # 변경 사항 없음
 
     try:
-        # brain_name만 업데이트하는 경우
+        # brain_name과 deployment_type 업데이트
         if 'brain_name' in payload:
             sqlite_handler.update_brain_name(brain_id, payload['brain_name'])
-            origin.update(payload)
+        if 'deployment_type' in payload:
+            sqlite_handler.update_brain_deployment_type(brain_id, payload['deployment_type'])
+        if 'created_at' in payload:
+            sqlite_handler.update_brain_created_at(brain_id, payload['created_at'])
+        
+        origin.update(payload)
         return origin
     except Exception as e:
         logging.error("브레인 업데이트 오류: %s", e)

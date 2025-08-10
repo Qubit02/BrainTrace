@@ -39,7 +39,8 @@ class BaseHandler:
                 brain_id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 brain_name TEXT    NOT NULL,
                 created_at TEXT,
-                is_important BOOLEAN DEFAULT 0
+                is_important BOOLEAN DEFAULT 0,
+                deployment_type TEXT DEFAULT 'local'
             )
             ''')
             
@@ -146,7 +147,7 @@ class BaseHandler:
         finally:
             if conn:
                 conn.close()
-    
+
     def _get_next_id(self) -> int:
         """다음 ID 값을 가져옵니다."""
         try:
