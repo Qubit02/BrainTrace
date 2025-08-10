@@ -29,6 +29,7 @@ import {
   fetchChatHistoryBySession,
   deleteAllChatsBySession
 } from '../../../../api/services/chatApi';
+import { getBrain } from '../../../../api/services/brainApi';
 import { createSourceViewClickHandler, extractOriginalSentencesForHover } from './sourceViewUtils';
 import { requestAnswer, getSourceCountByBrain } from '../../../../api/services/graphApi';
 import { listModels, installModel } from '../../../../api/services/aiModelApi';
@@ -44,6 +45,8 @@ import { VscOpenPreview } from "react-icons/vsc";
 import { GoPencil } from 'react-icons/go';
 import { HiOutlineBars4 } from "react-icons/hi2";
 import { WiCloudRefresh } from "react-icons/wi";
+import { FaCloud, FaLock } from "react-icons/fa";
+import { MdSecurity } from "react-icons/md";
 
 // 모델 관련 유틸리티 import
 import {
@@ -62,6 +65,7 @@ import {
  * - 제목 클릭 시 편집 모드 활성화
  * - 편집 중 Enter: 저장, Escape: 취소
  * - 새로고침 버튼으로 대화 초기화
+ * - 환경 정보 표시 (로컬/클라우드)
  * 
  * @param {string} sessionName - 현재 세션 이름
  * @param {boolean} isEditingTitle - 편집 모드 여부
@@ -80,8 +84,26 @@ const TitleEditor = ({
   handleEditTitleStart,
   handleEditTitleFinish,
   hasChatStarted,
-  onRefreshClick
+  onRefreshClick,
+  brainInfo
 }) => {
+  // brain 테이블의 deployment_type 필드로 환경 정보 판단
+  const getEnvironmentInfo = () => {
+    if (!brainInfo || !brainInfo.deployment_type) {
+      return { type: 'unknown', label: '알 수 없음', icon: 'FaCloud' };
+    }
+    
+    // deployment_type이 'local'인 경우 로컬 모드
+    if (brainInfo.deployment_type === 'local') {
+      return { type: 'local', label: '로컬 모드', icon: 'MdSecurity' };
+    }
+    
+    // 그 외의 경우 클라우드 모드
+    return { type: 'cloud', label: '클라우드 모드', icon: 'FaCloud' };
+  };
+
+  const environmentInfo = getEnvironmentInfo();
+
   if (isEditingTitle) {
     return (
       <div className="chat-panel-title-edit">
@@ -94,8 +116,7 @@ const TitleEditor = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleEditTitleFinish();
             if (e.key === 'Escape') {
-              setIsEditingTitle(false);
-              setEditingTitle('');
+              handleEditTitleFinish();
             }
           }}
         />
@@ -103,36 +124,48 @@ const TitleEditor = ({
     );
   }
 
-  return (
-    <div className="chat-panel-title-display">
-      <div className="chat-panel-title-left">
-        <span
-          className="chat-panel-header-title clickable"
-          style={{ fontSize: '23px', fontWeight: '600', marginLeft: '21px', cursor: 'pointer' }}
-          onClick={handleEditTitleStart}
-          title="클릭하여 제목 편집"
-        >
-          {sessionName || 'Untitled'}
-        </span>
-        <button
-          className="chat-panel-edit-title-btn"
-          onClick={handleEditTitleStart}
-          title="제목 편집"
-        >
-          <GoPencil size={16} />
-        </button>
-        {hasChatStarted && (
-          <button
-            className="chat-panel-refresh-btn"
-            onClick={onRefreshClick}
-            title="대화 초기화"
-          >
-            <WiCloudRefresh size={30} color="black"/>
-          </button>
-        )}
-      </div>
-    </div>
-  );
+                return (
+                <div className="chat-panel-title-display">
+                  <div className="chat-panel-title-left">
+                    <span
+                      className="chat-panel-header-title clickable"
+                      style={{ fontSize: '23px', fontWeight: '600', marginLeft: '21px', cursor: 'pointer' }}
+                      onClick={handleEditTitleStart}
+                      title="클릭하여 제목 편집"
+                    >
+                      {sessionName || 'Untitled'}
+                    </span>
+                    <button
+                      className="chat-panel-edit-title-btn"
+                      onClick={handleEditTitleStart}
+                      title="제목 편집"
+                    >
+                      <GoPencil size={16} />
+                    </button>
+                    {hasChatStarted && (
+                      <button
+                        className="chat-panel-refresh-btn"
+                        onClick={onRefreshClick}
+                        title="대화 초기화"
+                      >
+                        <WiCloudRefresh size={30} color="black" />
+                      </button>
+                    )}
+                  </div>
+                  <div className={`environment-badge environment-${environmentInfo.type}`}>
+                    {environmentInfo.icon === 'MdSecurity' ? (
+                      <MdSecurity size={14.5} />
+                    ) : environmentInfo.icon === 'FaLock' ? (
+                      <FaLock size={14.5} />
+                    ) : (
+                      <FaCloud size={14.5} />
+                    )}
+                    <span className="environment-label">{environmentInfo.label}</span>
+                  </div>
+                  <div className="chat-panel-title-right">
+                  </div>
+                </div>
+              );
 };
 
 /**
@@ -161,7 +194,8 @@ const ModelDropdown = ({
   setShowModelDropdown,
   handleModelSelect,
   handleInstallModel,
-  installingModel
+  installingModel,
+  brainInfo
 }) => {
   return (
     <div className="chat-panel-model-selector-inline">
@@ -177,11 +211,22 @@ const ModelDropdown = ({
       </div>
       {showModelDropdown && (
         <div className="chat-panel-model-menu-inline">
-          {/* 설치된 모델 목록 */}
-          {sortModelsWithSelectedFirst(
-            availableModels.filter(model => model.installed),
-            selectedModel
-          ).map((apiModelInfo) => {
+          {/* 배포 타입에 따른 모델 필터링 */}
+          {(() => {
+            const isLocal = brainInfo?.deployment_type === 'local';
+            const filteredModels = availableModels.filter(model => {
+              const modelName = model.name.toLowerCase();
+              if (isLocal) {
+                // 로컬 배포: Ollama 모델만 표시 (gpt로 시작하지 않는 모델)
+                return model.installed && !modelName.startsWith('gpt');
+              } else {
+                // 클라우드 배포: OpenAI 모델만 표시 (gpt로 시작하는 모델)
+                return model.installed && modelName.startsWith('gpt');
+              }
+            });
+
+            return sortModelsWithSelectedFirst(filteredModels, selectedModel);
+          })().map((apiModelInfo) => {
             const model = apiModelInfo.name;
             const isInstalled = apiModelInfo.installed;
             const modelData = getModelData(model);
@@ -195,7 +240,7 @@ const ModelDropdown = ({
                   <div className="chat-panel-model-header-inline">
                     <span className="chat-panel-model-name-inline">{modelData.name}</span>
                     {selectedModel === model && (
-                      <IoCheckmarkOutline size={16} className="chat-panel-model-checkmark-inline"/>
+                      <IoCheckmarkOutline size={16} className="chat-panel-model-checkmark-inline" />
                     )}
                   </div>
                   <div className="chat-panel-model-description-inline">{modelData.description}</div>
@@ -235,8 +280,22 @@ const ModelDropdown = ({
             ) : null;
           })()}
 
-          {/* 설치 가능한 모델 목록 */}
-          {availableModels.filter(model => !model.installed).map((apiModelInfo) => {
+          {/* 설치 가능한 모델 목록 (배포 타입에 따라 필터링) */}
+          {(() => {
+            const isLocal = brainInfo?.deployment_type === 'local';
+            const filteredModels = availableModels.filter(model => {
+              const modelName = model.name.toLowerCase();
+              if (isLocal) {
+                // 로컬 배포: Ollama 모델만 표시
+                return !model.installed && !modelName.startsWith('gpt');
+              } else {
+                // 클라우드 배포: OpenAI 모델만 표시
+                return !model.installed && modelName.startsWith('gpt');
+              }
+            });
+
+            return filteredModels;
+          })().map((apiModelInfo) => {
             const model = apiModelInfo.name;
             const isInstalled = apiModelInfo.installed;
             const modelData = getModelData(model);
@@ -334,7 +393,8 @@ const ChatInput = ({
   setShowModelDropdown,
   handleModelSelect,
   handleInstallModel,
-  installingModel
+  installingModel,
+  brainInfo
 }) => {
   return (
     <form className="chat-controls" onSubmit={handleSubmit}>
@@ -363,6 +423,7 @@ const ChatInput = ({
           handleModelSelect={handleModelSelect}
           handleInstallModel={handleInstallModel}
           installingModel={installingModel}
+          brainInfo={brainInfo}
         />
         <button
           type="submit"
@@ -487,7 +548,7 @@ const ChatMessage = ({
             {copiedMessageId === (message.chat_id || message.message) ? (
               <IoCheckmarkOutline size={18} color="#303030ff" />
             ) : (
-              <IoCopyOutline size={18} color="black"/>
+              <IoCopyOutline size={18} color="black" />
             )}
           </button>
           {/* bot 메시지에만 그래프 버튼 표시 */}
@@ -508,7 +569,7 @@ const ChatMessage = ({
                 }
               }}
             >
-              <PiGraph size={19} color="black"/>
+              <PiGraph size={19} color="black" />
             </button>
           )}
         </div>
@@ -525,7 +586,7 @@ const ChatMessage = ({
             >
               {(message.accuracy * 100).toFixed(1)}%
             </span>
-            <span 
+            <span
               className="chat-panel-accuracy-help" >
               ?
             </span>
@@ -625,6 +686,9 @@ function ChatPanel({
   const [showModelDropdown, setShowModelDropdown] = useState(false); // 모델 드롭다운 표시
   const [installingModel, setInstallingModel] = useState(null); // 설치 중인 모델
 
+  // 브레인 정보 상태
+  const [brainInfo, setBrainInfo] = useState(null); // 현재 브레인 정보
+
   // ===== 초기 로딩 화면 (채팅 내역 로드 후 0.5초) =====
   useEffect(() => {
     if (!selectedSessionId) {
@@ -721,6 +785,25 @@ function ChatPanel({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showModelDropdown]);
+
+  // ===== 브레인 정보 불러오기 =====
+  useEffect(() => {
+    if (selectedBrainId) {
+      getBrain(selectedBrainId)
+        .then(brain => {
+          setBrainInfo(brain);
+          // 배포 타입에 따라 기본 모델 설정
+          if (brain.deployment_type === 'local') {
+            setSelectedModel('gemma3:4b'); // 로컬 기본 모델
+          } else {
+            setSelectedModel('gpt-4o'); // 클라우드 기본 모델
+          }
+        })
+        .catch(error => {
+          console.error('브레인 정보 로드 실패:', error);
+        });
+    }
+  }, [selectedBrainId]);
 
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
@@ -1003,7 +1086,8 @@ function ChatPanel({
     setShowModelDropdown,
     handleModelSelect,
     handleInstallModel,
-    installingModel
+    installingModel,
+    brainInfo
   };
 
   return (
@@ -1038,6 +1122,7 @@ function ChatPanel({
               handleEditTitleFinish={handleEditTitleFinish}
               hasChatStarted={hasChatStarted}
               onRefreshClick={() => setShowConfirm(true)}
+              brainInfo={brainInfo}
             />
           </div>
           {/* 메시지 목록 영역 */}
@@ -1080,6 +1165,7 @@ function ChatPanel({
               handleEditTitleFinish={handleEditTitleFinish}
               hasChatStarted={hasChatStarted}
               onRefreshClick={() => setShowConfirm(true)}
+              brainInfo={brainInfo}
             />
           </div>
           <div className="chat-panel-centered-input-container">
@@ -1111,6 +1197,7 @@ function ChatPanel({
                   handleModelSelect={handleModelSelect}
                   handleInstallModel={handleInstallModel}
                   installingModel={installingModel}
+                  brainInfo={brainInfo}
                 />
                 <button
                   type="submit"
