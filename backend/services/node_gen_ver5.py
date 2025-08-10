@@ -168,7 +168,7 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         edges.append({"source":source_keyword, 
                       "target":t,
                       "relation":description})
-        description="관련" if description==1 else "" 
+        description="관련" if description=="" else description
         
     return edges
 
