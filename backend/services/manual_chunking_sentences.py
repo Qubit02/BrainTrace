@@ -279,7 +279,11 @@ def extract_graph_components(text: str, source_id: str):
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
     else:
-        chunks=[{"chunks":list(range(len(sentences))), "keyword":""}]
+        top_keyword, _, _=lda_keyword_and_similarity(tokenized,None, None)
+        chunks=[{"chunks":list(range(len(sentences))), "keyword":top_keyword}]
+        if len(sentences)<=2:
+            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id,
+                               "descriptions":list(range(len(sentences)))})
         already_made=[]
         logging.info("chunking없이 노드와 엣지를 추출합니다.")
 
@@ -289,17 +293,16 @@ def extract_graph_components(text: str, source_id: str):
         resolved_description=""
         if node["descriptions"] != []:
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-        else:
-            node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
             node["original_sentences"]=[{"original_sentence":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}]
+        node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
             
     for c in chunks:
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
-            if c["keyword"] !="" and len(current_chunk)<=2:
+            if len(current_chunk)<=2:
                 continue
             relevant_sentences = [sentences[idx] for idx in current_chunk]
             nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id,c["keyword"], already_made)
@@ -329,3 +332,6 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
+
+text="장세린은 고양이를 좋아한다. 장세린은 학교 가기 싫다."
+print(extract_graph_components(text, "1234"))
