@@ -183,10 +183,10 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
                     "score": 1.0})    
     else:
         des = ""
-    description.append({"description":des,
+    description.append({"original_sentence":des,
                         "source_id":source_id})
     
-    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentence":ori_sentences}
+    node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 
     return node
         
