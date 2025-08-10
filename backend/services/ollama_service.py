@@ -226,44 +226,150 @@ class OllamaAIService(BaseAIService):
             logging.error(f"generate_answer 오류: {e}")
             raise
 
-    def generate_schema_text(
-        self,
-        nodes: List[Dict],
-        related_nodes: List[Dict],
-        relationships: List
-    ) -> str:
-        # 기존 로직 유지
-        all_nodes = {}
-        def norm(n):
-            return dict(n.items()) if hasattr(n, "items") else (n if isinstance(n, dict) else {})
-        for n in nodes + related_nodes:
-            d = norm(n)
-            name = d.get("name")
-            if name:
-                all_nodes[name] = {
-                    "label": d.get("label", ""),
-                    "descriptions": d.get("descriptions") or []
-                }
+    def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
+        """
+        위: start_name -> relation_label -> end_name (한 줄씩, 중복 제거)
+        아래: 모든 노드(관계 있든 없든) 중복 없이
+            {node_name}: {desc_str}
+        desc_str는 original_sentences[].original_sentence를 모아 공백 정리 및 중복 제거
+        """
 
-        lines = set()
-        for r in relationships or []:
+
+        def to_dict(obj):
             try:
-                s = norm(r.start_node); t = norm(r.end_node)
-                rel = getattr(r, "type", "")
-                a = f"{all_nodes[s['name']]['label']}-{s['name']}"
-                b = f"{all_nodes[t['name']]['label']}-{t['name']}"
-                lines.add(f"{a} -> {rel} -> {b}")
+                if obj is None:
+                    return {}
+                if hasattr(obj, "items"):
+                    return dict(obj.items())
+                if isinstance(obj, dict):
+                    return obj
             except Exception:
-                continue
+                pass
+            return {}
 
-        schema = list(lines)
-        standalone = [
-            f"{v['label']}-{k}"
-            for k, v in all_nodes.items()
-            if all(k not in ln for ln in schema)
-        ]
-        schema.extend(standalone)
-        return "\n".join(schema) or "스키마 정보가 없습니다."
+        def normalize_space(s: str) -> str:
+            return " ".join(str(s).split())
+
+        def filter_node(node_obj):
+            d = to_dict(node_obj)
+            name = normalize_space(d.get("name", "알 수 없음") or "")
+            label = normalize_space(d.get("label", "알 수 없음") or "")
+            original_sentences = d.get("original_sentences", []) or []
+            parsed = []
+            # 문자열이면 JSON 파싱 시도
+            if isinstance(original_sentences, str):
+                try:
+                    original_sentences = [json.loads(original_sentences)]
+                except Exception:
+                    original_sentences = []
+            # 리스트 요소들 정규화
+            for item in original_sentences:
+                if isinstance(item, str):
+                    try:
+                        obj = json.loads(item)
+                        if isinstance(obj, dict):
+                            parsed.append(obj)
+                    except Exception:
+                        continue
+                elif isinstance(item, dict):
+                    parsed.append(item)
+            return {"name": name, "label": label, "original_sentences": parsed}
+
+        logging.info(
+            "generating schema text: %d개 노드, %d개 관련 노드, %d개 관계",
+            len(nodes) if isinstance(nodes, list) else 0,
+            len(related_nodes) if isinstance(related_nodes, list) else 0,
+            len(relationships) if isinstance(relationships, list) else 0,
+        )
+
+        # 1) 모든 노드 수집 (name 키로 합치기)
+        all_nodes = {}
+        if isinstance(nodes, list):
+            for n in nodes or []:
+                if n is None: continue
+                nd = filter_node(n)
+                if nd["name"]:
+                    all_nodes[nd["name"]] = nd
+        if isinstance(related_nodes, list):
+            for n in related_nodes or []:
+                if n is None: continue
+                nd = filter_node(n)
+                if nd["name"] and nd["name"] not in all_nodes:
+                    all_nodes[nd["name"]] = nd
+
+        # 2) 관계 줄 만들기: "start -> relation -> end"
+        relation_lines = []
+        connected_names = set()
+        if isinstance(relationships, list):
+            for rel in relationships:
+                try:
+                    if rel is None:
+                        continue
+                    start_d = to_dict(getattr(rel, "start_node", {}))
+                    end_d   = to_dict(getattr(rel, "end_node", {}))
+                    start_name = normalize_space(start_d.get("name", "") or "알 수 없음")
+                    end_name   = normalize_space(end_d.get("name", "") or "알 수 없음")
+
+                    # relation label: props.relation 우선, 없으면 type, 없으면 "관계"
+                    try:
+                        rel_props = dict(rel)
+                    except Exception:
+                        rel_props = {}
+                    relation_type = getattr(rel, "type", None)
+                    relation_label = rel_props.get("relation") or relation_type or "관계"
+                    relation_label = normalize_space(relation_label)
+
+                    relation_lines.append(f"{start_name} -> {relation_label} -> {end_name}")
+                    connected_names.update([start_name, end_name])
+                except Exception as e:
+                    logging.exception("관계 처리 오류: %s", e)
+                    continue
+
+        # 관계 중복 제거 + 정렬
+        relation_lines = sorted(set(relation_lines))
+
+        # 3) 노드 설명 만들기: 모든 노드(관계 여부 무관)
+        def extract_desc_str(node_data):
+            # original_sentences[].original_sentence 모아 공백 정리 + 중복 제거
+            seen = set()
+            pieces = []
+            for d in node_data.get("original_sentences", []):
+                if isinstance(d, dict):
+                    t = normalize_space(d.get("original_sentence", "") or "")
+                    if t and t not in seen:
+                        seen.add(t)
+                        pieces.append(t)
+            if not pieces:
+                return ""
+            s = " ".join(pieces)
+            
+            return s
+
+        node_lines = []
+        for name in sorted(all_nodes.keys()):  # ✅ 관계 없어도 모든 노드 출력
+            nd = all_nodes.get(name) or {}
+            desc = extract_desc_str(nd)
+            if desc:
+                node_lines.append(f"{name}: {desc}")
+            else:
+                node_lines.append(f"{name}:")  # 설명이 비면 콜론만
+
+        # 4) 최종 출력: 위엔 관계들, 아래엔 노드들
+        top = "\n".join(relation_lines)
+        bottom = "\n".join(node_lines)
+
+        if top and bottom:
+            raw_schema_text = f"{top}\n\n{bottom}"
+        elif top:
+            raw_schema_text = top
+        elif bottom:
+            raw_schema_text = bottom
+        else:
+            raw_schema_text = "스키마 정보를 찾을 수 없습니다."
+
+        logging.info("스키마 텍스트 생성 완료 (%d자)", len(raw_schema_text))
+        return raw_schema_text
+
 
     def chat(self, message: str) -> str:
         """
