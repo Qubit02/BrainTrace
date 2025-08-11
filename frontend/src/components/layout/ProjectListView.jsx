@@ -356,7 +356,7 @@ export default function ProjectListView() {
 
                 {/* 필터 안내 메시지 */}
                 {filterOption === '전체' && showSortButton && (
-                    <div className="filter-info-message all-info">
+                    <div className="filter-info-message">
                         <div className="info-icon">📋</div>
                         <div className="info-content">
                             <h3>모든 프로젝트</h3>
@@ -371,7 +371,7 @@ export default function ProjectListView() {
                 )}
 
                 {filterOption === '로컬' && showSortButton && (
-                    <div className="filter-info-message local-info">
+                    <div className="filter-info-message">
                         <div className="info-icon">🛡️</div>
                         <div className="info-content">
                             <h3>로컬 프로젝트</h3>
@@ -386,7 +386,7 @@ export default function ProjectListView() {
                 )}
 
                 {filterOption === '클라우드' && showSortButton && (
-                    <div className="filter-info-message cloud-info">
+                    <div className="filter-info-message">
                         <div className="info-icon">☁️</div>
                         <div className="info-content">
                             <h3>클라우드 프로젝트</h3>

@@ -186,6 +186,7 @@
   font-weight: 600;
   position: relative;
   overflow: hidden;
+  padding: 8px;
 }
 
 .add-icon::before {

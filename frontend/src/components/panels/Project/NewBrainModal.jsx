@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createBrain } from '../../../../api/config/apiIndex';
 import './NewBrainModal.css';
-import { RiDeleteBack2Line } from "react-icons/ri";
-import { FaCloud, FaLock } from "react-icons/fa";
+import { FaCloud } from "react-icons/fa";
+import { MdSecurity } from "react-icons/md";
 
 export default function NewBrainModal({ onClose, onCreated }) {
 
@@ -87,7 +87,7 @@ export default function NewBrainModal({ onClose, onCreated }) {
                             onClick={() => setDeploymentType('local')}
                         >
                             <div className="deployment-icon">
-                                <FaLock size={24} color="#FF6B6B" />
+                                <MdSecurity size={24} color="#FF6B6B" />
                             </div>
                             <div className="deployment-content">
                                 <h5>로컬</h5>
