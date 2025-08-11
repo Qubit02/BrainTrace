@@ -47,11 +47,12 @@ import { RiDeleteBinLine } from "react-icons/ri";
 import { GoPencil } from "react-icons/go";
 import { FaStar, FaRegStar } from "react-icons/fa";
 import { MdSecurity } from "react-icons/md";
+import { FaPlus } from "react-icons/fa";
+import { IoIosArrowDown } from "react-icons/io";
+import { BiWorld, BiCloud, BiLaptop } from "react-icons/bi";
 import ConfirmDialog from '../common/ConfirmDialog';
 import NewBrainModal from '../panels/Project/NewBrainModal';
 import './ProjectListView.css';
-import { FaPlus } from "react-icons/fa";
-import { IoIosArrowDown } from "react-icons/io";
 
 export default function ProjectListView() {
     const navigate = useNavigate();
@@ -309,15 +310,16 @@ export default function ProjectListView() {
                     {/* 필터 탭 */}
                     <div className="filter-tabs">
                         {[
-                            { key: '전체', label: '전체' },
-                            { key: '로컬', label: '로컬' },
-                            { key: '클라우드', label: '클라우드' }
+                            { key: '전체', label: '전체', icon: <BiWorld /> },
+                            { key: '로컬', label: '로컬', icon: <BiLaptop /> },
+                            { key: '클라우드', label: '클라우드', icon: <BiCloud /> }
                         ].map(option => (
                             <button
                                 key={option.key}
                                 className={`filter-tab ${filterOption === option.key ? 'active' : ''}`}
                                 onClick={() => setFilterOption(option.key)}
                             >
+                                {option.icon}
                                 {option.label}
                             </button>
                         ))}
@@ -357,14 +359,16 @@ export default function ProjectListView() {
                 {/* 필터 안내 메시지 */}
                 {filterOption === '전체' && showSortButton && (
                     <div className="filter-info-message">
-                        <div className="info-icon">📋</div>
+                        <div className="info-icon">
+                            <BiWorld size={24} />
+                        </div>
                         <div className="info-content">
                             <h3>모든 프로젝트</h3>
                             <p>로컬과 클라우드 프로젝트를 모두 확인할 수 있습니다.</p>
                             <ul>
                                 <li>• 로컬: 보안 강화, 오프라인 사용</li>
                                 <li>• 클라우드: 빠른 속도, 높은 정확도</li>
-                                <li>• 필요에 따라 적절한 배포 타입 선택</li>
+                                <li>• 상황에 맞게 선택하세요! (보안 vs 속도)</li>
                             </ul>
                         </div>
                     </div>
@@ -372,7 +376,9 @@ export default function ProjectListView() {
 
                 {filterOption === '로컬' && showSortButton && (
                     <div className="filter-info-message">
-                        <div className="info-icon">🛡️</div>
+                        <div className="info-icon">
+                            <BiLaptop size={24} />
+                        </div>
                         <div className="info-content">
                             <h3>로컬 프로젝트</h3>
                             <p>데이터가 내 컴퓨터에서 처리되어 보안이 강화됩니다.</p>
@@ -387,7 +393,9 @@ export default function ProjectListView() {
 
                 {filterOption === '클라우드' && showSortButton && (
                     <div className="filter-info-message">
-                        <div className="info-icon">☁️</div>
+                        <div className="info-icon">
+                            <BiCloud size={24} />
+                        </div>
                         <div className="info-content">
                             <h3>클라우드 프로젝트</h3>
                             <p>인터넷을 통해 강력한 AI 모델을 사용합니다.</p>
