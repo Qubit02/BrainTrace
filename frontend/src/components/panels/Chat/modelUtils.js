@@ -287,13 +287,15 @@ export const getModelData = (modelName) => {
 };
 
 /**
- * 백엔드에서 받아온 모델 목록에 주요 OpenAI 모델들을 추가
- * 주요 모델들은 항상 설치된 상태로 간주하여 상단에 배치
- * @param {Array} models - 백엔드에서 받아온 모델 목록
- * @returns {Array} 주요 OpenAI 모델들이 추가된 모델 목록
+ * 백엔드에서 받아온 모델 목록에 주요 OpenAI 모델들을 추가하고,
+ * Ollama 모델들의 실제 설치 상태를 반영
+ * 
+ * @param {Array} models - 백엔드에서 받아온 모델 목록 (listModels API 결과)
+ * @param {Object} installedModelsInfo - 실제 설치된 모델 정보 (getInstalledModels API 결과)
+ * @returns {Array} OpenAI 모델들과 실제 설치 상태가 반영된 Ollama 모델 목록
  */
-export const addGpt4oToModels = (models) => {
-  // 주요 OpenAI 모델들을 기본으로 포함 (GPT-5 포함)
+export const addGpt4oToModels = (models, installedModelsInfo = null) => {
+  // OpenAI 모델들은 항상 설치된 상태로 설정 (API 기반이므로)
   const defaultOpenAIModels = [
     { name: 'gpt-5', installed: true },
     { name: 'gpt-5-mini', installed: true },
@@ -305,7 +307,22 @@ export const addGpt4oToModels = (models) => {
     { name: 'gpt-3.5-turbo', installed: true },
     { name: 'gpt-3.5-turbo-16k', installed: true }
   ];
-  return [...defaultOpenAIModels, ...models];
+  
+  // Ollama 모델들의 실제 설치 상태를 installedModelsInfo에서 확인
+  let ollamaModels = models.filter(model => !model.name.startsWith('gpt'));
+  
+  if (installedModelsInfo && installedModelsInfo.models) {
+    // 실제 설치된 모델 이름 목록
+    const installedModelNames = installedModelsInfo.models.map(model => model.name);
+    
+    // Ollama 모델들의 설치 상태를 실제 정보로 업데이트
+    ollamaModels = ollamaModels.map(model => ({
+      ...model,
+      installed: installedModelNames.includes(model.name)
+    }));
+  }
+  
+  return [...defaultOpenAIModels, ...ollamaModels];
 };
 
 /**
