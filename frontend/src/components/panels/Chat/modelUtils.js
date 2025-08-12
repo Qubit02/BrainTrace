@@ -76,6 +76,7 @@ export const modelInfo = {
     type: '오픈소스',
     provider: 'DeepSeek'
   },
+  // OpenAI 모델들 (클라우드 모드에서 사용)
   'gpt-4o': {
     name: 'GPT-4o',
     description: '가장 최신의 OpenAI 모델로 빠르고 정확한 응답',
@@ -91,6 +92,150 @@ export const modelInfo = {
     usage: '',
     buttonText: '',
     size: 'Small',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-turbo': {
+    name: 'GPT-4 Turbo',
+    description: '고성능 멀티모달 AI 모델로 복잡한 작업 처리에 최적화',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4': {
+    name: 'GPT-4',
+    description: 'OpenAI의 고급 언어 모델로 창의적이고 정확한 응답',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-32k': {
+    name: 'GPT-4 32K',
+    description: '긴 컨텍스트를 처리할 수 있는 고급 언어 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo': {
+    name: 'GPT-3.5 Turbo',
+    description: '빠르고 효율적인 대화형 AI 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-16k': {
+    name: 'GPT-3.5 Turbo 16K',
+    description: '긴 컨텍스트를 지원하는 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-instruct': {
+    name: 'GPT-3.5 Turbo Instruct',
+    description: '명령어 기반 작업에 최적화된 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-0125': {
+    name: 'GPT-3.5 Turbo 0125',
+    description: '2025년 1월 25일 업데이트된 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-1106': {
+    name: 'GPT-3.5 Turbo 1106',
+    description: '2023년 11월 6일 업데이트된 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-0613': {
+    name: 'GPT-3.5 Turbo 0613',
+    description: '2023년 6월 13일 업데이트된 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-3.5-turbo-0301': {
+    name: 'GPT-3.5 Turbo 0301',
+    description: '2023년 3월 1일 업데이트된 GPT-3.5 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-0125-preview': {
+    name: 'GPT-4 0125 Preview',
+    description: '2025년 1월 25일 프리뷰 버전의 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-1106-preview': {
+    name: 'GPT-4 1106 Preview',
+    description: '2023년 11월 6일 프리뷰 버전의 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-vision-preview': {
+    name: 'GPT-4 Vision Preview',
+    description: '이미지와 텍스트를 모두 처리할 수 있는 멀티모달 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-1106-vision-preview': {
+    name: 'GPT-4 1106 Vision Preview',
+    description: '2023년 11월 6일 업데이트된 비전 지원 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-all': {
+    name: 'GPT-4 All Tools',
+    description: '모든 도구를 사용할 수 있는 완전한 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-4-base': {
+    name: 'GPT-4 Base',
+    description: '기본 기능을 제공하는 GPT-4 모델',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
     type: 'API',
     provider: 'OpenAI'
   }
@@ -114,14 +259,22 @@ export const getModelData = (modelName) => {
 };
 
 /**
- * 백엔드에서 받아온 모델 목록에 gpt-4o를 추가
- * gpt-4o는 항상 설치된 상태로 간주하여 상단에 배치
+ * 백엔드에서 받아온 모델 목록에 주요 OpenAI 모델들을 추가
+ * 주요 모델들은 항상 설치된 상태로 간주하여 상단에 배치
  * @param {Array} models - 백엔드에서 받아온 모델 목록
- * @returns {Array} gpt-4o가 추가된 모델 목록
+ * @returns {Array} 주요 OpenAI 모델들이 추가된 모델 목록
  */
 export const addGpt4oToModels = (models) => {
-  const gpt4oModel = { name: 'gpt-4o', installed: true };
-  return [gpt4oModel, ...models];
+  // 주요 OpenAI 모델들을 기본으로 포함
+  const defaultOpenAIModels = [
+    { name: 'gpt-4o', installed: true },
+    { name: 'gpt-4o-mini', installed: true },
+    { name: 'gpt-4-turbo', installed: true },
+    { name: 'gpt-4', installed: true },
+    { name: 'gpt-3.5-turbo', installed: true },
+    { name: 'gpt-3.5-turbo-16k', installed: true }
+  ];
+  return [...defaultOpenAIModels, ...models];
 };
 
 /**
