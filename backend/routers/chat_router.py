@@ -38,6 +38,7 @@ AI 모델:
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from typing import List, Any, Optional
 from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
 from sqlite_db import SQLiteHandler
@@ -141,13 +142,13 @@ class ChatSaveRequest(BaseModel):
     Attributes:
         is_ai (int): AI 응답 여부 (0: 사용자, 1: AI)
         message (str): 메시지 내용
-        referenced_nodes (list[str]): 참조된 노드 목록 (기본값: 빈 리스트)
-        accuracy (float): 정확도 점수 (기본값: None)
+        referenced_nodes (list[Any]): 참조된 노드 목록 (기본값: 빈 리스트)
+        accuracy (Optional[float]): 정확도 점수 (기본값: None)
     """
     is_ai: int
     message: str
-    referenced_nodes: list[str] = []
-    accuracy: float = None
+    referenced_nodes: List[Any] = []
+    accuracy: Optional[float] = None
 
 @router.post("/session/{session_id}")
 async def save_chat_to_session(session_id: int, req: ChatSaveRequest):
@@ -173,6 +174,19 @@ async def save_chat_to_session(session_id: int, req: ChatSaveRequest):
     Raises:
         HTTPException: 500 - 채팅 저장 실패
     """
+    # 세션 ID 유효성 검증 추가
+    if session_id <= 0:
+        raise HTTPException(400, f"유효하지 않은 세션 ID: {session_id}")
+    
+    # 디버깅을 위한 로깅 추가
+    import logging
+    logging.info(f"save_chat_to_session 호출됨 - session_id: {session_id}")
+    logging.info(f"받은 요청 데이터: {req}")
+    logging.info(f"req.is_ai 타입: {type(req.is_ai)}, 값: {req.is_ai}")
+    logging.info(f"req.message 타입: {type(req.message)}, 값: {req.message}")
+    logging.info(f"req.referenced_nodes 타입: {type(req.referenced_nodes)}, 값: {req.referenced_nodes}")
+    logging.info(f"req.accuracy 타입: {type(req.accuracy)}, 값: {req.accuracy}")
+    
     from sqlite_db.chat_handler import ChatHandler
     db = ChatHandler()
     chat_id = db.save_chat(

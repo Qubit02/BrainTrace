@@ -268,9 +268,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         logging.info("🚀 실제 사용할 모델: %s", ai_service.model_name)
     
     try:
-        # 사용자 질문 저장
         db_handler = SQLiteHandler()
-        chat_id = db_handler.save_chat(False, question, brain_id)
         
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):

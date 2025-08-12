@@ -28,6 +28,7 @@ import {
   fetchChatSession,
   fetchChatHistoryBySession,
   deleteAllChatsBySession,
+  saveChatToSession,
 } from "../../../../api/services/chatApi";
 import { getBrain } from "../../../../api/services/brainApi";
 import {
@@ -1037,6 +1038,19 @@ function ChatPanel({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
+
+    // 세션 ID 유효성 검증 추가
+    if (!selectedSessionId || selectedSessionId <= 0) {
+      console.error("❌ 유효하지 않은 세션 ID:", selectedSessionId);
+      alert("유효하지 않은 세션입니다. 세션을 다시 선택해주세요.");
+      return;
+    }
+
+    console.log("🔍 세션 ID 검증:", {
+      selectedSessionId,
+      type: typeof selectedSessionId,
+    });
+
     setIsLoading(true);
 
     // 1. 사용자 질문을 즉시 UI에 추가 (optimistic update)
@@ -1050,6 +1064,28 @@ function ChatPanel({
     setInputText("");
 
     try {
+      // 1-1. 사용자 질문을 DB에 저장
+      const questionChatId = await saveChatToSession(selectedSessionId, {
+        is_ai: false, // boolean 값으로 변경 (chatApi.js에서 자동으로 0으로 변환)
+        message: inputText,
+        referenced_nodes: [], // 빈 배열 (백엔드에서 List[Any]로 받음)
+        accuracy: null,
+      });
+
+      console.log("✅ 사용자 질문 저장 성공:", {
+        questionChatId,
+        selectedSessionId,
+      });
+
+      // 1-2. 임시 질문을 실제 DB 저장된 질문으로 업데이트
+      setChatHistory((prev) =>
+        prev.map((msg) =>
+          msg.chat_id === tempQuestion.chat_id
+            ? { ...msg, chat_id: questionChatId.chat_id }
+            : msg
+        )
+      );
+
       // 2. AI에게 답변 요청
       // GPT 모델인지 확인하고 적절한 model과 model_name 설정
       const isGptModel = selectedModel.startsWith("gpt-");
@@ -1069,30 +1105,38 @@ function ChatPanel({
 
       if (!hasRealAnswer && !hasGuideMessage) return;
 
-      // 4. 실제 답변이 있으면 추가
+      // 4. 실제 답변이 있으면 UI에 추가 (백엔드에서 이미 저장됨)
       if (hasRealAnswer) {
-        const tempAnswer = {
-          chat_id: res?.chat_id || Date.now() + 1,
+        const aiAnswer = {
+          chat_id: res.chat_id, // 백엔드에서 반환된 실제 chat_id 사용
           is_ai: true,
-          message: res?.answer,
+          message: res.answer,
           referenced_nodes: res?.referenced_nodes || [],
           accuracy: res?.accuracy || null,
         };
-        setChatHistory((prev) => [...prev, tempAnswer]);
+        setChatHistory((prev) => [...prev, aiAnswer]);
+
+        console.log("✅ AI 답변 UI 추가 완료:", {
+          chat_id: res.chat_id,
+          message: res.answer,
+        });
       }
 
-      // 5. 안내 메시지가 있으면 추가
+      // 5. 안내 메시지가 있으면 UI에 추가 (백엔드에서 이미 저장됨)
       if (hasGuideMessage) {
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            chat_id: res.chat_id || Date.now() + 2,
-            is_ai: true,
-            message: res.message,
-            referenced_nodes: [],
-            accuracy: null,
-          },
-        ]);
+        const guideMessage = {
+          chat_id: res.chat_id, // 백엔드에서 반환된 실제 chat_id 사용
+          is_ai: true,
+          message: res.message,
+          referenced_nodes: [],
+          accuracy: null,
+        };
+        setChatHistory((prev) => [...prev, guideMessage]);
+
+        console.log("✅ 안내 메시지 UI 추가 완료:", {
+          chat_id: res.chat_id,
+          message: res.message,
+        });
       }
 
       // 6. 참조 노드 정보가 있으면 그래프 업데이트
