@@ -1054,7 +1054,7 @@ function ChatPanel({
       // GPT 모델인지 확인하고 적절한 model과 model_name 설정
       const isGptModel = selectedModel.startsWith("gpt-");
       const model = isGptModel ? "openai" : "ollama";
-      const model_name = isGptModel ? "" : selectedModel;
+      const model_name = selectedModel; // 🚀 항상 selectedModel 사용 (GPT 모델도 포함)
       const res = await requestAnswer(
         inputText,
         selectedSessionId,

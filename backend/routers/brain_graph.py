@@ -249,13 +249,23 @@ async def answer_endpoint(request_data: AnswerRequest):
     
      # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
     if model == "openai":
-        ai_service = get_ai_service_GPT()
+        logging.info("🚀 OpenAI 서비스 선택됨 - model_name: %s", model_name)
+        ai_service = get_ai_service_GPT(model_name)  # model_name 전달
+        logging.info("🚀 OpenAI 서비스 생성 완료")
     elif model == "ollama":
+        logging.info("🚀 Ollama 서비스 선택됨 - model_name: %s", model_name)
         ai_service = get_ai_service_Ollama(model_name)
+        logging.info("🚀 Ollama 서비스 생성 완료")
     else:
+        logging.error("🚀 지원하지 않는 모델: %s", model)
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
-
-    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s, model_name: %s", question, session_id, brain_id, model, model_name)
+    
+    # 🚀 핵심 디버깅: 모델 정보 확인
+    logging.info("🚀 === 모델 정보 ===")
+    logging.info("🚀 요청된 model: %s, model_name: %s", model, model_name)
+    logging.info("🚀 AI 서비스 타입: %s", type(ai_service).__name__)
+    if hasattr(ai_service, 'model_name'):
+        logging.info("🚀 실제 사용할 모델: %s", ai_service.model_name)
     
     try:
         # 사용자 질문 저장
@@ -300,6 +310,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
         
         # Step 6: LLM을을 사용해 최종 답변 생성
+        logging.info("🚀 답변 생성 시작 - 모델: %s", ai_service.model_name if hasattr(ai_service, 'model_name') else '알 수 없음')
         final_answer = ai_service.generate_answer(raw_schema_text, question)
         referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
         final_answer = final_answer.split("EOF")[0].strip()

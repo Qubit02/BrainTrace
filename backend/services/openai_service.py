@@ -19,7 +19,7 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 if not openai_api_key:
-    raise ValueError("❌ OpenAI API Key가 설정되지 않았습니다. .env 파일을 확인하세요.")
+    raise ValueError("❌ OpenAI API Key가 설정되지 않았습니다. generate_answerㅎ.env 파일을 확인하세요.")
 
 # ✅ OpenAI 클라이언트 설정 (노드/엣지 추출에 활용)
 # client = OpenAI(api_key=openai_api_key)
@@ -27,9 +27,10 @@ client = OpenAI(api_key=openai_api_key)
 
 
 class OpenAIService(BaseAIService) :
-    def __init__(self):
+    def __init__(self, model_name="gpt-4o"):
         # 인스턴스 속성으로 클라이언트 할당
         self.client = OpenAI(api_key=openai_api_key)
+        self.model_name = model_name  # 모델명 저장
     def extract_referenced_nodes(self,llm_response: str) -> List[str]:
         """
         LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱해
@@ -112,7 +113,7 @@ class OpenAIService(BaseAIService) :
         )
         try:
             completion = client.chat.completions.create(
-                model="gpt-4o",
+                model=self.model_name,  # 동적 모델 선택
                 messages=[
                     {"role": "system", "content": "너는 텍스트에서 구조화된 노드와 엣지를 추출하는 전문가야. 엣지의 source와 target은 반드시 노드의 name을 참조해야 해."},
                     {"role": "user", "content": prompt}
@@ -256,6 +257,8 @@ class OpenAIService(BaseAIService) :
         """
         스키마 텍스트와 질문을 기반으로 AI를 호출하여 최종 답변을 생성합니다.
         """
+        logging.info("🚀 OpenAI API 호출 - 모델: %s", self.model_name)
+        
         prompt = (
         "다음 스키마와 질문을 바탕으로, 스키마에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
         "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 스키마와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
@@ -277,7 +280,7 @@ class OpenAIService(BaseAIService) :
         try:
         
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model=self.model_name,  # 동적 모델 선택
                 messages=[{"role": "user", "content": prompt}]
             )
             response = response.choices[0].message.content
@@ -505,7 +508,7 @@ class OpenAIService(BaseAIService) :
         """
         try:
             resp = self.client.chat.completions.create(
-                model="gpt-4",
+                model=self.model_name,  # 동적 모델 선택
                 messages=[{"role": "user", "content": message}],
                 stream=False
             )
