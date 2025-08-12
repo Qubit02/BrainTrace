@@ -814,6 +814,32 @@ function ChatPanel({
   // 브레인 정보 상태
   const [brainInfo, setBrainInfo] = useState(null); // 현재 브레인 정보
 
+  // ===== localStorage에서 이전에 선택한 모델 불러오기 =====
+  const getStoredModel = (sessionId) => {
+    try {
+      // 세션별로 모델 정보를 저장하기 위해 세션 ID를 포함한 키 사용
+      const sessionKey = `selectedModel_${sessionId}`;
+      const stored = localStorage.getItem(sessionKey);
+
+      // 세션별 모델만 반환 (전역 모델 확인 안함)
+      return stored || "";
+    } catch (error) {
+      console.warn("localStorage에서 모델 정보를 불러올 수 없습니다:", error);
+      return "";
+    }
+  };
+
+  // ===== 선택한 모델을 localStorage에 저장 =====
+  const saveStoredModel = (modelName) => {
+    try {
+      // 세션별로만 모델 정보를 저장 (전역 저장 안함)
+      const sessionKey = `selectedModel_${selectedSessionId}`;
+      localStorage.setItem(sessionKey, modelName);
+    } catch (error) {
+      console.warn("localStorage에 모델 정보를 저장할 수 없습니다:", error);
+    }
+  };
+
   // ===== 초기 로딩 화면 (채팅 내역 로드 후 0.5초) =====
   useEffect(() => {
     if (!selectedSessionId) {
@@ -928,14 +954,23 @@ function ChatPanel({
       getBrain(selectedBrainId)
         .then((brain) => {
           setBrainInfo(brain);
-          // 자동 모델 선택 비활성화 - 사용자가 직접 선택하도록 함
-          // setSelectedModel(""); // 빈 문자열로 설정하여 아무것도 선택되지 않도록
         })
         .catch((error) => {
           console.error("브레인 정보 로드 실패:", error);
         });
     }
   }, [selectedBrainId]);
+
+  // ===== 세션 변경 시 저장된 모델 불러오기 =====
+  useEffect(() => {
+    if (selectedSessionId) {
+      const storedModel = getStoredModel(selectedSessionId);
+      if (storedModel) {
+        setSelectedModel(storedModel);
+      }
+      // 세션별 모델이 없으면 아무것도 설정하지 않음
+    }
+  }, [selectedSessionId]);
 
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
@@ -952,13 +987,63 @@ function ChatPanel({
         installedModelsInfo
       );
       setAvailableModels(updatedModels);
+
+      // 4. 모델 목록을 localStorage에 캐시로 저장 (딜레이 방지)
+      try {
+        localStorage.setItem("cachedModels", JSON.stringify(updatedModels));
+        localStorage.setItem("modelsCacheTimestamp", Date.now().toString());
+      } catch (cacheError) {
+        console.warn("모델 목록 캐시 저장 실패:", cacheError);
+      }
     } catch (error) {
       console.error("모델 목록 로드 실패:", error);
+
+      // 에러 발생 시 캐시된 모델 목록 사용
+      try {
+        const cachedModels = localStorage.getItem("cachedModels");
+        const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
+
+        if (cachedModels && cacheTimestamp) {
+          const cacheAge = Date.now() - parseInt(cacheTimestamp);
+          // 캐시가 1시간 이내면 사용
+          if (cacheAge < 60 * 60 * 1000) {
+            setAvailableModels(JSON.parse(cachedModels));
+            console.log("캐시된 모델 목록을 사용합니다.");
+          }
+        }
+      } catch (cacheError) {
+        console.warn("캐시된 모델 목록 로드 실패:", cacheError);
+      }
     }
   };
 
+  // ===== 초기 모델 목록 로드 (캐시 우선) =====
   useEffect(() => {
-    loadModels();
+    const initializeModels = async () => {
+      try {
+        // 1. 먼저 캐시된 모델 목록 확인
+        const cachedModels = localStorage.getItem("cachedModels");
+        const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
+
+        if (cachedModels && cacheTimestamp) {
+          const cacheAge = Date.now() - parseInt(cacheTimestamp);
+          // 캐시가 1시간 이내면 즉시 사용
+          if (cacheAge < 60 * 60 * 1000) {
+            setAvailableModels(JSON.parse(cachedModels));
+            console.log("캐시된 모델 목록을 즉시 로드했습니다.");
+          }
+        }
+
+        // 2. 백그라운드에서 최신 모델 목록 업데이트
+        loadModels();
+      } catch (error) {
+        console.error("초기 모델 목록 로드 실패:", error);
+        // 에러 발생 시 기본 모델 목록 로드 시도
+        loadModels();
+      }
+    };
+
+    initializeModels();
   }, []);
 
   /**
@@ -1000,13 +1085,15 @@ function ChatPanel({
   /**
    * 모델 선택 함수
    *
-   * 모델을 선택하고 드롭다운을 닫음
+   * 모델을 선택하고 드롭다운을 닫으며 localStorage에 저장
    *
    * @param {string} modelName - 선택할 모델 이름
    */
   const handleModelSelect = (modelName) => {
     setSelectedModel(modelName);
     setShowModelDropdown(false);
+    // 선택한 모델을 localStorage에 저장
+    saveStoredModel(modelName);
   };
 
   /**
