@@ -98,14 +98,14 @@ def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[st
     노드 목록을 여러 표현 포맷으로 임베딩하고 Qdrant에 저장
 
     처리 순서:
-    1. 필수 필드 검증(source_id, name, label, descriptions)
-    2. 여러 포맷으로 텍스트 생성
+    1. 필수 필드 검증(source_id, name, descriptions)
+    2. description 유무에 따른 조건부 포맷 적용
     3. encode_text로 임베딩
     4. uuid5로 point_id 생성
     5. Qdrant upsert로 벡터 및 payload 저장
 
     Args:
-        nodes: {source_id, name, label, descriptions} 포함 노드 리스트
+        nodes: {source_id, name, descriptions} 포함 노드 리스트
         brain_id: 브레인 고유 식별자
     Returns:
         source_id별 생성된 벡터 리스트 딕셔너리
@@ -115,62 +115,115 @@ def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[st
 
     # 사용할 표현 포맷 정의
     formats = [
-        "{name}는 {label}이다. {description}",
-        "{name} ({label}): {description}",
-        "{label}인 {name}에 대한 설명: {description}",
+        "{name} {description}",
         "{description}"
     ]
 
     for node in nodes:
-        # 필수 키 확인
-        if not all(k in node for k in ["source_id", "name", "label", "descriptions"]):
-            logging.warning("필수 필드 누락된 노드: %s", node)
-            continue
-
-        source_id = str(node["source_id"])
-        name = node["name"]
-        label = node["label"]
-        embeddings_for_node: List[List[float]] = []
-
-        # 각 description마다 포맷별 벡터 생성
-        for desc in node["descriptions"]:
-            description = desc.get("description")
-            if not description:
-                logging.warning("빈 description 스킵: %s", desc)
+        try:
+            # 필수 키 확인
+            if not all(k in node for k in ["source_id", "name", "descriptions"]):
+                logging.warning("필수 필드 누락된 노드: %s", node)
                 continue
 
-            for idx, fmt in enumerate(formats):
-                # 텍스트 생성
-                text = fmt.format(name=name, label=label, description=description)
-                logging.info("[임베딩 텍스트] %s", text)
+            source_id = str(node["source_id"])
+            name = str(node.get("name", "")).strip()
+            
+            # 빈 이름 체크
+            if not name:
+                logging.warning("빈 이름 필드: %s", source_id)
+                continue
 
-                # 임베딩 생성
-                emb = encode_text(text)
-                embeddings_for_node.append(emb)
+            embeddings_for_node: List[List[float]] = []
 
-                # 고유 point_id 생성(source_id + idx + description)
-                pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{idx}_{description}"))
+            # 각 description마다 포맷별 벡터 생성
+            for desc in node["descriptions"]:
+                try:
+                    # description 추출
+                    if isinstance(desc, dict):
+                        description = (desc.get("description") or "").strip()
+                    else:
+                        description = str(desc).strip()
 
-                # Qdrant에 upsert: 벡터 및 payload 포함
-                client.upsert(
-                    collection_name=collection_name,
-                    points=[
-                        models.PointStruct(
-                            id=pid,
-                            vector=emb,
-                            payload={
-                                "source_id": source_id,
-                                "name": name,
-                                "label": label,
-                                "description": description,
-                                "point_id": pid
-                            }
-                        )
-                    ]
-                )
-                logging.info("노드 %s descriptor %d 저장 완료(UUID: %s)", source_id, idx, pid)
+                    # description 유무에 따른 포맷 선택
+                    if description:
+                        # description이 있으면 두 포맷 모두 사용
+                        active_formats = formats
+                    else:
+                        # description이 없으면 첫 번째 포맷만 사용 (실제로는 name만)
+                        active_formats = [formats[0]]  # "{name} {description}"
 
-        all_embeddings[source_id] = embeddings_for_node
+                    for idx, fmt in enumerate(active_formats):
+                        try:
+                            # 텍스트 생성
+                            if description:
+                                text = fmt.format(name=name, description=description).strip()
+                            else:
+                                # description이 없으면 name만 사용
+                                text = name.strip()
+                            
+                            # 최소 길이 체크
+                            if len(text) < 1:
+                                logging.debug("빈 텍스트 건너뛰기: %s", text)
+                                continue
+                                
+                            logging.info("[임베딩 텍스트] %s", text)
+
+                            # 임베딩 생성 (예외 처리)
+                            try:
+                                emb = encode_text(text)
+                                if not emb or len(emb) == 0:
+                                    logging.warning("임베딩 생성 실패: %s", text)
+                                    continue
+                            except Exception as e:
+                                logging.error("임베딩 생성 중 오류: %s - %s", text, str(e))
+                                continue
+
+                            embeddings_for_node.append(emb)
+
+                            # 고유 point_id 생성 (해시 사용으로 길이 제한)
+                            desc_hash = str(hash(description)) if description else "empty"
+                            pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{idx}_{desc_hash}"))
+
+                            # Qdrant에 upsert (예외 처리)
+                            try:
+                                client.upsert(
+                                    collection_name=collection_name,
+                                    points=[
+                                        models.PointStruct(
+                                            id=pid,
+                                            vector=emb,
+                                            payload={
+                                                "source_id": source_id,
+                                                "name": name,
+                                                "description": description,
+                                                "format_index": idx,
+                                                "point_id": pid
+                                            }
+                                        )
+                                    ]
+                                )
+                                logging.info("노드 %s descriptor %d 저장 완료(UUID: %s)", source_id, idx, pid)
+                            except Exception as e:
+                                logging.error("Qdrant upsert 실패 (node: %s, idx: %d): %s", source_id, idx, str(e))
+                                continue
+
+                        except Exception as e:
+                            logging.error("포맷 %d 처리 중 오류 (node: %s): %s", idx, source_id, str(e))
+                            continue
+                            
+                except Exception as e:
+                    logging.error("Description 처리 중 오류 (node: %s): %s", source_id, str(e))
+                    continue
+
+            if embeddings_for_node:
+                all_embeddings[source_id] = embeddings_for_node
+            else:
+                logging.warning("노드 %s에 대한 임베딩이 생성되지 않음", source_id)
+                
+        except Exception as e:
+            logging.error("노드 %s 전체 처리 중 오류: %s", node.get("source_id", "unknown"), str(e))
+            continue
 
     logging.info("컬렉션 %s에 %d개의 노드 임베딩 저장 완료", collection_name, len(all_embeddings))
     return all_embeddings
@@ -215,8 +268,8 @@ def search_similar_nodes(
             limit=limit * 10
         )
 
-        grouped: Dict[str, Dict] = {}
-        high_scores: List[Dict] = []
+        high_score_group: Dict[str, Dict] = {}
+        grouped_by_name: Dict[str, Dict] = {}
 
         for result in search_results:
             score = result.score
@@ -226,30 +279,46 @@ def search_similar_nodes(
 
             payload = result.payload or {}
             sid = payload.get("source_id", "")
+            name = payload.get("name", "")
 
             entry = {
                 "source_id": sid,
                 "point_id": payload.get("point_id", ""),
                 "name": payload.get("name", ""),
-                "label": payload.get("label", ""),
                 "description": payload.get("description", ""),
                 "score": score
             }
 
             if score >= high_score_threshold:
                 # 고유사도 항목은 모두 무제한 수집
-                high_scores.append(entry)
+                if name not in high_score_group or score > high_score_group[name]["score"]:
+                    high_score_group[name] = entry
             else:
-                # source_id별 최고 점수 항목만 그룹핑
-                prev = grouped.get(sid)
-                if not prev or score > prev["score"]:
-                    grouped[sid] = entry
+                if name not in grouped_by_name or score > grouped_by_name[name]["score"]:
+                    grouped_by_name[name] = entry
 
-        # 그룹핑된 엔트리를 점수 내림차순으로 정렬, limit만큼 선택
-        top_grouped = sorted(grouped.values(), key=lambda x: -x["score"])[:limit]
+        
+        # high_score_group은 무조건 포함, grouped는 limit 만큼 점수 내림차순으로
+        high_scores = list(high_score_group.values())
+        grouped = sorted(grouped_by_name.values(), key=lambda x: -x["score"])
 
-        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과
-        return high_scores + top_grouped
+         # 중복 제거: high_scores에 있는 name은 grouped에서 제외
+        high_score_names = {entry["name"] for entry in high_scores}
+        filtered_grouped = [entry for entry in grouped if entry["name"] not in high_score_names]
+
+        # limit 만큼 제한
+        top_grouped = filtered_grouped[:limit]
+
+        final_nodes = high_scores + top_grouped
+
+        # Q = avg(r_i) over final_nodes
+        if final_nodes:
+            Q = sum(node["score"] for node in final_nodes) / len(final_nodes)
+        else:
+            Q = 0.0
+
+        # 최종 반환: 고유사도(high_scores) + 그룹핑된 상위 결과 , Q(질문과 노드의 유사도 평균)
+        return final_nodes, round(Q, 4)
 
     except Exception as e:
         logging.error("유사 노드 검색 실패: %s", str(e))
@@ -314,6 +383,13 @@ def delete_collection(brain_id: str) -> None:
     except Exception as e:
         logging.warning("컬렉션 %s가 존재하지 않을 수 있습니다: %s", collection_name, str(e))
 
+
+def encode(text: str) -> List[float]:
+        """
+        KoE5 모델을 이용해 텍스트를 임베딩합니다.
+        Returns: EMBED_DIM 차원의 float 리스트
+        """
+        return encode_text(text)
 
 def search_similar_descriptions(
     embedding: List[float],

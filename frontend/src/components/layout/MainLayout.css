@@ -96,20 +96,20 @@
 }
 
 /* 메모 패널 스타일 */
-.memo-inner .header-bar {
+.insight-inner .header-bar {
   height: 45px;
   padding: 10px 16px;
 }
 
 /* 접힌 메모 패널 스타일 */
-.memo-inner .panel-container.collapsed .header-bar {
+.insight-inner .panel-container.collapsed .header-bar {
   justify-content: center;
 }
 
 /* 헤더 제목 스타일 */
 .header-title {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 /* 헤더 액션 스타일 */
@@ -164,4 +164,17 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
+}
+
+.loading-overlay {
+  position: absolute;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

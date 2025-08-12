@@ -1,0 +1,265 @@
+/* 모달 배경 오버레이 */
+.modal-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+/* 카드 스타일 */
+.modal-box {
+    width: 520px;
+    max-width: 90%;
+    background: #ffffff;
+    padding: 32px 36px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    border: 1px solid #f0f0f0;
+}
+
+/* 모달 제목 */
+.modal-box h3 {
+    margin: 0;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000000;
+    letter-spacing: -0.02em;
+}
+
+/* 설명 텍스트 */
+.modal-box p {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #666666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* 배포 타입 선택 섹션 */
+.deployment-type-section {
+    margin-bottom: 20px;
+}
+
+.deployment-type-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333333;
+}
+
+.deployment-options {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.deployment-option {
+    flex: 1;
+    padding: 20px;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    position: relative;
+    overflow: hidden;
+}
+
+.deployment-option:hover {
+    border-color: #cccccc;
+    background: #f8f8f8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.deployment-option.selected {
+    border-color: #000000;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.deployment-option.selected::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #000000;
+}
+
+.deployment-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.deployment-content h5 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333333;
+    text-align: center;
+}
+
+.deployment-content p {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    color: #666666;
+    text-align: center;
+    font-weight: 500;
+}
+
+.deployment-content ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.deployment-content li {
+    font-size: 0.85rem;
+    color: #666666;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+/* 프로젝트 이름 섹션 */
+.project-name-section {
+    margin-bottom: 20px;
+}
+
+.project-name-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333333;
+}
+
+/* 입력 필드 */
+.modal-box input {
+    padding: 16px 20px;
+    background: #fafafa;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    color: #1a1a1a;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.modal-box input::placeholder {
+    color: #999999;
+    font-weight: 400;
+}
+
+.modal-box input:focus {
+    border-color: #000000;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.modal-box input:hover {
+    border-color: #cccccc;
+    background: #f8f8f8;
+}
+
+/* 버튼 */
+.modal-box button {
+    padding: 16px 24px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: -0.01em;
+}
+
+.modal-box button[type="submit"] {
+    background: #000000;
+    color: #ffffff;
+}
+
+.modal-box button[type="submit"]:hover:not(:disabled) {
+    background: #1a1a1a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-box button[type="submit"]:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.modal-box button[type="submit"]:disabled {
+    background: #cccccc;
+    color: #999999;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.modal-box .secondary {
+    background: #ffffff;
+    border: 2px solid #e5e5e5;
+    color: #1a1a1a;
+}
+
+.modal-box .secondary:hover {
+    background: #f8f8f8;
+    border-color: #cccccc;
+}
+
+/* 헤더 */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: -8px;
+}
+
+/* 닫기 버튼 */
+.close-button {
+    background: #f0f0f0;
+    border: 1px solid #e0e0e0;
+    color: #333333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: -4px;
+    margin-top: -4px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.close-button:hover {
+    background: #e0e0e0;
+    color: #000000;
+    border-color: #cccccc;
+    transform: scale(1.05);
+}
+
+.close-button:active {
+    transform: scale(0.95);
+}

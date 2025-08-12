@@ -1,0 +1,477 @@
+/* ====== KnowledgeGraphStatusBar.css ====== */
+/* 지식 그래프 현황 패널 - 데이터 메트릭 및 효율성 지표 표시 */
+
+/* ====== 메인 컨테이너 ====== */
+.source-quota-bar.technical {
+    /* 레이아웃 */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    
+    /* 스페이싱 */
+    padding: 5px 12px 10px 12px;
+    
+    /* 시각적 스타일 */
+    background: #fafafa;
+    color: #222;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 1px 4px 0 rgba(60, 60, 60, 0.04);
+    border-top: none;
+    
+    /* 크기 제약 */
+    min-width: 200px;
+    max-width: 100%;
+    margin: 0;
+    
+    /* 높이 제약 - 접혀있을 때 45px */
+    min-height: 45px;
+    height: 45px;
+    overflow: hidden;
+    transition: height 0.3s ease;
+}
+
+/* 펼쳐진 상태일 때 높이 자동 조정 */
+.source-quota-bar.technical.expanded {
+    height: auto;
+    min-height: 45px;
+}
+
+/* 강한 상단 보더가 있는 버전 */
+.source-quota-bar.technical.with-strong-border {
+    border-top: 1px solid #e8e9eb;
+}
+
+/* ====== 헤더 영역 ====== */
+.main-title {
+    /* 타이포그래피 */
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #222;
+    
+    /* 스페이싱 */
+    margin-bottom: 2px;
+    margin-left: 2px;
+}
+
+/* 헤더 컨테이너 스타일 */
+.source-quota-bar .main-title {
+    border-radius: 4px 4px 0 0;
+    padding: 4px 0;
+    background: transparent;
+}
+
+/* ====== 정보 아이콘 ====== */
+.info-icon {
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.info-icon:hover {
+    color: #111 !important;
+    transform: scale(1.1);
+}
+
+/* 정보 아이콘 호버 시 전체 컨테이너 스타일 */
+.source-quota-bar:hover .info-icon {
+    color: #111 !important;
+}
+
+/* ====== 정보 아이콘 컨테이너 ====== */
+.info-icon-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* ====== 기본 메트릭 말풍선 ====== */
+.basic-metrics-tooltip {
+    /* 마우스 위치에 표시되므로 position: fixed 사용 */
+    position: fixed;
+    
+    /* 말풍선 스타일 */
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    
+    /* 크기 */
+    min-width: 180px;
+    max-width: 220px;
+    
+    /* z-index */
+    z-index: 10000;
+    
+    /* 애니메이션 */
+    animation: tooltipFadeIn 0.2s ease;
+    
+    /* 화살표 제거 (마우스 위치에 표시되므로 불필요) */
+}
+
+/* 말풍선 헤더 */
+.tooltip-header {
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.9em;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    border-radius: 8px 8px 0 0;
+}
+
+/* 말풍선 콘텐츠 */
+.tooltip-content {
+    padding: 8px 12px;
+}
+
+/* 말풍선 메트릭 아이템 */
+.tooltip-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.85em;
+}
+
+.tooltip-metric:last-child {
+    margin-bottom: 0;
+}
+
+/* 말풍선 라벨 */
+.tooltip-label {
+    color: #555;
+    flex: 1;
+}
+
+/* 말풍선 값 */
+.tooltip-value {
+    color: #333;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* 말풍선 애니메이션 */
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====== 접기/펼치기 토글 버튼 ====== */
+.collapse-toggle {
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+/* 토글 아이콘 스타일 */
+.collapse-toggle > svg {
+    transition: color 0.18s ease, transform 0.18s ease;
+    color: #888;
+}
+
+/* 호버 상태 */
+.collapse-toggle > svg:hover {
+    color: #111;
+    transform: scale(1.12);
+}
+
+/* 클릭 상태 */
+.collapse-toggle > svg:active {
+    color: #222;
+    transform: scale(0.98);
+}
+
+/* ====== 메트릭 상세 영역 ====== */
+.quota-details {
+    /* 그리드 레이아웃 */
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    width: 100%;
+}
+
+/* ====== 개별 메트릭 아이템 ====== */
+.data-metric {
+    /* 레이아웃 */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    
+    /* 스페이싱 */
+    padding: 6px 10px 6px 8px;
+    
+    /* 시각적 스타일 */
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    
+    /* 타이포그래피 */
+    font-size: 0.98rem;
+    
+    /* 포지셔닝 */
+    position: relative;
+    
+    /* 호버 효과 */
+    transition: background-color 0.2s ease;
+}
+
+.data-metric:hover {
+    background: #ededed;
+}
+
+/* 기본 메트릭 스타일 (호버 시 표시) */
+.data-metric.basic-metric {
+    background: #f8f9fa;
+    border-color: #d1d5db;
+    animation: fadeIn 0.3s ease;
+    border-left: 3px solid #007bff;
+}
+
+.data-metric.basic-metric .metric-label {
+    color: #555;
+}
+
+.data-metric.basic-metric .metric-value {
+    color: #333;
+}
+
+.data-metric.basic-metric .metric-score {
+    color: #007bff;
+    font-weight: 600;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====== 메트릭 라벨 ====== */
+.metric-label {
+    /* 타이포그래피 */
+    font-weight: 600;
+    color: #444;
+    
+    /* 레이아웃 */
+    min-width: 90px;
+    flex: 0 0 110px;
+    text-align: left;
+}
+
+/* ====== 메트릭 값 ====== */
+.metric-value {
+    /* 타이포그래피 */
+    font-size: 1em;
+    font-weight: 600;
+    color: #111;
+    
+    /* 레이아웃 */
+    margin-left: auto;
+    margin-right: 0;
+    text-align: right;
+    flex: 1 1 auto;
+}
+
+/* ====== 메트릭 점수 ====== */
+.metric-score {
+    /* 타이포그래피 */
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #666;
+    
+    /* 레이아웃 */
+    margin-left: 8px;
+    margin-right: 0;
+    text-align: right;
+    flex: 0 0 auto;
+}
+
+/* ====== 총점 메트릭 (강조 스타일) ====== */
+.data-metric.total {
+    /* 시각적 강조 */
+    background: linear-gradient(90deg, #ffffff 60%, #fafafa 100%);
+    color: #111;
+    font-size: 1.1em;
+    font-weight: 800;
+    box-shadow: none;
+    margin-top: 4px;
+    transition: all 0.2s ease;
+}
+
+.data-metric.total:hover {
+    background: linear-gradient(90deg, #f8f9fa 60%, #f0f0f0 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.data-metric.total .metric-label {
+    color: #222;
+}
+
+.data-metric.total .metric-value {
+    color: #111;
+}
+
+.data-metric.total .metric-score {
+    color: #444;
+    font-weight: 600;
+}
+
+.data-metric.total .metric-desc {
+    color: #444;
+}
+
+/* ====== 등급 아이콘 애니메이션 ====== */
+@keyframes gradeIconPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.data-metric.total svg {
+    animation: gradeIconPulse 2s ease-in-out infinite;
+}
+
+/* ====== 툴팁 시스템 ====== */
+.qmark-tooltip {
+    /* 레이아웃 */
+    display: inline-block;
+    position: relative;
+    margin-left: 7px;
+    
+    /* 시각적 스타일 */
+    width: 1.1em;
+    height: 1.1em;
+    border-radius: 50%;
+    background: #f2f2f2;
+    box-shadow: 0 1px 3px 0 rgba(120, 120, 120, 0.07);
+    
+    /* 타이포그래피 */
+    font-size: 0.85em;
+    color: #888;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.1em;
+    
+    /* 인터랙션 */
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 툴팁 호버 상태 */
+.qmark-tooltip:hover {
+    background: #222;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* ====== 툴팁 콘텐츠 ====== */
+.qmark-tooltip .custom-tooltip {
+    /* 기본 상태 */
+    display: none;
+    opacity: 0;
+    
+    /* 포지셔닝 */
+    position: absolute;
+    left: auto;
+    right: 0;
+    top: -40px; /* 마우스에 더 가깝게 조정 */
+    transform: none;
+    
+    /* 크기 */
+    min-width: 170px;
+    max-width: 220px;
+    
+    /* 시각적 스타일 */
+    background: #fff;
+    color: #111;
+    border: 1px solid #e0e0e0;
+    border-radius: 7px;
+    box-shadow: 0 2px 8px 0 rgba(60, 60, 60, 0.10);
+    
+    /* 타이포그래피 */
+    font-size: 0.97em;
+    font-weight: 400;
+    padding: 8px 13px;
+    white-space: normal;
+    
+    /* 레이어링 */
+    z-index: 2147483647;
+    pointer-events: none;
+    
+    /* 애니메이션 */
+    transition: opacity 0.18s ease;
+}
+
+/* 툴팁이 화면 위쪽 경계를 벗어날 경우를 대비한 스타일 */
+.qmark-tooltip .custom-tooltip.bottom {
+    top: auto;
+    bottom: -40px; /* 아래쪽도 조정 */
+}
+
+/* 툴팁이 화면 왼쪽 경계를 벗어날 경우를 대비한 스타일 */
+.qmark-tooltip .custom-tooltip.left {
+    left: 0;
+    right: auto;
+}
+
+/* 툴팁 표시 상태 */
+.qmark-tooltip:hover .custom-tooltip {
+    display: block;
+    opacity: 1;
+}
+
+/* ====== 반응형 디자인 ====== */
+@media (max-width: 400px) {
+    /* 작은 화면에서의 컨테이너 조정 */
+    .source-quota-bar.technical {
+        min-width: 120px;
+        padding: 7px 2px 5px 2px;
+    }
+
+    /* 그리드 간격 축소 */
+    .quota-details {
+        gap: 2px;
+    }
+
+    /* 메트릭 아이템 크기 조정 */
+    .data-metric {
+        font-size: 0.95em;
+        padding: 4px;
+    }
+}
+
+/* ====== 접근성 개선 ====== */
+/* 키보드 포커스 스타일 */
+.collapse-toggle:focus-visible {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* 스크린 리더 지원 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

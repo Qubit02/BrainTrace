@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  assetsInclude: ['**/*.worker.js'], // 추가
   server: {
     port: 5173,  // 개발 서버 포트 설정
     strictPort: true,  // 포트 충돌 시 실행 중지

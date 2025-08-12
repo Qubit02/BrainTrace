@@ -1,20 +1,13 @@
-**/__pycache__/
+# =========================
+# Python/Backend 관련 무시
+# =========================
+__pycache__/
 *.pyc
-/neo4j/
 *.log
 .DS_Store
 
-backend/venv
 frontend/node_modules
 
-backend/LLM/genie_bundle_3_2
-backend/data/
-backend/node_modules
-backend/data/qdrant/meta.json
 .env
 node_modules/
-backend/uploaded_pdfs/ded1a757f691474cbf4abc24074b1556_2024_2Q_주력산업_모니터링_1to9.pdf
 .gitignore
-backend/uploaded_pdfs/ba22b22a215f440e8179a38942785560_2024_2Q_주력산업_모니터링.pdf
-backend/uploaded_txts/2d2b6e65dfbf4058b95ad42738e26d64_자동차 내수판매 부진 배경.txt
-frontend/public/1brain-folds.svg

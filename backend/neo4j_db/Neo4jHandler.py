@@ -1,15 +1,26 @@
 from neo4j import GraphDatabase
 import logging
-import os
-from typing import List, Dict, Any
+from typing import List, Dict
 import json
+from exceptions.custom_exceptions import Neo4jException
+from collections import defaultdict
 
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+NEO4J_URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
+NEO4J_USER     = os.getenv("NEO4J_USER",     "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+
+
+# NEO4J_URI = "bolt://localhost:7687"
+# NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
+from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     def __init__(self):
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
     def close(self):
         self.driver.close()
@@ -22,43 +33,51 @@ class Neo4jHandler:
         def _insert(tx, nodes, edges, brain_id):
             # 노드 저장
             for node in nodes:
-                # descriptions를 JSON 문자열로 변환 (한글 깨짐 방지를 위해 ensure_ascii=False)
-                # source_id를 descriptions에 포함하여 저장
+                # descriptions를 JSON 문자열로 변환
                 new_descriptions = []
                 for desc in node.get("descriptions", []):
-                    # 이미 source_id가 포함되어 있지 않으면 추가
-                    if isinstance(desc, dict) and "source_id" not in desc and "description" in desc:
-                        desc["source_id"] = node.get("source_id", "")
-                    new_descriptions.append(json.dumps(desc, ensure_ascii=False))
-                
+                    if isinstance(desc, dict):
+                        new_descriptions.append(json.dumps(desc, ensure_ascii=False))
+
+                # original_sentences를 JSON 문자열로 변환
+                new_originals = []
+                for orig in node.get("original_sentences", []):
+                    if isinstance(orig, dict):
+                        new_originals.append(json.dumps(orig, ensure_ascii=False))
+
                 tx.run(
                     """
                     MERGE (n:Node {name: $name, brain_id: $brain_id})
-                    ON CREATE SET 
-                        n.label = $label, 
+                    ON CREATE SET
+                        n.label = $label,
+                        n.brain_id = $brain_id,
                         n.descriptions = $new_descriptions,
-                        n.source_id = $source_id,
-                        n.brain_id = $brain_id
+                        n.original_sentences = $new_originals
                     ON MATCH SET 
                         n.label = $label, 
-                        n.source_id = $source_id,
                         n.brain_id = $brain_id,
                         n.descriptions = CASE 
                             WHEN n.descriptions IS NULL THEN $new_descriptions 
                             ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions] 
+                        END,
+                        n.original_sentences = CASE
+                            WHEN n.original_sentences IS NULL THEN $new_originals
+                            ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
                         END
                     """,
                     name=node["name"],
                     label=node["label"],
-                    source_id=node.get("source_id", ""),
                     new_descriptions=new_descriptions,
+                    new_originals=new_originals,
                     brain_id=brain_id
                 )
+
             # 엣지 저장
             for edge in edges:
                 tx.run(
                     """
-                    MATCH (a:Node {name: $source, brain_id: $brain_id}), (b:Node {name: $target, brain_id: $brain_id})
+                    MATCH (a:Node {name: $source, brain_id: $brain_id})
+                    MATCH (b:Node {name: $target, brain_id: $brain_id})
                     MERGE (a)-[r:REL {relation: $relation, brain_id: $brain_id}]->(b)
                     """,
                     source=edge["source"],
@@ -73,12 +92,13 @@ class Neo4jHandler:
                 logging.info("✅ Neo4j 노드와 엣지 삽입 및 트랜잭션 커밋 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 쓰기 트랜잭션 오류: {str(e)}")
-            raise RuntimeError(f"Neo4j 쓰기 트랜잭션 오류: {str(e)}")
+            raise Neo4jException(message=f"Neo4j 쓰기 트랜잭션 오류: {str(e)}")
+
 
     def fetch_all_nodes(self):
         """
         모든 노드를 읽어와 JSON 형식의 리스트로 반환합니다.
-        읽기 쿼리는 session.run()을 사용하여 처리합니다.
+        읽기 쿼리는 session.run()을 사용하여 처리합니다.    
         """
         nodes = []
         try:
@@ -93,7 +113,7 @@ class Neo4jHandler:
                         "descriptions": descriptions
                     })
         except Exception as e:
-            logging.error(f"❌ Neo4j 읽기 오류: {str(e)}")
+            raise Neo4jException(f"❌ Neo4j 읽기 오류: {str(e)}")
         return nodes
 
     def query_schema_by_node_names(self, node_names, brain_id):
@@ -107,8 +127,27 @@ class Neo4jHandler:
         logging.info("Neo4j 스키마 조회 시작 (노드 이름 목록: %s, brain_id: %s)", node_names, brain_id)
         
         try:
-            # 두 개의 별도 쿼리로 분리: 1단계 관계와 2단계 관계
+            # 먼저 해당 brain_id의 모든 노드를 확인
             with self.driver.session() as session:
+                debug_query = "MATCH (n:Node) WHERE n.brain_id = $brain_id RETURN n.name as name"
+                debug_result = session.run(debug_query, brain_id=brain_id)
+                all_nodes = [record["name"] for record in debug_result]
+                logging.info("Neo4j에 저장된 모든 노드 (brain_id=%s): %s", brain_id, all_nodes)
+                
+                # 검색하려는 노드들이 실제로 존재하는지 확인
+                existing_nodes = [name for name in node_names if name in all_nodes]
+                missing_nodes = [name for name in node_names if name not in all_nodes]
+                logging.info("존재하는 노드: %s", existing_nodes)
+                logging.info("존재하지 않는 노드: %s", missing_nodes)
+                
+                if not existing_nodes:
+                    logging.warning("검색하려는 노드들이 모두 존재하지 않습니다.")
+                    return {
+                        "nodes": [],
+                        "relatedNodes": [],
+                        "relationships": []
+                    }
+                
                 # 1단계: 직접 연결된 노드 및 관계
                 query1 = '''
                 MATCH (n:Node)
@@ -183,7 +222,7 @@ class Neo4jHandler:
                 }
         except Exception as e:
             logging.error("❌ Neo4j 스키마 조회 오류: %s", str(e))
-            raise RuntimeError(f"Neo4j 스키마 조회 오류: {str(e)}")
+            raise Neo4jException(f"Neo4j 스키마 조회 오류: {str(e)}")
 
     def _execute_with_retry(self, query: str, parameters: dict, retries: int = 3):
         """
@@ -197,7 +236,7 @@ class Neo4jHandler:
             except Exception as e:
                 logging.warning(f"재시도 {attempt+1}회 실패: {e}")
                 if attempt == retries - 1:
-                    raise
+                    raise Neo4jException((f"재시도 {attempt+1}회 실패: {e}"))
         return []
 
     def fetch_all_edges(self, brain_id: str) -> List[Dict]:
@@ -209,7 +248,7 @@ class Neo4jHandler:
             return self._execute_with_retry(query, {"brain_id": brain_id})
         except Exception as e:
             logging.error(f"❌ Neo4j 엣지 조회 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 엣지 조회 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 엣지 조회 실패: {str(e)}")
 
     def get_brain_graph(self, brain_id: str) -> Dict[str, List]:
         """특정 브레인의 노드와 엣지 정보 조회"""
@@ -253,7 +292,7 @@ class Neo4jHandler:
                 return result
         except Exception as e:
             logging.error("Neo4j 그래프 조회 오류: %s", str(e))
-            raise RuntimeError(f"그래프 조회 오류: {str(e)}") 
+            raise Neo4jException(f"그래프 조회 오류: {str(e)}") 
         
     def delete_brain(self, brain_id: str) -> None:
         try:
@@ -265,7 +304,7 @@ class Neo4jHandler:
             logging.info(f"✅ brain_id {brain_id}의 모든 데이터 삭제 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 데이터 삭제 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 데이터 삭제 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 데이터 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_source_id(self, source_id: str, brain_id: str) -> None:
         """
@@ -294,7 +333,7 @@ class Neo4jHandler:
             logging.info(f"✅ source_id {source_id}의 descriptions 삭제 완료")
         except Exception as e:
             logging.error(f"❌ descriptions 삭제 실패: {str(e)}")
-            raise RuntimeError(f"descriptions 삭제 실패: {str(e)}")
+            raise Neo4jException(f"descriptions 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_brain_id(self, brain_id: str) -> None:
         """
@@ -311,7 +350,7 @@ class Neo4jHandler:
             logging.info(f"✅ brain_id {brain_id}의 모든 데이터 삭제 완료")
         except Exception as e:
             logging.error(f"❌ Neo4j 데이터 삭제 실패: {str(e)}")
-            raise RuntimeError(f"Neo4j 데이터 삭제 실패: {str(e)}")
+            raise Neo4jException(f"Neo4j 데이터 삭제 실패: {str(e)}")
 
     def get_node_descriptions(self, node_name: str, brain_id: str) -> List[Dict]:
         """
@@ -349,31 +388,215 @@ class Neo4jHandler:
             
         except Exception as e:
             logging.error(f"❌ 노드 descriptions 조회 실패: {str(e)}")
-            raise RuntimeError(f"노드 descriptions 조회 실패: {str(e)}")
+            raise Neo4jException(f"노드 descriptions 조회 실패: {str(e)}")
 
     def get_nodes_by_source_id(self, source_id: str, brain_id: str) -> List[str]:
         """
         특정 source_id가 descriptions에 포함된 모든 노드의 이름을 반환합니다.
         
         Args:
+            source_id: 찾을 source_id (파일 ID)
+            brain_id: 브레인 ID
+            
+        Returns:
+            List[str]: 해당 source_id를 가진 노드들의 이름 목록
+        """
+        try:
+            # 1단계: 특정 brain_id의 모든 노드를 Neo4j에서 조회
+            # Neo4j의 CONTAINS 연산자는 JSON 문자열 내부 검색에 한계가 있어서
+            # 모든 노드를 가져온 후 Python에서 JSON 파싱으로 필터링하는 방식 사용
+            query = """
+            MATCH (n:Node {brain_id: $brain_id})
+            RETURN n.name as name, n.descriptions as descriptions
+            """
+            result = self._execute_with_retry(query, {"brain_id": brain_id})
+            
+            # 2단계: Python에서 각 노드의 descriptions를 검사하여 source_id 매칭
+            node_names = []
+            for record in result:
+                node_name = record["name"]
+                descriptions = record["descriptions"]
+                
+                # descriptions가 비어있으면 건너뛰기
+                if not descriptions:
+                    continue
+                    
+                # 3단계: 각 description을 JSON으로 파싱하여 source_id 확인
+                for desc in descriptions:
+                    try:
+                        # description이 문자열인 경우 JSON 파싱, 이미 객체인 경우 그대로 사용
+                        if isinstance(desc, str):
+                            desc_obj = json.loads(desc)
+                        else:
+                            desc_obj = desc
+                            
+                        # 4단계: source_id가 일치하는지 확인
+                        # 정확한 매칭을 위해 타입 변환 없이 직접 비교
+                        if desc_obj.get("source_id") == source_id:
+                            node_names.append(node_name)
+                            break  # 이 노드에서 source_id를 찾았으므로 다음 노드로 이동
+                            
+                    except (json.JSONDecodeError, TypeError):
+                        # 5단계: JSON 파싱 실패 시 대안으로 문자열 검색 사용
+                        # Neo4j에 저장된 데이터 형식이 예상과 다를 경우를 대비
+                        if str(source_id) in str(desc):
+                            node_names.append(node_name)
+                            break
+                            
+            return node_names
+            
+        except Exception as e:
+            logging.error(f"source_id로 노드 조회 실패: {str(e)}")
+            raise Neo4jException(f"source_id로 노드 조회 실패: {str(e)}")
+
+    def get_edges_by_source_id(self, source_id: str, brain_id: str) -> List[Dict]:
+        """
+        특정 source_id가 descriptions에 포함된 노드들 간의 엣지를 반환합니다.
+        
+        Args:
             source_id: 찾을 source_id
             brain_id: 브레인 ID
             
         Returns:
-            List[str]: 노드 이름 목록
+            List[Dict]: 엣지 목록 (source, target, relation 포함)
         """
         try:
             query = """
-            MATCH (n:Node {brain_id: $brain_id})
-            WHERE ANY(desc IN n.descriptions WHERE desc CONTAINS $source_id)
-            RETURN n.name as name
+            MATCH (source:Node {brain_id: $brain_id})-[r:REL {brain_id: $brain_id}]->(target:Node {brain_id: $brain_id})
+            WHERE ANY(desc IN source.descriptions WHERE desc CONTAINS $source_id)
+               OR ANY(desc IN target.descriptions WHERE desc CONTAINS $source_id)
+            RETURN source.name as source, target.name as target, r.relation as relation
             """
             result = self._execute_with_retry(query, {"source_id": source_id, "brain_id": brain_id})
-            return [record["name"] for record in result]
+            return [
+                {
+                    "source": record["source"],
+                    "target": record["target"],
+                    "relation": record["relation"]
+                }
+                for record in result
+            ]
             
         except Exception as e:
-            logging.error(f"❌ source_id로 노드 조회 실패: {str(e)}")
-            raise RuntimeError(f"source_id로 노드 조회 실패: {str(e)}")
+            logging.error(f"❌ source_id로 엣지 조회 실패: {str(e)}")
+            raise Neo4jException(f"source_id로 엣지 조회 실패: {str(e)}")
 
+    def get_node_descriptions(self, node_name: str, brain_id: str) -> List[Dict]:
+        """
+        특정 노드의 descriptions 필드를 조회해서 JSON 파싱 후 반환.
+        Returns: [{ 'description': str, 'source_id': int }, ...]
+        """
+        query = """
+        MATCH (n:Node {name: $node_name, brain_id: $brain_id})
+        RETURN n.descriptions AS descriptions
+        """
+        rows = self._execute_with_retry(query, {"node_name": node_name, "brain_id": brain_id})
+        if not rows or not rows[0].get("descriptions"):
+            return []
+
+        descriptions = []
+        for raw in rows[0]["descriptions"]:
+            try:
+                desc = json.loads(raw) if isinstance(raw, str) else raw
+            except json.JSONDecodeError:
+                logging.warning(f"[Neo4j] JSON decode error for desc: {raw}")
+                continue
+            descriptions.append(desc)
+        return descriptions
+       
+    def get_descriptions_bulk(self, node_names: List[str], brain_id: str) -> Dict[str, List[int]]:
+        """
+        여러 노드 이름에 대해 descriptions 필드(문자열 리스트)를 한 번에 조회하고,
+        Python에서 JSON 문자열을 파싱하여 source_id 리스트를 추출합니다.
+        반환: { node_name: [source_id, ...], ... }
+        """
+        logging.info(f"get_descriptions_bulk 호출: node_names={node_names}, brain_id={brain_id}")
+        
+        # Cypher: descriptions 문자열 리스트만 조회
+        query = '''
+        MATCH (n:Node)
+        WHERE n.brain_id = $brain_id AND n.name IN $names
+        RETURN n.name AS name, n.descriptions AS descriptions
+        '''
+        rows = self._execute_with_retry(query, {"names": node_names, "brain_id": brain_id})
+        
+        logging.info(f"get_descriptions_bulk 쿼리 결과: {rows}")
+
+        result: Dict[str, List[int]] = defaultdict(list)
+        for rec in rows:
+            # rec이 dict 형태인지 튜플 형태인지 처리
+            name = rec.get('name') if isinstance(rec, dict) else rec[0]
+            desc_list = rec.get('descriptions') if isinstance(rec, dict) else rec[1]
+            if not desc_list:
+                continue
+            for raw in desc_list:
+                # JSON 문자열이면 loads, dict면 그대로
+                try:
+                    desc = json.loads(raw) if isinstance(raw, str) else raw
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                sid = desc.get('source_id')
+                if sid is not None:
+                    try:
+                        result[name].append(int(sid))
+                    except ValueError:
+                        continue
+        return result
+    
+    def get_original_sentences(
+    self,
+        node_name: str,
+        source_id: str,
+        brain_id: str
+    ) -> List[Dict]:
+        """
+        특정 노드의 original_sentences 배열을 조회하고,
+        source_id가 일치하는 항목들만 파싱해서 반환합니다.
+        중복 문장과 score 필드는 제거됩니다.
+        """
+        try:
+            query = """
+            MATCH (n:Node {name: $node_name, brain_id: $brain_id})
+            RETURN n.original_sentences AS originals
+            """
+            rows = self._execute_with_retry(
+                query,
+                {"node_name": node_name, "brain_id": brain_id}
+            )
+            if not rows or not rows[0].get("originals"):
+                return []
+
+            raw_list = rows[0]["originals"]
+            results: List[Dict] = []
+            seen = set()
+
+            for raw in raw_list:
+                # JSON 문자열이면 파싱
+                try:
+                    item = json.loads(raw) if isinstance(raw, str) else raw
+                except json.JSONDecodeError:
+                    logging.warning(f"[Neo4j] original_sentences JSON 파싱 실패: {raw}")
+                    continue
+
+                # source_id 필터링
+                if str(item.get("source_id")) != str(source_id):
+                    continue
+
+                # 중복 제거
+                orig = item.get("original_sentence")
+                if orig in seen:
+                    continue
+                seen.add(orig)
+
+                # score 제거
+                item.pop("score", None)
+
+                results.append(item)
+
+            return results
+
+        except Exception as e:
+            logging.error(f"❌ original_sentences 조회 실패: {e}")
+            raise Neo4jException(f"original_sentences 조회 실패: {e}")
     def __del__(self):
         self.close()

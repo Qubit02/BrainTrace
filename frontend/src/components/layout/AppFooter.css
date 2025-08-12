@@ -1,15 +1,12 @@
-/* src/components/layout/Footer.css */
-
+/* ───────── 푸터 전체 ───────── */
 .app-footer {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-
     background: #fafafa;
     border-top: 1px solid #e0e0e0;
     padding: 18px 10px;
-
     font-family: "Noto Sans KR", sans-serif;
     font-size: 13px;
     line-height: 1.4;
@@ -17,33 +14,19 @@
     z-index: 100;
 }
 
-/* 가운데 정렬 + 반응형 */
-.footer-inner {
+/* ───────── 오픈소스 정보 섹션 ───────── */
+.footer-oss-info {
     max-width: 1280px;
     margin: 0 auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 6px;
-}
-
-.footer-inner .brand {
-    font-weight: 600;
-    color: #333;
-}
-
-.footer-inner .divider {
-    color: #c0c0c0;
+    gap: 12px;
     font-size: 12px;
+    color: #888;
 }
 
-.footer-inner a {
-    text-decoration: none;
-    color: #6b6b6b;
-    transition: color 0.15s;
-}
-
-.footer-inner a:hover {
-    color: #111;
+.footer-oss-info span {
+    white-space: nowrap;
 }

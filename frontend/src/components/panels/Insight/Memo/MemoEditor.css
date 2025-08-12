@@ -1,0 +1,76 @@
+/* MemoEditor.css - 메모 에디터 전용 스타일 */
+
+/* ====== 에디터 전체 컨테이너 ====== */
+.notion-editor {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 30px;
+    font-family: 'Noto Sans KR', sans-serif;
+    box-sizing: border-box;
+    padding-bottom: 50px;
+}
+
+/* ====== 제목 입력 ====== */
+.notion-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    border: none;
+    outline: none;
+    width: 100%;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+    transition: border-color 0.2s ease;
+    color: black;
+    background-color: white;
+}
+
+/* ====== 본문 에디터 ====== */
+.notion-textarea {
+    flex: 1;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 12px;
+    resize: none;
+    border: none;
+    outline: none;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px #e0e0e0;
+    transition: box-shadow 0.2s ease;
+    min-height: 300px;
+    color: black;
+    background-color: white;
+}
+.notion-textarea:focus {
+    background-color: #fff;
+}
+
+/* ====== 뒤로가기 버튼 ====== */
+.back-button {
+    position: absolute;
+    top: 18px;
+    right: 25px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+    z-index: 10;
+}
+.back-button:hover {
+    background: #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.small-top-left {
+    /* 추가적인 작은 크기와 위치 조정이 필요한 경우 */
+    width: 35px;
+    height: 35px;
+    padding: 0;
+}

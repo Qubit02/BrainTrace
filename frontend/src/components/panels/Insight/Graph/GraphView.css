@@ -1,0 +1,511 @@
+/* GraphView.css - 그래프 뷰 전용 스타일 */
+
+/* ====== 그래프 메인 영역 ====== */
+.graph-area {
+    width: 100%;
+    height: 100%;
+    min-height: 0px;
+    max-height: 100vh;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    z-index: 5000;
+}
+
+/* 다크모드 지원 */
+.graph-area.dark-mode {
+    background-color: transparent;
+}
+
+.graph-area * {
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ForceGraph2D Canvas 요소의 z-index 설정 */
+.graph-area canvas {
+    z-index: 0;
+    position: relative;
+}
+
+/* ====== 로딩 오버레이 ====== */
+.graph-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: rgb(98, 97, 97);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.graph-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 5px solid #adadad;
+    border-top-color: #2c2929;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+    transition: border-color 0.3s ease;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ====== 에러 오버레이 ====== */
+.graph-error {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    color: red;
+    transition: all 0.3s ease;
+}
+
+/* ====== 검색 인풋 및 결과 ====== */
+.graph-search-input {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1.5px solid #bbb;
+    background: #f8fafc;
+    color: #222;
+    width: 160px;
+    outline: none;
+    font-size: 14px;
+    z-index: 150;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    position: relative;
+}
+
+.graph-area.dark-mode .graph-search-input {
+    background: #334155;
+    color: #fff;
+    border-color: #444c5e;
+}
+
+.graph-search-input:hover,
+.graph-search-input:focus,
+.graph-search-input:active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px #60a5fa33;
+    background: #e0e7ef;
+}
+
+.graph-area.dark-mode .graph-search-input:hover,
+.graph-area.dark-mode .graph-search-input:focus,
+.graph-area.dark-mode .graph-search-input:active {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px #60a5fa33;
+    background: #222c3a;
+}
+
+.graph-search-result-list {
+    position: absolute;
+    left: 16px;
+    bottom: 45px;
+    z-index: 10000;
+    margin: 0;
+    padding: 0 8px;
+    list-style: none;
+    font-size: 12px;
+    color: #2563eb;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    min-height: 18px;
+    align-items: center;
+    border-radius: 999px;
+}
+
+.graph-area.dark-mode .graph-search-result-list {
+    color: #60a5fa;
+    background: rgba(30, 41, 59, 0.95);
+}
+
+.graph-search-result-list li {
+    cursor: pointer;
+    text-decoration: underline;
+    user-select: text;
+    padding: 0 2px;
+    border-radius: 9999px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.graph-search-result-list li:hover,
+.graph-search-result-list li:active {
+    background: #2563eb33;
+    color: #1d4ed8;
+    font-weight: bold;
+    box-shadow: 0 2px 8px #2563eb22;
+    transform: scale(1.08);
+}
+
+.graph-area.dark-mode .graph-search-result-list li:hover,
+.graph-area.dark-mode .graph-search-result-list li:active {
+    background: #60a5fa44;
+    color: #60a5fa;
+    font-weight: bold;
+    box-shadow: 0 2px 8px #60a5fa33;
+    transform: scale(1.08);
+}
+
+/* ====== hover 툴팁 ====== */
+.graph-hover-tooltip {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    pointer-events: none;
+    background: rgba(225, 227, 231, 0.97);
+    color: #333;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 2px 16px 0 #e5e7eb;
+    z-index: 10000;
+}
+
+.graph-area.dark-mode .graph-hover-tooltip {
+    background: rgba(176, 184, 193, 0.97);
+    color: #222;
+    box-shadow: 0 2px 16px 0 #b0b8c1;
+}
+
+.graph-loading-text-animate {
+    font-size: 18px;
+    font-weight: 600;
+    color: #b0b3b8;
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+    animation: fadeIn 1.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.dot-animate {
+    display: inline-block;
+    width: 1.2em;
+    text-align: left;
+}
+
+.dot-animate span {
+    display: inline-block;
+    animation: blink 1.4s infinite both;
+    font-size: 1.2em;
+    color: #d1d5db;
+}
+
+.dot-animate span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dot-animate span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+    }
+
+    40% {
+        opacity: 1;
+    }
+}
+
+/* ====== 그래프 노드 상태 팝업 ====== */
+.graph-popup {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    z-index: 1500;
+    max-width: 300px;
+    min-width: 200px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: slideInRight 0.3s ease-out;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.graph-popup.expandable {
+    cursor: pointer;
+}
+
+.graph-popup.expanded {
+    max-width: 400px;
+    min-height: 100px;
+}
+
+.graph-area.dark-mode .graph-popup {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.graph-popup:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.graph-area.dark-mode .graph-popup:hover {
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.graph-popup .close-x {
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    border-radius: 50%;
+    width: 29px;
+    height: 29px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 20px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.graph-area.dark-mode .graph-popup .close-x {
+    background: transparent;
+    color: #6b7280;
+}
+
+.graph-popup .close-x:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    transform: scale(1.05);
+    opacity: 1;
+}
+
+.graph-area.dark-mode .graph-popup .close-x:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    opacity: 1;
+}
+
+/* 팝업 애니메이션 */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 여러 팝업이 있을 때 간격 조정 */
+.graph-popup + .graph-popup {
+    top: 80px;
+}
+
+.graph-popup + .graph-popup + .graph-popup {
+    top: 144px;
+}
+
+/* ====== 팝업 콘텐츠 영역 ====== */
+.popup-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    max-width: calc(100% - 40px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.graph-popup.expanded .popup-content {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ====== 팝업 태그 ====== */
+.popup-tag {
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* ====== 팝업 텍스트 ====== */
+.popup-text {
+    font-size: 14px;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+.graph-popup.expanded .popup-text {
+    white-space: normal;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+
+
+/* ====== 검색 컨테이너 ====== */
+.search-container {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ====== 툴팁 스타일 ====== */
+.graph-hover-tooltip {
+    position: absolute;
+    z-index: 1001;
+    font-size: 15px;
+    font-weight: 400;
+    color: #222;
+    font-family: 'Pretendard, Noto Sans KR, sans-serif';
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+    text-align: left;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    min-height: 0;
+    min-width: 0;
+}
+
+/* 전체화면 모드에서 툴팁 위치 조정 */
+.graph-hover-tooltip.fullscreen {
+    bottom: 150px !important;
+    transform: translateY(100%);
+    font-size: 18px;
+}
+
+/* 전체화면 모드에서 다크모드일 때 툴팁 스타일 */
+.graph-area.dark-mode .graph-hover-tooltip.fullscreen {
+    color: #ffffff;
+    background: none;
+    box-shadow: none;
+}
+
+/* 다크모드에서 툴팁 텍스트 색상 */
+.graph-area.dark-mode .tooltip-label {
+    color: #ffffff;
+}
+
+.graph-area.dark-mode .tooltip-value {
+    color: #ffffff;
+}
+
+.graph-area.dark-mode .tooltip-info {
+    color: #e2e8f0;
+}
+
+.graph-area.dark-mode .tooltip-arrow {
+    color: #ffffff;
+}
+
+.tooltip-content {
+    margin-bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tooltip-indent {
+    padding-left: 8px;
+}
+
+.tooltip-label {
+    font-weight: 500;
+}
+
+.tooltip-value {
+    font-weight: 400;
+}
+
+.tooltip-info {
+    font-weight: 300;
+    font-size: 13px;
+}
+
+.tooltip-arrow {
+    margin: 0 6px;
+    font-weight: 300;
+}
+
+/* ====== 로딩 스타일 개선 ====== */
+.graph-loading.dark {
+    background-color: rgba(15, 23, 42, 0.9);
+    color: #f1f5f9;
+}
+
+.graph-loading.light {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #000;
+}

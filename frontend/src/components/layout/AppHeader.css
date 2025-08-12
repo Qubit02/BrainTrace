@@ -1,3 +1,4 @@
+/* ───────── 헤더 전체 ───────── */
 .app-header {
     display: flex;
     align-items: center;
@@ -6,6 +7,7 @@
     border-bottom: 1px solid #eee;
 }
 
+/* ───────── 왼쪽 로고/이름 영역 ───────── */
 .header-left {
     display: flex;
     align-items: center;
@@ -14,7 +16,6 @@
 .app-logo {
     width: 30px;
     height: 30px;
-    margin: 0px;
     margin-right: 10px;
 }
 
@@ -24,92 +25,96 @@
     color: #333;
 }
 
+/* ───────── 오른쪽 영역 ───────── */
 .header-right {
-    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding-right: 10px;
+    justify-content: flex-end;
+    flex: 1;
 }
 
-/* 공유/설정 버튼 */
-.icon-button {
+/* ───────── 유저 정보 블록 ───────── */
+.user-info-block {
     display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.today-text {
+    font-size: 1.2rem;
     color: #333;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-right: 20px;
+}
+
+.header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    border-radius: 9999px;
-    font-size: 15px;
-    cursor: pointer;
-    color: black;
 }
 
-.icon-button:hover {
-    background-color: #f5f5f5;
-    border: 1px solid black;
+.today-text.strong-date {
+    font-size: 1.0rem;
+    font-weight: bold;
+    color: #545454;
+    letter-spacing: 0.02em;
 }
 
+/* ───────── 현재 시간 스타일 ───────── */
+.current-time {
+    font-size: 1.02rem;
+    font-weight: bold;
+    color: #545454;
+    letter-spacing: 0.02em;
+    margin-left: -5px;
+    margin-right: 15px;
+    font-family: inherit;
+}
+
+/* ───────── 이름(아바타) 버튼 ───────── */
 .avatar-round {
-    width: 38px;
+    min-width: 100px;
     height: 38px;
-    background-color: #37474f;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 13px;
+    background-color: white;
+    color: #333;
+    border: 1px solid rgb(168, 168, 168);
+    border-radius: 20px;
+    font-size: 14px;
     font-weight: 500;
-    letter-spacing: -0.5px;
-    /* ✅ 폰트 키움 */
-    font-weight: 500;
-    letter-spacing: -0.5px;
-    /* ✅ 살짝 줄여서 꽉 차 보이게 */
+    letter-spacing: -0.3px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
-    line-height: 1;
-    padding: 0;
-}
-
-.avatar-round:hover {
-    background-color: #263238;
-}
-
-.avatar-wrapper {
+    padding: 0 14px;
+    gap: 6px;
+    transition: background-color 0.2s;
     position: relative;
 }
 
-.avatar-dropdown {
-    position: absolute;
-    right: 0;
-    top: 101%;
-    background: #ffffff;
-    border: 1px solid #dcdcdc;
-    border-radius: 6px;
-    min-width: 120px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-    display: none;
-    z-index: 999;
+.avatar-round:hover {
+    background-color: #f2f2f2;
 }
 
-.avatar-wrapper:hover .avatar-dropdown {
-    display: block;
+/* ───────── 연필 아이콘(hover 시만 보임) ───────── */
+.edit-icon {
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 14px;
 }
 
-.avatar-dropdown span {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 14px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    color: #363030;
+.avatar-round:hover .edit-icon {
+    opacity: 1;
 }
 
-.avatar-dropdown span:hover {
-    background: #f5f5f5;
+/* ───────── 이름 입력창 ───────── */
+.username-input {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    width: 140px;
+    height: 36px;
 }
