@@ -69,6 +69,8 @@ import {
   addGpt4oToModels,
   separateInstalledAndAvailableModels,
   sortModelsWithSelectedFirst,
+  filterModelsByType,
+  MODEL_TYPES,
 } from "./modelUtils";
 
 /**
@@ -237,16 +239,13 @@ const ModelDropdown = ({
           {/* 배포 타입에 따른 모델 필터링 */}
           {(() => {
             const isLocal = brainInfo?.deployment_type === "local";
-            const filteredModels = availableModels.filter((model) => {
-              const modelName = model.name.toLowerCase();
-              if (isLocal) {
-                // 로컬 배포: Ollama 모델만 표시 (gpt로 시작하지 않는 모델)
-                return model.installed && !modelName.startsWith("gpt");
-              } else {
-                // 클라우드 배포: OpenAI 모델만 표시 (gpt로 시작하는 모델)
-                return model.installed && modelName.startsWith("gpt");
-              }
-            });
+            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
+
+            // 모델 타입에 따라 필터링
+            const filteredModels = filterModelsByType(
+              availableModels.filter((model) => model.installed),
+              modelType
+            );
 
             return sortModelsWithSelectedFirst(filteredModels, selectedModel);
           })().map((apiModelInfo) => {
@@ -325,16 +324,13 @@ const ModelDropdown = ({
           {/* 설치 가능한 모델 목록 (배포 타입에 따라 필터링) */}
           {(() => {
             const isLocal = brainInfo?.deployment_type === "local";
-            const filteredModels = availableModels.filter((model) => {
-              const modelName = model.name.toLowerCase();
-              if (isLocal) {
-                // 로컬 배포: Ollama 모델만 표시
-                return !model.installed && !modelName.startsWith("gpt");
-              } else {
-                // 클라우드 배포: OpenAI 모델만 표시
-                return !model.installed && modelName.startsWith("gpt");
-              }
-            });
+            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
+
+            // 모델 타입에 따라 필터링
+            const filteredModels = filterModelsByType(
+              availableModels.filter((model) => !model.installed),
+              modelType
+            );
 
             return filteredModels;
           })().map((apiModelInfo) => {
@@ -344,10 +340,19 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline ${
+                className={`chat-panel-model-item-inline unselectable ${
                   selectedModel === model ? "selected" : ""
                 }`}
-                onClick={() => handleModelSelect(model)}
+                title="설치 후 사용 가능합니다"
+                onClick={(e) => {
+                  // 설치되지 않은 모델은 선택할 수 없음
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // 선택 불가능하다는 안내 메시지
+                  alert(
+                    `${modelData.name} 모델을 사용하려면 먼저 설치해주세요.`
+                  );
+                }}
               >
                 <div className="chat-panel-model-info-inline">
                   <div className="chat-panel-model-header-inline">
@@ -394,7 +399,7 @@ const ModelDropdown = ({
                 )}
                 {installingModel === model ? (
                   <span className="chat-panel-installing-inline">
-                    설치 중...
+                    다운로드 중...
                   </span>
                 ) : (
                   !isInstalled && (
@@ -492,11 +497,7 @@ const ChatInput = ({
           aria-label="메시지 전송"
           disabled={!inputText.trim() || !selectedModel || isLoading}
         >
-          {isLoading ? (
-            <span className="chat-panel-stop-icon">■</span>
-          ) : (
-            <span className="chat-panel-send-icon">➤</span>
-          )}
+          <span className="chat-panel-send-icon">➤</span>
         </button>
       </div>
     </form>
@@ -972,12 +973,25 @@ function ChatPanel({
 
     setInstallingModel(modelName);
     try {
+      // 모델 설치 요청 (백엔드에서 실제 완료까지 대기)
       await installModel(modelName);
-      alert(`${modelName} 모델이 성공적으로 설치되었습니다.`);
+
       // 설치 완료 후 모델 목록 재로드
       await loadModels();
+
+      // 성공 메시지 표시
+      alert(`${modelName} 모델이 성공적으로 설치되었습니다.`);
     } catch (error) {
-      alert(`모델 설치에 실패했습니다: ${error.message}`);
+      console.error("모델 설치 실패:", error);
+
+      // 타임아웃 에러인 경우 특별 처리
+      if (error.response?.status === 408) {
+        alert(
+          `${modelName} 모델 다운로드가 시간 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.`
+        );
+      } else {
+        alert(`모델 설치에 실패했습니다: ${error.message}`);
+      }
     } finally {
       setInstallingModel(null);
     }
@@ -1105,6 +1119,7 @@ function ChatPanel({
       const isGptModel = selectedModel.startsWith("gpt-");
       const model = isGptModel ? "openai" : "ollama";
       const model_name = selectedModel; // 🚀 항상 selectedModel 사용 (GPT 모델도 포함)
+
       const res = await requestAnswer(
         inputText,
         selectedSessionId,
@@ -1168,6 +1183,7 @@ function ChatPanel({
       }
     } catch (err) {
       console.error("답변 생성 중 오류:", err);
+
       // 더 구체적인 에러 메시지 제공
       let errorMessage = "답변 생성 중 오류가 발생했습니다.";
       if (err.response?.status === 400) {
@@ -1412,7 +1428,7 @@ function ChatPanel({
                   type="submit"
                   className="chat-panel-submit-circle-button"
                   aria-label="메시지 전송"
-                  disabled={!inputText.trim() || !selectedModel}
+                  disabled={!inputText.trim() || !selectedModel || isLoading}
                 >
                   <span className="chat-panel-send-icon">➤</span>
                 </button>

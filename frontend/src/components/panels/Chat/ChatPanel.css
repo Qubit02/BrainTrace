@@ -1089,6 +1089,27 @@
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
 }
 
+/* 설치되지 않은 모델 스타일 */
+.chat-panel-model-item-inline.unselectable {
+  cursor: pointer;
+  opacity: 1;
+  background-color: #f8f9fa;
+}
+
+.chat-panel-model-item-inline.unselectable:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-panel-model-item-inline.unselectable .chat-panel-model-name-inline {
+  color: #6b7280;
+}
+
+.chat-panel-model-item-inline.unselectable .chat-panel-model-description-inline {
+  color: #9ca3af;
+}
+
 .chat-panel-model-item.selected::before {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
 }
