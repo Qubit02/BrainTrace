@@ -238,6 +238,34 @@ export const modelInfo = {
     size: 'Large',
     type: 'API',
     provider: 'OpenAI'
+  },
+  // GPT-5 모델들 (2025년 8월 7일 공식 출시)
+  'gpt-5': {
+    name: 'GPT-5',
+    description: 'OpenAI의 최신 GPT-5 모델로 혁신적인 AI 성능과 깊은 추론 능력',
+    usage: '',
+    buttonText: '',
+    size: 'Large',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-5-mini': {
+    name: 'GPT-5 Mini',
+    description: '빠르고 효율적인 GPT-5 경량 버전으로 일상적인 작업에 최적화',
+    usage: '',
+    buttonText: '',
+    size: 'Medium',
+    type: 'API',
+    provider: 'OpenAI'
+  },
+  'gpt-5-nano': {
+    name: 'GPT-5 Nano',
+    description: '초경량 GPT-5 모델로 빠른 응답과 효율적인 리소스 사용',
+    usage: '',
+    buttonText: '',
+    size: 'Small',
+    type: 'API',
+    provider: 'OpenAI'
   }
 };
 
@@ -265,8 +293,11 @@ export const getModelData = (modelName) => {
  * @returns {Array} 주요 OpenAI 모델들이 추가된 모델 목록
  */
 export const addGpt4oToModels = (models) => {
-  // 주요 OpenAI 모델들을 기본으로 포함
+  // 주요 OpenAI 모델들을 기본으로 포함 (GPT-5 포함)
   const defaultOpenAIModels = [
+    { name: 'gpt-5', installed: true },
+    { name: 'gpt-5-mini', installed: true },
+    { name: 'gpt-5-nano', installed: true },
     { name: 'gpt-4o', installed: true },
     { name: 'gpt-4o-mini', installed: true },
     { name: 'gpt-4-turbo', installed: true },
