@@ -18,7 +18,7 @@
  * - LoadingIndicator: 로딩 상태 표시
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./ChatPanel.css";
 import {
   getReferencedNodes,
@@ -60,7 +60,7 @@ import { VscOpenPreview } from "react-icons/vsc";
 import { GoPencil } from "react-icons/go";
 import { HiOutlineBars4 } from "react-icons/hi2";
 import { WiCloudRefresh } from "react-icons/wi";
-import { FaCloud, FaLock } from "react-icons/fa";
+import { FaCloud } from "react-icons/fa";
 import { MdSecurity } from "react-icons/md";
 
 // 모델 관련 유틸리티 import
@@ -177,8 +177,6 @@ const TitleEditor = ({
       <div className={`environment-badge environment-${environmentInfo.type}`}>
         {environmentInfo.icon === "MdSecurity" ? (
           <MdSecurity size={14.5} />
-        ) : environmentInfo.icon === "FaLock" ? (
-          <FaLock size={14.5} />
         ) : (
           <FaCloud size={14.5} />
         )}
@@ -954,6 +952,12 @@ function ChatPanel({
       getBrain(selectedBrainId)
         .then((brain) => {
           setBrainInfo(brain);
+
+          // 브레인 정보 로드 후 저장된 모델 불러오기
+          const storedModel = getStoredModel(selectedSessionId);
+          if (storedModel) {
+            setSelectedModel(storedModel);
+          }
         })
         .catch((error) => {
           console.error("브레인 정보 로드 실패:", error);
@@ -975,45 +979,52 @@ function ChatPanel({
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
     try {
-      // 1. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
+      // 1. 먼저 캐시된 모델 목록 확인
+      const cachedModels = localStorage.getItem("cachedModels");
+      const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
+
+      if (cachedModels && cacheTimestamp) {
+        const cacheAge = Date.now() - parseInt(cacheTimestamp);
+        // 캐시가 1시간 이내면 즉시 사용
+        if (cacheAge < 60 * 60 * 1000) {
+          setAvailableModels(JSON.parse(cachedModels));
+          console.log("캐시된 모델 목록을 즉시 로드했습니다.");
+        }
+      }
+
+      // 2. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
       const availableModels = await listModels();
 
-      // 2. 실제 설치된 모델들의 상세 정보 조회
+      // 실제 설치된 모델들의 상세 정보 조회
       const installedModelsInfo = await getInstalledModels();
 
-      // 3. 두 정보를 합쳐서 최종 모델 목록 생성
+      // 두 정보를 합쳐서 최종 모델 목록 생성
       const updatedModels = addGpt4oToModels(
         availableModels,
         installedModelsInfo
       );
       setAvailableModels(updatedModels);
 
-      // 4. 모델 목록을 localStorage에 캐시로 저장 (딜레이 방지)
+      // 모델 목록을 localStorage에 캐시로 저장 (딜레이 방지)
       try {
         localStorage.setItem("cachedModels", JSON.stringify(updatedModels));
         localStorage.setItem("modelsCacheTimestamp", Date.now().toString());
+
+        // 로컬모드에서 자주 사용되는 모델들을 미리 저장
+        if (brainInfo?.deployment_type === "local") {
+          const localModelPreferences = updatedModels
+            .filter((model) => model.installed)
+            .map((model) => model.name);
+          localStorage.setItem(
+            "localModelPreferences",
+            JSON.stringify(localModelPreferences)
+          );
+        }
       } catch (cacheError) {
         console.warn("모델 목록 캐시 저장 실패:", cacheError);
       }
     } catch (error) {
       console.error("모델 목록 로드 실패:", error);
-
-      // 에러 발생 시 캐시된 모델 목록 사용
-      try {
-        const cachedModels = localStorage.getItem("cachedModels");
-        const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
-
-        if (cachedModels && cacheTimestamp) {
-          const cacheAge = Date.now() - parseInt(cacheTimestamp);
-          // 캐시가 1시간 이내면 사용
-          if (cacheAge < 60 * 60 * 1000) {
-            setAvailableModels(JSON.parse(cachedModels));
-            console.log("캐시된 모델 목록을 사용합니다.");
-          }
-        }
-      } catch (cacheError) {
-        console.warn("캐시된 모델 목록 로드 실패:", cacheError);
-      }
     }
   };
 
@@ -1021,30 +1032,15 @@ function ChatPanel({
   useEffect(() => {
     const initializeModels = async () => {
       try {
-        // 1. 먼저 캐시된 모델 목록 확인
-        const cachedModels = localStorage.getItem("cachedModels");
-        const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
-
-        if (cachedModels && cacheTimestamp) {
-          const cacheAge = Date.now() - parseInt(cacheTimestamp);
-          // 캐시가 1시간 이내면 즉시 사용
-          if (cacheAge < 60 * 60 * 1000) {
-            setAvailableModels(JSON.parse(cachedModels));
-            console.log("캐시된 모델 목록을 즉시 로드했습니다.");
-          }
-        }
-
-        // 2. 백그라운드에서 최신 모델 목록 업데이트
         loadModels();
       } catch (error) {
         console.error("초기 모델 목록 로드 실패:", error);
-        // 에러 발생 시 기본 모델 목록 로드 시도
         loadModels();
       }
     };
 
     initializeModels();
-  }, []);
+  }, []); // 초기 로드만 실행
 
   /**
    * 모델 설치 함수
