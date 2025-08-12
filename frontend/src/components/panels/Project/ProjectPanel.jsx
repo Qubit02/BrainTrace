@@ -1,18 +1,18 @@
 // src/components/layout/ProjectPanel.jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /* API ─ backend */
-import { listBrains } from '../../../../api/config/apiIndex';
+import { listBrains } from "../../../../api/config/apiIndex";
 
 /* style */
-import './ProjectPanel.css';
+import "./ProjectPanel.css";
 
-import { IoHomeOutline } from 'react-icons/io5';
-import { AiOutlinePlus } from 'react-icons/ai';
-import { MdSecurity } from 'react-icons/md';
+import { IoHomeOutline } from "react-icons/io5";
+import { AiOutlinePlus } from "react-icons/ai";
+import { MdSecurity } from "react-icons/md";
 
-import NewBrainModal from './NewBrainModal';
+import NewBrainModal from "./NewBrainModal";
 
 /**
  * 왼쪽 세로 사이드바 (프로젝트/브레인 아이콘 목록)
@@ -27,14 +27,14 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
   /* ───────── DB 호출 ───────── */
   useEffect(() => {
     listBrains()
-      .then(data => {
+      .then((data) => {
         setBrains(data);
       })
       .catch(console.error);
   }, [selectedBrainId]);
 
   /* ───────── 이벤트 ───────── */
-  const handleProjectClick = id => {
+  const handleProjectClick = (id) => {
     onProjectChange?.(id);
     nav(`/project/${id}`);
   };
@@ -45,18 +45,21 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
     if (brain.deployment_type) {
       return brain.deployment_type.toLowerCase();
     }
-    
+
     // brain_name으로 추정 (fallback)
-    if (brain.brain_name?.includes('Cloud') || brain.brain_name?.includes('클라우드')) {
-      return 'cloud';
+    if (
+      brain.brain_name?.includes("Cloud") ||
+      brain.brain_name?.includes("클라우드")
+    ) {
+      return "cloud";
     }
-    
+
     // 기본값은 로컬
-    return 'local';
+    return "local";
   };
 
   const getProjectTypeTitle = (type) => {
-    return type === 'cloud' ? '클라우드 프로젝트' : '로컬 프로젝트';
+    return type === "cloud" ? "클라우드 프로젝트" : "로컬 프로젝트";
   };
 
   /* ───────── UI ───────── */
@@ -64,49 +67,67 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
     <div className="panel-container sidebar-container">
       <div className="panel-content">
         <div className="sidebar-icons">
-          {brains.slice().sort((a, b) => b.brain_id - a.brain_id)
-            .map(b => {
+          {brains
+            .slice()
+            .sort((a, b) => b.brain_id - a.brain_id)
+            .map((b) => {
               const projectType = getProjectType(b);
               return (
                 <div
                   key={b.brain_id}
-                  className={`sidebar-icon ${selectedBrainId === b.brain_id ? 'active disabled' : ''}`}
-                  onClick={selectedBrainId === b.brain_id ? undefined : () => handleProjectClick(b.brain_id)}
+                  className={`sidebar-icon ${
+                    selectedBrainId === b.brain_id ? "active disabled" : ""
+                  }`}
+                  onClick={
+                    selectedBrainId === b.brain_id
+                      ? undefined
+                      : () => handleProjectClick(b.brain_id)
+                  }
                 >
                   <img
                     width={30}
-                    src={selectedBrainId === b.brain_id ? '/brainbanzzak.png' : '/brainnormal.png'}
+                    src={
+                      selectedBrainId === b.brain_id
+                        ? "/brainbanzzak.png"
+                        : "/brainnormal.png"
+                    }
                     style={{ flexShrink: 0 }}
                     alt={b.brain_name}
                   />
                   <span className="brain-name-ellipsis">{b.brain_name}</span>
-                  
+
                   {/* 로컬 프로젝트일 때만 MdSecurity 아이콘 표시 */}
-                  {projectType === 'local' && (
-                    <div className="local-security-icon" title={getProjectTypeTitle(projectType)}>
+                  {projectType === "local" && (
+                    <div
+                      className="local-security-icon"
+                      title={getProjectTypeTitle(projectType)}
+                    >
                       <MdSecurity size={15} />
                     </div>
                   )}
                 </div>
               );
             })}
-          
-          <div className="sidebar-icon add-icon" onClick={() => setShowModal(true)}>
+
+          <div
+            className="sidebar-icon add-icon"
+            onClick={() => setShowModal(true)}
+          >
             <AiOutlinePlus size={27} />
             <span>새 프로젝트</span>
           </div>
         </div>
       </div>
-      
-      <div className="sidebar-icon home-icon" onClick={() => nav('/')}>
+
+      <div className="sidebar-icon home-icon" onClick={() => nav("/")}>
         <IoHomeOutline size={25} />
         <span>홈으로</span>
       </div>
-      
+
       {showModal && (
         <NewBrainModal
           onClose={() => setShowModal(false)}
-          onCreated={brain => setBrains(prev => [brain, ...prev])}
+          onCreated={(brain) => setBrains((prev) => [brain, ...prev])}
         />
       )}
     </div>

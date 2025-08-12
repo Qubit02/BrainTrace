@@ -1,6 +1,6 @@
 /**
  * GraphView 컴포넌트
- * 
+ *
  * 이 컴포넌트는 브레인 프로젝트의 2D Force-Directed 지식 그래프 시각화를 담당합니다.
  * 주요 기능:
  * - ForceGraph2D를 사용한 인터랙티브 그래프 렌더링
@@ -11,7 +11,7 @@
  * - 마우스/키보드 인터랙션 (드래그, 줌, 팬, 검색)
  * - 다크모드 지원 및 반응형 UI
  * - 타임랩스 애니메이션 및 노드 상태 팝업
- * 
+ *
  * Props:
  * - brainId: 현재 브레인 ID
  * - height: 그래프 높이 (숫자 또는 '100%')
@@ -41,7 +41,7 @@
  * - onClearNewlyAddedNodes: 신규노드 하이라이트 해제 콜백
  * - fromFullscreen: 전체화면에서 복귀 여부
  * - showSearch: 검색 입력 표시 여부
- * 
+ *
  * 상태 관리:
  * - dimensions: 그래프 컨테이너 크기
  * - graphData: 현재 그래프 데이터
@@ -57,7 +57,7 @@
  * - newlyAddedNodeNames: 신규 추가된 노드 이름 목록
  * - searchQuery/searchResults: 검색 관련 상태
  * - graphReady: 그래프 준비 완료 상태
- * 
+ *
  * 주요 기능:
  * - 노드 클릭/더블클릭 처리 (카메라 이동, 줌)
  * - 마우스 호버 시 자동 노드 감지
@@ -68,26 +68,32 @@
  * - 반응형 크기 조정 및 초기 줌 레벨 계산
  */
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
-import * as d3 from 'd3';
-import { fetchGraphData } from '../../../../../api/services/graphApi';
-import './GraphView.css';
-import { startTimelapse } from './graphTimelapse';
-import { toast } from 'react-toastify';
-import SpaceBackground from './SpaceBackground';
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
+import ForceGraph2D from "react-force-graph-2d";
+import * as d3 from "d3";
+import { fetchGraphData } from "../../../../../api/services/graphApi";
+import "./GraphView.css";
+import { startTimelapse } from "./graphTimelapse";
+import { toast } from "react-toastify";
+import SpaceBackground from "./SpaceBackground";
 
 /**
  * NodeStatusPopup 컴포넌트
- * 
+ *
  * 그래프에서 특정 상태의 노드들을 표시하는 팝업 컴포넌트입니다.
- * 
+ *
  * Props:
  * - type: 노드 타입 (NEW, REF, FOCUS)
  * - color: 타입별 색상
  * - nodes: 표시할 노드 이름 목록
  * - onClose: 팝업 닫기 콜백
- * 
+ *
  * 기능:
  * - 노드 목록 표시 및 확장/축소
  * - 텍스트 오버플로우 감지 및 확장 가능 여부 표시
@@ -120,42 +126,43 @@ const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
 
   return (
     <div
-      className={`graph-popup ${isExpanded ? 'expanded' : ''} ${canExpand ? 'expandable' : ''}`}
+      className={`graph-popup ${isExpanded ? "expanded" : ""} ${
+        canExpand ? "expandable" : ""
+      }`}
       onClick={toggleExpand}
     >
       <div className="popup-content">
         <span className="popup-tag" style={{ background: color }}>
           {type}
         </span>
-        <span
-          ref={textRef}
-          className="popup-text"
-        >
-          {nodes.join(', ')}
+        <span ref={textRef} className="popup-text">
+          {nodes.join(", ")}
         </span>
       </div>
-      <span className="close-x" onClick={onClose}>×</span>
+      <span className="close-x" onClick={onClose}>
+        ×
+      </span>
     </div>
   );
 };
 
 function GraphView({
   // === 기본 설정 ===
-  brainId = 'default-brain-id',
-  height = '100%',
+  brainId = "default-brain-id",
+  height = "100%",
   graphData: initialGraphData = null,
-  
+
   // === 노드 상태 관리 ===
   referencedNodes = [],
   focusNodeNames = [],
   graphRefreshTrigger,
-  
+
   // === UI 모드 설정 ===
   isFullscreen = false,
   isDarkMode = false,
   fromFullscreen = false,
   showSearch,
-  
+
   // === 콜백 함수들 ===
   onGraphDataUpdate,
   onTimelapse,
@@ -164,25 +171,24 @@ function GraphView({
   onClearReferencedNodes,
   onClearFocusNodes,
   onClearNewlyAddedNodes,
-  
+
   // === 외부 제어 상태 ===
   externalShowReferenced,
   externalShowFocus,
   externalShowNewlyAdded,
   clearTrigger,
-  
+
   // === 시각적 설정 ===
   customNodeSize = 5,
   customLinkWidth = 1,
   textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1,
   textAlpha = 1.0,
-  
-  // === 물리 시뮬레이션 설정 (0-100 범위) ===
-  repelStrength = 3,     // 반발력 강도
-  linkDistance = 30,      // 링크 거리
-  linkStrength = 50,      // 링크 장력
-}) {
 
+  // === 물리 시뮬레이션 설정 (0-100 범위) ===
+  repelStrength = 3, // 반발력 강도
+  linkDistance = 30, // 링크 거리
+  linkStrength = 50, // 링크 장력
+}) {
   // === 그래프 컨테이너/크기 관련 ===
   const containerRef = useRef(null); // 그래프 컨테이너 DOM 참조
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 }); // 그래프 영역 크기
@@ -200,11 +206,11 @@ function GraphView({
   const [isAnimating, setIsAnimating] = useState(false); // 타임랩스 등 애니메이션 동작 여부
   const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
-  
+
   // === 마우스 인터랙션 상태 ===
   const [hoveredNode, setHoveredNode] = useState(null); // 호버된 노드 상태
   const [hoveredLink, setHoveredLink] = useState(null); // 호버된 링크 상태
-  
+
   // === 드래그 상태 관리 ===
   const [draggedNode, setDraggedNode] = useState(null); // 드래그 중인 노드
   const [connectedNodeSet, setConnectedNodeSet] = useState(new Set()); // 드래그 중인 노드와 연결된 노드 집합
@@ -212,7 +218,7 @@ function GraphView({
   /**
    * BFS를 사용하여 시작 노드와 연결된 노드 ID 집합을 반환합니다.
    * 2단계 깊이까지만 탐색하여 가까운 연결만 고려합니다.
-   * 
+   *
    * @param {string} startId - 시작 노드 ID
    * @param {Array} links - 그래프의 모든 링크 배열
    * @returns {Set} 연결된 노드 ID 집합 (2단계 깊이까지)
@@ -221,21 +227,23 @@ function GraphView({
     const visited = new Set();
     const queue = [{ id: startId, depth: 0 }];
     const maxDepth = 2; // 최대 2단계 깊이까지만 탐색
-    
+
     while (queue.length > 0) {
       const { id: current, depth } = queue.shift();
-      
+
       if (!visited.has(current) && depth <= maxDepth) {
         visited.add(current);
-        
+
         // 최대 깊이에 도달했으면 더 이상 탐색하지 않음
         if (depth === maxDepth) continue;
-        
-        links.forEach(link => {
+
+        links.forEach((link) => {
           // source/target이 객체일 수 있으니 id로 변환
-          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-          
+          const sourceId =
+            typeof link.source === "object" ? link.source.id : link.source;
+          const targetId =
+            typeof link.target === "object" ? link.target.id : link.target;
+
           if (sourceId === current && !visited.has(targetId)) {
             queue.push({ id: targetId, depth: depth + 1 });
           }
@@ -263,7 +271,7 @@ function GraphView({
       let minDist = Infinity;
       let nearest = null;
       for (const node of nodes) {
-        if (typeof node.x !== 'number' || typeof node.y !== 'number') continue;
+        if (typeof node.x !== "number" || typeof node.y !== "number") continue;
         const dx = node.x - x;
         const dy = node.y - y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -274,16 +282,16 @@ function GraphView({
       }
       if (nearest && minDist < 35) {
         setHoveredNode(nearest);
-        document.body.style.cursor = 'pointer';
+        document.body.style.cursor = "pointer";
       } else {
         setHoveredNode(null);
-        document.body.style.cursor = 'default';
+        document.body.style.cursor = "default";
       }
     };
     const handleMouseLeave = () => {
       setHoveredNode(null);
       setHoveredLink(null);
-      document.body.style.cursor = 'default';
+      document.body.style.cursor = "default";
     };
     // hover 더블클릭 시 해당 노드로 이동
     const handleDblClick = (e) => {
@@ -294,27 +302,44 @@ function GraphView({
     };
     const container = containerRef.current;
     if (container) {
-      container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('mouseleave', handleMouseLeave);
-      container.addEventListener('dblclick', handleDblClick);
+      container.addEventListener("mousemove", handleMouseMove);
+      container.addEventListener("mouseleave", handleMouseLeave);
+      container.addEventListener("dblclick", handleDblClick);
     }
     return () => {
       if (container) {
-        container.removeEventListener('mousemove', handleMouseMove);
-        container.removeEventListener('mouseleave', handleMouseLeave);
-        container.removeEventListener('dblclick', handleDblClick);
+        container.removeEventListener("mousemove", handleMouseMove);
+        container.removeEventListener("mouseleave", handleMouseLeave);
+        container.removeEventListener("dblclick", handleDblClick);
       }
     };
-  }, [fgRef, containerRef, graphData, visibleNodes, isAnimating, loading, hoveredNode]);
+  }, [
+    fgRef,
+    containerRef,
+    graphData,
+    visibleNodes,
+    isAnimating,
+    loading,
+    hoveredNode,
+  ]);
 
   // === 하이라이트/포커스/신규노드 관련 ===
-  const [showReferenced, setShowReferenced] = useState(() => !localStorage.getItem('참고노드팝업닫힘')); // 참고노드 하이라이트 표시 여부
-  const [showFocus, setShowFocus] = useState(() => !localStorage.getItem('포커스노드팝업닫힘')); // 포커스노드 하이라이트 표시 여부
+  const [showReferenced, setShowReferenced] = useState(
+    () => !localStorage.getItem("참고노드팝업닫힘")
+  ); // 참고노드 하이라이트 표시 여부
+  const [showFocus, setShowFocus] = useState(
+    () => !localStorage.getItem("포커스노드팝업닫힘")
+  ); // 포커스노드 하이라이트 표시 여부
   const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]); // 새로 추가된 노드 이름 목록
-  const [showNewlyAdded, setShowNewlyAdded] = useState(() => !localStorage.getItem('추가노드팝업닫힘')); // 신규노드 하이라이트 표시 여부
-  
+  const [showNewlyAdded, setShowNewlyAdded] = useState(
+    () => !localStorage.getItem("추가노드팝업닫힘")
+  ); // 신규노드 하이라이트 표시 여부
+
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
-  const referencedSet = useMemo(() => new Set(referencedNodes || []), [referencedNodes]);
+  const referencedSet = useMemo(
+    () => new Set(referencedNodes || []),
+    [referencedNodes]
+  );
 
   // 검색 결과를 위한 별도의 Set
   const [searchReferencedSet, setSearchReferencedSet] = useState(new Set());
@@ -329,14 +354,30 @@ function GraphView({
   // === 색상 팔레트 및 다크모드 대응 ===
   // 라이트모드용 색상 팔레트 (노드 연결수에 따른 색상)
   const lightColorPalette = [
-    '#444444', '#666666', '#888888', '#aaaaaa', '#3366bb',
-    '#333333', '#777777', '#999999', '#5588cc', '#555555',
+    "#444444",
+    "#666666",
+    "#888888",
+    "#aaaaaa",
+    "#3366bb",
+    "#333333",
+    "#777777",
+    "#999999",
+    "#5588cc",
+    "#555555",
   ];
 
   // 다크모드용 색상 팔레트 (노드 연결수에 따른 색상)
   const darkColorPalette = [
-    '#e2e8f0', '#cbd5e1', '#94a3b8', '#64748b', '#60a5fa',
-    '#f1f5f9', '#d1d5db', '#9ca3af', '#3b82f6', '#e5e7eb',
+    "#e2e8f0",
+    "#cbd5e1",
+    "#94a3b8",
+    "#64748b",
+    "#60a5fa",
+    "#f1f5f9",
+    "#d1d5db",
+    "#9ca3af",
+    "#3b82f6",
+    "#e5e7eb",
   ];
 
   // 현재 모드에 따른 색상 팔레트 선택
@@ -351,11 +392,11 @@ function GraphView({
     if (!containerRef.current) return;
     const width = containerRef.current.clientWidth;
     const calcHeight =
-      typeof height === 'number'
+      typeof height === "number"
         ? height
-        : height === '100%'
-          ? window.innerHeight
-          : containerRef.current.clientHeight || 550;
+        : height === "100%"
+        ? window.innerHeight
+        : containerRef.current.clientHeight || 550;
 
     setDimensions({ width, height: calcHeight });
   };
@@ -363,7 +404,7 @@ function GraphView({
   // === 그래프 초기 줌/중심 위치 계산 ===
   /**
    * 노드 개수에 따라 적절한 초기 줌 배율을 계산합니다.
-   * 
+   *
    * @param {number} nodeCount - 그래프의 총 노드 개수
    * @returns {number} 초기 줌 배율 (0.01 ~ 5.0 범위)
    */
@@ -389,27 +430,42 @@ function GraphView({
   // === 카메라 이동 유틸리티 함수 ===
   /**
    * 지정된 노드들로 카메라를 이동시키는 공통 함수입니다.
-   * 
+   *
    * @param {Array} nodes - 이동할 노드 배열
    * @param {number} delay - 이동 시작 전 대기 시간 (ms)
    * @param {number} zoomDuration - 줌 애니메이션 지속 시간 (ms)
    * @param {number} centerDuration - 중심 이동 애니메이션 지속 시간 (ms)
    */
-  const moveCameraToNodes = (nodes, delay = 1000, zoomDuration = 800, centerDuration = 1000) => {
-    if (!nodes.length || !fgRef.current || !dimensions.width || !dimensions.height) return;
+  const moveCameraToNodes = (
+    nodes,
+    delay = 1000,
+    zoomDuration = 800,
+    centerDuration = 1000
+  ) => {
+    if (
+      !nodes.length ||
+      !fgRef.current ||
+      !dimensions.width ||
+      !dimensions.height
+    )
+      return;
 
-    const validNodes = nodes.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
+    const validNodes = nodes.filter(
+      (n) => typeof n.x === "number" && typeof n.y === "number"
+    );
     if (validNodes.length === 0) return;
 
     const fg = fgRef.current;
 
     // 중심점 계산
-    const avgX = validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
-    const avgY = validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
+    const avgX =
+      validNodes.reduce((sum, n) => sum + n.x, 0) / validNodes.length;
+    const avgY =
+      validNodes.reduce((sum, n) => sum + n.y, 0) / validNodes.length;
 
     // 바운딩 박스 계산
-    const xs = validNodes.map(n => n.x);
-    const ys = validNodes.map(n => n.y);
+    const xs = validNodes.map((n) => n.x);
+    const ys = validNodes.map((n) => n.y);
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
@@ -438,7 +494,7 @@ function GraphView({
    * 노드 클릭 이벤트를 처리합니다.
    * - 단일 클릭: 아무 동작 없음
    * - 더블 클릭: 해당 노드로 카메라 이동 및 확대
-   * 
+   *
    * @param {Object} node - 클릭된 노드 객체
    */
   const handleNodeClick = (node) => {
@@ -475,21 +531,28 @@ function GraphView({
       const linkDist = 30 + (linkDistance / 100) * 270;
       const linkForce = 0.1 + (linkStrength / 100) * 0.9;
 
-      console.log('🔧 물리 설정 업데이트:', {
+      console.log("🔧 물리 설정 업데이트:", {
         repelStrength,
         linkDistance,
         linkStrength,
         repelForce,
         linkDist,
-        linkForce
+        linkForce,
       });
 
       // 올바른 ForceGraph2D 방식으로 물리 설정 변경
       fg.d3Force("charge", d3.forceManyBody().strength(repelForce));
-      fg.d3Force("link", d3.forceLink().id(d => d.id).distance(linkDist).strength(linkForce));
+      fg.d3Force(
+        "link",
+        d3
+          .forceLink()
+          .id((d) => d.id)
+          .distance(linkDist)
+          .strength(linkForce)
+      );
 
       // 노드들의 고정 상태 해제
-      graphData.nodes.forEach(node => {
+      graphData.nodes.forEach((node) => {
         delete node.fx;
         delete node.fy;
       });
@@ -512,15 +575,15 @@ function GraphView({
           const chargeForce = simulation.force("charge");
           const linkForce = simulation.force("link");
 
-          console.log('🔍 물리 설정 확인:', {
-            chargeStrength: chargeForce ? chargeForce.strength() : 'N/A',
-            linkDistance: linkForce ? linkForce.distance() : 'N/A',
-            linkStrength: linkForce ? linkForce.strength() : 'N/A',
+          console.log("🔍 물리 설정 확인:", {
+            chargeStrength: chargeForce ? chargeForce.strength() : "N/A",
+            linkDistance: linkForce ? linkForce.distance() : "N/A",
+            linkStrength: linkForce ? linkForce.strength() : "N/A",
             targetCharge: repelForce,
             targetLinkDist: linkDist,
             targetLinkStrength: linkForce,
             simulationAlpha: simulation.alpha(),
-            nodeCount: graphData.nodes.length
+            nodeCount: graphData.nodes.length,
           });
         }
       }, 100);
@@ -530,7 +593,7 @@ function GraphView({
         fg.d3ReheatSimulation();
 
         // 모든 노드의 고정 상태 완전 해제
-        graphData.nodes.forEach(node => {
+        graphData.nodes.forEach((node) => {
           delete node.fx;
           delete node.fy;
         });
@@ -543,10 +606,10 @@ function GraphView({
           simulation.velocityDecay(0.3);
         }
 
-        console.log('🔄 최종 시뮬레이션 재시작 완료');
+        console.log("🔄 최종 시뮬레이션 재시작 완료");
       }, 300);
 
-      console.log('✅ 물리 설정 적용 완료');
+      console.log("✅ 물리 설정 적용 완료");
     }
   }, [repelStrength, linkDistance, linkStrength, graphData]);
 
@@ -574,10 +637,10 @@ function GraphView({
       }
     };
 
-    container.addEventListener('dblclick', handleDoubleClick);
+    container.addEventListener("dblclick", handleDoubleClick);
 
     return () => {
-      container.removeEventListener('dblclick', handleDoubleClick);
+      container.removeEventListener("dblclick", handleDoubleClick);
     };
   }, [dimensions]);
 
@@ -588,7 +651,10 @@ function GraphView({
    */
   useEffect(() => {
     if (clearTrigger > 0) {
-      console.log('🧹 GraphView에서 하이라이팅 해제 트리거 감지:', clearTrigger);
+      console.log(
+        "🧹 GraphView에서 하이라이팅 해제 트리거 감지:",
+        clearTrigger
+      );
 
       // 모든 하이라이팅 상태 해제
       setShowReferenced(false);
@@ -608,24 +674,24 @@ function GraphView({
    * 부모 컴포넌트에서 참고노드, 포커스노드, 신규노드의 표시 여부를
    * 동적으로 변경할 수 있습니다.
    */
-  
+
   // 참고노드 표시 상태 동기화
   useEffect(() => {
-    if (typeof externalShowReferenced === 'boolean') {
+    if (typeof externalShowReferenced === "boolean") {
       setShowReferenced(externalShowReferenced);
     }
   }, [externalShowReferenced]);
 
   // 포커스노드 표시 상태 동기화
   useEffect(() => {
-    if (typeof externalShowFocus === 'boolean') {
+    if (typeof externalShowFocus === "boolean") {
       setShowFocus(externalShowFocus);
     }
   }, [externalShowFocus]);
 
   // 신규노드 표시 상태 동기화
   useEffect(() => {
-    if (typeof externalShowNewlyAdded === 'boolean') {
+    if (typeof externalShowNewlyAdded === "boolean") {
       setShowNewlyAdded(externalShowNewlyAdded);
     }
   }, [externalShowNewlyAdded]);
@@ -639,13 +705,22 @@ function GraphView({
     if (!onNewlyAddedNodes || newlyAddedNodeNames.length === 0) return;
 
     // 이전 값과 비교해서 실제로 변경된 경우만 알림
-    const prevNodes = prevGraphDataRef.current.nodes.map(n => n.name);
-    const isChanged = JSON.stringify(prevNodes) !== JSON.stringify(newlyAddedNodeNames);
+    const prevNodes = prevGraphDataRef.current.nodes.map((n) => n.name);
+    const isChanged =
+      JSON.stringify(prevNodes) !== JSON.stringify(newlyAddedNodeNames);
 
     if (isChanged) {
-      console.log('새로 추가된 노드 외부 알림:', newlyAddedNodeNames);
+      console.log("새로 추가된 노드 외부 알림:", newlyAddedNodeNames);
       onNewlyAddedNodes(newlyAddedNodeNames);
-      prevGraphDataRef.current = { ...prevGraphDataRef.current, nodes: [...prevGraphDataRef.current.nodes, ...graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name))] };
+      prevGraphDataRef.current = {
+        ...prevGraphDataRef.current,
+        nodes: [
+          ...prevGraphDataRef.current.nodes,
+          ...graphData.nodes.filter((n) =>
+            newlyAddedNodeNames.includes(n.name)
+          ),
+        ],
+      };
     }
   }, [newlyAddedNodeNames, onNewlyAddedNodes]);
 
@@ -708,7 +783,7 @@ function GraphView({
         processGraphData(data);
         setGraphReady(true);
       } catch (err) {
-        setError('그래프 데이터를 불러오는 데 실패했습니다.');
+        setError("그래프 데이터를 불러오는 데 실패했습니다.");
         setLoading(false);
         setGraphReady(false);
       }
@@ -740,10 +815,12 @@ function GraphView({
 
         const data = await fetchGraphData(brainId);
 
-        const prevNames = new Set(prevGraphDataRef.current.nodes.map(n => n.name));
+        const prevNames = new Set(
+          prevGraphDataRef.current.nodes.map((n) => n.name)
+        );
         const added = data.nodes
-          .map(n => n.name)
-          .filter(name => !prevNames.has(name));
+          .map((n) => n.name)
+          .filter((name) => !prevNames.has(name));
 
         setNewlyAddedNodeNames(added);
         setShowNewlyAdded(added.length > 0);
@@ -752,10 +829,9 @@ function GraphView({
         }
 
         processGraphData(data);
-
       } catch (err) {
-        console.error('그래프 새로고침 실패:', err);
-        setError('그래프 데이터를 불러오는 데 실패했습니다.');
+        console.error("그래프 새로고침 실패:", err);
+        setError("그래프 데이터를 불러오는 데 실패했습니다.");
         setLoading(false);
       }
     };
@@ -772,7 +848,7 @@ function GraphView({
     if (referencedNodes && referencedNodes.length > 0) {
       setRefPulseStartTime(Date.now());
       setShowReferenced(true);
-      console.log('🎯 참조된 노드 하이라이팅 활성화:', referencedNodes);
+      console.log("🎯 참조된 노드 하이라이팅 활성화:", referencedNodes);
     } else {
       setShowReferenced(false);
     }
@@ -784,13 +860,24 @@ function GraphView({
    * 포커스 노드들을 화면 중앙에 배치하고 적절한 줌 레벨로 조정합니다.
    */
   useEffect(() => {
-    if (!focusNodeNames || !focusNodeNames.length || !graphData.nodes.length) return;
+    if (!focusNodeNames || !focusNodeNames.length || !graphData.nodes.length)
+      return;
 
-    const focusNodes = graphData.nodes.filter(n => focusNodeNames.includes(n.name));
-    console.log("🎯 Focus 대상 노드:", focusNodes.map(n => n.name));
+    const focusNodes = graphData.nodes.filter((n) =>
+      focusNodeNames.includes(n.name)
+    );
+    console.log(
+      "🎯 Focus 대상 노드:",
+      focusNodes.map((n) => n.name)
+    );
 
-    const validNodes = focusNodes.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
-    console.log("🧭 위치 정보 포함된 유효 노드:", validNodes.map(n => ({ name: n.name, x: n.x, y: n.y })));
+    const validNodes = focusNodes.filter(
+      (n) => typeof n.x === "number" && typeof n.y === "number"
+    );
+    console.log(
+      "🧭 위치 정보 포함된 유효 노드:",
+      validNodes.map((n) => ({ name: n.name, x: n.x, y: n.y }))
+    );
 
     if (validNodes.length === 0) {
       console.warn("⚠️ 유효한 위치 정보가 없어 카메라 이동 생략됨");
@@ -806,13 +893,23 @@ function GraphView({
    * 참고노드들을 화면 중앙에 배치하고 적절한 줌 레벨로 조정합니다.
    */
   useEffect(() => {
-    if (!showReferenced || !referencedNodes || referencedNodes.length === 0 || !graphData.nodes.length) return;
+    if (
+      !showReferenced ||
+      !referencedNodes ||
+      referencedNodes.length === 0 ||
+      !graphData.nodes.length
+    )
+      return;
 
-    const referenced = graphData.nodes.filter(n => (searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)));
+    const referenced = graphData.nodes.filter((n) =>
+      searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)
+    );
     if (referenced.length === 0) return;
 
     const timer = setTimeout(() => {
-      const validNodes = referenced.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
+      const validNodes = referenced.filter(
+        (n) => typeof n.x === "number" && typeof n.y === "number"
+      );
       if (validNodes.length === 0) return;
 
       moveCameraToNodes(validNodes, 1000, 800, 1000);
@@ -829,11 +926,15 @@ function GraphView({
   useEffect(() => {
     if (!newlyAddedNodeNames.length || !graphData.nodes.length) return;
 
-    const addedNodes = graphData.nodes.filter(n => newlyAddedNodeNames.includes(n.name));
+    const addedNodes = graphData.nodes.filter((n) =>
+      newlyAddedNodeNames.includes(n.name)
+    );
     if (addedNodes.length === 0) return;
 
     const timer = setTimeout(() => {
-      const validNodes = addedNodes.filter(n => typeof n.x === 'number' && typeof n.y === 'number');
+      const validNodes = addedNodes.filter(
+        (n) => typeof n.x === "number" && typeof n.y === "number"
+      );
       if (validNodes.length === 0) return;
 
       moveCameraToNodes(validNodes, 2000, 800, 1000);
@@ -845,20 +946,22 @@ function GraphView({
   // === 그래프 데이터 처리 함수 ===
   /**
    * API에서 받은 원시 그래프 데이터를 시각화에 적합한 형태로 가공합니다.
-   * 
+   *
    * 처리 내용:
    * - 노드별 연결 수 계산 및 색상 할당
    * - 링크의 source/target ID 정규화
    * - 노드 크기 및 시각적 속성 설정
    * - 부모 컴포넌트에 처리된 데이터 전달
-   * 
+   *
    * @param {Object} data - 원시 그래프 데이터 {nodes: [], links: []}
    */
   const processGraphData = (data) => {
     const linkCounts = {};
-    data.links.forEach(link => {
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    data.links.forEach((link) => {
+      const sourceId =
+        typeof link.source === "object" ? link.source.id : link.source;
+      const targetId =
+        typeof link.target === "object" ? link.target.id : link.target;
 
       linkCounts[sourceId] = (linkCounts[sourceId] || 0) + 1;
       linkCounts[targetId] = (linkCounts[targetId] || 0) + 1;
@@ -886,15 +989,15 @@ function GraphView({
           id: nodeId || Math.random().toString(36).substr(2, 9),
           name: nodeName,
           color: nodeColor,
-          linkCount: linkCount
+          linkCount: linkCount,
         };
       }),
-      links: data.links.map(l => ({
+      links: data.links.map((l) => ({
         ...l,
-        source: typeof l.source === 'object' ? l.source.id : l.source,
-        target: typeof l.target === 'object' ? l.target.id : l.target,
-        relation: l.relation || l.label || '연결'
-      }))
+        source: typeof l.source === "object" ? l.source.id : l.source,
+        target: typeof l.target === "object" ? l.target.id : l.target,
+        relation: l.relation || l.label || "연결",
+      })),
     };
 
     setGraphData(processedData);
@@ -911,7 +1014,14 @@ function GraphView({
    * 컴포넌트의 내부 메서드와 상태를 노출합니다.
    */
   React.useImperativeHandle(onTimelapse, () => ({
-    startTimelapse: () => startTimelapse({ graphData, setIsAnimating, setVisibleNodes, setVisibleLinks, fgRef }),
+    startTimelapse: () =>
+      startTimelapse({
+        graphData,
+        setIsAnimating,
+        setVisibleNodes,
+        setVisibleLinks,
+        fgRef,
+      }),
     getPopupData: () => ({
       showNewlyAdded,
       newlyAddedNodeNames,
@@ -922,36 +1032,41 @@ function GraphView({
       setShowNewlyAdded,
       setNewlyAddedNodeNames,
       setShowReferenced,
-      setShowFocus
-    })
+      setShowFocus,
+    }),
   }));
 
   // === 검색 기능 관련 상태 ===
-  const [searchQuery, setSearchQuery] = useState(''); // 검색 쿼리
+  const [searchQuery, setSearchQuery] = useState(""); // 검색 쿼리
   const [searchResults, setSearchResults] = useState([]); // 검색 결과
   const searchInputRef = useRef(null); // 검색 입력 필드 ref
 
   // 모든 노드 이름 목록 (검색용)
-  const allNodeNames = graphData.nodes.map(node => node.name);
+  const allNodeNames = graphData.nodes.map((node) => node.name);
 
   /**
    * 노드 검색 로직을 처리합니다 (부분일치, 대소문자 무시).
-   * 
+   *
    * @param {string} query - 검색 쿼리
    */
-  const handleSearch = useCallback((query) => {
-    if (!query.trim() || allNodeNames.length === 0) {
-      setSearchResults([]);
-      return;
-    }
-    const lower = query.toLowerCase();
-    const matchingNodes = allNodeNames.filter(nodeName => nodeName.toLowerCase().includes(lower));
-    setSearchResults(matchingNodes);
-  }, [allNodeNames]);
+  const handleSearch = useCallback(
+    (query) => {
+      if (!query.trim() || allNodeNames.length === 0) {
+        setSearchResults([]);
+        return;
+      }
+      const lower = query.toLowerCase();
+      const matchingNodes = allNodeNames.filter((nodeName) =>
+        nodeName.toLowerCase().includes(lower)
+      );
+      setSearchResults(matchingNodes);
+    },
+    [allNodeNames]
+  );
 
   /**
    * 검색 입력 필드의 변경을 처리합니다.
-   * 
+   *
    * @param {Event} e - 입력 이벤트
    */
   const handleSearchInput = (e) => {
@@ -966,7 +1081,7 @@ function GraphView({
    * 검색 쿼리가 비어있으면 하이라이팅을 해제합니다.
    */
   useEffect(() => {
-    if (searchQuery === '') {
+    if (searchQuery === "") {
       setShowReferenced(false);
       setSearchReferencedSet(new Set());
       setRefPulseStartTime(null);
@@ -989,7 +1104,7 @@ function GraphView({
       searchInputRef.current.focus();
     }
     if (!showSearch) {
-      setSearchQuery('');
+      setSearchQuery("");
     }
   }, [showSearch]);
 
@@ -1008,13 +1123,13 @@ function GraphView({
       // Ctrl 키와 함께 눌러야 작동하도록 수정
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
-          case '+':
-          case '=':
+          case "+":
+          case "=":
             e.preventDefault();
             fg.zoom(currZoom * zoomStep, 300);
             break;
-          case '-':
-          case '_':
+          case "-":
+          case "_":
             e.preventDefault();
             fg.zoom(currZoom / zoomStep, 300);
             break;
@@ -1023,8 +1138,8 @@ function GraphView({
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [fgRef]);
 
   // === 참고노드 안내 토스트 ===
@@ -1042,21 +1157,23 @@ function GraphView({
       referencedNodes &&
       referencedNodes.length > 0 &&
       graphData.nodes.length > 0 &&
-      !graphData.nodes.some(n => referencedNodes.includes(n.name))
+      !graphData.nodes.some((n) => referencedNodes.includes(n.name))
     ) {
-      toast.info('참고된 노드가 그래프에 없습니다.');
+      toast.info("참고된 노드가 그래프에 없습니다.");
     }
   }, [showReferenced, referencedNodes, graphData.nodes]);
 
   return (
     <div
-      className={`graph-area ${isDarkMode ? 'dark-mode' : ''}`}
+      className={`graph-area ${isDarkMode ? "dark-mode" : ""}`}
       ref={containerRef}
       style={{
-        backgroundColor: isDarkMode ? 'transparent' : '#fafafa'
+        backgroundColor: isDarkMode ? "transparent" : "#fafafa",
       }}
     >
-      {isFullscreen && <SpaceBackground isVisible={true} isDarkMode={isDarkMode} />}
+      {isFullscreen && (
+        <SpaceBackground isVisible={true} isDarkMode={isDarkMode} />
+      )}
 
       {/* === 검색 입력 필드 === */}
       {/* 상단에 검색 입력 필드를 표시합니다 (showSearch prop이 true일 때만) */}
@@ -1068,18 +1185,33 @@ function GraphView({
             placeholder="노드 검색"
             value={searchQuery}
             onChange={handleSearchInput}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && searchResults.length > 0) {
-                const foundNodes = graphData.nodes.filter(n => searchResults.includes(n.name) && typeof n.x === 'number' && typeof n.y === 'number');
-                if (foundNodes.length === 0 || !fgRef.current || !dimensions.width || !dimensions.height) return;
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchResults.length > 0) {
+                const foundNodes = graphData.nodes.filter(
+                  (n) =>
+                    searchResults.includes(n.name) &&
+                    typeof n.x === "number" &&
+                    typeof n.y === "number"
+                );
+                if (
+                  foundNodes.length === 0 ||
+                  !fgRef.current ||
+                  !dimensions.width ||
+                  !dimensions.height
+                )
+                  return;
 
                 // 중심점 계산
-                const avgX = foundNodes.reduce((sum, n) => sum + n.x, 0) / foundNodes.length;
-                const avgY = foundNodes.reduce((sum, n) => sum + n.y, 0) / foundNodes.length;
+                const avgX =
+                  foundNodes.reduce((sum, n) => sum + n.x, 0) /
+                  foundNodes.length;
+                const avgY =
+                  foundNodes.reduce((sum, n) => sum + n.y, 0) /
+                  foundNodes.length;
 
                 // bounding box 계산
-                const xs = foundNodes.map(n => n.x);
-                const ys = foundNodes.map(n => n.y);
+                const xs = foundNodes.map((n) => n.x);
+                const ys = foundNodes.map((n) => n.y);
                 const minX = Math.min(...xs);
                 const maxX = Math.max(...xs);
                 const minY = Math.min(...ys);
@@ -1117,11 +1249,11 @@ function GraphView({
       )}
 
       {/* 참고노드 상태 팝업 (전체화면에서 복귀한 경우 제외) */}
-      {(!fromFullscreen)
-        && showReferenced
-        && referencedNodes
-        && referencedNodes.length > 0
-        && graphData.nodes.some(n => referencedNodes.includes(n.name)) && (
+      {!fromFullscreen &&
+        showReferenced &&
+        referencedNodes &&
+        referencedNodes.length > 0 &&
+        graphData.nodes.some((n) => referencedNodes.includes(n.name)) && (
           <NodeStatusPopup
             type="REF"
             color="#f59e0b"
@@ -1134,25 +1266,27 @@ function GraphView({
         )}
 
       {/* 포커스노드 상태 팝업 */}
-      {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
-        <NodeStatusPopup
-          type="FOCUS"
-          color="#3b82f6"
-          nodes={focusNodeNames}
-          onClose={() => {
-            setShowFocus(false);
-            if (onClearFocusNodes) onClearFocusNodes();
-          }}
-        />
-      )}
+      {showFocus &&
+        Array.isArray(focusNodeNames) &&
+        focusNodeNames.length > 0 && (
+          <NodeStatusPopup
+            type="FOCUS"
+            color="#3b82f6"
+            nodes={focusNodeNames}
+            onClose={() => {
+              setShowFocus(false);
+              if (onClearFocusNodes) onClearFocusNodes();
+            }}
+          />
+        )}
 
       {/* === 호버 툴팁 === */}
       {/* 마우스가 노드나 링크 위에 있을 때 표시되는 툴팁 */}
       {(hoveredNode || hoveredLink) && (
         <div
-          className={`graph-hover-tooltip ${isFullscreen ? 'fullscreen' : ''}`}
+          className={`graph-hover-tooltip ${isFullscreen ? "fullscreen" : ""}`}
           style={{
-            left: hoveredLink ? '8px' : '16px'
+            left: hoveredLink ? "8px" : "16px",
           }}
         >
           {hoveredNode && !hoveredLink && !draggedNode && (
@@ -1162,19 +1296,27 @@ function GraphView({
                 <span className="tooltip-value">{hoveredNode.name}</span>
               </div>
               <div className="tooltip-row">
-                <span className="tooltip-info">(연결: {hoveredNode.linkCount})</span>
+                <span className="tooltip-info">
+                  (연결: {hoveredNode.linkCount})
+                </span>
               </div>
             </div>
           )}
-          {(hoveredLink) && (
+          {hoveredLink && (
             <div className="tooltip-content">
               <div className="tooltip-row">
-                <span className="tooltip-value">{hoveredLink.source?.name || hoveredLink.source}</span>
+                <span className="tooltip-value">
+                  {hoveredLink.source?.name || hoveredLink.source}
+                </span>
                 <span className="tooltip-arrow">→</span>
-                <span className="tooltip-value">{hoveredLink.target?.name || hoveredLink.target}</span>
+                <span className="tooltip-value">
+                  {hoveredLink.target?.name || hoveredLink.target}
+                </span>
               </div>
               <div className="tooltip-row tooltip-indent">
-                <span className="tooltip-info">링크: {hoveredLink.relation || '없음'}</span>
+                <span className="tooltip-info">
+                  링크: {hoveredLink.relation || "없음"}
+                </span>
               </div>
             </div>
           )}
@@ -1183,9 +1325,9 @@ function GraphView({
 
       {/* === 로딩 및 에러 상태 표시 === */}
       {/* ForceGraph2D의 내장 tooltip 사용: nodeTitle, linkTitle 설정 */}
-      {loading && (
-        isFullscreen ? (
-          <div className={`graph-loading ${isDarkMode ? 'dark' : 'light'}`}>
+      {loading &&
+        (isFullscreen ? (
+          <div className={`graph-loading ${isDarkMode ? "dark" : "light"}`}>
             <div className="graph-loading-spinner"></div>
             <div>그래프를 불러오는 중입니다...</div>
           </div>
@@ -1194,18 +1336,14 @@ function GraphView({
             <div className="graph-loading-text-animate">
               그래프를 불러오는 중입니다
               <span className="dot-animate">
-                <span>.</span><span>.</span><span>.</span>
+                <span>.</span>
+                <span>.</span>
+                <span>.</span>
               </span>
             </div>
           </div>
-        )
-      )}
-      {error && (
-        <div
-          className="graph-error">
-          {error}
-        </div>
-      )}
+        ))}
+      {error && <div className="graph-error">{error}</div>}
 
       {/* === ForceGraph2D 메인 그래프 컴포넌트 === */}
       {/* 로딩이 완료되고 노드가 있으며 컨테이너 크기가 설정된 경우에만 렌더링 */}
@@ -1214,26 +1352,40 @@ function GraphView({
           ref={fgRef}
           width={dimensions.width}
           height={dimensions.height}
-          graphData={isAnimating ? {
-            nodes: visibleNodes,
-            links: visibleLinks
-          } : graphData}
-          linkLabel={link => `${link.relation}`}
+          graphData={
+            isAnimating
+              ? {
+                  nodes: visibleNodes,
+                  links: visibleLinks,
+                }
+              : graphData
+          }
+          linkLabel={(link) => `${link.relation}`}
           onNodeClick={handleNodeClick}
           nodeRelSize={customNodeSize}
-          linkColor={() => isDarkMode ? "#64748b" : "#dedede"}
+          linkColor={() => (isDarkMode ? "#64748b" : "#dedede")}
           linkWidth={customLinkWidth}
           linkDirectionalArrowLength={6.5}
           linkDirectionalArrowRelPos={1}
           cooldownTime={5000}
           d3VelocityDecay={0.2}
-          d3Force={fg => {
-            fg.force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
+          d3Force={(fg) => {
+            fg.force(
+              "center",
+              d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
+            );
             fg.force("collide", d3.forceCollide(50));
 
             // 초기 물리 설정 - 기본값 사용
             fg.force("charge", d3.forceManyBody().strength(-30));
-            fg.force("link", d3.forceLink().id(d => d.id).distance(100).strength(0.5));
+            fg.force(
+              "link",
+              d3
+                .forceLink()
+                .id((d) => d.id)
+                .distance(100)
+                .strength(0.5)
+            );
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
             // === 노드 렌더링 로직 ===
@@ -1242,17 +1394,25 @@ function GraphView({
             // 드래그 중이면 연결된 모든 노드만 진하게, 나머지는 투명하게
             if (draggedNode) {
               // node.id가 string인지 확인, 아니면 변환
-              const nodeId = typeof node.id === 'object' ? node.id.id : node.id;
+              const nodeId = typeof node.id === "object" ? node.id.id : node.id;
               ctx.globalAlpha = connectedNodeSet.has(nodeId) ? 1 : 0.18;
             } else {
               ctx.globalAlpha = node.__opacity ?? 1;
             }
             const label = node.name || node.id;
-            const isReferenced = showReferenced && (searchQuery ? searchReferencedSet.has(node.name) : referencedSet.has(node.name));
+            const isReferenced =
+              showReferenced &&
+              (searchQuery
+                ? searchReferencedSet.has(node.name)
+                : referencedSet.has(node.name));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
-            const isRef = showReferenced && (searchQuery ? searchReferencedSet.has(label) : referencedSet.has(label));
+            const isRef =
+              showReferenced &&
+              (searchQuery
+                ? searchReferencedSet.has(label)
+                : referencedSet.has(label));
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
             const baseSize = customNodeSize;
@@ -1265,20 +1425,24 @@ function GraphView({
             // 다크모드에 따라 실시간으로 노드 색상 결정
             let nodeColor;
             if (node.linkCount >= 3) {
-              nodeColor = isDarkMode ? '#60a5fa' : '#3366bb';
+              nodeColor = isDarkMode ? "#60a5fa" : "#3366bb";
             } else if (node.linkCount == 2) {
-              nodeColor = isDarkMode ? '#e2e8f0' : '#444444';
+              nodeColor = isDarkMode ? "#e2e8f0" : "#444444";
             } else {
-              nodeColor = isDarkMode ? '#94a3b8' : '#888888';
+              nodeColor = isDarkMode ? "#94a3b8" : "#888888";
             }
 
             // hover 효과: glow 및 테두리 강조
             // 링크가 hover 중이면 노드 hover 효과를 무시한다
-            const isHovered = hoveredNode && hoveredNode.id === node.id && !draggedNode && !hoveredLink;
+            const isHovered =
+              hoveredNode &&
+              hoveredNode.id === node.id &&
+              !draggedNode &&
+              !hoveredLink;
             if (isHovered) {
-              ctx.shadowColor = isDarkMode ? '#8ac0ffff' : '#9bc3ffff';
+              ctx.shadowColor = isDarkMode ? "#8ac0ffff" : "#9bc3ffff";
               ctx.shadowBlur = 16;
-              ctx.fillStyle = isDarkMode ? '#76b1f9ff' : '#73a0f9ff';
+              ctx.fillStyle = isDarkMode ? "#76b1f9ff" : "#73a0f9ff";
             }
 
             ctx.beginPath();
@@ -1287,10 +1451,14 @@ function GraphView({
             ctx.fill();
 
             // 드래그 중 연결된 노드는 폰트도 더 굵고 크게
-            const fontSize = (isReferenced || isNewlyAdded || isFocus) ? 13 / globalScale : 9 / globalScale;
-            ctx.font = (isReferenced || isNewlyAdded || isFocus)
-              ? `bold ${fontSize}px Sans-Serif`
-              : `${fontSize}px Sans-Serif`;
+            const fontSize =
+              isReferenced || isNewlyAdded || isFocus
+                ? 13 / globalScale
+                : 9 / globalScale;
+            ctx.font =
+              isReferenced || isNewlyAdded || isFocus
+                ? `bold ${fontSize}px Sans-Serif`
+                : `${fontSize}px Sans-Serif`;
 
             // 펄스 효과
             if ((isNewlyAdded || isFocus) && pulseStartTime) {
@@ -1321,22 +1489,26 @@ function GraphView({
 
             // 테두리 색상
             if (isHovered) {
-              ctx.strokeStyle = isDarkMode ? '#67acfaff' : '#93bcf8ff';
+              ctx.strokeStyle = isDarkMode ? "#67acfaff" : "#93bcf8ff";
               ctx.lineWidth = 7 / globalScale;
             } else if (isNewlyAdded || isFocus) {
-              ctx.strokeStyle = isDarkMode ? '#60a5fa' : '#2196f3';
+              ctx.strokeStyle = isDarkMode ? "#60a5fa" : "#2196f3";
               ctx.lineWidth = 4 / globalScale;
-              ctx.shadowColor = isDarkMode ? '#3b82f6' : '#90caf9';
+              ctx.shadowColor = isDarkMode ? "#3b82f6" : "#90caf9";
               ctx.shadowBlur = 10;
             } else if (isReferenced) {
-              ctx.strokeStyle = isDarkMode ? '#fb923c' : '#d9820f';
+              ctx.strokeStyle = isDarkMode ? "#fb923c" : "#d9820f";
               ctx.lineWidth = 3 / globalScale;
-              ctx.shadowColor = isDarkMode ? '#f97316' : '#ffc107';
+              ctx.shadowColor = isDarkMode ? "#f97316" : "#ffc107";
               ctx.shadowBlur = 6;
             } else {
               ctx.strokeStyle = isImportantNode
-                ? (isDarkMode ? '#e2e8f0' : 'white')
-                : (isDarkMode ? '#64748b' : '#cec8c8ff');
+                ? isDarkMode
+                  ? "#e2e8f0"
+                  : "white"
+                : isDarkMode
+                ? "#64748b"
+                : "#cec8c8ff";
               ctx.lineWidth = 0.5 / globalScale;
               ctx.shadowBlur = 0;
             }
@@ -1345,19 +1517,25 @@ function GraphView({
             // 텍스트 색상
             // 드래그 중 연결된 노드는 더 진한 색상
             const textColor = isDarkMode
-              ? ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#f1f5f9' : '#cbd5e1')
-              : ((isImportantNode || isReferenced || isNewlyAdded || isFocus) ? '#111' : '#555');
+              ? isImportantNode || isReferenced || isNewlyAdded || isFocus
+                ? "#f1f5f9"
+                : "#cbd5e1"
+              : isImportantNode || isReferenced || isNewlyAdded || isFocus
+              ? "#111"
+              : "#555";
 
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
               ctx.globalAlpha = textAlpha;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'top';
+              ctx.textAlign = "center";
+              ctx.textBaseline = "top";
               ctx.fillStyle = textColor;
               ctx.fillText(label, node.x, node.y + nodeRadius + 1);
               ctx.globalAlpha = 1; // 텍스트 이후 alpha 복원
             }
-            node.__bckgDimensions = [nodeRadius * 2, fontSize].map(n => n + fontSize * 0.2);
+            node.__bckgDimensions = [nodeRadius * 2, fontSize].map(
+              (n) => n + fontSize * 0.2
+            );
 
             ctx.restore();
           }}
@@ -1365,7 +1543,7 @@ function GraphView({
           enableZoomPanInteraction={true}
           minZoom={0.01}
           maxZoom={5}
-          onNodeDragEnd={node => {
+          onNodeDragEnd={(node) => {
             // === 노드 드래그 종료 처리 ===
             // 노드 고정 상태 해제 및 물리 시뮬레이션 복원
             delete node.fx;
@@ -1376,7 +1554,7 @@ function GraphView({
             if (fg) {
               // 반발력 strength 원래 값으로 복원
               const repelForce = -10 - (repelStrength / 100) * 290;
-              fg.d3Force('charge', d3.forceManyBody().strength(repelForce));
+              fg.d3Force("charge", d3.forceManyBody().strength(repelForce));
               fg.d3ReheatSimulation();
 
               // 시뮬레이션 활성화
@@ -1386,7 +1564,7 @@ function GraphView({
               }
             }
           }}
-          onNodeDrag={node => {
+          onNodeDrag={(node) => {
             // === 노드 드래그 중 처리 ===
             // 연결된 노드 집합 계산 및 약한 반발력 적용
             setDraggedNode(node);
@@ -1395,29 +1573,37 @@ function GraphView({
             setConnectedNodeSet(connected);
             const fg = fgRef.current;
             if (fg) {
-              fg.d3Force('charge', d3.forceManyBody().strength(-10)); // 드래그 중 약한 반발력
+              fg.d3Force("charge", d3.forceManyBody().strength(-10)); // 드래그 중 약한 반발력
             }
           }}
-          linkCanvasObjectMode={() => 'after'}
+          linkCanvasObjectMode={() => "after"}
           linkCanvasObject={(link, ctx, globalScale) => {
             // === 링크 렌더링 로직 ===
             // 각 링크를 Canvas에 직접 그리는 함수
-            const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target) && !draggedNode;
-            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+            const isHovered =
+              hoveredLink &&
+              hoveredLink.source === link.source &&
+              hoveredLink.target === link.target &&
+              !draggedNode;
+            const sourceId =
+              typeof link.source === "object" ? link.source.id : link.source;
+            const targetId =
+              typeof link.target === "object" ? link.target.id : link.target;
             if (draggedNode) {
-              const isConnected = connectedNodeSet.has(sourceId) && connectedNodeSet.has(targetId);
+              const isConnected =
+                connectedNodeSet.has(sourceId) &&
+                connectedNodeSet.has(targetId);
               ctx.save();
               ctx.globalAlpha = isConnected ? 1 : 0.13;
 
               // 연결된 링크는 흰색 계열로 표시
               if (isConnected) {
-                ctx.strokeStyle = isDarkMode ? '#ffffff' : '#444444';
+                ctx.strokeStyle = isDarkMode ? "#ffffff" : "#444444";
                 ctx.lineWidth = customLinkWidth * 1.1;
-                ctx.shadowColor = isDarkMode ? '#ffffff' : '#000000';
+                ctx.shadowColor = isDarkMode ? "#ffffff" : "#000000";
                 ctx.shadowBlur = 4;
               } else {
-                ctx.strokeStyle = isDarkMode ? '#64748b' : '#dedede';
+                ctx.strokeStyle = isDarkMode ? "#64748b" : "#dedede";
                 ctx.lineWidth = customLinkWidth;
                 ctx.shadowBlur = 0;
               }
@@ -1429,8 +1615,8 @@ function GraphView({
 
               // hover 효과는 항상 마지막에 한 번만
               if (isHovered) {
-                ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
-                ctx.shadowColor = isDarkMode ? '#89c0feff' : '#92b5fbff';
+                ctx.strokeStyle = isDarkMode ? "#66acfcff" : "#94bdfcff";
+                ctx.shadowColor = isDarkMode ? "#89c0feff" : "#92b5fbff";
                 ctx.shadowBlur = 16;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -1442,8 +1628,8 @@ function GraphView({
             } else if (isHovered) {
               ctx.save();
               ctx.globalAlpha = 1;
-              ctx.strokeStyle = isDarkMode ? '#66acfcff' : '#94bdfcff';
-              ctx.shadowColor = isDarkMode ? '#89c0feff' : '#92b5fbff';
+              ctx.strokeStyle = isDarkMode ? "#66acfcff" : "#94bdfcff";
+              ctx.shadowColor = isDarkMode ? "#89c0feff" : "#92b5fbff";
               ctx.shadowBlur = 16;
               ctx.lineWidth = 2;
               ctx.beginPath();
@@ -1453,7 +1639,7 @@ function GraphView({
               ctx.restore();
             }
           }}
-          onLinkHover={link => {
+          onLinkHover={(link) => {
             // === 링크 호버 처리 ===
             // 마우스가 링크 위에 있을 때 호버 상태 설정
             setHoveredLink(link);
