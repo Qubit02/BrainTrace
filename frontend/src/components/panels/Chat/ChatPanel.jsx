@@ -39,7 +39,11 @@ import {
   requestAnswer,
   getSourceCountByBrain,
 } from "../../../../api/services/graphApi";
-import { listModels, installModel } from "../../../../api/services/aiModelApi";
+import {
+  listModels,
+  installModel,
+  getInstalledModels,
+} from "../../../../api/services/aiModelApi";
 import SourceHoverTooltip from "./SourceHoverTooltip";
 
 // UI 컴포넌트 import
@@ -218,7 +222,9 @@ const ModelDropdown = ({
         className="chat-panel-model-dropdown-inline"
         onClick={() => setShowModelDropdown(!showModelDropdown)}
       >
-        <span className="chat-panel-model-value-inline">{selectedModel}</span>
+        <span className="chat-panel-model-value-inline">
+          {selectedModel || "모델을 선택하세요"}
+        </span>
         <IoChevronDown
           size={14}
           className={`chat-panel-dropdown-arrow-inline ${
@@ -391,8 +397,6 @@ const ModelDropdown = ({
                     설치 중...
                   </span>
                 ) : (
-                  selectedModel !== model &&
-                  !modelData.buttonText &&
                   !isInstalled && (
                     <button
                       className="chat-panel-install-btn-inline"
@@ -486,7 +490,7 @@ const ChatInput = ({
           type="submit"
           className="chat-panel-submit-circle-button"
           aria-label="메시지 전송"
-          disabled={!inputText.trim() || isLoading}
+          disabled={!inputText.trim() || !selectedModel || isLoading}
         >
           {isLoading ? (
             <span className="chat-panel-stop-icon">■</span>
@@ -802,7 +806,7 @@ function ChatPanel({
 
   // 모델 선택 관련 상태
   const [availableModels, setAvailableModels] = useState([]); // 사용 가능한 모델 목록
-  const [selectedModel, setSelectedModel] = useState("gpt-4o"); // 선택된 모델
+  const [selectedModel, setSelectedModel] = useState(""); // 선택된 모델 (초기값: 빈 문자열)
   const [showModelDropdown, setShowModelDropdown] = useState(false); // 모델 드롭다운 표시
   const [installingModel, setInstallingModel] = useState(null); // 설치 중인 모델
 
@@ -923,12 +927,8 @@ function ChatPanel({
       getBrain(selectedBrainId)
         .then((brain) => {
           setBrainInfo(brain);
-          // 배포 타입에 따라 기본 모델 설정
-          if (brain.deployment_type === "local") {
-            setSelectedModel("gemma3:4b"); // 로컬 기본 모델
-          } else {
-            setSelectedModel("gpt-4o"); // 클라우드 기본 모델
-          }
+          // 자동 모델 선택 비활성화 - 사용자가 직접 선택하도록 함
+          // setSelectedModel(""); // 빈 문자열로 설정하여 아무것도 선택되지 않도록
         })
         .catch((error) => {
           console.error("브레인 정보 로드 실패:", error);
@@ -939,9 +939,17 @@ function ChatPanel({
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
     try {
-      const models = await listModels();
-      // gpt-4o를 모델 목록에 추가
-      const updatedModels = addGpt4oToModels(models);
+      // 1. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
+      const availableModels = await listModels();
+
+      // 2. 실제 설치된 모델들의 상세 정보 조회
+      const installedModelsInfo = await getInstalledModels();
+
+      // 3. 두 정보를 합쳐서 최종 모델 목록 생성
+      const updatedModels = addGpt4oToModels(
+        availableModels,
+        installedModelsInfo
+      );
       setAvailableModels(updatedModels);
     } catch (error) {
       console.error("모델 목록 로드 실패:", error);
@@ -1038,6 +1046,12 @@ function ChatPanel({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
+
+    // 모델 선택 검증 추가
+    if (!selectedModel || selectedModel.trim() === "") {
+      alert("사용할 모델을 선택해주세요.");
+      return;
+    }
 
     // 세션 ID 유효성 검증 추가
     if (!selectedSessionId || selectedSessionId <= 0) {
@@ -1398,6 +1412,7 @@ function ChatPanel({
                   type="submit"
                   className="chat-panel-submit-circle-button"
                   aria-label="메시지 전송"
+                  disabled={!inputText.trim() || !selectedModel}
                 >
                   <span className="chat-panel-send-icon">➤</span>
                 </button>
