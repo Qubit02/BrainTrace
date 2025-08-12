@@ -53,6 +53,7 @@ from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
 from services.accuracy_service import compute_accuracy
 from services import manual_chunking_sentences
+import time
 
 # ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
@@ -160,7 +161,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     source_id = request_data.source_id
     brain_id = request_data.brain_id
     model = None
-    
+    t0 = time.perf_counter()
     logging.info('model :', model)
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
@@ -200,12 +201,15 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     # 노드 정보 임베딩 및 저장
     embedding_service.update_index_and_get_embeddings(nodes, brain_id)
     logging.info("벡터 DB에 노드 임베딩 저장 완료")
+    dur_ms = (time.perf_counter() - t0) * 1000
+    logging.info("시간@@@@@@ %.3f s @@@@@@", dur_ms / 1000)
 
     return {
         "message": "텍스트 처리 완료, 그래프(노드와 엣지)가 생성되었고 벡터 DB에 임베딩되었습니다.",
         "nodes": nodes,
         "edges": edges
     }
+
 
 @router.post("/answer",
     summary="질문에 대한 답변 생성",
