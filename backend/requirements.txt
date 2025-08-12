@@ -11,7 +11,7 @@ uvicorn==0.24.0           # ASGI 서버
 neo4j==5.14.1             # 그래프 데이터베이스
 
 # LLM 및 AI 처리
-langchain==0.1.0          # LLM 프레임워크
+langchain==0.2.5          # LLM 프레임워크
 openai==1.78.1            # OpenAI API 클라이언트
 sentence-transformers>=2.3.1  # 문장 임베딩
 transformers>=4.40.0      # Hugging Face 모델
