@@ -1,8 +1,72 @@
-// === GraphView: 지식 그래프 2D Force-Directed 시각화 메인 컴포넌트 ===
-// - 노드/링크 데이터 렌더링
-// - 노드 하이라이트, 포커스, 신규 노드 애니메이션 등 다양한 UX 제공
-// - 외부 상태(참고노드, 포커스노드 등)와 동기화
-// - 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 조정 지원
+/**
+ * GraphView 컴포넌트
+ * 
+ * 이 컴포넌트는 브레인 프로젝트의 2D Force-Directed 지식 그래프 시각화를 담당합니다.
+ * 주요 기능:
+ * - ForceGraph2D를 사용한 인터랙티브 그래프 렌더링
+ * - 노드/링크 데이터 시각화 및 상호작용
+ * - 노드 하이라이트, 포커스, 신규 노드 애니메이션
+ * - 외부 상태(참고노드, 포커스노드 등)와 동기화
+ * - 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 조정
+ * - 마우스/키보드 인터랙션 (드래그, 줌, 팬, 검색)
+ * - 다크모드 지원 및 반응형 UI
+ * - 타임랩스 애니메이션 및 노드 상태 팝업
+ * 
+ * Props:
+ * - brainId: 현재 브레인 ID
+ * - height: 그래프 높이 (숫자 또는 '100%')
+ * - graphData: 초기 그래프 데이터 (선택사항)
+ * - referencedNodes: 참고된 노드 이름 목록
+ * - focusNodeNames: 포커스할 노드 이름 목록
+ * - graphRefreshTrigger: 그래프 새로고침 트리거
+ * - isFullscreen: 전체화면 모드 여부
+ * - onGraphDataUpdate: 그래프 데이터 업데이트 콜백
+ * - onTimelapse: 타임랩스 제어용 ref
+ * - onNewlyAddedNodes: 신규 노드 추가 시 콜백
+ * - onGraphReady: 그래프 준비 완료 시 콜백
+ * - externalShowReferenced: 외부에서 참고노드 표시 제어
+ * - externalShowFocus: 외부에서 포커스노드 표시 제어
+ * - externalShowNewlyAdded: 외부에서 신규노드 표시 제어
+ * - clearTrigger: 하이라이팅 해제 트리거
+ * - isDarkMode: 다크모드 여부
+ * - customNodeSize: 노드 크기 조정
+ * - customLinkWidth: 링크 두께 조정
+ * - textDisplayZoomThreshold: 텍스트 표시 줌 임계값
+ * - textAlpha: 텍스트 투명도
+ * - repelStrength: 반발력 강도 (0-100)
+ * - linkDistance: 링크 거리 (0-100)
+ * - linkStrength: 링크 장력 (0-100)
+ * - onClearReferencedNodes: 참고노드 하이라이트 해제 콜백
+ * - onClearFocusNodes: 포커스노드 하이라이트 해제 콜백
+ * - onClearNewlyAddedNodes: 신규노드 하이라이트 해제 콜백
+ * - fromFullscreen: 전체화면에서 복귀 여부
+ * - showSearch: 검색 입력 표시 여부
+ * 
+ * 상태 관리:
+ * - dimensions: 그래프 컨테이너 크기
+ * - graphData: 현재 그래프 데이터
+ * - loading: 데이터 로딩 상태
+ * - error: 에러 상태
+ * - visibleNodes/visibleLinks: 애니메이션용 노드/링크
+ * - isAnimating: 애니메이션 진행 상태
+ * - pulseStartTime: 펄스 애니메이션 시작 시간
+ * - hoveredNode/hoveredLink: 호버된 노드/링크
+ * - draggedNode: 드래그 중인 노드
+ * - connectedNodeSet: 드래그 중인 노드와 연결된 노드 집합
+ * - showReferenced/showFocus/showNewlyAdded: 하이라이팅 표시 여부
+ * - newlyAddedNodeNames: 신규 추가된 노드 이름 목록
+ * - searchQuery/searchResults: 검색 관련 상태
+ * - graphReady: 그래프 준비 완료 상태
+ * 
+ * 주요 기능:
+ * - 노드 클릭/더블클릭 처리 (카메라 이동, 줌)
+ * - 마우스 호버 시 자동 노드 감지
+ * - 드래그 중 연결된 노드 하이라이트
+ * - 물리 시뮬레이션 파라미터 실시간 조정
+ * - 검색 결과 노드 하이라이트 및 카메라 이동
+ * - 키보드 단축키 (Ctrl+/- 줌, 더블클릭 줌인)
+ * - 반응형 크기 조정 및 초기 줌 레벨 계산
+ */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
@@ -13,7 +77,22 @@ import { startTimelapse } from './graphTimelapse';
 import { toast } from 'react-toastify';
 import SpaceBackground from './SpaceBackground';
 
-// 노드 상태 팝업 컴포넌트
+/**
+ * NodeStatusPopup 컴포넌트
+ * 
+ * 그래프에서 특정 상태의 노드들을 표시하는 팝업 컴포넌트입니다.
+ * 
+ * Props:
+ * - type: 노드 타입 (NEW, REF, FOCUS)
+ * - color: 타입별 색상
+ * - nodes: 표시할 노드 이름 목록
+ * - onClose: 팝업 닫기 콜백
+ * 
+ * 기능:
+ * - 노드 목록 표시 및 확장/축소
+ * - 텍스트 오버플로우 감지 및 확장 가능 여부 표시
+ * - 클릭으로 확장/축소 토글
+ */
 const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [canExpand, setCanExpand] = useState(false);
@@ -61,36 +140,47 @@ const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
 };
 
 function GraphView({
+  // === 기본 설정 ===
   brainId = 'default-brain-id',
   height = '100%',
   graphData: initialGraphData = null,
+  
+  // === 노드 상태 관리 ===
   referencedNodes = [],
   focusNodeNames = [],
   graphRefreshTrigger,
+  
+  // === UI 모드 설정 ===
   isFullscreen = false,
+  isDarkMode = false,
+  fromFullscreen = false,
+  showSearch,
+  
+  // === 콜백 함수들 ===
   onGraphDataUpdate,
   onTimelapse,
   onNewlyAddedNodes,
   onGraphReady,
+  onClearReferencedNodes,
+  onClearFocusNodes,
+  onClearNewlyAddedNodes,
+  
+  // === 외부 제어 상태 ===
   externalShowReferenced,
   externalShowFocus,
   externalShowNewlyAdded,
   clearTrigger,
-  isDarkMode = false,
+  
+  // === 시각적 설정 ===
   customNodeSize = 5,
   customLinkWidth = 1,
   textDisplayZoomThreshold = isFullscreen ? 0.05 : 0.1,
   textAlpha = 1.0,
-
-  // 3개 물리 설정 (0-100 범위)
-  repelStrength = 3,     // 반발력력
+  
+  // === 물리 시뮬레이션 설정 (0-100 범위) ===
+  repelStrength = 3,     // 반발력 강도
   linkDistance = 30,      // 링크 거리
   linkStrength = 50,      // 링크 장력
-  onClearReferencedNodes,
-  onClearFocusNodes,
-  onClearNewlyAddedNodes,
-  fromFullscreen = false,
-  showSearch
 }) {
 
   // === 그래프 컨테이너/크기 관련 ===
@@ -110,29 +200,47 @@ function GraphView({
   const [isAnimating, setIsAnimating] = useState(false); // 타임랩스 등 애니메이션 동작 여부
   const [pulseStartTime, setPulseStartTime] = useState(null); // 포커스/신규노드 펄스 애니메이션 시작 시각
   const [refPulseStartTime, setRefPulseStartTime] = useState(null); // 참고노드 펄스 애니메이션 시작 시각
-  const [hoveredNode, setHoveredNode] = useState(null); // hover된 노드 상태 추가
-  const [hoveredLink, setHoveredLink] = useState(null); // hover된 링크 상태 추가
-  // 드래그 중인 노드와 연결된 노드 집합 상태
-  const [draggedNode, setDraggedNode] = useState(null);
-  const [connectedNodeSet, setConnectedNodeSet] = useState(new Set());
+  
+  // === 마우스 인터랙션 상태 ===
+  const [hoveredNode, setHoveredNode] = useState(null); // 호버된 노드 상태
+  const [hoveredLink, setHoveredLink] = useState(null); // 호버된 링크 상태
+  
+  // === 드래그 상태 관리 ===
+  const [draggedNode, setDraggedNode] = useState(null); // 드래그 중인 노드
+  const [connectedNodeSet, setConnectedNodeSet] = useState(new Set()); // 드래그 중인 노드와 연결된 노드 집합
 
-  // BFS로 연결된 모든 노드 id 집합 반환
+  /**
+   * BFS를 사용하여 시작 노드와 연결된 노드 ID 집합을 반환합니다.
+   * 2단계 깊이까지만 탐색하여 가까운 연결만 고려합니다.
+   * 
+   * @param {string} startId - 시작 노드 ID
+   * @param {Array} links - 그래프의 모든 링크 배열
+   * @returns {Set} 연결된 노드 ID 집합 (2단계 깊이까지)
+   */
   const getAllConnectedNodeIds = (startId, links) => {
     const visited = new Set();
-    const queue = [startId];
+    const queue = [{ id: startId, depth: 0 }];
+    const maxDepth = 2; // 최대 2단계 깊이까지만 탐색
+    
     while (queue.length > 0) {
-      const current = queue.shift();
-      if (!visited.has(current)) {
+      const { id: current, depth } = queue.shift();
+      
+      if (!visited.has(current) && depth <= maxDepth) {
         visited.add(current);
+        
+        // 최대 깊이에 도달했으면 더 이상 탐색하지 않음
+        if (depth === maxDepth) continue;
+        
         links.forEach(link => {
           // source/target이 객체일 수 있으니 id로 변환
           const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
           const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          
           if (sourceId === current && !visited.has(targetId)) {
-            queue.push(targetId);
+            queue.push({ id: targetId, depth: depth + 1 });
           }
           if (targetId === current && !visited.has(sourceId)) {
-            queue.push(sourceId);
+            queue.push({ id: sourceId, depth: depth + 1 });
           }
         });
       }
@@ -140,7 +248,8 @@ function GraphView({
     return visited;
   };
 
-  // 마우스 근처 노드 자동 hover
+  // === 마우스 인터랙션 처리 ===
+  // 마우스 근처 노드 자동 호버 및 더블클릭 처리
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!fgRef.current || loading) return;
@@ -203,6 +312,7 @@ function GraphView({
   const [showFocus, setShowFocus] = useState(() => !localStorage.getItem('포커스노드팝업닫힘')); // 포커스노드 하이라이트 표시 여부
   const [newlyAddedNodeNames, setNewlyAddedNodeNames] = useState([]); // 새로 추가된 노드 이름 목록
   const [showNewlyAdded, setShowNewlyAdded] = useState(() => !localStorage.getItem('추가노드팝업닫힘')); // 신규노드 하이라이트 표시 여부
+  
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
   const referencedSet = useMemo(() => new Set(referencedNodes || []), [referencedNodes]);
 
@@ -214,25 +324,29 @@ function GraphView({
   const clickTimeoutRef = useRef(); // 더블클릭 타이머 ref
 
   // === 그래프 준비 상태 ===
-  const [graphReady, setGraphReady] = useState(false); // 그래프 준비 상태
+  const [graphReady, setGraphReady] = useState(false); // 그래프 준비 완료 상태
 
   // === 색상 팔레트 및 다크모드 대응 ===
-  // 다크모드용 색상 팔레트 추가
+  // 라이트모드용 색상 팔레트 (노드 연결수에 따른 색상)
   const lightColorPalette = [
     '#444444', '#666666', '#888888', '#aaaaaa', '#3366bb',
     '#333333', '#777777', '#999999', '#5588cc', '#555555',
   ];
 
+  // 다크모드용 색상 팔레트 (노드 연결수에 따른 색상)
   const darkColorPalette = [
     '#e2e8f0', '#cbd5e1', '#94a3b8', '#64748b', '#60a5fa',
     '#f1f5f9', '#d1d5db', '#9ca3af', '#3b82f6', '#e5e7eb',
   ];
 
-  // 현재 팔레트 선택
+  // 현재 모드에 따른 색상 팔레트 선택
   const colorPalette = isDarkMode ? darkColorPalette : lightColorPalette;
 
   // === 컨테이너 크기 계산 및 반응형 처리 ===
-  // 창 크기 변화에 따라 그래프 영역 크기 자동 조정
+  /**
+   * 창 크기 변화에 따라 그래프 영역 크기를 자동으로 조정합니다.
+   * ResizeObserver와 함께 사용되어 반응형 레이아웃을 지원합니다.
+   */
   const updateDimensions = () => {
     if (!containerRef.current) return;
     const width = containerRef.current.clientWidth;
@@ -247,7 +361,12 @@ function GraphView({
   };
 
   // === 그래프 초기 줌/중심 위치 계산 ===
-  // 노드 개수에 따라 적절한 줌 배율 계산
+  /**
+   * 노드 개수에 따라 적절한 초기 줌 배율을 계산합니다.
+   * 
+   * @param {number} nodeCount - 그래프의 총 노드 개수
+   * @returns {number} 초기 줌 배율 (0.01 ~ 5.0 범위)
+   */
   const getInitialZoomScale = (nodeCount) => {
     // Modal용 줌 배율 (더 확대)
     const modalMultiplier = isFullscreen ? 5 : 1.5; // Modal일 때 1.5배 더 확대
@@ -268,7 +387,14 @@ function GraphView({
   };
 
   // === 카메라 이동 유틸리티 함수 ===
-  // 노드들로 카메라를 이동시키는 공통 함수
+  /**
+   * 지정된 노드들로 카메라를 이동시키는 공통 함수입니다.
+   * 
+   * @param {Array} nodes - 이동할 노드 배열
+   * @param {number} delay - 이동 시작 전 대기 시간 (ms)
+   * @param {number} zoomDuration - 줌 애니메이션 지속 시간 (ms)
+   * @param {number} centerDuration - 중심 이동 애니메이션 지속 시간 (ms)
+   */
   const moveCameraToNodes = (nodes, delay = 1000, zoomDuration = 800, centerDuration = 1000) => {
     if (!nodes.length || !fgRef.current || !dimensions.width || !dimensions.height) return;
 
@@ -308,9 +434,13 @@ function GraphView({
   };
 
   // === 노드 클릭/더블클릭 핸들러 ===
-  // - 단일 클릭: nothing
-  // - 더블 클릭: 해당 노드로 카메라 이동 및 확대
-  // 노드 클릭 핸들러
+  /**
+   * 노드 클릭 이벤트를 처리합니다.
+   * - 단일 클릭: 아무 동작 없음
+   * - 더블 클릭: 해당 노드로 카메라 이동 및 확대
+   * 
+   * @param {Object} node - 클릭된 노드 객체
+   */
   const handleNodeClick = (node) => {
     const now = Date.now();
     const { node: lastNode, time: lastTime } = lastClickRef.current;
@@ -331,8 +461,11 @@ function GraphView({
     }
   };
 
-  // === 그래프 물리 파라미터(반발력, 링크거리 등) 실시간 적용 ===
-  // 물리 설정 변경 시 업데이트 - 올바른 ForceGraph2D 방식
+  // === 그래프 물리 파라미터 실시간 적용 ===
+  /**
+   * 물리 시뮬레이션 설정(반발력, 링크거리, 링크장력)이 변경될 때
+   * ForceGraph2D의 D3 시뮬레이션을 업데이트합니다.
+   */
   useEffect(() => {
     if (fgRef.current && graphData && graphData.nodes) {
       const fg = fgRef.current;
@@ -418,7 +551,10 @@ function GraphView({
   }, [repelStrength, linkDistance, linkStrength, graphData]);
 
   // === 더블클릭 시 그래프 줌인 ===
-  // 노드가 아닌 곳 더블클릭 시 해당 위치로 카메라 이동 및 확대
+  /**
+   * 노드가 아닌 곳에서 더블클릭 시 해당 위치로 카메라를 이동하고 확대합니다.
+   * 사용자가 그래프의 빈 공간을 더블클릭하여 해당 영역을 자세히 볼 수 있습니다.
+   */
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !fgRef.current) return;
@@ -445,6 +581,11 @@ function GraphView({
     };
   }, [dimensions]);
 
+  // === 하이라이팅 해제 처리 ===
+  /**
+   * 외부에서 전달된 clearTrigger를 감지하여 모든 하이라이팅 상태를 해제합니다.
+   * 참고노드, 포커스노드, 신규노드의 하이라이팅과 펄스 애니메이션을 모두 중지합니다.
+   */
   useEffect(() => {
     if (clearTrigger > 0) {
       console.log('🧹 GraphView에서 하이라이팅 해제 트리거 감지:', clearTrigger);
@@ -461,20 +602,28 @@ function GraphView({
     }
   }, [clearTrigger]);
 
-  // === 외부에서 하이라이트/포커스/신규노드 상태 제어 동기화 ===
-  // 외부 props로 showReferenced, showFocus, showNewlyAdded 등 제어
+  // === 외부 상태 동기화 ===
+  /**
+   * 외부에서 전달된 props로 하이라이팅 상태를 제어합니다.
+   * 부모 컴포넌트에서 참고노드, 포커스노드, 신규노드의 표시 여부를
+   * 동적으로 변경할 수 있습니다.
+   */
+  
+  // 참고노드 표시 상태 동기화
   useEffect(() => {
     if (typeof externalShowReferenced === 'boolean') {
       setShowReferenced(externalShowReferenced);
     }
   }, [externalShowReferenced]);
 
+  // 포커스노드 표시 상태 동기화
   useEffect(() => {
     if (typeof externalShowFocus === 'boolean') {
       setShowFocus(externalShowFocus);
     }
   }, [externalShowFocus]);
 
+  // 신규노드 표시 상태 동기화
   useEffect(() => {
     if (typeof externalShowNewlyAdded === 'boolean') {
       setShowNewlyAdded(externalShowNewlyAdded);
@@ -482,8 +631,10 @@ function GraphView({
   }, [externalShowNewlyAdded]);
 
   // === 신규 노드 추가 감지 및 콜백 ===
-  // 그래프 데이터 변경 시 신규 노드 감지, 콜백 호출
-  // 새로 추가된 노드 알림 - 중복 방지 로직 추가
+  /**
+   * 그래프 데이터 변경 시 신규 노드를 감지하고 부모 컴포넌트에 알립니다.
+   * 중복 알림을 방지하기 위해 이전 값과 비교하여 실제 변경된 경우만 콜백을 호출합니다.
+   */
   useEffect(() => {
     if (!onNewlyAddedNodes || newlyAddedNodeNames.length === 0) return;
 
@@ -498,6 +649,11 @@ function GraphView({
     }
   }, [newlyAddedNodeNames, onNewlyAddedNodes]);
 
+  // === 컨테이너 크기 조정 및 반응형 처리 ===
+  /**
+   * 컨테이너 크기 변화를 감지하고 그래프 영역을 자동으로 조정합니다.
+   * ResizeObserver를 사용하여 DOM 크기 변화를 실시간으로 감지합니다.
+   */
   useEffect(() => {
     updateDimensions();
     const resizeObserver = new ResizeObserver(updateDimensions);
@@ -508,6 +664,11 @@ function GraphView({
     };
   }, [height]);
 
+  // === 초기 줌 및 중심 위치 설정 ===
+  /**
+   * 그래프 로딩 완료 후 노드 개수에 따라 적절한 초기 줌 레벨을 설정합니다.
+   * 그래프를 화면 중앙에 배치하고 사용자가 전체 구조를 한눈에 볼 수 있도록 합니다.
+   */
   useEffect(() => {
     if (!loading && graphData.nodes.length > 0 && fgRef.current) {
       const zoom = getInitialZoomScale(graphData.nodes.length);
@@ -516,7 +677,11 @@ function GraphView({
     }
   }, [loading, graphData]);
 
-  // focusNodeNames 변경 시 펄스 시작
+  // === 포커스 노드 펄스 애니메이션 시작 ===
+  /**
+   * focusNodeNames가 변경될 때 포커스 노드의 펄스 애니메이션을 시작합니다.
+   * 사용자가 특정 노드에 집중할 수 있도록 시각적 피드백을 제공합니다.
+   */
   useEffect(() => {
     if (focusNodeNames && focusNodeNames.length > 0) {
       setShowFocus(true);
@@ -524,7 +689,11 @@ function GraphView({
     }
   }, [focusNodeNames]);
 
-  // 그래프 데이터 로딩
+  // === 그래프 데이터 로딩 ===
+  /**
+   * 컴포넌트 마운트 시 그래프 데이터를 로딩합니다.
+   * initialGraphData가 제공된 경우 이를 사용하고, 그렇지 않으면 API에서 데이터를 가져옵니다.
+   */
   useEffect(() => {
     if (initialGraphData) {
       processGraphData(initialGraphData);
@@ -548,14 +717,20 @@ function GraphView({
     loadGraphData();
   }, [brainId, initialGraphData]);
 
-  // === 그래프 준비 완료 시 콜백 ===
-  // graphReady가 바뀔 때마다 부모에 전달
+  // === 그래프 준비 완료 콜백 ===
+  /**
+   * graphReady 상태가 변경될 때마다 부모 컴포넌트에 알립니다.
+   * 부모 컴포넌트에서 그래프의 준비 상태를 추적할 수 있습니다.
+   */
   useEffect(() => {
     if (onGraphReady) onGraphReady(graphReady);
   }, [graphReady, onGraphReady]);
 
   // === 그래프 새로고침 트리거 처리 ===
-  // - 새로고침 시 신규 노드 감지 및 하이라이트
+  /**
+   * 외부에서 전달된 graphRefreshTrigger를 감지하여 그래프를 새로고침합니다.
+   * 새로고침 시 신규 노드를 감지하고 하이라이트하여 사용자에게 알립니다.
+   */
   useEffect(() => {
     if (!graphRefreshTrigger) return;
 
@@ -588,7 +763,11 @@ function GraphView({
     loadAndDetect();
   }, [graphRefreshTrigger, brainId]);
 
-  // === 참고노드(referencedNodes) 하이라이트 처리 ===
+  // === 참고노드 하이라이트 처리 ===
+  /**
+   * referencedNodes가 변경될 때 참고노드의 하이라이트를 활성화합니다.
+   * 참고노드가 있을 때 펄스 애니메이션을 시작하여 사용자의 주의를 끕니다.
+   */
   useEffect(() => {
     if (referencedNodes && referencedNodes.length > 0) {
       setRefPulseStartTime(Date.now());
@@ -599,8 +778,11 @@ function GraphView({
     }
   }, [referencedNodes]);
 
-  // === 포커스노드(focusNodeNames) 하이라이트 및 카메라 이동 ===
-  // 포커스 노드 카메라 이동
+  // === 포커스노드 카메라 이동 ===
+  /**
+   * focusNodeNames가 변경될 때 해당 노드들로 카메라를 이동시킵니다.
+   * 포커스 노드들을 화면 중앙에 배치하고 적절한 줌 레벨로 조정합니다.
+   */
   useEffect(() => {
     if (!focusNodeNames || !focusNodeNames.length || !graphData.nodes.length) return;
 
@@ -619,7 +801,10 @@ function GraphView({
   }, [focusNodeNames, graphData.nodes]);
 
   // === 참고노드 카메라 이동 ===
-  // 참고된 노드 카메라 이동
+  /**
+   * 참고노드 하이라이트가 활성화될 때 해당 노드들로 카메라를 이동시킵니다.
+   * 참고노드들을 화면 중앙에 배치하고 적절한 줌 레벨로 조정합니다.
+   */
   useEffect(() => {
     if (!showReferenced || !referencedNodes || referencedNodes.length === 0 || !graphData.nodes.length) return;
 
@@ -637,7 +822,10 @@ function GraphView({
   }, [showReferenced, referencedNodes, graphData, referencedSet]);
 
   // === 신규노드 카메라 이동 ===
-  // 새로 추가된 노드 카메라 이동
+  /**
+   * 신규노드가 감지될 때 해당 노드들로 카메라를 이동시킵니다.
+   * 새로 추가된 노드들을 화면 중앙에 배치하고 적절한 줌 레벨로 조정합니다.
+   */
   useEffect(() => {
     if (!newlyAddedNodeNames.length || !graphData.nodes.length) return;
 
@@ -655,8 +843,17 @@ function GraphView({
   }, [newlyAddedNodeNames, graphData]);
 
   // === 그래프 데이터 처리 함수 ===
-  // - 노드/링크별 색상, 연결수 등 가공
-  // - onGraphDataUpdate 콜백 호출
+  /**
+   * API에서 받은 원시 그래프 데이터를 시각화에 적합한 형태로 가공합니다.
+   * 
+   * 처리 내용:
+   * - 노드별 연결 수 계산 및 색상 할당
+   * - 링크의 source/target ID 정규화
+   * - 노드 크기 및 시각적 속성 설정
+   * - 부모 컴포넌트에 처리된 데이터 전달
+   * 
+   * @param {Object} data - 원시 그래프 데이터 {nodes: [], links: []}
+   */
   const processGraphData = (data) => {
     const linkCounts = {};
     data.links.forEach(link => {
@@ -708,8 +905,11 @@ function GraphView({
     }
   };
 
-  // === 타임랩스/팝업 등 외부 제어용 ref 노출 ===
-  // 외부에서 팝업 데이터에 접근할 수 있도록 노출
+  // === 외부 제어용 ref 노출 ===
+  /**
+   * 부모 컴포넌트에서 타임랩스 제어 및 팝업 데이터에 접근할 수 있도록
+   * 컴포넌트의 내부 메서드와 상태를 노출합니다.
+   */
   React.useImperativeHandle(onTimelapse, () => ({
     startTimelapse: () => startTimelapse({ graphData, setIsAnimating, setVisibleNodes, setVisibleLinks, fgRef }),
     getPopupData: () => ({
@@ -726,14 +926,19 @@ function GraphView({
     })
   }));
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const searchInputRef = useRef(null);
+  // === 검색 기능 관련 상태 ===
+  const [searchQuery, setSearchQuery] = useState(''); // 검색 쿼리
+  const [searchResults, setSearchResults] = useState([]); // 검색 결과
+  const searchInputRef = useRef(null); // 검색 입력 필드 ref
 
-  // 노드 이름 목록
+  // 모든 노드 이름 목록 (검색용)
   const allNodeNames = graphData.nodes.map(node => node.name);
 
-  // 노드 검색 로직 (부분일치, 대소문자 무시)
+  /**
+   * 노드 검색 로직을 처리합니다 (부분일치, 대소문자 무시).
+   * 
+   * @param {string} query - 검색 쿼리
+   */
   const handleSearch = useCallback((query) => {
     if (!query.trim() || allNodeNames.length === 0) {
       setSearchResults([]);
@@ -744,13 +949,22 @@ function GraphView({
     setSearchResults(matchingNodes);
   }, [allNodeNames]);
 
+  /**
+   * 검색 입력 필드의 변경을 처리합니다.
+   * 
+   * @param {Event} e - 입력 이벤트
+   */
   const handleSearchInput = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
     handleSearch(query);
   };
 
-  // 검색 결과 노드 카메라 이동 및 펄스
+  // === 검색 결과 처리 ===
+  /**
+   * 검색 결과가 변경될 때 해당 노드들을 하이라이트하고 펄스 애니메이션을 시작합니다.
+   * 검색 쿼리가 비어있으면 하이라이팅을 해제합니다.
+   */
   useEffect(() => {
     if (searchQuery === '') {
       setShowReferenced(false);
@@ -765,7 +979,11 @@ function GraphView({
     setRefPulseStartTime(Date.now());
   }, [searchQuery, searchResults]);
 
-  // showSearch가 true가 될 때 input에 포커스
+  // === 검색 입력 포커스 관리 ===
+  /**
+   * showSearch가 true가 될 때 검색 입력 필드에 자동으로 포커스를 설정합니다.
+   * showSearch가 false가 될 때 검색 쿼리를 초기화합니다.
+   */
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
       searchInputRef.current.focus();
@@ -775,7 +993,11 @@ function GraphView({
     }
   }, [showSearch]);
 
-  // 키보드 단축키로 줌인/줌아웃, 화면 이동(팬) 기능
+  // === 키보드 단축키 처리 ===
+  /**
+   * 키보드 단축키를 처리하여 줌인/줌아웃 기능을 제공합니다.
+   * Ctrl/Cmd + +/- 키로 그래프를 확대/축소할 수 있습니다.
+   */
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!fgRef.current) return;
@@ -805,7 +1027,11 @@ function GraphView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fgRef]);
 
-  // 참고된 노드가 그래프에 하나도 없을 때 안내 토스트 메시지 표시
+  // === 참고노드 안내 토스트 ===
+  /**
+   * 참고된 노드가 그래프에 하나도 없을 때 사용자에게 안내 토스트 메시지를 표시합니다.
+   * 사용자가 참고노드가 왜 하이라이트되지 않는지 이해할 수 있도록 도움을 줍니다.
+   */
   useEffect(() => {
     // 참고된 노드 팝업이 활성화되어 있고,
     // referencedNodes에 값이 있으며,
@@ -832,7 +1058,8 @@ function GraphView({
     >
       {isFullscreen && <SpaceBackground isVisible={true} isDarkMode={isDarkMode} />}
 
-      {/* 상단에 검색 인풋 표시 (showSearch prop이 true일 때만) */}
+      {/* === 검색 입력 필드 === */}
+      {/* 상단에 검색 입력 필드를 표시합니다 (showSearch prop이 true일 때만) */}
       {showSearch && (
         <div className="search-container">
           <input
@@ -874,7 +1101,8 @@ function GraphView({
         </div>
       )}
 
-      {/* 노드 상태 팝업 컴포넌트 */}
+      {/* === 노드 상태 팝업 컴포넌트들 === */}
+      {/* 신규 추가된 노드 상태 팝업 */}
       {showNewlyAdded && newlyAddedNodeNames.length > 0 && (
         <NodeStatusPopup
           type="NEW"
@@ -888,6 +1116,7 @@ function GraphView({
         />
       )}
 
+      {/* 참고노드 상태 팝업 (전체화면에서 복귀한 경우 제외) */}
       {(!fromFullscreen)
         && showReferenced
         && referencedNodes
@@ -904,6 +1133,7 @@ function GraphView({
           />
         )}
 
+      {/* 포커스노드 상태 팝업 */}
       {showFocus && Array.isArray(focusNodeNames) && focusNodeNames.length > 0 && (
         <NodeStatusPopup
           type="FOCUS"
@@ -916,6 +1146,8 @@ function GraphView({
         />
       )}
 
+      {/* === 호버 툴팁 === */}
+      {/* 마우스가 노드나 링크 위에 있을 때 표시되는 툴팁 */}
       {(hoveredNode || hoveredLink) && (
         <div
           className={`graph-hover-tooltip ${isFullscreen ? 'fullscreen' : ''}`}
@@ -949,6 +1181,7 @@ function GraphView({
         </div>
       )}
 
+      {/* === 로딩 및 에러 상태 표시 === */}
       {/* ForceGraph2D의 내장 tooltip 사용: nodeTitle, linkTitle 설정 */}
       {loading && (
         isFullscreen ? (
@@ -974,6 +1207,8 @@ function GraphView({
         </div>
       )}
 
+      {/* === ForceGraph2D 메인 그래프 컴포넌트 === */}
+      {/* 로딩이 완료되고 노드가 있으며 컨테이너 크기가 설정된 경우에만 렌더링 */}
       {!loading && graphData.nodes.length > 0 && dimensions.width > 0 && (
         <ForceGraph2D
           ref={fgRef}
@@ -1001,6 +1236,8 @@ function GraphView({
             fg.force("link", d3.forceLink().id(d => d.id).distance(100).strength(0.5));
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
+            // === 노드 렌더링 로직 ===
+            // 각 노드를 Canvas에 직접 그리는 함수
             ctx.save();
             // 드래그 중이면 연결된 모든 노드만 진하게, 나머지는 투명하게
             if (draggedNode) {
@@ -1129,6 +1366,8 @@ function GraphView({
           minZoom={0.01}
           maxZoom={5}
           onNodeDragEnd={node => {
+            // === 노드 드래그 종료 처리 ===
+            // 노드 고정 상태 해제 및 물리 시뮬레이션 복원
             delete node.fx;
             delete node.fy;
             setDraggedNode(null);
@@ -1148,6 +1387,8 @@ function GraphView({
             }
           }}
           onNodeDrag={node => {
+            // === 노드 드래그 중 처리 ===
+            // 연결된 노드 집합 계산 및 약한 반발력 적용
             setDraggedNode(node);
             // BFS로 연결된 모든 노드 집합 계산
             const connected = getAllConnectedNodeIds(node.id, graphData.links);
@@ -1159,6 +1400,8 @@ function GraphView({
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
+            // === 링크 렌더링 로직 ===
+            // 각 링크를 Canvas에 직접 그리는 함수
             const isHovered = hoveredLink && (hoveredLink.source === link.source && hoveredLink.target === link.target) && !draggedNode;
             const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
             const targetId = typeof link.target === 'object' ? link.target.id : link.target;
@@ -1170,9 +1413,9 @@ function GraphView({
               // 연결된 링크는 흰색 계열로 표시
               if (isConnected) {
                 ctx.strokeStyle = isDarkMode ? '#ffffff' : '#444444';
-                ctx.lineWidth = customLinkWidth * 2;
+                ctx.lineWidth = customLinkWidth * 1.1;
                 ctx.shadowColor = isDarkMode ? '#ffffff' : '#000000';
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 4;
               } else {
                 ctx.strokeStyle = isDarkMode ? '#64748b' : '#dedede';
                 ctx.lineWidth = customLinkWidth;
@@ -1211,6 +1454,8 @@ function GraphView({
             }
           }}
           onLinkHover={link => {
+            // === 링크 호버 처리 ===
+            // 마우스가 링크 위에 있을 때 호버 상태 설정
             setHoveredLink(link);
           }}
         />
