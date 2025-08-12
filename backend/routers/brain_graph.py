@@ -53,6 +53,7 @@ from dependencies import get_ai_service_GPT
 from dependencies import get_ai_service_Ollama
 from services.accuracy_service import compute_accuracy
 from services import manual_chunking_sentences
+import time
 
 # ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
@@ -160,7 +161,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     source_id = request_data.source_id
     brain_id = request_data.brain_id
     model = None
-    
+    t0 = time.perf_counter()
     logging.info('model :', model)
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
@@ -200,12 +201,15 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     # 노드 정보 임베딩 및 저장
     embedding_service.update_index_and_get_embeddings(nodes, brain_id)
     logging.info("벡터 DB에 노드 임베딩 저장 완료")
+    dur_ms = (time.perf_counter() - t0) * 1000
+    logging.info("시간@@@@@@ %.3f s @@@@@@", dur_ms / 1000)
 
     return {
         "message": "텍스트 처리 완료, 그래프(노드와 엣지)가 생성되었고 벡터 DB에 임베딩되었습니다.",
         "nodes": nodes,
         "edges": edges
     }
+
 
 @router.post("/answer",
     summary="질문에 대한 답변 생성",
@@ -249,18 +253,26 @@ async def answer_endpoint(request_data: AnswerRequest):
     
      # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
     if model == "openai":
-        ai_service = get_ai_service_GPT()
+        logging.info("🚀 OpenAI 서비스 선택됨 - model_name: %s", model_name)
+        ai_service = get_ai_service_GPT(model_name)  # model_name 전달
+        logging.info("🚀 OpenAI 서비스 생성 완료")
     elif model == "ollama":
+        logging.info("🚀 Ollama 서비스 선택됨 - model_name: %s", model_name)
         ai_service = get_ai_service_Ollama(model_name)
+        logging.info("🚀 Ollama 서비스 생성 완료")
     else:
+        logging.error("🚀 지원하지 않는 모델: %s", model)
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
-
-    logging.info("질문 접수: %s, session_id: %s, brain_id: %s, model: %s, model_name: %s", question, session_id, brain_id, model, model_name)
+    
+    # 🚀 핵심 디버깅: 모델 정보 확인
+    logging.info("🚀 === 모델 정보 ===")
+    logging.info("🚀 요청된 model: %s, model_name: %s", model, model_name)
+    logging.info("🚀 AI 서비스 타입: %s", type(ai_service).__name__)
+    if hasattr(ai_service, 'model_name'):
+        logging.info("🚀 실제 사용할 모델: %s", ai_service.model_name)
     
     try:
-        # 사용자 질문 저장
         db_handler = SQLiteHandler()
-        chat_id = db_handler.save_chat(False, question, brain_id)
         
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):
@@ -300,6 +312,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
         
         # Step 6: LLM을을 사용해 최종 답변 생성
+        logging.info("🚀 답변 생성 시작 - 모델: %s", ai_service.model_name if hasattr(ai_service, 'model_name') else '알 수 없음')
         final_answer = ai_service.generate_answer(raw_schema_text, question)
         referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
         final_answer = final_answer.split("EOF")[0].strip()

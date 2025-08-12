@@ -9,8 +9,8 @@ from services.openai_service import OpenAIService
 from neo4j_db.Neo4jHandler import Neo4jHandler
 from sqlite_db.sqlite_handler import SQLiteHandler
 
-def get_ai_service_GPT() -> BaseAIService:
-    return OpenAIService()
+def get_ai_service_GPT(model_name="gpt-4o") -> BaseAIService:
+    return OpenAIService(model_name)
 
 def get_ai_service_Ollama(model_name) -> BaseAIService:
     return OllamaAIService(model_name)

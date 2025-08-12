@@ -109,19 +109,28 @@ export const deleteAllChatsBySession = session_id =>
  * 채팅(질문/답변) 저장
  * @param {string|number} session_id - 세션 ID
  * @param {Object} chatData - 채팅 데이터
- * @param {boolean} chatData.is_ai - AI 응답 여부
+ * @param {boolean|number} chatData.is_ai - AI 응답 여부 (false/0: 사용자, true/1: AI)
  * @param {string} chatData.message - 메시지 내용
  * @param {Array} chatData.referenced_nodes - 참조 노드 목록
  * @param {number} chatData.accuracy - 정확도
  * @returns {Promise<Object>} 저장된 채팅 정보
  */
-export const saveChatToSession = (session_id, { is_ai, message, referenced_nodes, accuracy }) =>
-    api.post(`/chat/session/${session_id}`, { is_ai, message, referenced_nodes, accuracy })
+export const saveChatToSession = (session_id, { is_ai, message, referenced_nodes, accuracy }) => {
+    // is_ai를 int 타입으로 변환 (false -> 0, true -> 1)
+    const isAiInt = typeof is_ai === 'boolean' ? (is_ai ? 1 : 0) : is_ai;
+    
+    return api.post(`/chat/session/${session_id}`, { 
+        is_ai: isAiInt, 
+        message, 
+        referenced_nodes, 
+        accuracy 
+    })
         .then(r => r.data)
         .catch(error => {
             console.error(`채팅 저장 실패 (세션 ID: ${session_id}):`, error);
             throw error;
         });
+};
 
 /**
  * 채팅(질문/답변) 메시지 조회
