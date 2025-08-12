@@ -32,7 +32,29 @@ import numpy as np
 
 # 환경변수 로드
 load_dotenv()
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://ollama:11434")
+
+# ───────── Ollama 서버 URL 환경별 설정 ───────── #
+def get_ollama_api_url() -> str:
+    """
+    실행 환경에 따라 Ollama API URL을 결정합니다.
+    
+    - Docker 환경: ollama:11434 (서비스명으로 접근)
+    - 로컬 환경: localhost:11434
+    
+    Returns:
+        str: Ollama API 기본 URL
+    """
+    # 환경변수로 명시적 설정이 있으면 우선 사용
+    if os.getenv("OLLAMA_API_URL"):
+        return os.getenv("OLLAMA_API_URL")
+    
+    # 도커 환경 감지
+    if os.getenv("IN_DOCKER") == "true":
+        return "http://ollama:11434"
+    else:
+        return "http://localhost:11434"
+
+OLLAMA_API_URL = get_ollama_api_url()
 OLLAMA_PULL_MODEL = os.getenv("OLLAMA_PULL_MODEL", "false").lower() in ("1", "true", "yes")
 
 
@@ -44,7 +66,7 @@ class OllamaAIService(BaseAIService):
         if OLLAMA_PULL_MODEL:
             try:
                 resp = requests.post(
-                    f"{OLLAMA_API_URL}/api/pull",        # 모델 풀링 엔드포인트 :contentReference[oaicite:6]{index=6}
+                    f"{OLLAMA_API_URL}/api/pull",        # 모델 풀링 엔드포인트
                     json={"model": self.model_name},
                     timeout=60
                 )
@@ -97,7 +119,7 @@ class OllamaAIService(BaseAIService):
         try:
             # Ollama 네이티브 chat 엔드포인트 호출
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:7]{index=7}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트
                 json={
                     "model": self.model_name,
                     "messages": [
@@ -110,7 +132,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            content = data["message"]["content"]       # Ollama 응답 스키마 파싱 :contentReference[oaicite:8]{index=8}
+            content = data["message"]["content"]       # Ollama 응답 스키마 파싱
             parsed = json.loads(content)
         except Exception as e:
             logging.error(f"_extract_from_chunk 오류: {e}")
@@ -211,7 +233,7 @@ class OllamaAIService(BaseAIService):
         try:
             print("debug", schema_text, question)
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트 :contentReference[oaicite:9]{index=9}
+                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트
                 json={
                     "model": self.model_name,
                     "prompt": prompt,
@@ -221,7 +243,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["response"].strip()            # Ollama /api/generate 응답 파싱 :contentReference[oaicite:10]{index=10}
+            return data["response"].strip()            # Ollama /api/generate 응답 파싱
         except Exception as e:
             logging.error(f"generate_answer 오류: {e}")
             raise
@@ -272,7 +294,7 @@ class OllamaAIService(BaseAIService):
         """
         try:
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:11]{index=11}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트
                 json={
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": message}],
@@ -282,7 +304,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["message"]["content"].strip()  # Ollama /api/chat 응답 파싱 :contentReference[oaicite:12]{index=12}
+            return data["message"]["content"].strip()  # Ollama /api/chat 응답 파싱
         except Exception as e:
             logging.error(f"chat 오류: {e}")
             raise
