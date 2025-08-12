@@ -254,12 +254,15 @@ class OpenAIService(BaseAIService) :
 
     def generate_answer(self, schema_text: str, question: str) -> str:
         """
-        스키마 텍스트와 질문을 기반으로 AI를 호출하여 최종 답변을 생성합니다.
+        지식그래프 컨텍스트와 질문을 기반으로 AI를 호출하여 최종 답변을 생성합니다.
         """
         prompt = (
-        "다음 스키마와 질문을 바탕으로, 스키마에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
-        "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 스키마와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
-        "스키마:\n" + schema_text + "\n\n"
+        "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
+        "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
+        "지식그래프 컨텍스트 형식:\n"
+        "1. [관계 목록] start_name -> relation_label -> end_name\n (모든 노드가 관계를 가지고 있는 것은 아님)"
+        "2. [노드 목록] NODE: {node_name} | DESCRIPTION: {desc_str}\n"
+        "지식그래프 컨텍스트:\n" + schema_text + "\n\n"
         "질문: " + question + "\n\n"
         "출력 형식:\n"
         "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n\n"
@@ -292,211 +295,148 @@ class OpenAIService(BaseAIService) :
 
     def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
         """
-        Neo4j에서 가져온 노드, 인접 노드, 관계 데이터를 받아
-        노드-관계-노드 형식의 스키마 텍스트를 생성합니다.
+        위: start_name -> relation_label -> end_name (한 줄씩, 중복 제거)
+        아래: 모든 노드(관계 있든 없든) 중복 없이
+            {node_name}: {desc_str}
+        desc_str는 original_sentences[].original_sentence를 모아 공백 정리 및 중복 제거
         """
-        try:
-            logging.info("generating schema text: %d개 노드, %d개 관련 노드, %d개 관계",
-                        len(nodes) if isinstance(nodes, list) else 0,
-                        len(related_nodes) if isinstance(related_nodes, list) else 0,
-                        len(relationships) if isinstance(relationships, list) else 0)
 
-            def filter_node(node):
+
+        def to_dict(obj):
+            try:
+                if obj is None:
+                    return {}
+                if hasattr(obj, "items"):
+                    return dict(obj.items())
+                if isinstance(obj, dict):
+                    return obj
+            except Exception:
+                pass
+            return {}
+
+        def normalize_space(s: str) -> str:
+            return " ".join(str(s).split())
+
+        def filter_node(node_obj):
+            d = to_dict(node_obj)
+            name = normalize_space(d.get("name", "알 수 없음") or "")
+            label = normalize_space(d.get("label", "알 수 없음") or "")
+            original_sentences = d.get("original_sentences", []) or []
+            parsed = []
+            # 문자열이면 JSON 파싱 시도
+            if isinstance(original_sentences, str):
                 try:
-                    if node is None:
-                        return {"name": "알 수 없음", "label": "알 수 없음", "descriptions": []}
-                        
-                    # Neo4j 노드 객체의 경우 properties 추출 (items() 사용)
-                    if hasattr(node, "items"):
-                        d = dict(node.items())
-                    elif isinstance(node, dict):
-                        d = node
-                    else:
-                        d = {}
-                    
-                    name = d.get("name", "알 수 없음")
-                    label = d.get("label", "알 수 없음")
-                    descriptions = d.get("descriptions", [])
-                    if descriptions is None:
-                        descriptions = []
-                    
-                    # descriptions가 문자열인 경우 JSON 파싱 시도
-                    parsed_descriptions = []
-                    if descriptions:
-                        if isinstance(descriptions, str):
-                            try:
-                                descriptions = [json.loads(descriptions)]
-                            except json.JSONDecodeError as err:
-                                logging.error("descriptions JSON 파싱 오류: %s - 원본: %s", str(err), descriptions)
-                                descriptions = []
-                        
-                        for desc_item in descriptions:
-                            if isinstance(desc_item, str):
-                                try:
-                                    desc_obj = json.loads(desc_item)
-                                    if isinstance(desc_obj, dict):
-                                        parsed_descriptions.append(desc_obj)
-                                except json.JSONDecodeError:
-                                    continue
-                            elif isinstance(desc_item, dict):
-                                parsed_descriptions.append(desc_item)
-                    
-                    return {
-                        "name": name,
-                        "label": label,
-                        "descriptions": parsed_descriptions
-                    }
-                except Exception as e:
-                    logging.error("노드 필터링 오류: %s", str(e))
-                    return {"name": "알 수 없음", "label": "알 수 없음", "descriptions": []}
-
-            # 노드 처리: nodes와 related_nodes를 하나의 딕셔너리(all_nodes)로 모읍니다.
-            all_nodes = {}
-            if isinstance(nodes, list):
-                for node in nodes:
-                    if node is not None:
-                        node_data = filter_node(node)
-                        all_nodes[node_data["name"]] = node_data
-            
-            if isinstance(related_nodes, list):
-                for node in related_nodes:
-                    if node is not None:
-                        node_data = filter_node(node)
-                        if node_data["name"] not in all_nodes:
-                            all_nodes[node_data["name"]] = node_data
-
-            # 관계 처리 (각 관계를 "노드-관계-노드" 형식으로 생성)
-            simplified_relationships = []
-            
-            if not relationships:
-                logging.warning("관계 데이터가 비어 있습니다.")
-            elif isinstance(relationships, str):
-                logging.warning("관계 데이터가 문자열입니다: %s", relationships)
-            else:
-                for rel in relationships:
+                    original_sentences = [json.loads(original_sentences)]
+                except Exception:
+                    original_sentences = []
+            # 리스트 요소들 정규화
+            for item in original_sentences:
+                if isinstance(item, str):
                     try:
-                        if rel is None:
-                            continue
-                            
-                        if not hasattr(rel, 'start_node') or not hasattr(rel, 'end_node'):
-                            logging.warning("유효하지 않은 관계 객체: %s", str(rel))
-                            continue
-                        
-                        # 시작/종료 노드 객체 추출 및 변환
-                        try:
-                            start_node_obj = rel.start_node
-                            end_node_obj = rel.end_node
-                            
-                            if hasattr(start_node_obj, "items"):
-                                start_node_dict = dict(start_node_obj.items())
-                            elif isinstance(start_node_obj, dict):
-                                start_node_dict = start_node_obj
-                            else:
-                                start_node_dict = {}
-                                
-                            if hasattr(end_node_obj, "items"):
-                                end_node_dict = dict(end_node_obj.items())
-                            elif isinstance(end_node_obj, dict):
-                                end_node_dict = end_node_obj
-                            else:
-                                end_node_dict = {}
-                            
-                            start_node_name = start_node_dict.get("name", "알 수 없음")
-                            end_node_name = end_node_dict.get("name", "알 수 없음")
-                            
-                            # 관계 유형 및 라벨 추출
-                            relation_type = getattr(rel, "type", "관계")
-                            relation_props = dict(rel) if hasattr(rel, '__iter__') else {}
-                            relation_label = relation_props.get("relation", relation_type)
-                            
-                            # 노드 정보 (all_nodes 에서 미리 처리된 데이터 사용)
-                            start_node = all_nodes.get(start_node_name, {"name": start_node_name, "label": "알 수 없음", "descriptions": []})
-                            end_node   = all_nodes.get(end_node_name,   {"name": end_node_name, "label": "알 수 없음", "descriptions": []})
-                            
-                            # descriptions에서 'description' 텍스트만 추출
-                            def extract_desc(node_data):
-                                desc_list = []
-                                for desc in node_data.get("descriptions", []):
-                                    if isinstance(desc, dict) and "description" in desc:
-                                        desc_text = desc.get("description", "")
-                                        if desc_text:
-                                            desc_list.append(desc_text)
-                                return ", ".join(desc_list) if desc_list else ""
-                            
-                            start_desc_str = extract_desc(start_node)
-                            end_desc_str = extract_desc(end_node)
-                            
-                            start_label = start_node.get("label", "")
-                            end_label = end_node.get("label", "")
-                            
-                            # 노드-관계-노드 형식 구성
-                            relationship_str = f"{start_label}-{start_node_name}({start_desc_str}) -> {relation_label} -> {end_label}-{end_node_name}({end_desc_str})"
-                            simplified_relationships.append(relationship_str)
-                        except Exception as e:
-                            logging.error("관계 정보 추출 오류: %s", str(e))
-                            continue
-                    except Exception as e:
-                        logging.error("관계 처리 오류: %s", str(e))
-                        continue
-            
-            # 중복 제거
-            simplified_relationships = list(set(simplified_relationships))
-            
-            # 노드 정보 생성 (참고용으로 활용)
-            node_info_list = []
-            for node in all_nodes.values():
-                try:
-                    node_descs = []
-                    for desc in node.get("descriptions", []):
-                        if isinstance(desc, dict) and "description" in desc:
-                            desc_text = desc.get("description", "")
-                            if desc_text:
-                                node_descs.append(desc_text)
-                    desc_str = ", ".join(node_descs) if node_descs else ""
-                    node_label = node.get("label", "")
-                    node_info = f"{node_label}-{node.get('name', '알 수 없음')}({desc_str})"
-                    node_info_list.append(node_info)
-                except Exception as e:
-                    logging.error("노드 정보 생성 오류: %s", str(e))
-                    continue
-
-            # ✅ 관계에 등장한 노드 이름 수집
-            connected_node_names = set()
-            if isinstance(relationships, list):
-                for rel in relationships:
-                    try:
-                        if rel is None: continue
-                        start_name = dict(rel.start_node.items()).get("name", "")
-                        end_name = dict(rel.end_node.items()).get("name", "")
-                        connected_node_names.update([start_name, end_name])
+                        obj = json.loads(item)
+                        if isinstance(obj, dict):
+                            parsed.append(obj)
                     except Exception:
                         continue
+                elif isinstance(item, dict):
+                    parsed.append(item)
+            return {"name": name, "label": label, "original_sentences": parsed}
 
-            # ✅ 관계에 등장하지 않은 노드만 따로 분리
-            standalone_node_info_list = [
-                n for n in node_info_list
-                if all(name not in n for name in connected_node_names)
-            ]
+        logging.info(
+            "generating schema text: %d개 노드, %d개 관련 노드, %d개 관계",
+            len(nodes) if isinstance(nodes, list) else 0,
+            len(related_nodes) if isinstance(related_nodes, list) else 0,
+            len(relationships) if isinstance(relationships, list) else 0,
+        )
 
-            relationship_text = "\n".join(simplified_relationships) if simplified_relationships else ""
-            standalone_node_text = "\n".join(standalone_node_info_list) if standalone_node_info_list else ""
+        # 1) 모든 노드 수집 (name 키로 합치기)
+        all_nodes = {}
+        if isinstance(nodes, list):
+            for n in nodes or []:
+                if n is None: continue
+                nd = filter_node(n)
+                if nd["name"]:
+                    all_nodes[nd["name"]] = nd
+        if isinstance(related_nodes, list):
+            for n in related_nodes or []:
+                if n is None: continue
+                nd = filter_node(n)
+                if nd["name"] and nd["name"] not in all_nodes:
+                    all_nodes[nd["name"]] = nd
 
-            if relationship_text and standalone_node_text:
-                raw_schema_text = relationship_text + "\n" + standalone_node_text
-            elif relationship_text:
-                raw_schema_text = relationship_text
-            elif node_info_list:
-                raw_schema_text = "\n".join(node_info_list)
+        # 2) 관계 줄 만들기: "start -> relation -> end"
+        relation_lines = []
+        connected_names = set()
+        if isinstance(relationships, list):
+            for rel in relationships:
+                try:
+                    if rel is None:
+                        continue
+                    start_d = to_dict(getattr(rel, "start_node", {}))
+                    end_d   = to_dict(getattr(rel, "end_node", {}))
+                    start_name = normalize_space(start_d.get("name", "") or "알 수 없음")
+                    end_name   = normalize_space(end_d.get("name", "") or "알 수 없음")
+
+                    # relation label: props.relation 우선, 없으면 type, 없으면 "관계"
+                    try:
+                        rel_props = dict(rel)
+                    except Exception:
+                        rel_props = {}
+                    relation_type = getattr(rel, "type", None)
+                    relation_label = rel_props.get("relation") or relation_type or "관계"
+                    relation_label = normalize_space(relation_label)
+
+                    relation_lines.append(f"{start_name} -> {relation_label} -> {end_name}")
+                    connected_names.update([start_name, end_name])
+                except Exception as e:
+                    logging.exception("관계 처리 오류: %s", e)
+                    continue
+
+        # 관계 중복 제거 + 정렬
+        relation_lines = sorted(set(relation_lines))
+
+        # 3) 노드 설명 만들기: 모든 노드(관계 여부 무관)
+        def extract_desc_str(node_data):
+            # original_sentences[].original_sentence 모아 공백 정리 + 중복 제거
+            seen = set()
+            pieces = []
+            for d in node_data.get("original_sentences", []):
+                if isinstance(d, dict):
+                    t = normalize_space(d.get("original_sentence", "") or "")
+                    if t and t not in seen:
+                        seen.add(t)
+                        pieces.append(t)
+            if not pieces:
+                return ""
+            s = " ".join(pieces)
+            
+            return s
+
+        node_lines = []
+        for name in sorted(all_nodes.keys()):  # ✅ 관계 없어도 모든 노드 출력
+            nd = all_nodes.get(name) or {}
+            desc = extract_desc_str(nd)
+            if desc:
+                node_lines.append(f"{name}: {desc}")
             else:
-                raw_schema_text = "스키마 정보를 찾을 수 없습니다."
+                node_lines.append(f"{name}:")  # 설명이 비면 콜론만
 
-            logging.info("스키마 텍스트 생성 완료 (%d자)\n%s", len(raw_schema_text), raw_schema_text)
-            return raw_schema_text
-            
-            
-        except Exception as e:
-            logging.error("스키마 생성 오류: %s", str(e))
-            return "스키마 생성 실패"
+        # 4) 최종 출력: 위엔 관계들, 아래엔 노드들
+        top = "\n".join(relation_lines)
+        bottom = "\n".join(node_lines)
+
+        if top and bottom:
+            raw_schema_text = f"{top}\n\n{bottom}"
+        elif top:
+            raw_schema_text = top
+        elif bottom:
+            raw_schema_text = bottom
+        else:
+            raw_schema_text = "컨텍스트에서 해당 정보를 찾을 수 없습니다."
+
+        logging.info("컨텍스트 텍스트 생성 완료 (%d자)", len(raw_schema_text))
+        return raw_schema_text
+
 
     def chat(self, message: str) -> str:
         """
