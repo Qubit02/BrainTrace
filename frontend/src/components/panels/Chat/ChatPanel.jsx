@@ -573,8 +573,9 @@ const ChatMessage = ({
             </button>
           )}
         </div>
-        {/* 정확도 표시 (AI 답변에만) */}
-        {message.is_ai && message.accuracy !== null && message.accuracy !== undefined && (
+        {/* 정확도 표시 (AI 답변에만, 정보가 없는 경우 제외) */}
+        {message.is_ai && message.accuracy !== null && message.accuracy !== undefined && 
+         !message.message.includes('지식그래프에 해당 정보가 없습니다') && (
           <div className="chat-panel-accuracy-display">
             <span className="chat-panel-accuracy-label">정확도:</span>
             <span
@@ -589,6 +590,25 @@ const ChatMessage = ({
             <span
               className="chat-panel-accuracy-help" >
               ?
+            </span>
+          </div>
+        )}
+        
+        {/* 정보가 없는 경우 친절한 안내 메시지 */}
+        {message.is_ai && message.message.includes('지식그래프에 해당 정보가 없습니다') && (
+          <div className="chat-panel-accuracy-display" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span className="chat-panel-accuracy-label">💡 추가 정보가 필요합니다</span>
+            <span className="chat-panel-accuracy-value" style={{ 
+              fontSize: '14px', 
+              color: '#64748b', 
+              lineHeight: '1.6',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              marginTop: '8px'
+            }}>
+              첨부하신 소스를 기반으로 답변했지만, 질문과 관련된 정보가 부족합니다.
+              <br />
+              더 구체적인 질문을 해주시거나, 다른 소스를 추가해주시면 더 정확한 답변을 드릴 수 있습니다.
             </span>
           </div>
         )}
