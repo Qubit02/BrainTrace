@@ -17,7 +17,7 @@ transformers>=4.40.0      # Hugging Face 모델
 huggingface_hub>=0.30.0   # Hugging Face Hub
 
 # 벡터 검색
-qdrant-client==1.7.0      # 벡터 데이터베이스 클라이언트
+qdrant-client==1.9.0      # 벡터 데이터베이스 클라이언트
 
 # 오디오 처리
 librosa==0.10.1
