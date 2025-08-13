@@ -113,7 +113,7 @@ npm run dev
 
 ### 4. 데이터베이스 설정
 
-#### 4.1 Neo4j 설정
+#### 4.1 Neo4j 설정 - 루트에서 바로 실행
 
 <details>
   <summary><b>PowerShell</b></summary>
@@ -241,9 +241,8 @@ echo "✔ Edited: $CONF"
 
 #### 4.2 Ollama 설정 (로컬 AI 모델)
 
-```bash
-
-```
+<a href="https://ollama.com/download"
+   rel="noopener noreferrer">Ollama 다운로드</a>
 
 ## 🐳 도커 실행
 
@@ -296,86 +295,6 @@ docker-compose build --no-cache
 | **Neo4j 브라우저** | http://localhost:7474      | 그래프 데이터베이스 관리 |
 | **Ollama API**     | http://localhost:11434     | 로컬 AI 모델 API         |
 
-## 🔍 문제 해결
-
-### 일반적인 문제들
-
-#### Python 가상환경 문제
-
-```bash
-# 가상환경 재생성
-rm -rf venv
-python -m venv venv
-source venv/bin/activate  # 또는 venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-#### 포트 충돌 문제
-
-```bash
-# 포트 사용 확인
-netstat -an | findstr :8000  # Windows
-lsof -i :8000                # macOS/Linux
-
-# 다른 포트로 실행
-uvicorn main:app --port 8001
-```
-
-#### 의존성 설치 문제
-
-```bash
-# pip 업그레이드
-python -m pip install --upgrade pip
-
-# 캐시 정리
-pip cache purge
-
-# 가상환경 재설정
-deactivate
-source venv/bin/activate
-```
-
-### 로그 확인
-
-```bash
-# 백엔드 로그
-tail -f backend/error.log
-
-# 도커 로그
-docker-compose logs backend
-docker-compose logs frontend
-```
-
-## 🛠️ 개발 환경 설정
-
-### IDE 설정
-
-- **VS Code**: Python, JavaScript, React 확장 프로그램 설치
-- **PyCharm**: Python 개발 환경 설정
-- **WebStorm**: JavaScript/React 개발 환경 설정
-
-### 디버깅 설정
-
-```bash
-# 백엔드 디버깅
-python -m pdb main.py
-
-# 프론트엔드 디버깅
-npm run dev -- --debug
-```
-
-### 테스트 실행
-
-```bash
-# 백엔드 테스트
-cd backend
-python -m pytest
-
-# 프론트엔드 테스트
-cd frontend
-npm test
-```
-
 ## 📚 추가 리소스
 
 - [프로젝트 README](./README.md)
@@ -402,4 +321,4 @@ npm test
 
 ---
 
-**⚠️ 주의사항**: 도커 실행 시 AI 모델 다운로드로 인해 디스크 용량이 많이 필요할 수 있습니다. 최소 50GB 이상의 여유 공간을 확보하세요.
+**⚠️ 주의사항**: AI 모델 다운로드로 인해 디스크 용량이 많이 필요할 수 있습니다. 모델 파일당 최대 10GB까지 여유공간이 필요할 수 있습니다.
