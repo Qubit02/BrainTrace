@@ -140,64 +140,46 @@ class Neo4jHandler:
                     }
                 
                 # 최적화된 단일 쿼리 - description이 있는 노드까지 smart 탐색
-                optimized_query = '''
+                optimized_query = optimized_query = optimized_query = optimized_query = '''
                 // 시작 노드들 찾기
                 MATCH (start:Node)
                 WHERE start.name IN $names AND start.brain_id = $brain_id
-                
+
                 // 각 시작 노드에 대해 처리
                 WITH start
-                
+
                 // CASE 1: 시작 노드 자체에 유효한 description이 있는 경우
-                OPTIONAL MATCH (start)
-                WHERE ANY(d IN start.descriptions 
-                        WHERE d.description IS NOT NULL 
-                        AND trim(d.description) <> "")
-                WITH start, 
+                // descriptions의 각 요소를 문자열로 변환하여 체크
+                WITH start,
                     CASE 
-                        WHEN ANY(d IN start.descriptions WHERE trim(d.description) <> "") 
-                        THEN start 
-                        ELSE null 
+                        WHEN ANY(d IN start.descriptions 
+                                WHERE toString(d) CONTAINS '"description"' 
+                                AND NOT toString(d) CONTAINS '"description": ""'
+                                AND NOT toString(d) CONTAINS '"description":""')
+                        THEN start
+                        ELSE null
                     END as startWithDesc
-                
+
                 // CASE 2: 시작 노드에 description이 없으면 연결된 노드 탐색
-                // 최대 5단계까지 탐색하여 description이 있는 노드 찾기
                 OPTIONAL MATCH path = (start)-[*1..5]-(target:Node)
                 WHERE target.brain_id = $brain_id
                 AND ANY(d IN target.descriptions 
-                    WHERE d.description IS NOT NULL 
-                    AND trim(d.description) <> "")
-                AND startWithDesc IS NULL  // 시작 노드에 description이 없을 때만
-                
-                // 경로 길이별로 정렬하여 가장 가까운 노드 우선 선택
-                WITH start, startWithDesc, path, target, length(path) as pathLength
-                ORDER BY pathLength
-                
-                // 각 시작 노드별로 수집
-                WITH start,
-                    startWithDesc,
-                    collect({
-                        path: path,
-                        target: target,
-                        length: pathLength
-                    }) as paths
-                
-                // 가장 짧은 경로들만 선택 (동일 거리의 여러 노드 가능)
-                WITH start,
-                    startWithDesc,
-                    CASE 
-                        WHEN size(paths) > 0 
-                        THEN [p IN paths WHERE p.length = paths[0].length | p.path]
-                        ELSE []
-                    END as shortestPaths
-                
+                        WHERE toString(d) CONTAINS '"description"' 
+                        AND NOT toString(d) CONTAINS '"description": ""'
+                        AND NOT toString(d) CONTAINS '"description":""')
+                AND startWithDesc IS NULL
+
+                // 모든 경로 수집
+                WITH start, startWithDesc, 
+                    collect(path) as allPaths
+
                 // 경로에서 노드와 관계 추출
                 UNWIND CASE 
-                        WHEN startWithDesc IS NOT NULL THEN [null]  // 시작 노드 자체에 desc 있음
-                        WHEN size(shortestPaths) > 0 THEN shortestPaths
+                        WHEN startWithDesc IS NOT NULL THEN [null]
+                        WHEN size(allPaths) > 0 THEN allPaths
                         ELSE [null]
                     END as p
-                
+
                 WITH start,
                     startWithDesc,
                     CASE 
@@ -209,29 +191,28 @@ class Neo4jHandler:
                         WHEN p IS NOT NULL THEN relationships(p)
                         ELSE []
                     END as pathRels
-                
-                // 직접 연결된 이웃 노드도 포함 (1단계 관계)
+
+                // 직접 연결된 이웃 노드도 포함
                 OPTIONAL MATCH (start)-[directRel]-(neighbor:Node)
                 WHERE neighbor.brain_id = $brain_id
                 AND neighbor <> start
-                
+
                 // 결과 집계
                 WITH 
                     collect(DISTINCT start) as allStartNodes,
-                    collect(DISTINCT startWithDesc) as startNodesWithDesc,
                     reduce(nodes = [], n IN collect(pathNodes) | nodes + n) as allPathNodes,
                     reduce(rels = [], r IN collect(pathRels) | rels + r) as allPathRels,
                     collect(DISTINCT neighbor) as allNeighbors,
                     collect(DISTINCT directRel) as allDirectRels
-                
-                // 최종 결과 정리
+
+                // 최종 결과
                 RETURN 
                     allStartNodes as startNodes,
                     allStartNodes + 
                     [n IN allPathNodes WHERE NOT n IN allStartNodes] + 
                     [n IN allNeighbors WHERE NOT n IN allStartNodes] as allRelatedNodes,
                     allPathRels + allDirectRels as allRelationships,
-                    size([n IN allStartNodes WHERE ANY(d IN n.descriptions WHERE trim(d.description) <> "")]) as startNodesWithDescCount,
+                    size([n IN allStartNodes WHERE ANY(d IN n.descriptions WHERE toString(d) CONTAINS '"description"' AND NOT toString(d) CONTAINS '"description": ""')]) as startNodesWithDescCount,
                     size(allPathNodes) as pathNodeCount,
                     size(allNeighbors) as neighborCount
                 '''
