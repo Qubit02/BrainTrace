@@ -18,7 +18,7 @@
  * - LoadingIndicator: 로딩 상태 표시
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./ChatPanel.css";
 import {
   getReferencedNodes,
@@ -60,7 +60,7 @@ import { VscOpenPreview } from "react-icons/vsc";
 import { GoPencil } from "react-icons/go";
 import { HiOutlineBars4 } from "react-icons/hi2";
 import { WiCloudRefresh } from "react-icons/wi";
-import { FaCloud, FaLock } from "react-icons/fa";
+import { FaCloud } from "react-icons/fa";
 import { MdSecurity } from "react-icons/md";
 
 // 모델 관련 유틸리티 import
@@ -69,6 +69,8 @@ import {
   addGpt4oToModels,
   separateInstalledAndAvailableModels,
   sortModelsWithSelectedFirst,
+  filterModelsByType,
+  MODEL_TYPES,
 } from "./modelUtils";
 
 /**
@@ -175,8 +177,6 @@ const TitleEditor = ({
       <div className={`environment-badge environment-${environmentInfo.type}`}>
         {environmentInfo.icon === "MdSecurity" ? (
           <MdSecurity size={14.5} />
-        ) : environmentInfo.icon === "FaLock" ? (
-          <FaLock size={14.5} />
         ) : (
           <FaCloud size={14.5} />
         )}
@@ -237,16 +237,13 @@ const ModelDropdown = ({
           {/* 배포 타입에 따른 모델 필터링 */}
           {(() => {
             const isLocal = brainInfo?.deployment_type === "local";
-            const filteredModels = availableModels.filter((model) => {
-              const modelName = model.name.toLowerCase();
-              if (isLocal) {
-                // 로컬 배포: Ollama 모델만 표시 (gpt로 시작하지 않는 모델)
-                return model.installed && !modelName.startsWith("gpt");
-              } else {
-                // 클라우드 배포: OpenAI 모델만 표시 (gpt로 시작하는 모델)
-                return model.installed && modelName.startsWith("gpt");
-              }
-            });
+            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
+
+            // 모델 타입에 따라 필터링
+            const filteredModels = filterModelsByType(
+              availableModels.filter((model) => model.installed),
+              modelType
+            );
 
             return sortModelsWithSelectedFirst(filteredModels, selectedModel);
           })().map((apiModelInfo) => {
@@ -325,16 +322,13 @@ const ModelDropdown = ({
           {/* 설치 가능한 모델 목록 (배포 타입에 따라 필터링) */}
           {(() => {
             const isLocal = brainInfo?.deployment_type === "local";
-            const filteredModels = availableModels.filter((model) => {
-              const modelName = model.name.toLowerCase();
-              if (isLocal) {
-                // 로컬 배포: Ollama 모델만 표시
-                return !model.installed && !modelName.startsWith("gpt");
-              } else {
-                // 클라우드 배포: OpenAI 모델만 표시
-                return !model.installed && modelName.startsWith("gpt");
-              }
-            });
+            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
+
+            // 모델 타입에 따라 필터링
+            const filteredModels = filterModelsByType(
+              availableModels.filter((model) => !model.installed),
+              modelType
+            );
 
             return filteredModels;
           })().map((apiModelInfo) => {
@@ -344,10 +338,19 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline ${
+                className={`chat-panel-model-item-inline unselectable ${
                   selectedModel === model ? "selected" : ""
                 }`}
-                onClick={() => handleModelSelect(model)}
+                title="설치 후 사용 가능합니다"
+                onClick={(e) => {
+                  // 설치되지 않은 모델은 선택할 수 없음
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // 선택 불가능하다는 안내 메시지
+                  alert(
+                    `${modelData.name} 모델을 사용하려면 먼저 설치해주세요.`
+                  );
+                }}
               >
                 <div className="chat-panel-model-info-inline">
                   <div className="chat-panel-model-header-inline">
@@ -394,7 +397,7 @@ const ModelDropdown = ({
                 )}
                 {installingModel === model ? (
                   <span className="chat-panel-installing-inline">
-                    설치 중...
+                    다운로드 중...
                   </span>
                 ) : (
                   !isInstalled && (
@@ -492,11 +495,7 @@ const ChatInput = ({
           aria-label="메시지 전송"
           disabled={!inputText.trim() || !selectedModel || isLoading}
         >
-          {isLoading ? (
-            <span className="chat-panel-stop-icon">■</span>
-          ) : (
-            <span className="chat-panel-send-icon">➤</span>
-          )}
+          <span className="chat-panel-send-icon">➤</span>
         </button>
       </div>
     </form>
@@ -813,6 +812,32 @@ function ChatPanel({
   // 브레인 정보 상태
   const [brainInfo, setBrainInfo] = useState(null); // 현재 브레인 정보
 
+  // ===== localStorage에서 이전에 선택한 모델 불러오기 =====
+  const getStoredModel = (sessionId) => {
+    try {
+      // 세션별로 모델 정보를 저장하기 위해 세션 ID를 포함한 키 사용
+      const sessionKey = `selectedModel_${sessionId}`;
+      const stored = localStorage.getItem(sessionKey);
+
+      // 세션별 모델만 반환 (전역 모델 확인 안함)
+      return stored || "";
+    } catch (error) {
+      console.warn("localStorage에서 모델 정보를 불러올 수 없습니다:", error);
+      return "";
+    }
+  };
+
+  // ===== 선택한 모델을 localStorage에 저장 =====
+  const saveStoredModel = (modelName) => {
+    try {
+      // 세션별로만 모델 정보를 저장 (전역 저장 안함)
+      const sessionKey = `selectedModel_${selectedSessionId}`;
+      localStorage.setItem(sessionKey, modelName);
+    } catch (error) {
+      console.warn("localStorage에 모델 정보를 저장할 수 없습니다:", error);
+    }
+  };
+
   // ===== 초기 로딩 화면 (채팅 내역 로드 후 0.5초) =====
   useEffect(() => {
     if (!selectedSessionId) {
@@ -927,8 +952,12 @@ function ChatPanel({
       getBrain(selectedBrainId)
         .then((brain) => {
           setBrainInfo(brain);
-          // 자동 모델 선택 비활성화 - 사용자가 직접 선택하도록 함
-          // setSelectedModel(""); // 빈 문자열로 설정하여 아무것도 선택되지 않도록
+
+          // 브레인 정보 로드 후 저장된 모델 불러오기
+          const storedModel = getStoredModel(selectedSessionId);
+          if (storedModel) {
+            setSelectedModel(storedModel);
+          }
         })
         .catch((error) => {
           console.error("브레인 정보 로드 실패:", error);
@@ -936,29 +965,82 @@ function ChatPanel({
     }
   }, [selectedBrainId]);
 
+  // ===== 세션 변경 시 저장된 모델 불러오기 =====
+  useEffect(() => {
+    if (selectedSessionId) {
+      const storedModel = getStoredModel(selectedSessionId);
+      if (storedModel) {
+        setSelectedModel(storedModel);
+      }
+      // 세션별 모델이 없으면 아무것도 설정하지 않음
+    }
+  }, [selectedSessionId]);
+
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
     try {
-      // 1. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
+      // 1. 먼저 캐시된 모델 목록 확인
+      const cachedModels = localStorage.getItem("cachedModels");
+      const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
+
+      if (cachedModels && cacheTimestamp) {
+        const cacheAge = Date.now() - parseInt(cacheTimestamp);
+        // 캐시가 1시간 이내면 즉시 사용
+        if (cacheAge < 60 * 60 * 1000) {
+          setAvailableModels(JSON.parse(cachedModels));
+          console.log("캐시된 모델 목록을 즉시 로드했습니다.");
+        }
+      }
+
+      // 2. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
       const availableModels = await listModels();
 
-      // 2. 실제 설치된 모델들의 상세 정보 조회
+      // 실제 설치된 모델들의 상세 정보 조회
       const installedModelsInfo = await getInstalledModels();
 
-      // 3. 두 정보를 합쳐서 최종 모델 목록 생성
+      // 두 정보를 합쳐서 최종 모델 목록 생성
       const updatedModels = addGpt4oToModels(
         availableModels,
         installedModelsInfo
       );
       setAvailableModels(updatedModels);
+
+      // 모델 목록을 localStorage에 캐시로 저장 (딜레이 방지)
+      try {
+        localStorage.setItem("cachedModels", JSON.stringify(updatedModels));
+        localStorage.setItem("modelsCacheTimestamp", Date.now().toString());
+
+        // 로컬모드에서 자주 사용되는 모델들을 미리 저장
+        if (brainInfo?.deployment_type === "local") {
+          const localModelPreferences = updatedModels
+            .filter((model) => model.installed)
+            .map((model) => model.name);
+          localStorage.setItem(
+            "localModelPreferences",
+            JSON.stringify(localModelPreferences)
+          );
+        }
+      } catch (cacheError) {
+        console.warn("모델 목록 캐시 저장 실패:", cacheError);
+      }
     } catch (error) {
       console.error("모델 목록 로드 실패:", error);
     }
   };
 
+  // ===== 초기 모델 목록 로드 (캐시 우선) =====
   useEffect(() => {
-    loadModels();
-  }, []);
+    const initializeModels = async () => {
+      try {
+        loadModels();
+      } catch (error) {
+        console.error("초기 모델 목록 로드 실패:", error);
+        loadModels();
+      }
+    };
+
+    initializeModels();
+  }, []); // 초기 로드만 실행
 
   /**
    * 모델 설치 함수
@@ -972,12 +1054,25 @@ function ChatPanel({
 
     setInstallingModel(modelName);
     try {
+      // 모델 설치 요청 (백엔드에서 실제 완료까지 대기)
       await installModel(modelName);
-      alert(`${modelName} 모델이 성공적으로 설치되었습니다.`);
+
       // 설치 완료 후 모델 목록 재로드
       await loadModels();
+
+      // 성공 메시지 표시
+      alert(`${modelName} 모델이 성공적으로 설치되었습니다.`);
     } catch (error) {
-      alert(`모델 설치에 실패했습니다: ${error.message}`);
+      console.error("모델 설치 실패:", error);
+
+      // 타임아웃 에러인 경우 특별 처리
+      if (error.response?.status === 408) {
+        alert(
+          `${modelName} 모델 다운로드가 시간 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.`
+        );
+      } else {
+        alert(`모델 설치에 실패했습니다: ${error.message}`);
+      }
     } finally {
       setInstallingModel(null);
     }
@@ -986,13 +1081,15 @@ function ChatPanel({
   /**
    * 모델 선택 함수
    *
-   * 모델을 선택하고 드롭다운을 닫음
+   * 모델을 선택하고 드롭다운을 닫으며 localStorage에 저장
    *
    * @param {string} modelName - 선택할 모델 이름
    */
   const handleModelSelect = (modelName) => {
     setSelectedModel(modelName);
     setShowModelDropdown(false);
+    // 선택한 모델을 localStorage에 저장
+    saveStoredModel(modelName);
   };
 
   /**
@@ -1105,6 +1202,7 @@ function ChatPanel({
       const isGptModel = selectedModel.startsWith("gpt-");
       const model = isGptModel ? "openai" : "ollama";
       const model_name = selectedModel; // 🚀 항상 selectedModel 사용 (GPT 모델도 포함)
+
       const res = await requestAnswer(
         inputText,
         selectedSessionId,
@@ -1168,6 +1266,7 @@ function ChatPanel({
       }
     } catch (err) {
       console.error("답변 생성 중 오류:", err);
+
       // 더 구체적인 에러 메시지 제공
       let errorMessage = "답변 생성 중 오류가 발생했습니다.";
       if (err.response?.status === 400) {
@@ -1412,7 +1511,7 @@ function ChatPanel({
                   type="submit"
                   className="chat-panel-submit-circle-button"
                   aria-label="메시지 전송"
-                  disabled={!inputText.trim() || !selectedModel}
+                  disabled={!inputText.trim() || !selectedModel || isLoading}
                 >
                   <span className="chat-panel-send-icon">➤</span>
                 </button>

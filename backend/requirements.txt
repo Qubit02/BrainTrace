@@ -1,5 +1,6 @@
 # =============================================================================
-# BrainTrace Backend Requirements
+# BrainTrace Backend Requirements 
+# Install all packages: pip install -r requirements.txt
 # =============================================================================
 
 # 웹 서버 및 API 프레임워크

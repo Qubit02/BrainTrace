@@ -12,6 +12,13 @@
  * 사용처: ChatPanel.jsx의 ModelDropdown 컴포넌트
  */
 
+// ===== 모델 타입 분류 상수 =====
+export const MODEL_TYPES = {
+  OLLAMA: 'ollama',      // Ollama 로컬 모델
+  OPENAI: 'openai',      // OpenAI API 모델
+  CUSTOM: 'custom'       // 기타 커스텀 모델
+};
+
 // ===== 모델 정보 데이터 =====
 // 각 모델의 상세 정보를 담고 있는 객체
 // name: 표시될 모델 이름
@@ -21,6 +28,7 @@
 // size: 모델 크기
 // type: 모델 타입 (오픈소스/API)
 // provider: 모델 제공업체
+// modelType: 실제 분류 타입 (OLLAMA/OPENAI/CUSTOM)
 export const modelInfo = {
   'gemma3:4b': {
     name: 'Gemma 3 4B',
@@ -29,7 +37,8 @@ export const modelInfo = {
     buttonText: '',
     size: '4B',
     type: '오픈소스',
-    provider: 'Google'
+    provider: 'Google',
+    modelType: MODEL_TYPES.OLLAMA
   },
   'phi4-mini:3.8b': {
     name: 'Phi-4 Mini 3.8B',
@@ -38,7 +47,8 @@ export const modelInfo = {
     buttonText: '',
     size: '3.8B',
     type: '오픈소스',
-    provider: 'Microsoft'
+    provider: 'Microsoft',
+    modelType: MODEL_TYPES.OLLAMA
   },
   'exaone3.5:2.4b': {
     name: 'ExaOne 3.5 2.4B',
@@ -47,7 +57,8 @@ export const modelInfo = {
     buttonText: '',
     size: '2.4B',
     type: '오픈소스',
-    provider: 'ExaOne'
+    provider: 'ExaOne',
+    modelType: MODEL_TYPES.OLLAMA
   },
   'mistral:7b': {
     name: 'Mistral 7B',
@@ -56,7 +67,8 @@ export const modelInfo = {
     buttonText: '',
     size: '7B',
     type: '오픈소스',
-    provider: 'Mistral AI'
+    provider: 'Mistral AI',
+    modelType: MODEL_TYPES.OLLAMA
   },
   'qwen3:4b': {
     name: 'Qwen 3 4B',
@@ -65,7 +77,8 @@ export const modelInfo = {
     buttonText: '',
     size: '4B',
     type: '오픈소스',
-    provider: 'Alibaba'
+    provider: 'Alibaba',
+    modelType: MODEL_TYPES.OLLAMA
   },
   'deepseek-r1:7b': {
     name: 'DeepSeek R1 7B',
@@ -74,7 +87,18 @@ export const modelInfo = {
     buttonText: '',
     size: '7B',
     type: '오픈소스',
-    provider: 'DeepSeek'
+    provider: 'DeepSeek',
+    modelType: MODEL_TYPES.OLLAMA
+  },
+  'gpt-oss:20b': {
+    name: 'GPT-OSS 20B',
+    description: '오픈소스 GPT 스타일의 20B 파라미터 언어 모델로 고품질 텍스트 생성',
+    usage: '',
+    buttonText: '',
+    size: '20B',
+    type: '오픈소스',
+    provider: 'Open Source',
+    modelType: MODEL_TYPES.OLLAMA
   },
   // OpenAI 모델들 (클라우드 모드에서 사용)
   'gpt-4o': {
@@ -84,7 +108,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4o-mini': {
     name: 'GPT-4o Mini',
@@ -93,7 +118,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Small',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-turbo': {
     name: 'GPT-4 Turbo',
@@ -102,7 +128,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4': {
     name: 'GPT-4',
@@ -111,7 +138,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-32k': {
     name: 'GPT-4 32K',
@@ -120,7 +148,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo': {
     name: 'GPT-3.5 Turbo',
@@ -129,7 +158,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-16k': {
     name: 'GPT-3.5 Turbo 16K',
@@ -138,7 +168,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-instruct': {
     name: 'GPT-3.5 Turbo Instruct',
@@ -147,7 +178,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-0125': {
     name: 'GPT-3.5 Turbo 0125',
@@ -156,7 +188,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-1106': {
     name: 'GPT-3.5 Turbo 1106',
@@ -165,7 +198,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-0613': {
     name: 'GPT-3.5 Turbo 0613',
@@ -174,7 +208,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-3.5-turbo-0301': {
     name: 'GPT-3.5 Turbo 0301',
@@ -183,7 +218,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-0125-preview': {
     name: 'GPT-4 0125 Preview',
@@ -192,7 +228,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-1106-preview': {
     name: 'GPT-4 1106 Preview',
@@ -201,7 +238,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-vision-preview': {
     name: 'GPT-4 Vision Preview',
@@ -210,7 +248,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-1106-vision-preview': {
     name: 'GPT-4 1106 Vision Preview',
@@ -219,7 +258,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-all': {
     name: 'GPT-4 All Tools',
@@ -228,7 +268,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-4-base': {
     name: 'GPT-4 Base',
@@ -237,7 +278,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   // GPT-5 모델들 (2025년 8월 7일 공식 출시)
   'gpt-5': {
@@ -247,7 +289,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Large',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-5-mini': {
     name: 'GPT-5 Mini',
@@ -256,7 +299,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Medium',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   },
   'gpt-5-nano': {
     name: 'GPT-5 Nano',
@@ -265,7 +309,8 @@ export const modelInfo = {
     buttonText: '',
     size: 'Small',
     type: 'API',
-    provider: 'OpenAI'
+    provider: 'OpenAI',
+    modelType: MODEL_TYPES.OPENAI
   }
 };
 
@@ -282,7 +327,8 @@ export const getModelData = (modelName) => {
     buttonText: '', 
     size: '', 
     type: '', 
-    provider: '' 
+    provider: '',
+    modelType: MODEL_TYPES.CUSTOM
   };
 };
 
@@ -308,18 +354,23 @@ export const addGpt4oToModels = (models, installedModelsInfo = null) => {
     { name: 'gpt-3.5-turbo-16k', installed: true }
   ];
   
-  // Ollama 모델들의 실제 설치 상태를 installedModelsInfo에서 확인
-  let ollamaModels = models.filter(model => !model.name.startsWith('gpt'));
+  // 모델 타입에 따라 분류
+  const ollamaModels = models.filter(model => {
+    const modelData = getModelData(model.name);
+    return modelData.modelType === MODEL_TYPES.OLLAMA;
+  });
   
   if (installedModelsInfo && installedModelsInfo.models) {
     // 실제 설치된 모델 이름 목록
     const installedModelNames = installedModelsInfo.models.map(model => model.name);
     
     // Ollama 모델들의 설치 상태를 실제 정보로 업데이트
-    ollamaModels = ollamaModels.map(model => ({
+    const updatedOllamaModels = ollamaModels.map(model => ({
       ...model,
       installed: installedModelNames.includes(model.name)
     }));
+    
+    return [...defaultOpenAIModels, ...updatedOllamaModels];
   }
   
   return [...defaultOpenAIModels, ...ollamaModels];
@@ -349,4 +400,46 @@ export const sortModelsWithSelectedFirst = (models, selectedModel) => {
     if (b.name === selectedModel) return 1;
     return 0;
   });
-}; 
+};
+
+/**
+ * 모델을 타입별로 분류
+ * @param {Array} models - 전체 모델 목록
+ * @returns {object} { ollama: Ollama 모델 배열, openai: OpenAI 모델 배열, custom: 커스텀 모델 배열 }
+ */
+export const categorizeModelsByType = (models) => {
+  const categorized = {
+    ollama: [],
+    openai: [],
+    custom: []
+  };
+  
+  models.forEach(model => {
+    const modelData = getModelData(model.name);
+    switch (modelData.modelType) {
+      case MODEL_TYPES.OLLAMA:
+        categorized.ollama.push(model);
+        break;
+      case MODEL_TYPES.OPENAI:
+        categorized.openai.push(model);
+        break;
+      default:
+        categorized.custom.push(model);
+    }
+  });
+  
+  return categorized;
+};
+
+/**
+ * 특정 타입의 모델만 필터링
+ * @param {Array} models - 전체 모델 목록
+ * @param {string} modelType - 필터링할 모델 타입 (MODEL_TYPES.OLLAMA, MODEL_TYPES.OPENAI 등)
+ * @returns {Array} 필터링된 모델 목록
+ */
+export const filterModelsByType = (models, modelType) => {
+  return models.filter(model => {
+    const modelData = getModelData(model.name);
+    return modelData.modelType === modelType;
+  });
+};
