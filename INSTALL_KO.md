@@ -36,9 +36,10 @@
 - 메모리: 16GB RAM
 - 저장공간: 50GB+ 여유 공간 (AI 모델 및 데이터베이스용)
 
-## 빠른 시작
 
-### 도커로 실행
+## 상세 설치 가이드
+
+### 1. 도커로 실행
 
 ```bash
 # 저장소 클론
@@ -51,21 +52,60 @@ docker-compose up -d
 # 브라우저에서 접속
 # 프론트엔드: http://localhost:5173
 # 백엔드 API: http://localhost:8000
-# Neo4j: http://localhost:7474
+# Neo4j: http:
+//localhost:7474
 ```
 
-## 상세 설치 가이드
+### 전체 스택 실행
 
-### 1. 저장소 클론
+```bash
+# 모든 서비스 실행
+docker-compose up -d
+
+# 로그 확인
+docker-compose logs -f
+
+# 특정 서비스만 실행
+docker-compose up backend frontend
+```
+
+### 개별 서비스 실행
+
+```bash
+# 백엔드만 실행
+docker-compose up backend
+
+# 프론트엔드만 실행
+docker-compose up frontend
+
+# 데이터베이스만 실행
+docker-compose up neo4j ollama
+```
+
+### 서비스 중지 및 정리
+
+```bash
+# 서비스 중지
+docker-compose down
+
+# 볼륨까지 삭제
+docker-compose down -v
+
+# 이미지 재빌드
+docker-compose build --no-cache
+```
+
+
+### 2. 일반 환경 실행
 
 ```bash
 git clone https://github.com/OSSBrainTrace/BrainTrace.git
 cd BrainTrace
 ```
 
-### 2. 백엔드 설정
+### 2.1 백엔드 설정
 
-#### 2.1 Python 가상환경 생성 및 활성화
+#### 2.1.1 Python 가상환경 생성 및 활성화
 
 ```bash
 cd backend
@@ -81,13 +121,13 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-#### 2.2 의존성 설치
+#### 2.1.2 의존성 설치
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 2.3 환경 변수 설정
+#### 2.1.3 환경 변수 설정
 
 ```bash
 # .env 파일 생성 (backend 디렉토리에)
@@ -99,30 +139,30 @@ cp .env.example .env
 # OLLAMA_API_URL=http://localhost:11434
 ```
 
-#### 2.4 백엔드 실행
+#### 2.1.4 백엔드 실행
 
 ```bash
 python main.py
 ```
 
-### 3. 프론트엔드 설정
+### 2.2 프론트엔드 설정
 
-#### 3.1 의존성 설치
+#### 2.2.1 의존성 설치
 
 ```bash
 cd frontend
 npm install
 ```
 
-#### 3.2 프론트엔드 실행
+#### 2.2.2 프론트엔드 실행
 
 ```bash
 npm run dev
 ```
 
-### 4. 데이터베이스 설정
+### 2.3 데이터베이스 설정
 
-#### 4.1 Neo4j 설정
+#### 2.3.1 Neo4j 설정
 
 **PowerShell 실행 (저장소 루트에서)**
 
@@ -240,50 +280,10 @@ echo "Prepared and moved to: $TARGET"
 echo "Edited: $CONF"
 ```
 
-#### 4.2 Ollama 설정 (로컬 AI 모델)
+#### 2.3.2 Ollama 설정 (로컬 AI 모델)
 
 [Ollama 다운로드](https://ollama.com/download)
 
-## 도커 실행
-
-### 전체 스택 실행
-
-```bash
-# 모든 서비스 실행
-docker-compose up -d
-
-# 로그 확인
-docker-compose logs -f
-
-# 특정 서비스만 실행
-docker-compose up backend frontend
-```
-
-### 개별 서비스 실행
-
-```bash
-# 백엔드만 실행
-docker-compose up backend
-
-# 프론트엔드만 실행
-docker-compose up frontend
-
-# 데이터베이스만 실행
-docker-compose up neo4j ollama
-```
-
-### 서비스 중지 및 정리
-
-```bash
-# 서비스 중지
-docker-compose down
-
-# 볼륨까지 삭제
-docker-compose down -v
-
-# 이미지 재빌드
-docker-compose build --no-cache
-```
 
 ## 접속 정보
 
