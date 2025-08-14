@@ -979,7 +979,7 @@ function ChatPanel({
   // ===== 모델 목록 불러오기 =====
   const loadModels = async () => {
     try {
-      // 1. 먼저 캐시된 모델 목록 확인
+      // 먼저 캐시된 모델 목록 확인
       const cachedModels = localStorage.getItem("cachedModels");
       const cacheTimestamp = localStorage.getItem("modelsCacheTimestamp");
 
@@ -992,7 +992,7 @@ function ChatPanel({
         }
       }
 
-      // 2. 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
+      // 설치 가능한 모델 목록 조회 (Ollama 모델들의 설치 상태 포함)
       const availableModels = await listModels();
 
       // 실제 설치된 모델들의 상세 정보 조회

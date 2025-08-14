@@ -585,29 +585,36 @@
     font-style: italic;
 }
 
+/* 출처보기 안내 메시지 스타일 */
 .source-view-notice {
-    padding: 15px 16px;
-    margin: 8px;
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid #f0f0f0;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #424242;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(10px);
-    width: 96%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin: 5px 8px 16px 8px;
 }
 
 .source-view-notice-icon {
-    font-size: 16px;
-    color: #757575;
+    font-size: 20px;
+    flex-shrink: 0;
 }
 
-.source-view-notice-text strong {
-    color: #424242;
+.source-view-notice-text {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.source-view-notice strong {
+    color: #ffeb3b;
+    font-weight: 600;
 }
 
 .viewer-header-container {
@@ -659,4 +666,46 @@
     font-size: inherit;
     white-space: pre-wrap;
     font-family: inherit;
+}
+
+/* 출처보기 하이라이트 강조 애니메이션 */
+@keyframes pulse-highlight {
+    0% {
+        transform: scale(1);
+        z-index: 1000;
+    }
+    25% {
+        transform: scale(1.02);
+        z-index: 1000;
+    }
+    50% {
+        transform: scale(1.05);
+        z-index: 1000;
+    }
+    75% {
+        transform: scale(1.02);
+        z-index: 1000;
+    }
+    100% {
+        transform: scale(1);
+        z-index: 1000;
+    }
+}
+
+/* 하이라이트 요소가 여러 개일 때 겹치지 않도록 처리 */
+.highlight, [data-highlight], span[style*="background"] {
+    position: relative;
+    z-index: 1;
+}
+
+.highlight[style*="animation"], [data-highlight][style*="animation"], span[style*="animation"] {
+    z-index: 1000 !important;
+    position: relative;
+}
+
+/* 출처보기 모드에서 스크롤바 제거 */
+.viewer-container[data-source-view="true"] .viewer-pre {
+    overflow: visible;
+    height: auto;
+    min-height: auto;
 }
