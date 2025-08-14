@@ -34,23 +34,22 @@ function Tooltip({ text, position = null }) {
     // 동적 위치 계산이 필요한 경우 (지식 추출 성능 지수)
     const tooltipStyle = {
       position: "absolute",
-      left: position.left || "auto",
-      right: position.right || "auto",
-      top: position.top || "-40px",
+      right: "0px",
+      top: position.top || "-50px",
       bottom: position.bottom || "auto",
       transform: "none",
-      minWidth: "170px",
-      maxWidth: "220px",
+      minWidth: "200px",
+      maxWidth: "280px",
       background: "#fff",
       color: "#111",
       border: "1px solid #e0e0e0",
       borderRadius: "7px",
-      boxShadow: "0 2px 8px 0 rgba(60, 60, 60, 0.10)",
+      boxShadow: "0 4px 12px 0 rgba(60, 60, 60, 0.15)",
       fontSize: "0.97em",
       fontWeight: "400",
-      padding: "8px 13px",
+      padding: "10px 15px",
       whiteSpace: "normal",
-      zIndex: 2147483647,
+      zIndex: 9, // 우선순위 높임
       pointerEvents: "none",
       transition: "opacity 0.18s ease",
     };
@@ -69,36 +68,28 @@ function Tooltip({ text, position = null }) {
 /**
  * 툴팁 위치 계산 함수
  * @param {HTMLElement} element - 툴팁을 표시할 요소
+ * @param {MouseEvent} mouseEvent - 마우스 이벤트
  * @returns {object} 툴팁 위치 정보
  */
-function calculateTooltipPosition(element) {
-  if (!element) return { top: "-40px", right: "0" };
+function calculateTooltipPosition(element, mouseEvent) {
+  if (!element || !mouseEvent) return { top: "-60px", left: "0" };
 
   const rect = element.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
   const viewportWidth = window.innerWidth;
-  const tooltipHeight = 40; // 툴팁 예상 높이 조정
-  const tooltipWidth = 220; // 툴팁 예상 너비
+  const tooltipHeight = 80; // 툴팁 예상 높이
+  const tooltipWidth = 250; // 툴팁 예상 너비
+
+  // 마우스 커서 위치
+  const mouseX = mouseEvent.clientX;
+  const mouseY = mouseEvent.clientY;
 
   let position = {};
 
-  // 위쪽 공간이 부족한 경우 아래쪽에 표시
-  if (rect.top < tooltipHeight) {
-    position.bottom = "-40px";
-    position.top = "auto";
-  } else {
-    position.top = "-40px";
-    position.bottom = "auto";
-  }
-
-  // 오른쪽 공간이 부족한 경우 왼쪽에 표시
-  if (rect.right + tooltipWidth > viewportWidth) {
-    position.left = "0";
-    position.right = "auto";
-  } else {
-    position.right = "0";
-    position.left = "auto";
-  }
+  // 마우스 커서 왼쪽 위에 표시 (적절한 거리로 조정)
+  position.top = "-100px"; // 마우스 커서 위 50px로 줄임
+  position.left = "0"; // 왼쪽 정렬
+  position.right = "auto";
 
   return position;
 }
@@ -237,6 +228,185 @@ function getEfficiencyGrade(nodeDensity, edgeDensity, avgDegree) {
 }
 
 /**
+ * 개선된 평균 연결도 계산 함수
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @param {boolean} isDirected - 방향성 그래프 여부
+ * @returns {number} 평균 연결도
+ */
+function calculateAverageDegree(nodesCount, edgesCount, isDirected = false) {
+  if (nodesCount === 0) return 0;
+
+  if (isDirected) {
+    // 방향성 그래프: 각 노드의 진입/진출 차수 평균
+    return edgesCount / nodesCount;
+  } else {
+    // 무방향 그래프: 각 노드의 연결 개수 평균
+    return (2 * edgesCount) / nodesCount;
+  }
+}
+
+/**
+ * 그래프 타입 감지 함수 (간단한 추정)
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @returns {string} 그래프 타입 ('directed' 또는 'undirected')
+ */
+function detectGraphType(nodesCount, edgesCount) {
+  if (nodesCount < 2) return "undirected";
+
+  const maxPossibleEdges = (nodesCount * (nodesCount - 1)) / 2;
+  const density = edgesCount / maxPossibleEdges;
+
+  // 밀도가 낮으면 방향성일 가능성이 높음
+  return density < 0.3 ? "directed" : "undirected";
+}
+
+/**
+ * 향상된 연결도 보너스 점수 계산
+ * @param {number} avgDegree - 평균 연결도
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @returns {number} 보너스 점수
+ */
+function calculateConnectionBonus(avgDegree, nodesCount, edgesCount) {
+  let bonus = 0;
+
+  // 1. 기본 연결도 보너스 (기존 로직 개선)
+  if (avgDegree > 2.0) {
+    // 비선형 보너스: 연결도가 높을수록 더 큰 보너스
+    const baseBonus = Math.pow(avgDegree - 2.0, 1.5);
+    bonus += Math.min(baseBonus, 3.0); // 최대 3점까지 확장
+  }
+
+  // 2. 네트워크 응집도 보너스
+  if (nodesCount > 1) {
+    const clusteringCoefficient = calculateClusteringCoefficient(
+      nodesCount,
+      edgesCount
+    );
+    if (clusteringCoefficient > 0.6) {
+      bonus += 1.0; // 높은 응집도에 대한 추가 보너스
+    }
+  }
+
+  // 3. 연결 균형성 보너스
+  const connectionBalance = calculateConnectionBalance(nodesCount, edgesCount);
+  if (connectionBalance > 0.7) {
+    bonus += 0.5; // 균형잡힌 연결 구조에 대한 보너스
+  }
+
+  return Math.min(bonus, 4.0); // 최대 4점까지 확장
+}
+
+/**
+ * 응집도 계수 계산 (간단한 추정)
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @returns {number} 응집도 계수 (0-1)
+ */
+function calculateClusteringCoefficient(nodesCount, edgesCount) {
+  if (nodesCount < 3) return 0;
+
+  const maxPossibleEdges = (nodesCount * (nodesCount - 1)) / 2;
+  const actualDensity = edgesCount / maxPossibleEdges;
+
+  // 실제 밀도를 응집도로 근사 (더 정확한 계산은 백엔드에서 필요)
+  return Math.min(actualDensity * 1.5, 1.0);
+}
+
+/**
+ * 연결 균형성 계산
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @returns {number} 연결 균형성 (0-1)
+ */
+function calculateConnectionBalance(nodesCount, edgesCount) {
+  if (nodesCount === 0) return 0;
+
+  const avgConnections = edgesCount / nodesCount;
+  const maxConnections = nodesCount - 1;
+
+  // 연결 수의 균형성 (간단한 추정)
+  const balance = 1.0 - avgConnections / maxConnections;
+  return Math.max(balance, 0);
+}
+
+/**
+ * 연결 품질 가중치 계산
+ * @param {number} avgDegree - 평균 연결도
+ * @param {number} nodesCount - 노드 수
+ * @returns {number} 품질 가중치
+ */
+function calculateQualityMultiplier(avgDegree, nodesCount) {
+  let multiplier = 1.0;
+
+  // 연결도가 너무 낮거나 높을 때 페널티
+  if (avgDegree < 1.0) {
+    multiplier *= 0.8; // 연결 부족 페널티
+  } else if (avgDegree > nodesCount * 0.8) {
+    multiplier *= 0.9; // 과도한 연결 페널티
+  }
+
+  // 노드 수에 따른 가중치 조정
+  if (nodesCount >= 10) {
+    multiplier *= 1.1; // 복잡한 네트워크 보너스
+  }
+
+  return multiplier;
+}
+
+/**
+ * 그래프 복잡성 평가
+ * @param {number} nodesCount - 노드 수
+ * @param {number} edgesCount - 엣지 수
+ * @param {number} avgDegree - 평균 연결도
+ * @returns {object} 복잡성 정보
+ */
+function calculateGraphComplexity(nodesCount, edgesCount, avgDegree) {
+  const complexity = {
+    level: "simple",
+    score: 0,
+    description: "",
+  };
+
+  // 노드 수 기준 (사용자 요청 기준)
+  if (nodesCount >= 200) complexity.level = "highly_complex";
+  else if (nodesCount >= 50) complexity.level = "complex";
+  else if (nodesCount >= 10) complexity.level = "moderate";
+  else complexity.level = "simple";
+
+  // 연결도 기준
+  if (avgDegree >= 4.0) complexity.level = "highly_connected";
+  else if (avgDegree >= 2.5) complexity.level = "well_connected";
+  else if (avgDegree >= 1.5) complexity.level = "moderately_connected";
+  else complexity.level = "poorly_connected";
+
+  // 복잡성 점수 계산
+  complexity.score = nodesCount * 0.3 + edgesCount * 0.4 + avgDegree * 0.3;
+
+  // 복잡성 수준별 설명 추가
+  switch (complexity.level) {
+    case "highly_complex":
+      complexity.description = "매우 복잡한 지식 네트워크 (200개 이상 노드)";
+      break;
+    case "complex":
+      complexity.description = "복잡한 지식 네트워크 (50-199개 노드)";
+      break;
+    case "moderate":
+      complexity.description = "보통 수준 지식 네트워크 (10-49개 노드)";
+      break;
+    case "simple":
+      complexity.description = "단순한 지식 네트워크 (10개 미만 노드)";
+      break;
+    default:
+      complexity.description = "기본 지식 네트워크";
+  }
+
+  return complexity;
+}
+
+/**
  * 지식 그래프 현황 상태바 컴포넌트
  *
  * 점수 계산 시스템:
@@ -329,19 +499,50 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
   // - 특징: 지식 그래프의 기본 구성요소이지만, 연결성보다는 낮은 가중치
   const nodeScore = (nodesCount * 1.5).toFixed(2);
 
-  //   엣지 점수 계산 (Edge Score) - 연결성 중심
+  //   엣지 점수 계산 (Edge Score) - 연결성 중심 (개선된 버전)
   // - 기준: 엣지 1개당 2점 (높은 가중치)
   // - 논리: 엣지는 지식 간 연결을 나타내므로 LLM 질의응답에서 가장 중요
-  // - 평균 연결도 보정: 연결도가 높을수록 추가 점수
-  // - 예시: 7개 엣지 → 14점, 15개 엣지 → 30점
-  // - 계산: (엣지수 × 2) + 연결도 보너스(최대 2점)
-  // - 보너스: 평균 연결도 > 2일 때 추가 점수 (잘 연결된 네트워크에 대한 인센티브)
-  // - 특징: 지식 네트워크의 응집도와 질적 수준을 반영하는 핵심 지표
-  const connectionAvgDegree =
-    nodesCount > 0 ? (2 * edgesCount) / nodesCount : 0;
-  const connectionBonus =
-    connectionAvgDegree > 2 ? Math.min(connectionAvgDegree - 2, 2) : 0; // 최대 2점 보너스
-  const edgeScore = (edgesCount * 2 + connectionBonus).toFixed(2);
+  // - 개선된 평균 연결도 계산: 그래프 타입을 고려한 정확한 계산
+  // - 향상된 보너스 시스템: 연결도, 응집도, 균형성을 종합적으로 평가
+  // - 연결 품질 가중치: 과도한 연결이나 연결 부족에 대한 페널티 적용
+  // - 예시: 7개 엣지 + 연결도 3.5 + 응집도 보너스 → 14점 + 2.5점 + 1.0점 = 17.5점
+  // - 계산: (엣지수 × 2) + 향상된 보너스(최대 4점) × 품질 가중치
+  // - 특징: 지식 네트워크의 응집도, 균형성, 질적 수준을 종합적으로 반영하는 핵심 지표
+
+  // 그래프 타입 감지 및 정확한 평균 연결도 계산
+  const graphType = detectGraphType(nodesCount, edgesCount);
+  const isDirected = graphType === "directed";
+  const connectionAvgDegree = calculateAverageDegree(
+    nodesCount,
+    edgesCount,
+    isDirected
+  );
+
+  // 향상된 보너스 점수 계산
+  const enhancedBonus = calculateConnectionBonus(
+    connectionAvgDegree,
+    nodesCount,
+    edgesCount
+  );
+
+  // 연결 품질 가중치 계산
+  const qualityMultiplier = calculateQualityMultiplier(
+    connectionAvgDegree,
+    nodesCount
+  );
+
+  // 최종 엣지 점수 계산
+  const edgeScore = (
+    (edgesCount * 2 + enhancedBonus) *
+    qualityMultiplier
+  ).toFixed(2);
+
+  // 그래프 복잡성 정보 (디버깅 및 향후 확장용)
+  const graphComplexity = calculateGraphComplexity(
+    nodesCount,
+    edgesCount,
+    connectionAvgDegree
+  );
 
   // 표시용 텍스트 크기 (사용자 친화적 형태)
   const textDisplay = formatBytes(textLength);
@@ -366,16 +567,18 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
   // - 특징: 단순한 개념 나열이 아닌, 구조화된 지식 네트워크 구축 능력을 평가
   const edgeDensity = (edgesCount / safeTextKB).toFixed(2);
 
-  //   평균 연결도 (Average Degree) - 지식 네트워크 응집도
-  // - 공식: (2 × 엣지 수) / 노드 수
+  //   평균 연결도 (Average Degree) - 지식 네트워크 응집도 (개선된 버전)
+  // - 공식: 그래프 타입에 따라 다름
+  //   • 무방향 그래프: (2 × 엣지 수) ÷ 노드 수
+  //   • 방향성 그래프: 엣지 수 ÷ 노드 수
   // - 의미: 노드당 평균 연결 개수 (그래프 이론의 degree 개념)
   // - 높을수록: 노드들이 더 많이 연결되어 있다는 의미
-  // - 예시: (2 × 7개 엣지) / 5개 노드 = 2.8 (노드당 평균 2.8개 연결)
+  // - 예시: 무방향 그래프에서 (2 × 7개 엣지) ÷ 5개 노드 = 2.8 (노드당 평균 2.8개 연결)
   // - 해석: 높을수록 지식이 잘 연결되어 있고, 질의응답 시 관련 정보를 쉽게 찾을 수 있음
   // - 특징: 지식 네트워크의 응집도와 질적 수준을 나타내는 핵심 지표
   // - 기준: 2.0 이상이면 적절한 연결성, 3.0 이상이면 높은 응집도
-  const avgDegree =
-    nodesCount > 0 ? ((2 * edgesCount) / nodesCount).toFixed(2) : "0.00";
+  // - 개선사항: 그래프 타입을 자동 감지하여 더 정확한 계산 수행
+  const avgDegree = connectionAvgDegree.toFixed(2);
 
   //   지식 추출 성능 지수 (Knowledge Extraction Performance Index) - 종합 효율성
   // - 공식: (노드점수 + 엣지점수) / 텍스트점수
@@ -414,8 +617,12 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
 
   // === 마우스 이벤트 핸들러 ===
   const handleTooltipMouseEnter = (e) => {
-    const position = calculateTooltipPosition(e.currentTarget);
+    const position = calculateTooltipPosition(e.currentTarget, e);
     setTooltipPosition(position);
+  };
+
+  const handleTooltipMouseLeave = () => {
+    setTooltipPosition({});
   };
 
   return (
@@ -556,10 +763,13 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
                     • 노드 점수: 1.5점/개
                   </div>
                   <div style={{ marginBottom: "2px" }}>
-                    • 엣지 점수: 2.0점/개
+                    • 엣지 점수: 2.0점/개 + 보너스
                   </div>
                   <div style={{ marginBottom: "2px" }}>
-                    • 연결도 보너스: +2점
+                    • 향상된 보너스: 최대 4점
+                  </div>
+                  <div style={{ marginBottom: "2px" }}>
+                    • 품질 가중치: 연결 품질 반영
                   </div>
                 </div>
               </div>
@@ -577,10 +787,15 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
           <div className="data-metric">
             <span className="metric-label">노드 밀도</span>
             <span className="metric-value">{nodeDensity}</span>
-            <span className="qmark-tooltip">
+            <span
+              className="qmark-tooltip"
+              onMouseEnter={handleTooltipMouseEnter}
+              onMouseLeave={handleTooltipMouseLeave}
+            >
               ?
               <Tooltip
                 text={"텍스트 1KB당 추출된 노드 수\n예: 2.5 → 1KB당 2.5개 노드"}
+                position={tooltipPosition}
               />
             </span>
           </div>
@@ -589,10 +804,15 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
           <div className="data-metric">
             <span className="metric-label">엣지 밀도</span>
             <span className="metric-value">{edgeDensity}</span>
-            <span className="qmark-tooltip">
+            <span
+              className="qmark-tooltip"
+              onMouseEnter={handleTooltipMouseEnter}
+              onMouseLeave={handleTooltipMouseLeave}
+            >
               ?
               <Tooltip
-                text={"텍스트 1KB당 추출된 관계 수\n예: 3.0 → 1KB당 3개 관계"}
+                text={`텍스트 1KB당 추출된 관계 수\n예: 3.0 → 1KB당 3개 관계\n\n개선된 보너스 시스템:\n• 연결도 보너스: 최대 3점\n• 응집도 보너스: 최대 1점\n• 균형성 보너스: 최대 0.5점\n• 총 최대 4점 보너스`}
+                position={tooltipPosition}
               />
             </span>
           </div>
@@ -601,12 +821,67 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
           <div className="data-metric">
             <span className="metric-label">평균 연결도</span>
             <span className="metric-value">{avgDegree}</span>
-            <span className="qmark-tooltip">
+            <span
+              className="qmark-tooltip"
+              onMouseEnter={handleTooltipMouseEnter}
+              onMouseLeave={handleTooltipMouseLeave}
+            >
               ?
               <Tooltip
-                text={
-                  "(2 × 엣지 수) ÷ 노드 수\n노드 당 평균 연결 개수\n높을수록 연결도 보너스 점수"
-                }
+                text={`그래프 타입: ${
+                  graphType === "directed" ? "방향성" : "무방향"
+                }\n노드당 평균 연결 개수\n\n연결 품질 평가:\n• ${
+                  avgDegree >= 4.0
+                    ? "매우 높음"
+                    : avgDegree >= 2.5
+                    ? "높음"
+                    : avgDegree >= 1.5
+                    ? "보통"
+                    : "낮음"
+                }\n• 복잡성: ${
+                  graphComplexity.level === "highly_complex"
+                    ? "매우 복잡 (200+ 노드)"
+                    : graphComplexity.level === "complex"
+                    ? "복잡 (50-199 노드)"
+                    : graphComplexity.level === "moderate"
+                    ? "보통 (10-49 노드)"
+                    : "단순 (<10 노드)"
+                }`}
+                position={tooltipPosition}
+              />
+            </span>
+          </div>
+
+          {/* 향상된 엣지 점수 정보 */}
+          <div className="data-metric">
+            <span className="metric-label">엣지 점수 상세</span>
+            <span className="metric-value">{edgeScore}</span>
+            <span
+              className="qmark-tooltip"
+              onMouseEnter={handleTooltipMouseEnter}
+              onMouseLeave={handleTooltipMouseLeave}
+            >
+              ?
+              <Tooltip
+                text={`기본 점수: ${(edgesCount * 2).toFixed(
+                  1
+                )}점\n보너스: +${enhancedBonus.toFixed(
+                  1
+                )}점\n품질 가중치: ×${qualityMultiplier.toFixed(
+                  2
+                )}\n\n보너스 구성:\n• 연결도: ${Math.min(
+                  Math.pow(connectionAvgDegree - 2, 1.5),
+                  3.0
+                ).toFixed(1)}점\n• 응집도: ${
+                  calculateClusteringCoefficient(nodesCount, edgesCount) > 0.6
+                    ? "1.0"
+                    : "0.0"
+                }점\n• 균형성: ${
+                  calculateConnectionBalance(nodesCount, edgesCount) > 0.7
+                    ? "0.5"
+                    : "0.0"
+                }점`}
+                position={tooltipPosition}
               />
             </span>
           </div>
@@ -623,12 +898,15 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
             >
               <span className="metric-label">지식 성능 지수</span>
               <span className="metric-value">{efficiencyGrade.score}/10</span>
-              <span className="qmark-tooltip">
+              <span
+                className="qmark-tooltip"
+                onMouseEnter={handleTooltipMouseEnter}
+                onMouseLeave={handleTooltipMouseLeave}
+              >
                 ?
                 <Tooltip
-                  text={
-                    "노드(1.5점/개) + 엣지(2.0점/개) + 연결도 \n텍스트 대비 지식 추출 효율성"
-                  }
+                  text={`노드(1.5점/개) + 엣지(2.0점/개 + 보너스) + 품질 가중치\n텍스트 대비 지식 추출 효율성\n\n개선된 평가 시스템:\n• 그래프 타입 자동 감지\n• 연결 품질 가중치 적용\n• 종합적 보너스 시스템`}
+                  position={tooltipPosition}
                 />
               </span>
             </div>
