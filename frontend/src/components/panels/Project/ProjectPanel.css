@@ -186,6 +186,7 @@
   font-weight: 600;
   position: relative;
   overflow: hidden;
+  padding: 8px;
 }
 
 .add-icon::before {
@@ -233,7 +234,7 @@
   background: var(--primary-bg);
   border-radius: 10px;
   min-height: 40px;
-  margin-bottom: 0px;
+  margin-bottom: 2px;
 }
 
 .sidebar-container:hover .sidebar-icon.home-icon {

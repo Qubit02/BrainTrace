@@ -5,22 +5,12 @@ import json
 from exceptions.custom_exceptions import Neo4jException
 from collections import defaultdict
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-NEO4J_URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-NEO4J_USER     = os.getenv("NEO4J_USER",     "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
-
-
-# NEO4J_URI = "bolt://localhost:7687"
-# NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
 from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     def __init__(self):
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
 
     def close(self):
         self.driver.close()
@@ -118,7 +108,8 @@ class Neo4jHandler:
 
     def query_schema_by_node_names(self, node_names, brain_id):
         """
-        입력된 노드 이름들을 기준으로 주변 노드 및 관계(최대 2단계 깊이)를 조회합니다.
+        입력된 노드 이름들을 기준으로 주변 노드 및 관계를 조회합니다.
+        description이 빈 노드는 건너뛰고 실제 내용이 있는 노드까지 탐색합니다.
         """
         if not node_names or not isinstance(node_names, list):
             logging.error("유효하지 않은 node_names: %s", node_names)
@@ -127,8 +118,8 @@ class Neo4jHandler:
         logging.info("Neo4j 스키마 조회 시작 (노드 이름 목록: %s, brain_id: %s)", node_names, brain_id)
         
         try:
-            # 먼저 해당 brain_id의 모든 노드를 확인
             with self.driver.session() as session:
+                # 먼저 해당 brain_id의 모든 노드를 확인 (디버깅용)
                 debug_query = "MATCH (n:Node) WHERE n.brain_id = $brain_id RETURN n.name as name"
                 debug_result = session.run(debug_query, brain_id=brain_id)
                 all_nodes = [record["name"] for record in debug_result]
@@ -148,80 +139,134 @@ class Neo4jHandler:
                         "relationships": []
                     }
                 
-                # 1단계: 직접 연결된 노드 및 관계
-                query1 = '''
-                MATCH (n:Node)
-                WHERE n.name IN $names AND n.brain_id = $brain_id
-                OPTIONAL MATCH (n)-[r]-(m:Node)
-                WHERE m.brain_id = $brain_id
-                RETURN 
-                collect(DISTINCT n) AS start_nodes,
-                collect(DISTINCT m) AS direct_nodes,
-                collect(DISTINCT r) AS direct_relationships
+                # 최적화된 단일 쿼리 - description이 있는 노드까지 smart 탐색
+                optimized_query = optimized_query = optimized_query = optimized_query = '''
+                    // 시작 노드들 찾기
+MATCH (start:Node)
+WHERE start.name IN $names AND start.brain_id = $brain_id
+
+// *가 없는 노드까지 모든 경로 탐색 (최대 5단계)
+MATCH path = (start)-[*0..5]-(target:Node)
+WHERE target.brain_id = $brain_id
+  AND NOT target.name ENDS WITH '*'  // 목표: *가 없는 노드
+  AND (start = target OR start.name ENDS WITH '*')  // 시작이 *있거나 같은 노드
+
+// 경로별로 그룹화하여 중복 제거
+WITH start, 
+     collect(DISTINCT path) as paths
+
+// 노드와 관계 추출
+UNWIND paths as p
+WITH start,
+     nodes(p) as pathNodes,
+     relationships(p) as pathRels
+
+// 최종 집계
+WITH collect(DISTINCT start) as startNodes,
+     reduce(allNodes = [], pn IN collect(pathNodes) | allNodes + pn) as allPathNodes,
+     reduce(allRels = [], pr IN collect(pathRels) | allRels + pr) as allPathRels
+
+// 중복 제거 및 결과 반환
+RETURN 
+    startNodes,
+    [n IN allPathNodes WHERE n IS NOT NULL | n] as allRelatedNodes,
+    [r IN allPathRels WHERE r IS NOT NULL | r] as allRelationships,
+    size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) as validStartCount,
+    size(allPathNodes) as totalNodes
                 '''
-                    
-                # 2단계: 중간 노드(m)와 간접 연결된 노드(p) 및 관계(r2)
-                # query2 = '''
-                # MATCH (n:Node)-[r1]-(m:Node)-[r2]-(p:Node)
-                # WHERE n.name IN $names 
-                # AND n.brain_id = $brain_id 
-                # AND m.brain_id = $brain_id 
-                # AND p.brain_id = $brain_id 
-                # AND p <> n
-                # RETURN 
-                # collect(DISTINCT m) AS intermediate_nodes,
-                # collect(DISTINCT p) AS indirect_nodes,
-                # collect(DISTINCT r2) AS indirect_relationships
-                # '''
                 
                 # 쿼리 실행
-                result1 = session.run(query1, names=node_names, brain_id=brain_id)
-                record1 = result1.single()
+                result = session.run(optimized_query, names=existing_nodes, brain_id=brain_id)
+                record = result.single()
                 
-                # result2 = session.run(query2, names=node_names, brain_id=brain_id)
-                # record2 = result2.single()
-                
-                if not record1:
+                if not record:
                     logging.warning("Neo4j 조회 결과가 없습니다.")
-                    return None
+                    return {
+                        "nodes": [],
+                        "relatedNodes": [],
+                        "relationships": []
+                    }
                 
-                # 결과 취합
-                nodes = record1.get("start_nodes", [])
-                related_nodes = record1.get("direct_nodes", [])
-                relationships = record1.get("direct_relationships", [])
+                # 결과 추출
+                start_nodes = record.get("startNodes", [])
+                all_related_nodes = record.get("allRelatedNodes", [])
+                all_relationships = record.get("allRelationships", [])
                 
-                # 2단계 결과 추가
-                # if record2:
-                #     # 중간 노드(m)도 related_nodes에 추가
-                #     intermediate = record2.get("intermediate_nodes", []) or []
-                #     for node in intermediate:
-                #         if node is not None:
-                #             related_nodes.append(node)
-
-                #     # 간접 노드(p) 추가
-                #     indirect = record2.get("indirect_nodes", []) or []
-                #     for node in indirect:
-                #         if node is not None:
-                #             related_nodes.append(node)
-
-                #     # 간접 관계(r2) 추가
-                #     rels2 = record2.get("indirect_relationships", []) or []
-                #     for rel in rels2:
-                #         if rel is not None:
-                #             relationships.append(rel)
-                
-                # 중복 제거는 Neo4j 쿼리 내에서 DISTINCT로 처리되었으므로 여기서는 생략
-                logging.info("Neo4j 스키마 조회 결과: 노드=%d개, 관련 노드=%d개, 관계=%d개", 
-                           len(nodes), len(related_nodes), len(relationships))
-                
-                # 결과 반환
-                return {
-                    "nodes": nodes,
-                    "relatedNodes": related_nodes,
-                    "relationships": relationships
+                # 통계 로깅
+                stats = {
+                    "startNodesWithDesc": record.get("startNodesWithDescCount", 0),
+                    "pathNodes": record.get("pathNodeCount", 0),
+                    "neighbors": record.get("neighborCount", 0)
                 }
+                logging.info(f"조회 통계: {stats}")
+                
+                # 중복 제거 (set 사용)
+                unique_related = []
+                seen_ids = set()
+                
+                for node in all_related_nodes:
+                    if node and hasattr(node, 'id') and node.id not in seen_ids:
+                        seen_ids.add(node.id)
+                        unique_related.append(node)
+                    elif node and not hasattr(node, 'id'):
+                        # id가 없는 경우 name으로 중복 체크
+                        node_name = node.get('name') if isinstance(node, dict) else getattr(node, 'name', None)
+                        if node_name and node_name not in [n.get('name') if isinstance(n, dict) else getattr(n, 'name', None) for n in unique_related]:
+                            unique_related.append(node)
+                
+                # start_nodes에서 related_nodes 제외
+                start_node_names = set()
+                for node in start_nodes:
+                    if isinstance(node, dict):
+                        start_node_names.add(node.get('name'))
+                    elif hasattr(node, 'name'):
+                        start_node_names.add(node.name)
+                
+                final_related = []
+                for node in unique_related:
+                    node_name = node.get('name') if isinstance(node, dict) else getattr(node, 'name', None)
+                    if node_name not in start_node_names:
+                        final_related.append(node)
+                
+                # 관계 중복 제거
+                unique_relationships = []
+                seen_rels = set()
+                
+                for rel in all_relationships:
+                    if rel:
+                        # 관계의 고유 식별자 생성
+                        if hasattr(rel, 'id'):
+                            rel_id = rel.id
+                        elif hasattr(rel, 'start_node') and hasattr(rel, 'end_node'):
+                            rel_id = f"{rel.start_node.id}-{rel.type}-{rel.end_node.id}"
+                        else:
+                            continue
+                        
+                        if rel_id not in seen_rels:
+                            seen_rels.add(rel_id)
+                            unique_relationships.append(rel)
+                
+                # 결과 로깅
+                logging.info("Neo4j 스키마 조회 결과: 시작노드=%d개, 관련노드=%d개, 관계=%d개", 
+                            len(start_nodes), len(final_related), len(unique_relationships))
+                
+                # description 정보 로깅 (디버깅용)
+                for node in start_nodes[:3]:  # 처음 3개만 샘플로
+                    node_name = node.get('name') if isinstance(node, dict) else getattr(node, 'name', None)
+                    descriptions = node.get('descriptions', []) if isinstance(node, dict) else getattr(node, 'descriptions', [])
+                    valid_descs = [d for d in descriptions if d.get('description') and d['description'].strip()]
+                    logging.debug(f"노드 '{node_name}': descriptions={len(descriptions)}개, 유효={len(valid_descs)}개")
+                
+                return {
+                    "nodes": start_nodes,
+                    "relatedNodes": final_related,
+                    "relationships": unique_relationships
+                }
+                
         except Exception as e:
             logging.error("❌ Neo4j 스키마 조회 오류: %s", str(e))
+            import traceback
+            logging.error("스택 트레이스: %s", traceback.format_exc())
             raise Neo4jException(f"Neo4j 스키마 조회 오류: {str(e)}")
 
     def _execute_with_retry(self, query: str, parameters: dict, retries: int = 3):

@@ -1,8 +1,8 @@
 /**
  * SourceHoverTooltip.jsx
- * 
+ *
  * 출처보기에서 소스 제목에 마우스를 올렸을 때 참조 문장들을 표시하는 툴팁 컴포넌트
- * 
+ *
  * 주요 기능:
  * 1. 호버 상태 관리 (시작, 종료, 지연 처리)
  * 2. 참조 문장 목록 표시
@@ -12,21 +12,25 @@
  * 6. 화면 경계 처리
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import './SourceHoverTooltip.css';
+import React, { useState, useRef, useEffect } from "react";
+import "./SourceHoverTooltip.css";
 
 /**
  * SourceHoverTooltip 컴포넌트
- * 
+ *
  * @param {Array} originalSentences - 참조 문장 배열
  * @param {string} sourceTitle - 소스 제목
  * @param {React.ReactNode} children - 호버 대상이 되는 자식 요소
  */
-const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children }) => {
+const SourceHoverTooltip = ({
+  originalSentences = [],
+  sourceTitle = "",
+  children,
+}) => {
   // 호버 툴팁 상태 관리
   const [hoverState, setHoverState] = useState({
     isVisible: false,
-    position: { x: 0, y: 0 }
+    position: { x: 0, y: 0 },
   });
 
   // 타임아웃 참조
@@ -47,7 +51,7 @@ const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children
 
   /**
    * 호버 시작 핸들러
-   * 
+   *
    * @param {React.MouseEvent} event - 마우스 이벤트
    */
   const handleMouseEnter = (event) => {
@@ -69,29 +73,29 @@ const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children
       const rect = targetElement.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       // 툴팁이 화면 밖으로 나가지 않도록 위치 조정
       let x = rect.left + rect.width + 10;
       let y = rect.top - 10;
-      
+
       // 오른쪽 공간이 부족하면 왼쪽에 표시
       if (x + 320 > viewportWidth) {
         x = rect.left - 330;
       }
-      
+
       // 위쪽 공간이 부족하면 아래쪽에 표시
       if (y < 10) {
         y = rect.bottom + 10;
       }
-      
+
       // 아래쪽 공간이 부족하면 위쪽에 표시
       if (y + 200 > viewportHeight) {
         y = viewportHeight - 210;
       }
-      
+
       setHoverState({
         isVisible: true,
-        position: { x, y }
+        position: { x, y },
       });
     }, 300); // 300ms 지연
   };
@@ -105,29 +109,29 @@ const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    
+
     // 약간의 지연을 두어 툴팁이 너무 빨리 사라지지 않도록 함
     hideTimeoutRef.current = setTimeout(() => {
-      setHoverState(prev => ({ ...prev, isVisible: false }));
+      setHoverState((prev) => ({ ...prev, isVisible: false }));
     }, 100);
   };
 
   return (
-    <div 
+    <div
       className="source-hover-tooltip-wrapper"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {children}
-      
+
       {/* 호버 툴팁 */}
       {hoverState.isVisible && (
-        <div 
+        <div
           className="source-hover-tooltip"
           style={{
             left: hoverState.position.x,
             top: hoverState.position.y,
-            display: hoverState.isVisible ? 'block' : 'none'
+            display: hoverState.isVisible ? "block" : "none",
           }}
         >
           <div className="source-hover-tooltip-header">
@@ -143,7 +147,9 @@ const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children
               ))
             ) : (
               <div className="source-hover-tooltip-no-content">
-                <span className="source-hover-tooltip-no-text">참조 문장이 없습니다</span>
+                <span className="source-hover-tooltip-no-text">
+                  참조 문장이 없습니다
+                </span>
               </div>
             )}
           </div>
@@ -153,4 +159,4 @@ const SourceHoverTooltip = ({ originalSentences = [], sourceTitle = '', children
   );
 };
 
-export default SourceHoverTooltip; 
+export default SourceHoverTooltip;

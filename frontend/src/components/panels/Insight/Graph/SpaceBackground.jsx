@@ -1,43 +1,43 @@
 /**
  * SpaceBackground.jsx - 우주 배경 컴포넌트
- * 
+ *
  * 기능:
  * - 그래프 뷰어의 풀스크린 모드에서 우주 테마 배경 제공
  * - 다크모드/라이트모드에 따른 다른 배경 스타일 적용
  * - 별들이 움직이는 애니메이션 효과
  * - 고정 위치(fixed)로 전체 화면을 덮는 배경
  * - 모드 변경 시 부드러운 페이드 전환 효과 (두 배경을 겹쳐서 구현)
- * 
+ *
  * Props:
  * - isVisible: 배경 표시 여부 (기본값: false)
  * - isDarkMode: 다크모드 여부 (기본값: true)
- * 
+ *
  * 스타일 특징:
  * - 다크모드: 우주 공간 느낌의 어두운 그라데이션 + 컬러풀한 별들
  * - 라이트모드: 부드러운 파스텔 그라데이션 + 은은한 컬러 별들
  * - 별들은 CSS 애니메이션으로 천천히 움직임
  * - 모드 변경 시 0.8초 동안 부드러운 전환 효과
- * 
+ *
  * 사용법:
  * <SpaceBackground isVisible={true} isDarkMode={isDarkMode} />
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 const SpaceBackground = ({ isVisible = false, isDarkMode = true }) => {
-    // 배경이 보이지 않으면 렌더링하지 않음
-    if (!isVisible) return null;
+  // 배경이 보이지 않으면 렌더링하지 않음
+  if (!isVisible) return null;
 
-    // === 다크모드용 배경 스타일 정의 ===
-    // 우주 공간 느낌의 어두운 그라데이션과 컬러풀한 별들
-    const darkModeStyles = {
-        background: `
+  // === 다크모드용 배경 스타일 정의 ===
+  // 우주 공간 느낌의 어두운 그라데이션과 컬러풀한 별들
+  const darkModeStyles = {
+    background: `
             radial-gradient(ellipse at center, #0a0a1a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%),
             radial-gradient(circle at 20% 30%, rgba(135, 206, 235, 0.15) 0%, transparent 50%),
             radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
             radial-gradient(circle at 40% 80%, rgba(255, 105, 180, 0.1) 0%, transparent 50%)
         `,
-        starBackground: `
+    starBackground: `
             radial-gradient(2px 2px at 50px 50px, #ffffff, transparent),
             radial-gradient(2px 2px at 150px 150px, #87ceeb, transparent),
             radial-gradient(1px 1px at 250px 100px, #ffd700, transparent),
@@ -78,13 +78,13 @@ const SpaceBackground = ({ isVisible = false, isDarkMode = true }) => {
             radial-gradient(2px 2px at 880px 980px, #ffd700, transparent),
             radial-gradient(1px 1px at 980px 1080px, #ff69b4, transparent),
             radial-gradient(2px 2px at 1080px 1180px, #98fb98, transparent)
-        `
-    };
+        `,
+  };
 
-    // === 라이트모드용 배경 스타일 정의 ===
-    // 부드러운 파스텔 그라데이션과 은은한 컬러 별들
-    const lightModeStyles = {
-        background: `
+  // === 라이트모드용 배경 스타일 정의 ===
+  // 부드러운 파스텔 그라데이션과 은은한 컬러 별들
+  const lightModeStyles = {
+    background: `
             radial-gradient(ellipse at center, #ffffff 0%, #f8f9fa 15%, #f1f3f4 30%, #e8eaed 50%, #dadce0 70%, #bdc1c6 85%, #9aa0a6 100%),
             radial-gradient(circle at 20% 20%, rgba(147, 197, 253, 0.08) 0%, transparent 70%),
             radial-gradient(circle at 80% 80%, rgba(251, 191, 36, 0.06) 0%, transparent 70%),
@@ -94,7 +94,7 @@ const SpaceBackground = ({ isVisible = false, isDarkMode = true }) => {
             radial-gradient(circle at 35% 85%, rgba(59, 130, 246, 0.02) 0%, transparent 70%),
             radial-gradient(circle at 65% 45%, rgba(16, 185, 129, 0.02) 0%, transparent 70%)
         `,
-        starBackground: `
+    starBackground: `
             radial-gradient(1.5px 1.5px at 80px 80px, #3b82f6, transparent),
             radial-gradient(1px 1px at 180px 180px, #60a5fa, transparent),
             radial-gradient(1.5px 1.5px at 280px 120px, #8b5cf6, transparent),
@@ -135,77 +135,85 @@ const SpaceBackground = ({ isVisible = false, isDarkMode = true }) => {
             radial-gradient(1px 1px at 900px 1000px, #f97316, transparent),
             radial-gradient(1px 1px at 1000px 1100px, #8b5cf6, transparent),
             radial-gradient(1px 1px at 1100px 1200px, #06b6d4, transparent)
-        `
-    };
+        `,
+  };
 
-    return (
-        // === 우주 배경 컨테이너 ===
-        // 전체 화면을 덮는 고정 위치 배경
+  return (
+    // === 우주 배경 컨테이너 ===
+    // 전체 화면을 덮는 고정 위치 배경
+    <div
+      className="space-background-container"
+      style={{
+        position: "fixed", // 화면 스크롤과 무관하게 고정
+        top: 0, // 화면 최상단
+        left: 0, // 화면 최좌측
+        width: "100vw", // 뷰포트 전체 너비
+        height: "100vh", // 뷰포트 전체 높이
+        zIndex: -1, // 다른 요소들 뒤에 배치
+        pointerEvents: "none", // 마우스 이벤트 무시 (배경 클릭 방지)
+      }}
+    >
+      {/* === 다크모드 배경 레이어 === */}
+      <div
+        style={{
+          position: "absolute", // 부모 요소 기준 절대 위치
+          top: 0, // 부모 최상단
+          left: 0, // 부모 최좌측
+          width: "100%", // 부모 전체 너비
+          height: "100%", // 부모 전체 높이
+          background: darkModeStyles.background, // 다크모드 배경 그라데이션
+          opacity: isDarkMode ? 1 : 0, // 다크모드일 때만 보임
+          transition: "opacity 0.8s ease-in-out", // 투명도 전환 효과
+        }}
+      >
+        {/* 다크모드 별들 */}
         <div
-            className="space-background-container"
-            style={{
-                position: 'fixed',        // 화면 스크롤과 무관하게 고정
-                top: 0,                   // 화면 최상단
-                left: 0,                  // 화면 최좌측
-                width: '100vw',           // 뷰포트 전체 너비
-                height: '100vh',          // 뷰포트 전체 높이
-                zIndex: -1,               // 다른 요소들 뒤에 배치
-                pointerEvents: 'none'     // 마우스 이벤트 무시 (배경 클릭 방지)
-            }}
-        >
-            {/* === 다크모드 배경 레이어 === */}
-            <div style={{
-                position: 'absolute',     // 부모 요소 기준 절대 위치
-                top: 0,                   // 부모 최상단
-                left: 0,                  // 부모 최좌측
-                width: '100%',            // 부모 전체 너비
-                height: '100%',           // 부모 전체 높이
-                background: darkModeStyles.background,  // 다크모드 배경 그라데이션
-                opacity: isDarkMode ? 1 : 0,            // 다크모드일 때만 보임
-                transition: 'opacity 0.8s ease-in-out'  // 투명도 전환 효과
-            }}>
-                {/* 다크모드 별들 */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundImage: darkModeStyles.starBackground,
-                    backgroundRepeat: 'repeat',
-                    backgroundSize: '1100px 400px',
-                    opacity: 0.9,
-                    animation: 'simpleStarMove 60s linear infinite'
-                }} />
-            </div>
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundImage: darkModeStyles.starBackground,
+            backgroundRepeat: "repeat",
+            backgroundSize: "1100px 400px",
+            opacity: 0.9,
+            animation: "simpleStarMove 60s linear infinite",
+          }}
+        />
+      </div>
 
-            {/* === 라이트모드 배경 레이어 === */}
-            <div style={{
-                position: 'absolute',     // 부모 요소 기준 절대 위치
-                top: 0,                   // 부모 최상단
-                left: 0,                  // 부모 최좌측
-                width: '100%',            // 부모 전체 너비
-                height: '100%',           // 부모 전체 높이
-                background: lightModeStyles.background,  // 라이트모드 배경 그라데이션
-                opacity: isDarkMode ? 0 : 1,            // 라이트모드일 때만 보임
-                transition: 'opacity 0.8s ease-in-out'  // 투명도 전환 효과
-            }}>
-                {/* 라이트모드 별들 */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundImage: lightModeStyles.starBackground,
-                    backgroundRepeat: 'repeat',
-                    backgroundSize: '1100px 400px',
-                    opacity: 0.85,
-                    animation: 'simpleStarMove 60s linear infinite'
-                }} />
-            </div>
-        </div>
-    );
+      {/* === 라이트모드 배경 레이어 === */}
+      <div
+        style={{
+          position: "absolute", // 부모 요소 기준 절대 위치
+          top: 0, // 부모 최상단
+          left: 0, // 부모 최좌측
+          width: "100%", // 부모 전체 너비
+          height: "100%", // 부모 전체 높이
+          background: lightModeStyles.background, // 라이트모드 배경 그라데이션
+          opacity: isDarkMode ? 0 : 1, // 라이트모드일 때만 보임
+          transition: "opacity 0.8s ease-in-out", // 투명도 전환 효과
+        }}
+      >
+        {/* 라이트모드 별들 */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundImage: lightModeStyles.starBackground,
+            backgroundRepeat: "repeat",
+            backgroundSize: "1100px 400px",
+            opacity: 0.85,
+            animation: "simpleStarMove 60s linear infinite",
+          }}
+        />
+      </div>
+    </div>
+  );
 };
 
-export default SpaceBackground; 
+export default SpaceBackground;

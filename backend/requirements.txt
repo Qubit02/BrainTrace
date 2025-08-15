@@ -1,39 +1,43 @@
 # =============================================================================
-# BrainTrace Backend Requirements
+# BrainTrace Backend Requirements 
+# Install all packages: pip install -r requirements.txt
 # =============================================================================
 
 # 웹 서버 및 API 프레임워크
-fastapi==0.104.1          # FastAPI 웹 프레임워크
-uvicorn==0.24.0           # ASGI 서버
+fastapi==0.104.1
+uvicorn==0.24.0
 
 # 데이터베이스
-neo4j==5.14.1             # 그래프 데이터베이스
+neo4j==5.14.1
 
 # LLM 및 AI 처리
-langchain==0.1.0          # LLM 프레임워크
-openai==1.78.1            # OpenAI API 클라이언트
-sentence-transformers>=2.3.1  # 문장 임베딩
-transformers>=4.40.0      # Hugging Face 모델
-huggingface_hub>=0.30.0   # Hugging Face Hub
+langchain==0.1.0
+openai==1.78.1
+transformers>=4.40.0
 
 # 벡터 검색
-qdrant-client==1.7.0      # 벡터 데이터베이스 클라이언트
+qdrant-client==1.9.0
 
 # 오디오 처리
 librosa==0.10.1
-soundfile==0.12.1
 torch==2.7.1
+
+# PDF 처리
+PyPDF2
 
 # 기타 필수 의존성
 numpy>=1.24.0
-scipy>=1.10.0
 tqdm
-ollama  
-dotenv
-python-multipart
-markdown>=3.5.0
+python-dotenv            # ← 'dotenv'가 아니라 'python-dotenv'가 올바른 패키지명
+python-multipart         # FastAPI에서 File/Form 업로드 시 필수 (미사용이면 제거 가능)
 python-docx
 
-# libraries for embedding
+# Embedding/KoNLPy
 gensim
 konlpy
+JPype1                   # ← import 'jpype'용 실제 패키지명
+
+# ── deptry(DEP003)로 확인된 "전이 의존"을 직접 명시 ──
+pydantic>=2              # FastAPI는 Pydantic v2와 함께 동작
+requests                 # services/*, run_ollama.py 등에서 직접 사용
+scikit-learn
