@@ -1,3 +1,17 @@
+"""
+FastAPI 애플리케이션 팩토리/부트스트랩
+-----------------------------------
+
+이 모듈은 FastAPI 앱의 수명주기(lifespan) 안에서 필요한 런타임 의존성(Neo4j, Ollama)을
+환경에 맞춰 준비하고, 공통 미들웨어/예외 처리/라우터 등록/정적 파일 마운트를 구성합니다.
+
+핵심 기능:
+- Docker/로컬 환경 감지 후 적절한 초기화 수행
+- 로컬/EXE: 내장 Neo4j 실행, Ollama 준비(필요 시 spawn)
+- Docker: 외부 컨테이너(neo4j, ollama) 준비 대기만 수행
+- 공통 CORS/예외 핸들러/라우터/정적 파일 설정
+"""
+
 # src/app_factory.py
 import os, signal, logging
 from contextlib import asynccontextmanager
@@ -22,10 +36,11 @@ from routers import (
 
 # ── Docker 감지 유틸 ────────────────────────────────
 def is_running_in_docker() -> bool:
-    """
-    도커 환경 여부 감지:
-      1) IN_DOCKER=true|1|yes
-      2) /.dockerenv 존재
+    """도커 환경 여부를 판단합니다.
+
+    규칙:
+      1) 환경변수 IN_DOCKER=true|1|yes
+      2) 파일 /.dockerenv 존재
       3) /proc/1/cgroup 내 'docker' 또는 'kubepods' 문자열
     """
     env_val = os.getenv("IN_DOCKER", "").lower() in ("1", "true", "yes")
@@ -60,9 +75,21 @@ sqlite_handler = SQLiteHandler()
 neo4j_process = None
 ollama_process = None  # ensure_ollama_ready가 프로세스를 리턴할 수 있음(로컬/EXE)
 
+# ── Lifespan: 앱 기동/종료 시 초기화/정리 ─────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global neo4j_process, ollama_process
+    """앱 수명주기 동안 필요한 리소스를 준비/정리합니다.
+
+    시작 시:
+      - SQLite 초기화
+      - Docker 여부에 따라 Neo4j/Ollama 준비 로직 분기
+        • Docker: 외부 컨테이너 준비 대기만
+        • 로컬/EXE: Neo4j 내장 실행, Ollama 준비(필요 시 spawn)
+
+    종료 시:
+      - 보유한 프로세스(Neo4j/Ollama) 정상 종료 시도
+    """
 
     # 1) SQLite 초기화
     sqlite_handler._init_db()
@@ -141,8 +168,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── 전역 예외 처리 ─────────────────────────────────
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
+    """도메인 예외(AppException)를 표준 에러 응답으로 변환합니다."""
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
