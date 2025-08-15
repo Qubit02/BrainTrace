@@ -458,6 +458,7 @@ export default function ProjectListView() {
                         size={12}
                         style={{
                           marginLeft: "4px",
+                          marginBottom: "3px",
                           color: "black",
                           verticalAlign: "middle",
                         }}
