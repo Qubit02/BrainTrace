@@ -141,80 +141,38 @@ class Neo4jHandler:
                 
                 # 최적화된 단일 쿼리 - description이 있는 노드까지 smart 탐색
                 optimized_query = optimized_query = optimized_query = optimized_query = '''
-                // 시작 노드들 찾기
-                MATCH (start:Node)
-                WHERE start.name IN $names AND start.brain_id = $brain_id
+                    // 시작 노드들 찾기
+MATCH (start:Node)
+WHERE start.name IN $names AND start.brain_id = $brain_id
 
-                // 각 시작 노드에 대해 처리
-                WITH start
+// *가 없는 노드까지 모든 경로 탐색 (최대 5단계)
+MATCH path = (start)-[*0..5]-(target:Node)
+WHERE target.brain_id = $brain_id
+  AND NOT target.name ENDS WITH '*'  // 목표: *가 없는 노드
+  AND (start = target OR start.name ENDS WITH '*')  // 시작이 *있거나 같은 노드
 
-                // CASE 1: 시작 노드 자체에 유효한 description이 있는 경우
-                // descriptions의 각 요소를 문자열로 변환하여 체크
-                WITH start,
-                    CASE 
-                        WHEN ANY(d IN start.descriptions 
-                                WHERE toString(d) CONTAINS '"description"' 
-                                AND NOT toString(d) CONTAINS '"description": ""'
-                                AND NOT toString(d) CONTAINS '"description":""')
-                        THEN start
-                        ELSE null
-                    END as startWithDesc
+// 경로별로 그룹화하여 중복 제거
+WITH start, 
+     collect(DISTINCT path) as paths
 
-                // CASE 2: 시작 노드에 description이 없으면 연결된 노드 탐색
-                OPTIONAL MATCH path = (start)-[*1..5]-(target:Node)
-                WHERE target.brain_id = $brain_id
-                AND ANY(d IN target.descriptions 
-                        WHERE toString(d) CONTAINS '"description"' 
-                        AND NOT toString(d) CONTAINS '"description": ""'
-                        AND NOT toString(d) CONTAINS '"description":""')
-                AND startWithDesc IS NULL
+// 노드와 관계 추출
+UNWIND paths as p
+WITH start,
+     nodes(p) as pathNodes,
+     relationships(p) as pathRels
 
-                // 모든 경로 수집
-                WITH start, startWithDesc, 
-                    collect(path) as allPaths
+// 최종 집계
+WITH collect(DISTINCT start) as startNodes,
+     reduce(allNodes = [], pn IN collect(pathNodes) | allNodes + pn) as allPathNodes,
+     reduce(allRels = [], pr IN collect(pathRels) | allRels + pr) as allPathRels
 
-                // 경로에서 노드와 관계 추출
-                UNWIND CASE 
-                        WHEN startWithDesc IS NOT NULL THEN [null]
-                        WHEN size(allPaths) > 0 THEN allPaths
-                        ELSE [null]
-                    END as p
-
-                WITH start,
-                    startWithDesc,
-                    CASE 
-                        WHEN startWithDesc IS NOT NULL THEN [startWithDesc]
-                        WHEN p IS NOT NULL THEN nodes(p)
-                        ELSE []
-                    END as pathNodes,
-                    CASE 
-                        WHEN p IS NOT NULL THEN relationships(p)
-                        ELSE []
-                    END as pathRels
-
-                // 직접 연결된 이웃 노드도 포함
-                OPTIONAL MATCH (start)-[directRel]-(neighbor:Node)
-                WHERE neighbor.brain_id = $brain_id
-                AND neighbor <> start
-
-                // 결과 집계
-                WITH 
-                    collect(DISTINCT start) as allStartNodes,
-                    reduce(nodes = [], n IN collect(pathNodes) | nodes + n) as allPathNodes,
-                    reduce(rels = [], r IN collect(pathRels) | rels + r) as allPathRels,
-                    collect(DISTINCT neighbor) as allNeighbors,
-                    collect(DISTINCT directRel) as allDirectRels
-
-                // 최종 결과
-                RETURN 
-                    allStartNodes as startNodes,
-                    allStartNodes + 
-                    [n IN allPathNodes WHERE NOT n IN allStartNodes] + 
-                    [n IN allNeighbors WHERE NOT n IN allStartNodes] as allRelatedNodes,
-                    allPathRels + allDirectRels as allRelationships,
-                    size([n IN allStartNodes WHERE ANY(d IN n.descriptions WHERE toString(d) CONTAINS '"description"' AND NOT toString(d) CONTAINS '"description": ""')]) as startNodesWithDescCount,
-                    size(allPathNodes) as pathNodeCount,
-                    size(allNeighbors) as neighborCount
+// 중복 제거 및 결과 반환
+RETURN 
+    startNodes,
+    [n IN allPathNodes WHERE n IS NOT NULL | n] as allRelatedNodes,
+    [r IN allPathRels WHERE r IS NOT NULL | r] as allRelationships,
+    size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) as validStartCount,
+    size(allPathNodes) as totalNodes
                 '''
                 
                 # 쿼리 실행
