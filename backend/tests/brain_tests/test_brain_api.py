@@ -10,6 +10,28 @@ from test_utils import TestDataManager, test_transaction
 # 테스트 설정
 BASE_URL = "http://localhost:8000"
 
+def get_or_create_test_brain():
+    """테스트용 Brain을 생성하거나 기존 것을 반환"""
+    try:
+        # 기존 Brain 목록 조회
+        response = requests.get(f"{BASE_URL}/brains/", timeout=30)
+        if response.status_code == 200:
+            brains = response.json()
+            if brains:
+                return brains[0]["brain_id"]  # 첫 번째 Brain 사용
+        
+        # Brain이 없으면 생성
+        brain_data = {"brain_name": "테스트용 브레인"}
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
+        if response.status_code == 201:
+            return response.json()["brain_id"]
+    except Exception as e:
+        print(f"Brain 생성/조회 실패: {e}")
+    
+    return 1  # 기본값
+
+TEST_BRAIN_ID = get_or_create_test_brain()
+
 class TestBrainApi:
     """Brain API 테스트"""
     
@@ -24,7 +46,7 @@ class TestBrainApi:
             "brain_name": "테스트 브레인"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         assert response.status_code == 201
         
         result = response.json()
@@ -42,7 +64,7 @@ class TestBrainApi:
         self.test_brain_creation()
         
         # Brain 조회
-        response = requests.get(f"{BASE_URL}/brains/{self.created_brain_id}")
+        response = requests.get(f"{BASE_URL}/brains/{self.created_brain_id}", timeout=30)
         assert response.status_code == 200
         
         result = response.json()
@@ -53,7 +75,7 @@ class TestBrainApi:
     
     def test_brain_list_retrieval(self):
         """Brain 목록 조회 테스트"""
-        response = requests.get(f"{BASE_URL}/brains/")
+        response = requests.get(f"{BASE_URL}/brains/", timeout=30)
         assert response.status_code == 200
         
         brains = response.json()
@@ -72,7 +94,7 @@ class TestBrainApi:
             "brain_name": "업데이트 테스트 브레인"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         assert response.status_code == 201
         
         result = response.json()
@@ -84,7 +106,7 @@ class TestBrainApi:
             "brain_name": "수정된 테스트 브레인"
         }
         
-        response = requests.put(f"{BASE_URL}/brains/{brain_id}", json=update_data)
+        response = requests.put(f"{BASE_URL}/brains/{brain_id}", json=update_data, timeout=30)
         print(f"[디버그] PUT 요청 URL: {BASE_URL}/brains/{brain_id}")
         print(f"[디버그] PUT 요청 데이터: {update_data}")
         print(f"[디버그] PUT 응답 상태 코드: {response.status_code}")
@@ -105,7 +127,7 @@ class TestBrainApi:
         print("Brain 수정 성공")
         
         # 수정된 내용 확인
-        response = requests.get(f"{BASE_URL}/brains/{brain_id}")
+        response = requests.get(f"{BASE_URL}/brains/{brain_id}", timeout=30)
         assert response.status_code == 200
         
         result = response.json()
@@ -120,7 +142,7 @@ class TestBrainApi:
             "brain_name": "삭제 테스트 브레인"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         assert response.status_code == 201
         
         result = response.json()
@@ -128,7 +150,7 @@ class TestBrainApi:
         self.data_manager.add_brain_id(brain_id)
         
         # Brain 삭제
-        response = requests.delete(f"{BASE_URL}/brains/{brain_id}")
+        response = requests.delete(f"{BASE_URL}/brains/{brain_id}", timeout=30)
         print(f"[디버그] DELETE 요청 URL: {BASE_URL}/brains/{brain_id}")
         print(f"[디버그] DELETE 응답 상태 코드: {response.status_code}")
         print(f"[디버그] DELETE 응답 헤더: {dict(response.headers)}")
@@ -144,7 +166,7 @@ class TestBrainApi:
         print("Brain 삭제 성공")
         
         # 삭제 확인
-        response = requests.get(f"{BASE_URL}/brains/{brain_id}")
+        response = requests.get(f"{BASE_URL}/brains/{brain_id}", timeout=30)
         # 삭제된 Brain은 조회할 수 없어야 함
         assert response.status_code == 404
         
@@ -160,7 +182,7 @@ class TestBrainApi:
                 "brain_name": name
             }
             
-            response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+            response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
             assert response.status_code == 201
             
             result = response.json()
@@ -171,7 +193,7 @@ class TestBrainApi:
         print(f"{len(created_brain_ids)}개 Brain 생성 완료")
         
         # 생성된 Brain 목록 확인
-        response = requests.get(f"{BASE_URL}/brains/")
+        response = requests.get(f"{BASE_URL}/brains/", timeout=30)
         assert response.status_code == 200
         
         brains = response.json()
@@ -182,7 +204,7 @@ class TestBrainApi:
     def test_brain_error_handling(self):
         """Brain 에러 처리 테스트"""
         # 존재하지 않는 Brain ID로 조회
-        response = requests.get(f"{BASE_URL}/brains/99999")
+        response = requests.get(f"{BASE_URL}/brains/99999", timeout=30)
         # 에러가 발생하더라도 적절히 처리되어야 함
         print(f"존재하지 않는 Brain 조회: status_code={response.status_code}")
         
@@ -191,7 +213,7 @@ class TestBrainApi:
             "brain_name": ""
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         print(f"빈 이름 Brain 생성: status_code={response.status_code}")
         
         # 잘못된 데이터로 Brain 생성 시도
@@ -199,7 +221,7 @@ class TestBrainApi:
             "invalid_field": "잘못된 필드"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         print(f"잘못된 데이터 Brain 생성: status_code={response.status_code}")
     
     def test_brain_with_chat_integration(self):
@@ -209,7 +231,7 @@ class TestBrainApi:
             "brain_name": "채팅 통합 테스트 브레인"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         assert response.status_code == 201
         
         result = response.json()
@@ -221,14 +243,14 @@ class TestBrainApi:
             "session_name": "Brain 채팅 테스트",
             "brain_id": brain_id
         }
-        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data)
+        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data, timeout=30)
         assert response.status_code == 200
         
         session_id = response.json()["session_id"]
         self.data_manager.add_session_id(session_id)
         
         # 채팅 세션 목록에서 해당 Brain의 세션 확인
-        response = requests.get(f"{BASE_URL}/chatsession/")
+        response = requests.get(f"{BASE_URL}/chatsession/", timeout=30)
         assert response.status_code == 200
         
         sessions = response.json()
@@ -246,10 +268,8 @@ if __name__ == "__main__":
     # 테스트 실행 (트랜잭션 처리)
     with test_transaction(BASE_URL) as data_manager:
         test_instance = TestBrainApi(data_manager)
-        
         print("Brain API 통합 테스트 시작")
         print("=" * 50)
-        
         try:
             test_instance.test_brain_creation()
             test_instance.test_brain_retrieval()
@@ -259,10 +279,10 @@ if __name__ == "__main__":
             test_instance.test_brain_multiple_creation()
             test_instance.test_brain_error_handling()
             test_instance.test_brain_with_chat_integration()
-            
             print("=" * 50)
             print("모든 Brain API 통합 테스트 통과!")
-            
         except Exception as e:
             print(f"테스트 실패: {str(e)}")
-            raise 
+            raise
+        finally:
+            test_instance.cleanup()  # 혹시 남아있을 수 있는 테스트 데이터 정리 
