@@ -34,6 +34,7 @@
 .source-quota-bar.technical.expanded {
     height: auto;
     min-height: 45px;
+    overflow: visible; /* 펼쳐진 상태에서 툴팁이 잘리지 않도록 */
 }
 
 /* 강한 상단 보더가 있는 버전 */
@@ -59,6 +60,19 @@
     border-radius: 4px 4px 0 0;
     padding: 4px 0;
     background: transparent;
+}
+
+/* Header flex row */
+.kg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kg-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* ====== 정보 아이콘 ====== */
@@ -164,6 +178,9 @@
 .collapse-toggle {
     cursor: pointer;
     transition: all 0.18s ease;
+    font-size: 1.6em; /* 토글 아이콘 크기 확대 */
+    display: flex;
+    align-items: center;
 }
 
 /* 토글 아이콘 스타일 */
@@ -304,6 +321,72 @@
     box-shadow: none;
     margin-top: 4px;
     transition: all 0.2s ease;
+}
+.kg-total-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+/* Guide container */
+.kg-guide {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.kg-guide-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    color: #495057;
+}
+
+.kg-section-title {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 12px;
+    font-size: 1.05em;
+}
+
+.kg-section-desc {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.kg-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    font-size: 0.85em;
+}
+
+.kg-card {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.kg-card-title {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.kg-card-body {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.kg-row.mb-4 {
+    margin-bottom: 4px;
 }
 
 .data-metric.total:hover {
