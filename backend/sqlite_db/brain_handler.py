@@ -1,3 +1,53 @@
+"""
+BrainHandler: 브레인(워크스페이스) 관리 핸들러 (SQLite)
+--------------------------------------------------
+
+이 모듈은 로컬 SQLite DB를 사용하는 **브레인(작업공간) 엔티티**의 CRUD/유틸 기능을 제공합니다.
+`BaseHandler`의 `db_path`를 상속받아 연결을 열고, 관련 파일/연관 테이블 정리를 포함한
+안전한 삭제 로직을 제공합니다.
+
+구성/역할
+- create_brain(brain_name, created_at=None, deployment_type='local') -> dict
+  - Brain 레코드를 생성하고 `{brain_id, brain_name, created_at, deployment_type, is_important}` 반환
+  - `created_at` 미지정 시 오늘 날짜(ISO)로 자동 설정
+
+- delete_brain(brain_id) -> bool
+  - 브레인과 **연관된 로컬 파일**(Pdf.pdf_path, TextFile.txt_path)을 먼저 삭제
+  - 이후 DB 내 연관 레코드(Pdf/TextFile/Memo/ChatSession → Brain) 순서로 제거
+  - 트랜잭션으로 묶어 일부 실패 시 롤백
+  - 최종적으로 Brain 삭제 여부를 bool로 반환
+
+- update_brain_name(brain_id, new_brain_name) -> bool
+  - 브레인 이름 변경
+
+- update_brain_deployment_type(brain_id, deployment_type) -> bool
+  - 브레인 배포 유형(local/cloud 등) 변경
+
+- get_brain(brain_id) -> dict | None
+  - 단일 브레인 조회(없으면 None)
+
+- get_all_brains() -> List[dict]
+  - 전체 브레인 목록 조회
+
+- toggle_importance(brain_id) -> bool
+  - 중요 표시 플래그(is_important) 토글
+
+전제 조건
+- 스키마는 `BaseHandler._init_db()`에 의해 생성됨(앱 시작 시 1회 호출 권장).
+- Brain 스키마: (brain_id INTEGER PK AUTOINCREMENT, brain_name TEXT, created_at TEXT,
+  is_important BOOLEAN, deployment_type TEXT)
+
+트랜잭션/무결성
+- `delete_brain`은 파일 삭제 → DB 트랜잭션 순으로 진행.
+- 참조 무결성은 FOREIGN KEY 선언되어 있으나, SQLite에서 실제 enforcement는 PRAGMA 설정에 의존할 수 있음.
+  (필요 시 `PRAGMA foreign_keys=ON;` 고려)
+
+주의/안내
+- 파일 삭제는 OS I/O 예외 가능 → 실패 시 로그만 남기고 진행.
+- 다중 스레드/프로세스 환경에서의 동시성은 SQLite 특성에 주의(WAL 모드 권장, `BaseHandler._init_db` 참고).
+- 에러는 로깅 후 재전파(`RuntimeError` 등)되어 상위(Web 레이어)에서 표준 오류 응답으로 변환하는 패턴 권장.
+"""
+
 import sqlite3, logging, datetime
 import os
 from typing import List, Dict
