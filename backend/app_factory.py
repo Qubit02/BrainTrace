@@ -1,16 +1,16 @@
-"""
-FastAPI 애플리케이션 팩토리/부트스트랩
------------------------------------
+'''
+BrainTrace 앱 초기화 모듈 (app_factory)
 
-이 모듈은 FastAPI 앱의 수명주기(lifespan) 안에서 필요한 런타임 의존성(Neo4j, Ollama)을
-환경에 맞춰 준비하고, 공통 미들웨어/예외 처리/라우터 등록/정적 파일 마운트를 구성합니다.
+- FastAPI 애플리케이션 인스턴스 생성 및 수명주기(lifespan) 관리
+- 실행 환경 감지(Docker/로컬) 후 Neo4j/Ollama 준비 및 종료 제어
+- SQLite 초기화, CORS/예외 처리, 정적 파일 서빙 설정
+- 주요 라우터 등록(brain_graph, brain, memo 등)
+- run_neo4j로 Neo4j 기동, ensure_ollama_ready로 Ollama 준비
 
-핵심 기능:
-- Docker/로컬 환경 감지 후 적절한 초기화 수행
-- 로컬/EXE: 내장 Neo4j 실행, Ollama 준비(필요 시 spawn)
-- Docker: 외부 컨테이너(neo4j, ollama) 준비 대기만 수행
-- 공통 CORS/예외 핸들러/라우터/정적 파일 설정
-"""
+주의:
+- Docker 환경: 외부 컨테이너(neo4j, ollama)는 기동되어 있다고 가정 → ensure_ollama_ready 로 HTTP 준비 대기
+'''
+
 
 # src/app_factory.py
 import os, signal, logging

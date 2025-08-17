@@ -1,3 +1,63 @@
+
+"""
+MemoHandler: 메모 CRUD·소프트삭제(휴지통) 관리 (SQLite)
+-------------------------------------------------
+
+이 핸들러는 로컬 SQLite의 **Memo** 테이블을 대상으로 생성/조회/수정/삭제(소프트·하드)와
+브레인별 목록, 휴지통 비우기를 제공합니다. `BaseHandler`로부터 `db_path`와 시퀀스 발급
+(`_get_next_id`)을 활용합니다.
+
+스키마(참고: BaseHandler._init_db에서 생성)
+- Memo(
+    memo_id    INTEGER PRIMARY KEY,
+    memo_text  TEXT,
+    memo_title TEXT,
+    memo_date  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_source  BOOLEAN DEFAULT 0,
+    type       TEXT,
+    brain_id   INTEGER,
+    is_deleted INTEGER DEFAULT 0
+  )
+
+주요 기능
+- create_memo(memo_title, memo_text, is_source=False, type=None, brain_id=None) -> dict
+  : 새 메모 생성, 자동 생성된 `memo_date` 포함하여 반환. (brain_id가 주어지면 브레인 존재 여부 검증)
+
+- delete_memo(memo_id) -> bool
+  : **소프트 삭제**(is_deleted=1). 복구 가능.
+
+- hard_delete_memo(memo_id) -> bool
+  : **완전 삭제**(DB에서 제거). 복구 불가.
+
+- restore_memo(memo_id) -> bool
+  : 소프트 삭제 복구(is_deleted=0).
+
+- update_memo(memo_id, ...) -> bool
+  : 전달된 필드만 부분 업데이트. 변경 시 `memo_date=CURRENT_TIMESTAMP`로 갱신.
+  : brain_id는 None/"null"이면 **NULL**로 설정.
+
+- get_memo(memo_id) -> Optional[dict]
+  : 삭제되지 않은 메모만 조회.
+
+- get_memo_with_deleted(memo_id) -> Optional[dict]
+  : 삭제된 메모 포함하여 조회.
+
+- get_memos_by_brain(brain_id, is_source: Optional[bool]=None, include_deleted=False) -> List[Dict]
+  : 브레인별 목록(옵션: 출처 여부 필터, 삭제 포함 여부). 최신순(memo_date DESC).
+
+- empty_trash(brain_id) -> int
+  : 해당 브레인의 휴지통(is_deleted=1)을 비워 삭제된 행 수 반환.
+
+주의/안내
+- **브레인 존재 검증**: 현재 `create_memo`/`update_memo`에서 `self.get_brain(...)`을 호출하지만
+  `BaseHandler`에는 이 메서드가 없습니다. 실제 운용 시에는
+  `from .brain_handler import BrainHandler` 후 `BrainHandler(self.db_path).get_brain(...)` 방식으로
+  검증하는 것을 권장합니다(동일 프로젝트의 다른 핸들러와 일관성 맞춤).
+- 외래키 무결성 적용이 필요한 환경이라면 연결 후 `PRAGMA foreign_keys=ON;` 고려.
+- 대량 조회 성능을 위해 `Memo(brain_id)`, `Memo(memo_date)`, `Memo(is_deleted)` 인덱스 추가 권장.
+- 소프트 삭제와 완전 삭제의 의미 차이를 API 문서로 명확히 전달하세요.
+"""
+
 import sqlite3, logging
 from typing import List, Dict, Optional
 from .base_handler import BaseHandler
