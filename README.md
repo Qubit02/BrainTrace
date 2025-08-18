@@ -15,7 +15,7 @@
 </br>
 </br>
 
-# 우리 솔루션이 해결하는 UN-SDGs
+# about BrainTrace
 <p align="left">
   <!-- 필요 시 SDG 아이콘 이미지를 교체하세요 -->
 </p>
@@ -41,6 +41,10 @@ PDF/노트를 업로드하면 → 엔티티/관계를 추출·중복 제거 → 
 ---
 
 ## Project Sample
+<p align="center">
+ <img src="https://github.com/user-attachments/assets/dd41e574-109d-4268-8cf9-a9fca43a2c86" width="49%" align="left">
+ <img src="https://github.com/user-attachments/assets/a45f8b4e-883c-4a66-8b09-1bfda87417e4" width="49%" align="right">
+</p>
 <p align="center">
 
 </p>
