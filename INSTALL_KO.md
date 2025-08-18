@@ -130,8 +130,7 @@ pip install -r requirements.txt
 #### 2.1.3 환경 변수 설정
 
 ```bash
-# .env 파일 생성 (backend 디렉토리에)
-cp .env.example .env
+# .env 파일 생성 -> backend/.env
 
 # API 키 및 입력
 # OPENAI_API_KEY=your_api_key_here
