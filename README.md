@@ -1,281 +1,146 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a id="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-
 
+ <div><img src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:1FA9DC,100:543fd6&text=BrainTrace&descAlignY=100&descAlign=62&textBg=false&fontColor=FFFFFF&fontSize=70&animation=fadeIn&rotate=0&strokeWidth=0&descSize=20" /></div>
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
 
-  <h3 align="center">Best-README-Template</h3>
+### 👋 Introduce team member
 
-  <p align="center">
-    An awesome README template to jumpstart your projects!
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template">View Demo</a>
-    &middot;
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
-  </p>
-</div>
-
-
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
+| name                                        | major        | role | Email                |
+| -------------------------------------------- | -------------- | ------ | -------------------- |
+| [Yechan An](https://github.com/yes6686) | Computer Science | FE | email |
+| [Donghyck Kim](https://github.com/kimdonghyuk0) | Computer Science | BE | email |
+| [JeongGyun Yu](https://github.com/Mieulchi) | Computer Science | DevOps | sangsangujk@hansung.ac.kr |
+| [JeongGyun Yu](https://github.com/Mieulchi) | Computer Science | DevOps | sangsangujk@hansung.ac.kr |
 
 
+</br>
+</br>
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+# 우리 솔루션이 해결하는 UN-SDGs
+<p align="left">
+  <!-- 필요 시 SDG 아이콘 이미지를 교체하세요 -->
+</p>
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+**BrainTrace**는 사용자의 문서를 **지식 그래프**로 변환하고, 그래프에 근거한 **정확한 Q&A**를 제공하여 고급 지식 접근성을 민주화합니다.  
+PDF/노트를 업로드하면 → 엔티티/관계를 추출·중복 제거 → Neo4j·Qdrant에 저장 → 출처가 연결된 답변을 제공합니다.
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+이는 프롬프트 엔지니어링 지식 없이도 LLM을 활용할 수 있게 하여, 전문가/비전문가 간 정보 격차를 줄이고 고품질 학습 자원에 대한 접근을 높입니다.
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
+- **SDG 4 – 양질의 교육:** 사용 자료에서 구조화된 지식과 출처가 명확한 답변 제공
+- **SDG 10 – 불평등 감소:** 가이드형 UI와 자동 파이프라인으로 기술 장벽을 낮춤
 
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
+---
 
-Use the `BLANK_README.md` to get started.
+## Project Introduction
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**핵심 기능**
+- **자동 그래프화:** 문서 수집 → 노드/엣지 추출 → 중복 정리 → Neo4j/Qdrant 영속화  
+- **그래프 기반 챗:** 사실 기반 응답, 답변마다 관련 출처 문장 제공  
+- **시각적 탐색:** React Force Graph + D3로 인터랙티브 그래프 뷰  
+- **로컬/클라우드 LLM:** OpenAI 또는 로컬 Ollama(환경 변수로 전환)
 
+---
 
+## Project Sample
+<p align="center">
 
-### Built With
+</p>
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+> 문서를 업로드하면 BrainTrace가 자동으로 그래프를 구축합니다. 엔티티/관계를 탐색하고 추출된 스키마를 미리 볼 수 있습니다.
 
-* [![Next][Next.js]][Next-url]
-* [![React][React.js]][React-url]
-* [![Vue][Vue.js]][Vue-url]
-* [![Angular][Angular.io]][Angular-url]
-* [![Svelte][Svelte.dev]][Svelte-url]
-* [![Laravel][Laravel.com]][Laravel-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
+<br><br>
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="center">
 
+</p>
 
+> **그래프 기반 컨텍스트**로 질문하세요. 응답에는 관련 출처와 그래프 경로가 함께 제공됩니다.
 
-<!-- GETTING STARTED -->
-## Getting Started
+---
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+## Architecture
 
-### Prerequisites
+**스택 개요**
+- **Frontend:** React + Vite + Electron, D3.js, React-Force-Graph  
+- **Backend:** FastAPI (Python)  
+- **Datastores:** Neo4j(그래프 DB), Qdrant(벡터), SQLite(메타데이터)  
+- **LLM:** OpenAI API 또는 로컬 Ollama(ENV 전환)  
+- **DevOps:** Docker, GitHub Actions
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+---
 
-### Installation
+# ✨ Demo
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+## ⬇️ 영상 보러 가기
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/github_username/repo_name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
-   ```sh
-   git remote set-url origin github_username/repo_name
-   git remote -v # confirm the changes
-   ```
+---
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## Our Service
+**BrainTrace (로컬 앱)** – Electron/Vite 기반 개발 환경  
+- `docker compose up` **또는** 프런트엔드 `npm run dev` + 백엔드 `uvicorn main:app --reload`  
+- App(개발): http://localhost:5173 • API: http://localhost:8000
 
+---
 
+## 🎯 Commit Convention
 
-<!-- USAGE EXAMPLES -->
-## Usage
+- **feat:** 새로운 기능 추가  
+- **fix:** 버그 수정  
+- **style:** 포맷팅 등 비기능 변경  
+- **refactor:** 리팩터링(동작 변화 없음)
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+---
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+## 💡 PR 컨벤션
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-- [x] Add Changelog
-- [x] Add back to top links
-- [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
-
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTRIBUTING -->
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-### Top contributors:
-
-<a href="https://github.com/othneildrew/Best-README-Template/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=othneildrew/Best-README-Template" alt="contrib.rocks image" />
-</a>
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- LICENSE -->
-## License
-
-Distributed under the Unlicense License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTACT -->
-## Contact
-
-Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
-
-Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
-* [Choose an Open Source License](https://choosealicense.com)
-* [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
+| 아이콘 | 코드        | 설명                               |
+|-------|-------------|------------------------------------|
+| 🎨    | :art        | 코드 구조/포맷 개선                |
+| ⚡️   | :zap        | 성능 개선                          |
+| 🔥    | :fire       | 코드/파일 삭제                     |
+| 🐛    | :bug        | 버그 수정                          |
+| 🚑    | :ambulance  | 긴급 수정                          |
+| ✨    | :sparkles   | 신규 기능                          |
+| 💄    | :lipstick   | UI/스타일 파일 추가·수정           |
+
+---
+
+### 🛠️ Tech
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-2B2E3A?style=for-the-badge&logo=electron&logoColor=9FEAF9)
+![FastAPI](https://img.shields.io/badge/FastAPI-109989?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Neo4j](https://img.shields.io/badge/Neo4j-018BFF?style=for-the-badge&logo=neo4j&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-FF4F00?style=for-the-badge&logo=qdrant&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![D3.js](https://img.shields.io/badge/D3.js-F9A03C?style=for-the-badge&logo=d3dotjs&logoColor=white)
+![React Force Graph](https://img.shields.io/badge/React%20Force%20Graph-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![KoNLPy](https://img.shields.io/badge/KoNLPy-20B2AA?style=for-the-badge)
+![KoE5](https://img.shields.io/badge/KoE5-Embeddings-1F6FEB?style=for-the-badge)
+
+---
+
+## ☁️ 오픈소스 구성
+- **Backend/Infra:** FastAPI, Docker, GitHub Actions  
+- **Databases:** Neo4j, Qdrant, SQLite  
+- **Frontend:** React, Vite, Electron, D3.js, React-Force-Graph  
+- **AI:** OpenAI API, Ollama, KoNLPy, KoE5(임베딩), NumPy/Scikit-learn
+
+---
+
+## 🕸️ 생성형 AI
+- **LLM 제공자:** OpenAI(클라우드) / Ollama(로컬)  
+- **그라운딩:** Neo4j 그래프 + Qdrant 벡터 검색  
+- **임베딩:** KoE5를 활용한 한국어/다국어 검색
+
+---
+
+## 참고 자료
+- [OpenAI 프롬프트 가이드](https://platform.openai.com/docs/guides/prompt-engineering)  
+- [Anthropic 프롬프트 가이드](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview)  
+- [FastAPI 문서](https://fastapi.tiangolo.com) • [React 문서](https://react.dev)  
+- [Neo4j GraphAcademy](https://graphacademy.neo4j.com) • [Qdrant 문서](https://qdrant.tech/documentation)
