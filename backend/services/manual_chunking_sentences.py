@@ -353,6 +353,7 @@ def split_into_tokenized_sentence(text:str):
     return tokenized_sentences, texts
 
 
+
 def extract_graph_components(text: str, source_id: str):
     """전체 파이프라인을 수행해 노드/엣지를 생성합니다.
 
@@ -372,6 +373,7 @@ def extract_graph_components(text: str, source_id: str):
     # 모든 노드와 엣지를 저장할 리스트
     all_nodes = []
     all_edges = []
+    chunks=[]
     tokenized, sentences = split_into_tokenized_sentence(text)
     
     if len(text)>=2000:
@@ -382,16 +384,16 @@ def extract_graph_components(text: str, source_id: str):
         logging.info("chunking이 완료되었습니다.")
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
+
+    
     else:
         top_keyword, _, _=lda_keyword_and_similarity(tokenized, None, None)
         if len(top_keyword)<1:
             logging.error("LDA  keyword 추출에 실패했습니다.")
 
-        chunks=[{"chunks":list(range(len(sentences))), "keyword":top_keyword}]
-        if len(sentences)<=2:
-            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":list(range(len(sentences)))})
-        else:
-            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":[]})
+        chunk=list(range(len(sentences)))
+        chunks=[{"chunks":chunk, "keyword":top_keyword}]
+        all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":[]})
         already_made=[top_keyword]
         logging.info("chunking없이 노드와 엣지를 추출합니다.")
 
@@ -406,14 +408,13 @@ def extract_graph_components(text: str, source_id: str):
                                     "score": 1.0}]
         else:
             node["name"]=node["name"]+"*"
+            node["original_sentences"]=[]
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
             
     for c in chunks:
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
-            if len(current_chunk)<=2:
-                continue
             relevant_sentences = [sentences[idx] for idx in current_chunk]
             nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id,c["keyword"], already_made)
             all_nodes += nodes
@@ -449,3 +450,6 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
+
+text="장세린은 고양이를 좋아해"
+print(extract_graph_components(text, "1234"))

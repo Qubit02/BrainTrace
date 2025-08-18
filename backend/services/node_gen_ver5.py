@@ -159,8 +159,10 @@ def group_phrases(
     return group_infos
 
 def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
-    """루트 노드인 source keyword와 주변노드인 target keywords(여러 개)를 입력 받아,
-    이들 사이의 엣지들을 생성합니다."""
+    """
+    루트 노드인 source keyword와 주변노드인 target keywords(여러 개)를 입력 받아,
+    이들 사이의 엣지들을 생성합니다.
+    """
     edges=[]
     for t in target_keywords:
         if t != source_keyword:
@@ -176,6 +178,13 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
     return edges
 
 def make_node(name, phrase_info, sentences:list[str], source_id:str):
+    """
+    노드를 만들 키워드와 키워드의 등장 위치를 입력 받아 노드를 생성합니다.
+    args:   name: 노드를 만들 키워드
+            phrase_info: 해당 키워드의 등장 인덱스
+            sentences: 전체 텍스트가 문장 단위로 분해된 string의  list
+            source_id: 입력 문서의 고유 source_id       
+    """
     description=[]
     ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
@@ -204,7 +213,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
         phrases=extract_noun_phrases(sentence)
         for p in phrases:
             phrase_info[p].add(s_idx)
- 
+
     phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
