@@ -1,3 +1,23 @@
+"""
+임베딩/검색 서비스
+------------------
+
+이 모듈은 KoE5 임베딩 모델을 사용해 텍스트를 벡터화하고, 로컬 디스크 모드의 Qdrant를 통해
+다음 기능을 제공합니다.
+
+- 임베딩 생성(`encode_text`, `encode`)
+- 벡터 컬렉션 초기화/삭제(`initialize_collection`, `delete_collection`)
+- 노드(설명 기반) 임베딩 생성 및 업서트(`update_index_and_get_embeddings`)
+- 유사 노드/문장 검색(`search_similar_nodes`, `search_similar_descriptions`)
+- 인덱스 준비 상태 확인(`is_index_ready`)
+
+설계 노트:
+- Qdrant는 프로젝트 `backend/data/qdrant` 하위에 디스크 기반으로 저장됩니다.
+- 컬렉션 이름은 브레인 ID를 접두어로 구분합니다: `brain_{brain_id}`.
+- KoE5 모델은 첫 토큰([CLS]) 임베딩을 사용합니다.
+- 임베딩 저장 시, Qdrant `payload`에 `source_id`, `name`, `description`, `format_index`, `point_id` 등을 포함합니다.
+"""
+
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 import torch
@@ -34,6 +54,8 @@ def get_collection_name(brain_id: str) -> str:
         brain_id: 브레인 고유 식별자
     Returns:
         'brain_{brain_id}' 형식의 컬렉션 이름
+    Notes:
+        - 동일 Qdrant 인스턴스에서 다수 브레인을 구분하기 위한 네임스페이스 역할을 합니다.
     """
     return f"brain_{brain_id}"
 
@@ -47,6 +69,8 @@ def initialize_collection(brain_id: str) -> None:
         brain_id: 브레인 고유 식별자
     Raises:
         RuntimeError: 생성 실패 시
+    Notes:
+        - 안전을 위해 항상 새로 생성합니다. 기존 인덱스 유지가 필요하면 호출 전 존재 여부를 확인하세요.
     """
     collection_name = get_collection_name(brain_id)
     # 기존 컬렉션 삭제 시도
@@ -81,6 +105,9 @@ def encode_text(text: str) -> List[float]:
         EMBED_DIM 차원의 벡터 리스트
     Raises:
         RuntimeError: 임베딩 실패 시
+    Notes:
+        - 입력이 매우 길 경우 모델의 최대 토큰 길이에 맞춰 트렁케이션됩니다.
+        - 배치 추론을 고려하면 처리량이 증가하지만, 여기서는 단일 텍스트 기준으로 구현되어 있습니다.
     """
     try:
         inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
@@ -109,6 +136,10 @@ def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[st
         brain_id: 브레인 고유 식별자
     Returns:
         source_id별 생성된 벡터 리스트 딕셔너리
+    Notes:
+        - description이 비어있으면 name만으로 임베딩을 생성합니다.
+        - 동일 노드에서 포맷별로 다수 벡터가 생성될 수 있습니다.
+        - 예외 내구성을 높이기 위해 내부 단계를 try/except로 감싸고 로깅합니다.
     """
     collection_name = get_collection_name(brain_id)
     all_embeddings: Dict[str, List[List[float]]] = {}
@@ -232,7 +263,7 @@ def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[st
 def search_similar_nodes(
     embedding: List[float],
     brain_id: str,
-    limit: int = 5,
+    limit: int = 3,
     threshold: float = 0.5,
     high_score_threshold: float = 0.8
 ) -> List[Dict]:
@@ -253,7 +284,10 @@ def search_similar_nodes(
         threshold: 최소 유사도 필터
         high_score_threshold: 이 이상은 무제한 포함
     Returns:
-        유사 노드 리스트
+        Tuple[List[Dict], float]: (유사 노드 리스트, Q 평균 유사도)
+    Notes:
+        - 시그니처의 타입힌트는 List[Dict]이나, 실제 반환은 (results, Q) 튜플입니다.
+          상위 호출부(`similar_nodes, Q = ...`) 사용과 일치합니다.
     """
     collection_name = get_collection_name(brain_id)
 

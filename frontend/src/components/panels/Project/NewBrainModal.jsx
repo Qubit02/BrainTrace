@@ -1,11 +1,33 @@
-// src/components/NewBrainModal.jsx
+/*
+ NewBrainModal.jsx
+
+ 새 프로젝트(브레인) 생성 모달 컴포넌트.
+
+ 주요 기능:
+ 1. 배포 타입(cloud/local) 선택 UI 제공
+ 2. 프로젝트 이름 입력 및 생성 요청
+ 3. 생성 성공 시 상위(onCreated)로 결과 전달 후 닫기(onClose)
+
+ 접근성/UX:
+ - 모달이 열리면 입력창 자동 포커스
+ - 로딩 상태에서는 버튼 비활성화 및 라벨 변경
+ - API 에러 메시지는 친절히 안내
+*/
 import React, { useEffect, useState, useRef } from "react";
 import { createBrain } from "../../../../api/config/apiIndex";
 import "./NewBrainModal.css";
 import { FaCloud } from "react-icons/fa";
 import { MdSecurity } from "react-icons/md";
 
+/**
+ * 새 프로젝트(브레인) 생성 모달
+ *
+ * @param {Object} props
+ * @param {() => void} props.onClose - 모달 닫기 콜백
+ * @param {(brain: any) => void} props.onCreated - 생성된 브레인 정보를 상위로 전달하는 콜백
+ */
 export default function NewBrainModal({ onClose, onCreated }) {
+  // ===== 상태 =====
   // 프로젝트 이름 상태
   const [name, setName] = useState("");
 
@@ -18,11 +40,19 @@ export default function NewBrainModal({ onClose, onCreated }) {
   // 입력창 포커스를 위한 ref
   const inputRef = useRef(null);
 
+  // ===== 이펙트 =====
   // 모달 열리면 자동 포커스
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  // ===== 핸들러 =====
+  /**
+   * 생성 버튼/폼 제출 핸들러
+   * - 기본 제출 동작을 막고 API 호출을 통해 브레인을 생성합니다.
+   * - 성공 시 onCreated로 결과 전달 후 모달을 닫습니다.
+   * - 실패 시 사용자에게 에러 메시지를 안내합니다.
+   */
   // 생성 버튼 시 실행
   const handleSubmit = async (e) => {
     e.preventDefault(); // 폼 기본 제출 막기

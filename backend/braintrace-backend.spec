@@ -1,3 +1,29 @@
+"""
+PyInstaller spec: braintrace-backend
+------------------------------------
+
+이 스펙 파일은 FastAPI 기반 백엔드를 **one-dir 모드(폴더 배포)**로 패키징합니다.
+앱 실행에 필요한 **Neo4j 런타임 폴더**, **transformers 모델 코드/데이터**, **KoNLPy의 JAR**,
+**encodings 서브모듈/데이터** 등을 수집해 번들하고, **JPype/KoNLPy 초기화용 런타임 훅**을 적용합니다.
+
+구성 요약
+- Neo4j 번들: 프로젝트 `neo4j/` 하위에서 데이터 폴더는 제외하고 `bin, conf, lib, plugins, ...`만 포함.
+- encodings: 파이썬 `encodings` 패키지의 **모든 서브모듈/데이터**를 포함(파이썬 표준 인코딩 문제 방지).
+- transformers: `collect_all("transformers")`로 코드/데이터/히든임포트를 한 번에 수집.
+- KoNLPy JAR: `collect_data_files("konlpy")` 결과 중 `.../java/*.jar`만 선별하여
+  번들 내 `konlpy/java/` 경로로 복사(런타임에서 JVM 클래스패스에 올리기 위함).
+- hiddenimports: uvicorn/starlette/neo4j-driver 내부 네트워크 모듈, JPype 코어,
+  KoNLPy JVM/Okt 로더 등 **동적 임포트되는 모듈**을 명시적으로 포함.
+- excludes: tkinter, venv, 테스트 등 **불필요 리소스 제외**.
+- runtime_hooks: `runtime_hook_konlpy.py`를 등록하여 실행 시 **JVM 초기화/클래스패스 세팅** 수행.
+- 빌드 형태: `onefile=False`(one-dir), `console=True`, `debug=True`로 디버깅에 유리.
+
+배포/실행
+- 빌드 후 `dist/braintrace-backend/` 폴더가 생성되며, 해당 폴더 내 실행 파일을 사용.
+- Neo4j/KoNLPy/transformers 리소스가 함께 들어 있어 별도 설치 의존성을 줄임.
+- 모델 가중치 등 대형 파일을 포함하면 용량 증가가 크므로, 필요 시 런타임 다운로더로 분리 검토.
+"""
+
 # braintrace-backend.spec
 # -*- mode: python; coding: utf-8 -*-
 import os

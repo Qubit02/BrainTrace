@@ -749,6 +749,20 @@ function GraphView({
       const zoom = getInitialZoomScale(graphData.nodes.length);
       fgRef.current.centerAt(0, 0, 0);
       fgRef.current.zoom(zoom, 0);
+
+      // 초기 로드 시 시뮬레이션을 더 활발하게 시작
+      setTimeout(() => {
+        if (fgRef.current) {
+          const simulation = fgRef.current.d3Force();
+          if (simulation) {
+            // 시뮬레이션을 강하게 시작하여 노드들이 빠르게 분산되도록 함
+            simulation.alpha(1);
+            simulation.alphaDecay(0.01); // 천천히 감소하여 오래 지속
+            simulation.velocityDecay(0.2); // 속도 감소를 줄여서 더 오래 움직이도록
+            fgRef.current.d3ReheatSimulation();
+          }
+        }
+      }, 100);
     }
   }, [loading, graphData]);
 
@@ -1367,24 +1381,24 @@ function GraphView({
           linkWidth={customLinkWidth}
           linkDirectionalArrowLength={6.5}
           linkDirectionalArrowRelPos={1}
-          cooldownTime={5000}
-          d3VelocityDecay={0.2}
+          cooldownTime={8000} // 시뮬레이션 지속 시간 증가
+          d3VelocityDecay={0.1} // 속도 감소를 줄여서 더 오래 움직이도록
           d3Force={(fg) => {
             fg.force(
               "center",
               d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
             );
-            fg.force("collide", d3.forceCollide(50));
+            fg.force("collide", d3.forceCollide(80)); // 노드 간 충돌 거리 증가
 
-            // 초기 물리 설정 - 기본값 사용
-            fg.force("charge", d3.forceManyBody().strength(-30));
+            // 초기 물리 설정 - 더 강한 반발력과 넓은 링크 거리
+            fg.force("charge", d3.forceManyBody().strength(-150)); // 반발력 강화
             fg.force(
               "link",
               d3
                 .forceLink()
                 .id((d) => d.id)
-                .distance(100)
-                .strength(0.5)
+                .distance(200) // 링크 거리 증가
+                .strength(0.3) // 링크 장력 감소로 더 자유로운 움직임
             );
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {

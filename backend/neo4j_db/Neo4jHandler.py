@@ -1,3 +1,25 @@
+"""
+이 모듈은 Neo4j 그래프 DB와의 상호작용을 캡슐화한 `Neo4jHandler` 클래스를 제공합니다.
+
+주요 기능:
+- 노드/엣지 일괄 삽입 및 병합(MERGE)
+- 그래프 탐색(특정 시작 노드들의 주변 노드/관계 조회)
+- 브레인 단위 그래프 조회/삭제
+- 특정 `source_id`로 노드/엣지/문장(original_sentences) 조회
+
+데이터 스키마 요약:
+- 노드 라벨: `Node`
+- 공통 파티셔닝 키: `brain_id`
+- 노드 속성: `name`, `label`, `descriptions`(JSON 문자열 리스트), `original_sentences`(JSON 문자열 리스트)
+- 관계 라벨/속성: 기본적으로 `REL(relation, brain_id)`를 사용하나, 일부 조회는 `RELATES_TO(type)`를 가정하는 코드가 있으니
+  실제 데이터에 맞게 조정 필요
+
+주의:
+- `descriptions`/`original_sentences`는 문자열(JSON) 리스트로 저장되므로, 부분 문자열 검색(CONTAINS)은 부정확할 수 있습니다.
+  정확한 매칭이 필요한 경우 Python에서 JSON 파싱 후 비교합니다.
+- 예외는 `Neo4jException`으로 래핑되어 상위로 전달됩니다.
+"""
+
 from neo4j import GraphDatabase
 import logging
 from typing import List, Dict
@@ -6,19 +28,24 @@ from exceptions.custom_exceptions import Neo4jException
 from collections import defaultdict
 
 NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체
+NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체하거나 환경 변수로 주입 권장
 from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
+    """Neo4j 연결 및 그래프 CRUD 기능을 제공하는 핸들러 클래스."""
+
     def __init__(self):
+        """Neo4j 드라이버를 초기화합니다."""
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
 
     def close(self):
+        """드라이버 연결을 종료합니다."""
         self.driver.close()
 
     def insert_nodes_and_edges(self, nodes, edges, brain_id):
-        """
-        노드와 엣지를 Neo4j에 저장합니다.
-        쓰기 트랜잭션은 session.write_transaction()을 사용하여 한 번에 처리합니다.
+        """노드와 엣지를 Neo4j에 일괄 저장(MERGE)합니다.
+
+        - descriptions/original_sentences는 JSON 문자열 리스트로 정규화하여 저장합니다.
+        - 기존 항목과 중복되지 않게 리스트를 병합합니다.
         """
         def _insert(tx, nodes, edges, brain_id):
             # 노드 저장
@@ -86,10 +113,7 @@ class Neo4jHandler:
 
 
     def fetch_all_nodes(self):
-        """
-        모든 노드를 읽어와 JSON 형식의 리스트로 반환합니다.
-        읽기 쿼리는 session.run()을 사용하여 처리합니다.    
-        """
+        """모든 노드를 조회해 descriptions를 JSON으로 파싱하여 반환합니다."""
         nodes = []
         try:
             with self.driver.session() as session:
@@ -107,10 +131,7 @@ class Neo4jHandler:
         return nodes
 
     def query_schema_by_node_names(self, node_names, brain_id):
-        """
-        입력된 노드 이름들을 기준으로 주변 노드 및 관계를 조회합니다.
-        description이 빈 노드는 건너뛰고 실제 내용이 있는 노드까지 탐색합니다.
-        """
+        """시작 노드 기준으로 주변 노드/관계를 경로 탐색으로 조회합니다."""
         if not node_names or not isinstance(node_names, list):
             logging.error("유효하지 않은 node_names: %s", node_names)
             return None
@@ -141,80 +162,38 @@ class Neo4jHandler:
                 
                 # 최적화된 단일 쿼리 - description이 있는 노드까지 smart 탐색
                 optimized_query = optimized_query = optimized_query = optimized_query = '''
-                // 시작 노드들 찾기
-                MATCH (start:Node)
-                WHERE start.name IN $names AND start.brain_id = $brain_id
+                    // 시작 노드들 찾기
+MATCH (start:Node)
+WHERE start.name IN $names AND start.brain_id = $brain_id
 
-                // 각 시작 노드에 대해 처리
-                WITH start
+// *가 없는 노드까지 모든 경로 탐색 (최대 5단계)
+MATCH path = (start)-[*0..5]-(target:Node)
+WHERE target.brain_id = $brain_id
+  AND NOT target.name ENDS WITH '*'  // 목표: *가 없는 노드
+  AND (start = target OR start.name ENDS WITH '*')  // 시작이 *있거나 같은 노드
 
-                // CASE 1: 시작 노드 자체에 유효한 description이 있는 경우
-                // descriptions의 각 요소를 문자열로 변환하여 체크
-                WITH start,
-                    CASE 
-                        WHEN ANY(d IN start.descriptions 
-                                WHERE toString(d) CONTAINS '"description"' 
-                                AND NOT toString(d) CONTAINS '"description": ""'
-                                AND NOT toString(d) CONTAINS '"description":""')
-                        THEN start
-                        ELSE null
-                    END as startWithDesc
+// 경로별로 그룹화하여 중복 제거
+WITH start, 
+     collect(DISTINCT path) as paths
 
-                // CASE 2: 시작 노드에 description이 없으면 연결된 노드 탐색
-                OPTIONAL MATCH path = (start)-[*1..5]-(target:Node)
-                WHERE target.brain_id = $brain_id
-                AND ANY(d IN target.descriptions 
-                        WHERE toString(d) CONTAINS '"description"' 
-                        AND NOT toString(d) CONTAINS '"description": ""'
-                        AND NOT toString(d) CONTAINS '"description":""')
-                AND startWithDesc IS NULL
+// 노드와 관계 추출
+UNWIND paths as p
+WITH start,
+     nodes(p) as pathNodes,
+     relationships(p) as pathRels
 
-                // 모든 경로 수집
-                WITH start, startWithDesc, 
-                    collect(path) as allPaths
+// 최종 집계
+WITH collect(DISTINCT start) as startNodes,
+     reduce(allNodes = [], pn IN collect(pathNodes) | allNodes + pn) as allPathNodes,
+     reduce(allRels = [], pr IN collect(pathRels) | allRels + pr) as allPathRels
 
-                // 경로에서 노드와 관계 추출
-                UNWIND CASE 
-                        WHEN startWithDesc IS NOT NULL THEN [null]
-                        WHEN size(allPaths) > 0 THEN allPaths
-                        ELSE [null]
-                    END as p
-
-                WITH start,
-                    startWithDesc,
-                    CASE 
-                        WHEN startWithDesc IS NOT NULL THEN [startWithDesc]
-                        WHEN p IS NOT NULL THEN nodes(p)
-                        ELSE []
-                    END as pathNodes,
-                    CASE 
-                        WHEN p IS NOT NULL THEN relationships(p)
-                        ELSE []
-                    END as pathRels
-
-                // 직접 연결된 이웃 노드도 포함
-                OPTIONAL MATCH (start)-[directRel]-(neighbor:Node)
-                WHERE neighbor.brain_id = $brain_id
-                AND neighbor <> start
-
-                // 결과 집계
-                WITH 
-                    collect(DISTINCT start) as allStartNodes,
-                    reduce(nodes = [], n IN collect(pathNodes) | nodes + n) as allPathNodes,
-                    reduce(rels = [], r IN collect(pathRels) | rels + r) as allPathRels,
-                    collect(DISTINCT neighbor) as allNeighbors,
-                    collect(DISTINCT directRel) as allDirectRels
-
-                // 최종 결과
-                RETURN 
-                    allStartNodes as startNodes,
-                    allStartNodes + 
-                    [n IN allPathNodes WHERE NOT n IN allStartNodes] + 
-                    [n IN allNeighbors WHERE NOT n IN allStartNodes] as allRelatedNodes,
-                    allPathRels + allDirectRels as allRelationships,
-                    size([n IN allStartNodes WHERE ANY(d IN n.descriptions WHERE toString(d) CONTAINS '"description"' AND NOT toString(d) CONTAINS '"description": ""')]) as startNodesWithDescCount,
-                    size(allPathNodes) as pathNodeCount,
-                    size(allNeighbors) as neighborCount
+// 중복 제거 및 결과 반환
+RETURN 
+    startNodes,
+    [n IN allPathNodes WHERE n IS NOT NULL | n] as allRelatedNodes,
+    [r IN allPathRels WHERE r IS NOT NULL | r] as allRelationships,
+    size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) as validStartCount,
+    size(allPathNodes) as totalNodes
                 '''
                 
                 # 쿼리 실행
@@ -312,9 +291,7 @@ class Neo4jHandler:
             raise Neo4jException(f"Neo4j 스키마 조회 오류: {str(e)}")
 
     def _execute_with_retry(self, query: str, parameters: dict, retries: int = 3):
-        """
-        간단한 재시도 로직: 지정된 쿼리를 여러 번 시도하여 실행
-        """
+        """간단한 재시도 로직으로 쿼리를 실행합니다."""
         for attempt in range(retries):
             try:
                 with self.driver.session() as session:
@@ -327,6 +304,7 @@ class Neo4jHandler:
         return []
 
     def fetch_all_edges(self, brain_id: str) -> List[Dict]:
+        """모든 엣지를 조회합니다. (스키마에 따라 라벨/속성 명 조정 필요)"""
         try:
             query = """
             MATCH (source:Node {brain_id: $brain_id})-[r:RELATES_TO {brain_id: $brain_id}]->(target:Node {brain_id: $brain_id})
@@ -338,7 +316,7 @@ class Neo4jHandler:
             raise Neo4jException(f"Neo4j 엣지 조회 실패: {str(e)}")
 
     def get_brain_graph(self, brain_id: str) -> Dict[str, List]:
-        """특정 브레인의 노드와 엣지 정보 조회"""
+        """특정 브레인의 노드와 엣지 정보 조회."""
         logging.info(f"Neo4j get_brain_graph 시작 - brain_id: {brain_id}")
         try:
             with self.driver.session() as session:
@@ -382,6 +360,7 @@ class Neo4jHandler:
             raise Neo4jException(f"그래프 조회 오류: {str(e)}") 
         
     def delete_brain(self, brain_id: str) -> None:
+        """해당 `brain_id`의 모든 노드를 삭제합니다. 연결된 관계는 DETACH로 함께 제거됩니다."""
         try:
             query = """
             MATCH (n:Node {brain_id: $brain_id})
@@ -394,12 +373,7 @@ class Neo4jHandler:
             raise Neo4jException(f"Neo4j 데이터 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_source_id(self, source_id: str, brain_id: str) -> None:
-        """
-        특정 source_id를 가진 description들을 삭제하고, description이 비어있는 노드는 삭제합니다.
-        Args:
-            source_id: 삭제할 description의 source_id
-            brain_id: 브레인 ID
-        """
+        """특정 `source_id`를 참조하는 description을 제거하고 비어 있는 노드를 삭제합니다."""
         try:
             # 1. description 삭제
             query1 = """
@@ -423,11 +397,7 @@ class Neo4jHandler:
             raise Neo4jException(f"descriptions 삭제 실패: {str(e)}")
 
     def delete_descriptions_by_brain_id(self, brain_id: str) -> None:
-        """
-        특정 brain_id를 가진 모든 노드와 관계를 삭제합니다.
-        Args:
-            brain_id: 삭제할 브레인의 ID
-        """
+        """특정 `brain_id`의 모든 노드/관계를 삭제합니다."""
         try:
             query = """
             MATCH (n:Node {brain_id: $brain_id})
@@ -478,16 +448,7 @@ class Neo4jHandler:
             raise Neo4jException(f"노드 descriptions 조회 실패: {str(e)}")
 
     def get_nodes_by_source_id(self, source_id: str, brain_id: str) -> List[str]:
-        """
-        특정 source_id가 descriptions에 포함된 모든 노드의 이름을 반환합니다.
-        
-        Args:
-            source_id: 찾을 source_id (파일 ID)
-            brain_id: 브레인 ID
-            
-        Returns:
-            List[str]: 해당 source_id를 가진 노드들의 이름 목록
-        """
+        """`source_id`가 descriptions에 포함된 노드 이름 목록을 반환합니다."""
         try:
             # 1단계: 특정 brain_id의 모든 노드를 Neo4j에서 조회
             # Neo4j의 CONTAINS 연산자는 JSON 문자열 내부 검색에 한계가 있어서
@@ -537,16 +498,7 @@ class Neo4jHandler:
             raise Neo4jException(f"source_id로 노드 조회 실패: {str(e)}")
 
     def get_edges_by_source_id(self, source_id: str, brain_id: str) -> List[Dict]:
-        """
-        특정 source_id가 descriptions에 포함된 노드들 간의 엣지를 반환합니다.
-        
-        Args:
-            source_id: 찾을 source_id
-            brain_id: 브레인 ID
-            
-        Returns:
-            List[Dict]: 엣지 목록 (source, target, relation 포함)
-        """
+        """특정 `source_id`가 포함된 노드들 간의 엣지를 반환합니다."""
         try:
             query = """
             MATCH (source:Node {brain_id: $brain_id})-[r:REL {brain_id: $brain_id}]->(target:Node {brain_id: $brain_id})

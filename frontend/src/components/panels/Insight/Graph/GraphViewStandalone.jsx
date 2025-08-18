@@ -1,19 +1,55 @@
-// src/components/GraphViewStandalone.jsx
+/*
+ GraphViewStandalone.jsx
+
+ 독립 실행(Standalone) 전체화면 그래프 보기 페이지 컴포넌트
+
+ 주요 기능:
+ 1. URL 쿼리 파라미터를 통해 초기 하이라이트 노드 지정
+ 2. 메인 창과 localStorage 및 postMessage로 상태 동기화
+ 3. 새로고침/하이라이트 해제 액션을 양방향으로 브로드캐스트
+ 4. 그래프 통계 변화(노드/링크 수)를 메인 창에 신호로 전달
+
+ 상호작용:
+ - localStorage 키(graphStateSync, standaloneGraphUpdate)를 통해 메시지 교환
+ - postMessage(백업 채널)로 상태 업데이트 수신
+ - 창 종료 시 정리 작업 수행(beforeunload)
+*/
 import React, { useState, useCallback, useEffect } from "react";
 import GraphViewForFullscreen from "./GraphViewForFullscreen";
 import SpaceBackground from "./SpaceBackground";
 import "./SpaceBackground.css";
 
+/**
+ * Standalone 전체화면 그래프 뷰
+ *
+ * 특징:
+ * - 메인 앱 외부에서 독립 실행되어 그래프를 전체화면으로 표시
+ * - 메인 창과 동기화하여 하이라이트/포커스/새로고침 등을 반영
+ *
+ * 반환:
+ * - 전체화면 컨테이너 내부에 `GraphViewForFullscreen`을 포함
+ */
 function GraphViewStandalone() {
   const searchParams = new URLSearchParams(window.location.search);
   const brainId = searchParams.get("brainId") || "default-brain-id";
 
+  // ===== 상태 관리 =====
   // MainLayout과 동일한 상태 구조 유지
   const [referencedNodes, setReferencedNodes] = useState([]);
   const [focusNodeNames, setFocusNodeNames] = useState([]);
   const [graphRefreshTrigger, setGraphRefreshTrigger] = useState(0);
 
-  // GraphView에서 그래프 데이터가 업데이트될 때 처리
+  // ===== 핸들러/콜백 =====
+  /**
+   * 그래프 데이터 업데이트 처리
+   *
+   * @param {Object} graphData - 그래프 데이터
+   * @param {Array} graphData.nodes - 노드 배열
+   * @param {Array} graphData.links - 링크 배열
+   *
+   * 동작:
+   * - 스탠드얼론 창에서 그래프 통계를 메인 창으로 브로드캐스트
+   */
   const handleGraphDataUpdate = useCallback(
     (graphData) => {
       console.log("📊 Standalone Graph data updated:", graphData);
@@ -32,7 +68,13 @@ function GraphViewStandalone() {
     [brainId]
   );
 
-  // 새로고침 함수
+  /**
+   * 그래프 새로고침
+   *
+   * 동작:
+   * - 내부 트리거 증가로 GraphView에 새로고침 유도
+   * - 메인 창에 새로고침 요청 신호를 브로드캐스트
+   */
   const handleRefresh = useCallback(() => {
     console.log("🔄 Standalone에서 새로고침 실행");
     setGraphRefreshTrigger((prev) => prev + 1);
@@ -48,7 +90,13 @@ function GraphViewStandalone() {
     );
   }, [brainId]);
 
-  // 하이라이트 해제 함수
+  /**
+   * 하이라이트/포커스 해제
+   *
+   * 동작:
+   * - 로컬 상태 초기화
+   * - 메인 창에 하이라이트 해제 신호 브로드캐스트
+   */
   const handleClearHighlights = useCallback(() => {
     console.log("🧹 Standalone에서 하이라이트 해제");
     setReferencedNodes([]);
@@ -65,7 +113,14 @@ function GraphViewStandalone() {
     );
   }, [brainId]);
 
-  // URL 파라미터에서 참고된 노드 읽기
+  /**
+   * URL 파라미터에서 초기 하이라이트 노드 목록 가져오기
+   *
+   * 포맷:
+   * - ?referencedNodes=%5B%22노드1%22,%22노드2%22%5D
+   *
+   * @returns {string[]} 하이라이트할 노드 이름 배열 (파싱 실패 시 빈 배열)
+   */
   const getReferencedNodesFromUrl = () => {
     const referencedParam = searchParams.get("referencedNodes");
     if (referencedParam) {
@@ -79,6 +134,7 @@ function GraphViewStandalone() {
     return [];
   };
 
+  // ===== 이펙트 =====
   // 컴포넌트 마운트 시 URL에서 참고된 노드 정보 읽기
   useEffect(() => {
     const urlReferencedNodes = getReferencedNodesFromUrl();

@@ -1,4 +1,22 @@
-"""pip install gensim, scikit-learn, konlpy"""
+"""
+수동 청킹 및 키워드 기반 그래프 구성 모듈
+----------------------------------------
+
+이 모듈은 규칙 기반(수동)으로 텍스트를 문장 단위로 분할/토큰화하고,
+LDA/TF-IDF/인접 유사도 등을 활용해 재귀적으로 청킹하여 키워드 노드/엣지를 생성합니다.
+
+구성 요소 개요:
+- `split_into_tokenized_sentence`: 문장 단위 분할과 명사구 추출
+- `extract_keywords_by_tfidf`: 각 청크 토큰에서 TF-IDF 상위 키워드 추출
+- `lda_keyword_and_similarity`: LDA를 통해 전체/부분 토픽 추정 및 토픽 분포 유사도 행렬 계산
+- `recurrsive_chunking`: 유사도 기반 재귀 청킹(종료 조건/깊이/토큰 수 등 고려)
+- `extract_graph_components`: 전체 파이프라인 실행 → 노드/엣지 구축
+- `manual_chunking`: 소스 없는(-1) 케이스에 대한 청킹 결과만 반환
+
+주의:
+- 형태소 분석기(Okt), gensim LDA 등 외부 라이브러리에 의존합니다. 대형 텍스트에서는 시간이 소요될 수 있습니다.
+- 재귀 청킹은 종료 조건(depth, 토큰 수, 유사도 행렬 유효성 등)을 통해 무한 분할을 방지합니다.
+"""
 
 import logging
 import re
@@ -17,15 +35,23 @@ okt = Okt()
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나", "나름", "아마", "대한"]
 
 
-#문단을 문자열 리스트로 입력으로 받아 tf-idf를 기반으로 문단 별 키워드를 추출합니다.
-def extract_keywords_by_tfidf(tokenized_chunks:list[str], topn:int):
-    #각 단어의 tf-idf 점수를 계산한 메트릭스를 생성합니다.
+def extract_keywords_by_tfidf(tokenized_chunks: list[str], topn: int):
+    """토큰화된 문단 리스트에서 TF-IDF 상위 키워드를 추출합니다.
+
+    Args:
+        tokenized_chunks: 각 문단의 토큰 리스트들의 리스트
+        topn: 문단별 상위 키워드 개수
+
+    Returns:
+        List[List[str]]: 문단별 키워드 리스트들의 리스트
+    """
+    # 각 단어의 TF-IDF 점수를 계산한 메트릭스를 생성
     vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=1000)
     text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
     tfidf_matrix = vectorizer.fit_transform(text_chunks)
     feature_names = vectorizer.get_feature_names_out()
 
-    #각 문단 i의 tf-idf 벡터를 배열로 변환하고, 값이 큰 순서대로 정렬 후 상위 5개를 추출합니다.
+    # 각 문단 i의 TF-IDF 벡터를 배열로 변환하고, 값이 큰 순서대로 상위 topn 키워드 선정
     keywords_per_paragraph = []
     for i in range(tfidf_matrix.shape[0]):
         row = tfidf_matrix[i].toarray().flatten()
@@ -39,6 +65,58 @@ def extract_keywords_by_tfidf(tokenized_chunks:list[str], topn:int):
     return keywords_per_paragraph
 
 
+def tokenization(paragraphs: list[dict]) -> list[list[str]]:
+    """문단 리스트에서 명사/명사구를 추출해 토큰화합니다.
+
+    Args:
+        paragraphs: {"text": str, "index": int} 형식 문단 리스트
+
+    Returns:
+        List[Dict]: {"tokens": List[str], "index": int} 리스트
+    """
+    tokenized = []
+    okt = Okt()
+    for p in paragraphs:
+        tokens = okt.nouns(p["text"])
+        filtered_tokens = [t for t in tokens if t not in stop_words and len(t)>1]
+        tokenized_para={}
+        tokenized_para["tokens"]=filtered_tokens
+        tokenized_para["index"]=p["index"]
+        tokenized.append(tokenized_para)
+    return tokenized
+
+
+def recurrsive_chunking(
+    chunk: list[dict],
+    source_id: str,
+    depth: int,
+    already_made: list[str],
+    top_keyword: str,
+    threshold: int,
+    lda_model=None,
+    dictionary=None,
+    num_topics=5,
+):
+    """유사도/키워드 기반 재귀 청킹.
+
+    로직 요약:
+      - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
+      - depth>0에서는 인접 유사도/토큰 수/깊이 제한으로 종료 여부 판단
+      - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
+      - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
+
+    Args:
+        chunk: 현재 단계에서 분할 대상 문장 토큰 리스트({"tokens", "index"})
+        source_id: 소스 식별자(그래프 노드 메타데이터)
+        depth: 현재 재귀 깊이(0부터 시작)
+        already_made: 중복 노드 생성을 방지하기 위한 이름 캐시
+        top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
+        threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
+        lda_model, dictionary, num_topics: LDA 추정 관련 파라미터
+
+    Returns:
+        Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges"}, 업데이트된 already_made)
+    """
 def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
                         lda_model=None, dictionary=None, num_topics=5):
     """
@@ -83,10 +161,11 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
         if similarity_matrix.size == 0 or similarity_matrix.shape[0] < 2:
             flag=3
         
-        #만족된 종료 조건이 있을 경우
+        # 만족된 종료 조건이 있을 경우
         if flag != -1:
             result += [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
-            logging.info("depth {depth} 청킹 종료, flag:{flage}")
+            # 포맷 문자열 수정 및 변수명 오타(flag) 수정
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
             return result ,{"nodes":[], "edges":[]}, already_made
 
     else:
@@ -101,7 +180,8 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
                 flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
                 threshold = np.quantile(flattened, 0.25)
             else:
-                logging.error(f"similarity_matrix 생성 오류: {e}")
+                # 예외 변수(e)가 없는 영역이므로 일반 메시지로 로깅
+                logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
                 return [], {}, []
                 
         except Exception as e:
@@ -203,6 +283,16 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
     각 문장의 토픽 벡터간의 유사도를 내적으로 계산하여 유사도 행렬을 생성합니다.
     추출한 토픽 키워드, 생성한 lda 모델, 유사도 행렬을 반환합니다.
     """
+    """LDA 기반 키워드 추정과 토픽 분포 유사도 행렬 계산.
+
+    Args:
+        chunk: {"tokens": List[str], "index": int}의 리스트
+        lda_model: 재사용 가능한 LDA 모델(없으면 학습)
+        dictionary: 재사용 가능한 gensim Dictionary(없으면 생성)
+
+    Returns:
+        Tuple[str, models.LdaModel, np.ndarray]: (top_keyword, lda_model, similarity_matrix)
+    """
     tokens = [c["tokens"] for c in chunk]
      
     # LDA 모델이 없으면 학습하고, 있으면 재사용
@@ -237,6 +327,12 @@ def lda_keyword_and_similarity(chunk, lda_model, dictionary):
 
 
 def split_into_tokenized_sentence(text:str):
+    """텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
+
+    Returns:
+        Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
+    """
+    # text를 문장 단위로 쪼갬
     """
     text를 문장 단위로 쪼갭니다.
     """
@@ -258,7 +354,16 @@ def split_into_tokenized_sentence(text:str):
 
 
 def extract_graph_components(text: str, source_id: str):
-    """
+    """전체 파이프라인을 수행해 노드/엣지를 생성합니다.
+
+    단계:
+      1) 문장 분할 및 명사구 기반 토큰화
+      2) 텍스트 길이에 따라 재귀 청킹 사용 여부 결정
+      3) 청킹 결과 및 문장 인덱스를 통해 노드/엣지 생성
+
+    Returns:
+        Tuple[List[Dict], List[Dict]]: (노드 리스트, 엣지 리스트)
+
     길이가 긴 텍스트를 재귀적으로 chunking합니다.
     짧은 텍스트는 자체적으로 토픽을 추출하고 전체 텍스트를 하나의 청크로 간주합니다.
     각 청크에서 노드와 엣지를 추출하여 반환합니다.
@@ -290,7 +395,7 @@ def extract_graph_components(text: str, source_id: str):
         already_made=[top_keyword]
         logging.info("chunking없이 노드와 엣지를 추출합니다.")
 
-    #chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
+    # chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
         resolved_description=""
@@ -323,6 +428,11 @@ def extract_graph_components(text: str, source_id: str):
 def manual_chunking(text:str):
     """
     지식 그래프 생성에 GPT 모델을 사용하기 위해 텍스트를 적절한 크기로 청킹합니다.
+
+    소스 없이 텍스트만 받아 수동 청킹 결과를 반환합니다.
+
+    Returns:
+        List[str]: 재귀 청킹 결과(각 청크의 텍스트)
     """
     tokenized, sentences = split_into_tokenized_sentence(text)
     chunks, _, _ =recurrsive_chunking(tokenized, "-1" , 0, {}, "", 0)
@@ -340,4 +450,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-
