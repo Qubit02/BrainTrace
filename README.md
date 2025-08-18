@@ -25,8 +25,10 @@ PDF/노트를 업로드하면 → 엔티티/관계를 추출·중복 제거 → 
 
 이는 프롬프트 엔지니어링 지식 없이도 LLM을 활용할 수 있게 하여, 전문가/비전문가 간 정보 격차를 줄이고 고품질 학습 자원에 대한 접근을 높입니다.
 
-- **SDG 4 – 양질의 교육:** 사용 자료에서 구조화된 지식과 출처가 명확한 답변 제공
-- **SDG 10 – 불평등 감소:** 가이드형 UI와 자동 파이프라인으로 기술 장벽을 낮춤
+
+## Architecture
+<img width="2688" height="1278" alt="Image" src="https://github.com/user-attachments/assets/232bcdbe-6238-4b5b-8e5d-cace17a23d94" />
+
 
 ---
 
@@ -60,8 +62,6 @@ PDF/노트를 업로드하면 → 엔티티/관계를 추출·중복 제거 → 
 > **그래프 기반 컨텍스트**로 질문하세요. 응답에는 관련 출처와 그래프 경로가 함께 제공됩니다.
 
 ---
-
-## Architecture
 
 **스택 개요**
 - **Frontend:** React + Vite + Electron, D3.js, React-Force-Graph  
