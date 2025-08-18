@@ -133,10 +133,8 @@ pip install -r requirements.txt
 # .env 파일 생성 (backend 디렉토리에)
 cp .env.example .env
 
-# 필요한 API 키 및 설정값 입력
+# API 키 및 입력
 # OPENAI_API_KEY=your_api_key_here
-# NEO4J_URI=bolt://localhost:7687
-# OLLAMA_API_URL=http://localhost:11434
 ```
 
 #### 2.1.4 백엔드 실행
