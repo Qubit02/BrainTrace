@@ -24,7 +24,6 @@ import requests
 from dotenv import load_dotenv
 
 from .base_ai_service import BaseAIService
-from .chunk_service import chunk_text
 from .embedding_service import encode_text
 from .manual_chunking_sentences import manual_chunking
 from sklearn.metrics.pairwise import cosine_similarity
@@ -95,7 +94,7 @@ class OllamaAIService(BaseAIService):
         self, text: str, source_id: str
     ) -> Tuple[List[Dict], List[Dict]]:
         all_nodes, all_edges = [], []
-        chunks = chunk_text(text) if len(text) >= 2000 else [text]
+        chunks = manual_chunking(text) if len(text) >= 2000 else [text]
         logging.info(f"총 {len(chunks)}개 청크로 분할")
         for idx, chunk in enumerate(chunks, 1):
             logging.info(f"청크 {idx}/{len(chunks)} 처리")

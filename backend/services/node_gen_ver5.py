@@ -84,7 +84,8 @@ def compute_scores(
     phrase_embeddings = {}
     central_vecs = []
 
-        # phrase별 평균 임베딩 계산
+        # phrase별 평균 임베딩 계산=>phrase별 말고 모든 문장 일반 임베딩으로?
+        # 이거 없애도 될듯(중복 계산, 이미 임베딩 벡터 산출할 때 구함)
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
             executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
@@ -117,6 +118,7 @@ def compute_scores(
     return scores, phrases, sim_matrix
 
 #유사도를 기반으로 각 명사구를 그룹으로 묶음
+#상위 5개의 노드를 먼저 선별하고 걔네끼리만 유사도를 계산하면 더 빠를듯
 def group_phrases(
     phrases: List[str],
     phrase_scores: List[dict],
@@ -157,19 +159,19 @@ def group_phrases(
     return group_infos
 
 def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
-    #edge의 source와 target이 함께 등장한 문장을 찾습니다.
-    #해당 문장을 edge의 relation으로 삼습니다.
+    """루트 노드인 source keyword와 주변노드인 target keywords(여러 개)를 입력 받아,
+    이들 사이의 엣지들을 생성합니다."""
     edges=[]
     for t in target_keywords:
         if t != source_keyword:
-            description=""
+            relation=""
             for s_idx in phrase_info[t]:
                 if source_keyword in sentences[s_idx]:
-                    description+=sentences[s_idx]
+                    relation+=sentences[s_idx]
+            relation="관련" if relation=="" else relation
             edges.append({"source":source_keyword, 
                         "target":t,
-                        "relation":description})
-            description="관련" if description=="" else description
+                        "relation":relation})
         
     return edges
 
@@ -196,7 +198,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
     nodes=[]
     edges=[]
 
-    # 각 문장에서 명사구를 추출하고 각 명사구가 등장한 문장의 index를 수집
+    # 각 명사구가 등장한 문장의 index를 수집
     phrase_info = defaultdict(set)
     for s_idx, sentence in enumerate(sentences):
         phrases=extract_noun_phrases(sentence)
@@ -232,5 +234,3 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
 
     return nodes, edges, already_made
 
-
-            
