@@ -28,7 +28,6 @@ import numpy as np
 from collections import defaultdict
 from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import extract_noun_phrases
-from .chunk_service import chunk_text
 
 okt = Okt()
 
@@ -117,6 +116,13 @@ def recurrsive_chunking(
 
     Returns:
         Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges"}, 업데이트된 already_made)
+    """
+def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_made:list[str], top_keyword:str, threshold: int,
+                        lda_model=None, dictionary=None, num_topics=5):
+    """
+    input으로 입력된 청크를 더 작은 청크로 쪼개고
+    새롭게 생성된 청크와 입력받은 청크의 토픽 키워드를 추출하여 노드,엣지를 생성합니다.
+    재귀적으로 호출되어 프랙탈 구조의 지식 그래프를 생성하게 됩니다.
     """
     flag=-1
     result=[]
@@ -225,8 +231,8 @@ def recurrsive_chunking(
     #top keyword는 depth가 0일 경우 lda 모델이 추출한 전체 텍스트의 주제 키워드이다
     #depth가 0이 아닐 경우에는 이전 depth에서 전달한 tf-idf 방식으로 구한 해당 chunk의 키워드이다.
     if source_id != "-1":
-        top_node={"label":top_keyword,
-                "name":top_keyword,
+        top_node={"label":top_keyword+"",
+                "name":top_keyword+"",
                 "descriptions":[],
                 "source_id":source_id
         }
@@ -271,6 +277,12 @@ def recurrsive_chunking(
 
 
 def lda_keyword_and_similarity(chunk, lda_model, dictionary):
+    """
+    gensim의 lda 모델을 사용하여 청크의 토픽 키워드를 추출하고
+    청크를 구성하는 각 문장의 토픽 벡터를 생성합니다.
+    각 문장의 토픽 벡터간의 유사도를 내적으로 계산하여 유사도 행렬을 생성합니다.
+    추출한 토픽 키워드, 생성한 lda 모델, 유사도 행렬을 반환합니다.
+    """
     """LDA 기반 키워드 추정과 토픽 분포 유사도 행렬 계산.
 
     Args:
@@ -321,6 +333,9 @@ def split_into_tokenized_sentence(text:str):
         Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
     """
     # text를 문장 단위로 쪼갬
+    """
+    text를 문장 단위로 쪼갭니다.
+    """
     tokenized_sentences=[]
     texts=[]
     for p in re.split(r'(?<=[.!?])\s+', text.strip()):
@@ -348,6 +363,10 @@ def extract_graph_components(text: str, source_id: str):
 
     Returns:
         Tuple[List[Dict], List[Dict]]: (노드 리스트, 엣지 리스트)
+
+    길이가 긴 텍스트를 재귀적으로 chunking합니다.
+    짧은 텍스트는 자체적으로 토픽을 추출하고 전체 텍스트를 하나의 청크로 간주합니다.
+    각 청크에서 노드와 엣지를 추출하여 반환합니다.
     """
     
     # 모든 노드와 엣지를 저장할 리스트
@@ -358,18 +377,22 @@ def extract_graph_components(text: str, source_id: str):
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, [], "", 0,)
         if chunks==[]:
-            logging.info("manual chunking에 실패하여 기계적으로 청킹합니다.")
-            return chunk_text(text)
+            logging.info("chunking에 실패하였습니다.")
+            
         logging.info("chunking이 완료되었습니다.")
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
     else:
-        top_keyword, _, _=lda_keyword_and_similarity(tokenized,None, None)
+        top_keyword, _, _=lda_keyword_and_similarity(tokenized, None, None)
+        if len(top_keyword)<1:
+            logging.error("LDA  keyword 추출에 실패했습니다.")
+
         chunks=[{"chunks":list(range(len(sentences))), "keyword":top_keyword}]
         if len(sentences)<=2:
-            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id,
-                               "descriptions":list(range(len(sentences)))})
-        already_made=[]
+            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":list(range(len(sentences)))})
+        else:
+            all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":[]})
+        already_made=[top_keyword]
         logging.info("chunking없이 노드와 엣지를 추출합니다.")
 
     # chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
@@ -381,6 +404,8 @@ def extract_graph_components(text: str, source_id: str):
             node["original_sentences"]=[{"original_sentence":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}]
+        else:
+            node["name"]=node["name"]+"*"
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
             
@@ -395,13 +420,15 @@ def extract_graph_components(text: str, source_id: str):
             all_edges += edges
 
 
-
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
     return all_nodes, all_edges      
 
 
 def manual_chunking(text:str):
-    """소스 없이 텍스트만 받아 수동 청킹 결과를 반환합니다.
+    """
+    지식 그래프 생성에 GPT 모델을 사용하기 위해 텍스트를 적절한 크기로 청킹합니다.
+
+    소스 없이 텍스트만 받아 수동 청킹 결과를 반환합니다.
 
     Returns:
         List[str]: 재귀 청킹 결과(각 청크의 텍스트)
@@ -422,9 +449,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-
-if __name__ == "__main__":
-    # 간단한 수동 테스트용 진입점
-    sample_text = "장세린은 고양이를 좋아한다. 장세린은 학교 가기 싫다."
-    nodes, edges = extract_graph_components(sample_text, "1234")
-    logging.info("테스트 결과: nodes=%d, edges=%d", len(nodes), len(edges))

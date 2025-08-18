@@ -23,7 +23,6 @@ OpenAI 기반 그래프 추출/질의응답 서비스
 import logging
 from openai import OpenAI           # OpenAI 클라이언트 임포트
 import json
-from .chunk_service import chunk_text
 from .base_ai_service import BaseAIService
 from typing import List
 from .manual_chunking_sentences import manual_chunking
