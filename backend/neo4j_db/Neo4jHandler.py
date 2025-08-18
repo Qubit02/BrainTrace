@@ -160,40 +160,115 @@ class Neo4jHandler:
                         "relationships": []
                     }
                 
-                # 최적화된 단일 쿼리 - description이 있는 노드까지 smart 탐색
+                            
+                #                    // 0) 시작 노드
+                # MATCH (start:Node)
+                # WHERE start.brain_id = $brain_id
+                #   AND start.name IN $names
+
+                # // 1) 시작 노드가 "설명 있음"인지 판정 (이름에 '*' 없으면 설명 있음)
+                # WITH start, NOT (start.name ENDS WITH '*') AS has_desc
+
+                # // 2) 시작이 '*'일 때만 경로 탐색 (0..5)
+                # //    ★ 경로 전체 노드가 같은 brain_id 인지 강제
+                # OPTIONAL MATCH p = (start)-[*0..5]-(n:Node)
+                # WHERE NOT has_desc
+                #   AND ALL(m IN nodes(p) WHERE m.brain_id = $brain_id)
+                # // 관계에도 brain_id가 있다면 아래 줄도 함께 사용
+                # //  AND ALL(r IN relationships(p) WHERE r.brain_id = $brain_id)
+                # WITH start, has_desc, collect(p) AS paths
+
+                # // 3) 경로별 노드/관계 리스트 준비
+                # WITH start, has_desc,
+                #      CASE
+                #        WHEN has_desc THEN [[start]]
+                #        WHEN size(paths) = 0 THEN [[start]]
+                #        ELSE [x IN paths | nodes(x)]
+                #      END AS nodesLists,
+                #      CASE
+                #        WHEN has_desc THEN [[]]
+                #        WHEN size(paths) = 0 THEN [[]]
+                #        ELSE [x IN paths | relationships(x)]
+                #      END AS relsLists
+
+                # // 4) 각 경로 순회
+                # UNWIND range(0, size(nodesLists)-1) AS idx
+                # WITH start, nodesLists[idx] AS ns, relsLists[idx] AS rs
+
+                # // 5) 해당 경로에서 '첫 설명 노드(= 첫 non-*)' 인덱스
+                # WITH start, ns, rs,
+                #      head([i IN range(0, size(ns)-1)
+                #            WHERE NOT ns[i].name ENDS WITH '*']) AS firstIdx
+
+                # // 6) 첫 non-*까지(포함) 슬라이스 (없으면 경로 끝까지)
+                # WITH start,
+                #      ns[0..coalesce(firstIdx, size(ns)-1)+1] AS pNodes,
+                #      rs[0..coalesce(firstIdx, size(rs)-1)]   AS pRels
+
+                # // 7) 결과 집계
+                # WITH collect(DISTINCT start) AS startNodes,
+                #      collect(pNodes) AS pNodeLists,
+                #      collect(pRels)  AS pRelLists
+                # WITH startNodes,
+                #      reduce(ns=[], l IN pNodeLists | ns + l) AS nodeFlat,
+                #      reduce(rs=[], l IN pRelLists  | rs + l) AS relFlat
+                # RETURN
+                #   startNodes,
+                #   [n IN nodeFlat WHERE n IS NOT NULL | n] AS allRelatedNodes,
+                #   [r IN relFlat  WHERE r IS NOT NULL  | r] AS allRelationships;
+
+
+              
+
                 optimized_query = optimized_query = optimized_query = optimized_query = '''
-                    // 시작 노드들 찾기
-MATCH (start:Node)
-WHERE start.name IN $names AND start.brain_id = $brain_id
+                            // 시작 노드
+                MATCH (start:Node)
+                WHERE start.brain_id = $brain_id
+                AND start.name IN $names
 
-// *가 없는 노드까지 모든 경로 탐색 (최대 5단계)
-MATCH path = (start)-[*0..5]-(target:Node)
-WHERE target.brain_id = $brain_id
-  AND NOT target.name ENDS WITH '*'  // 목표: *가 없는 노드
-  AND (start = target OR start.name ENDS WITH '*')  // 시작이 *있거나 같은 노드
+                WITH start, (start.name ENDS WITH '*') AS isStar
 
-// 경로별로 그룹화하여 중복 제거
-WITH start, 
-     collect(DISTINCT path) as paths
+                // A) 시작이 '*' → '첫 non-*'에서 멈추는 경로
+                OPTIONAL MATCH p_star = (start)-[*0..5]-(target:Node)
+                WHERE isStar
+                AND ALL(m IN nodes(p_star) WHERE m.brain_id = $brain_id)
+                AND NOT target.name ENDS WITH '*'
+                AND ALL(m IN nodes(p_star)[..-1] WHERE m.name ENDS WITH '*')
 
-// 노드와 관계 추출
-UNWIND paths as p
-WITH start,
-     nodes(p) as pathNodes,
-     relationships(p) as pathRels
+                // B) 시작이 non-* → 한 홉 non-* 이웃만
+                OPTIONAL MATCH p_non = (start)-[*1..1]-(t1:Node)
+                WHERE NOT isStar
+                AND t1.brain_id = $brain_id
+                AND NOT t1.name ENDS WITH '*'
 
-// 최종 집계
-WITH collect(DISTINCT start) as startNodes,
-     reduce(allNodes = [], pn IN collect(pathNodes) | allNodes + pn) as allPathNodes,
-     reduce(allRels = [], pr IN collect(pathRels) | allRels + pr) as allPathRels
+                // 두 케이스 합치기
+                WITH start,
+                    coalesce(collect(DISTINCT p_star), []) + coalesce(collect(DISTINCT p_non), []) AS rawPaths
 
-// 중복 제거 및 결과 반환
-RETURN 
-    startNodes,
-    [n IN allPathNodes WHERE n IS NOT NULL | n] as allRelatedNodes,
-    [r IN allPathRels WHERE r IS NOT NULL | r] as allRelationships,
-    size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) as validStartCount,
-    size(allPathNodes) as totalNodes
+                //  Fallback: 경로가 없으면 [[start]] / [[]] 로 대체
+                WITH start,
+                    CASE
+                    WHEN size(rawPaths)=0 THEN [[start]]
+                    ELSE [p IN rawPaths | nodes(p)]
+                    END AS nodesLists,
+                    CASE
+                    WHEN size(rawPaths)=0 THEN [[]]
+                    ELSE [p IN rawPaths | relationships(p)]
+                    END AS relsLists
+
+                UNWIND range(0, size(nodesLists)-1) AS idx
+                WITH start, nodesLists[idx] AS pathNodes, relsLists[idx] AS pathRels
+
+                WITH collect(DISTINCT start) AS startNodes,
+                    reduce(ns=[], l IN collect(pathNodes) | ns + l) AS allPathNodes,
+                    reduce(rs=[], l IN collect(pathRels)  | rs + l) AS allPathRels
+
+                RETURN
+                startNodes,
+                [n IN allPathNodes WHERE n IS NOT NULL | n] AS allRelatedNodes,
+                [r IN allPathRels  WHERE r IS NOT NULL | r] AS allRelationships,
+                size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) AS validStartCount,
+                size(allPathNodes) AS totalNodes;
                 '''
                 
                 # 쿼리 실행
