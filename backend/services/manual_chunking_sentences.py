@@ -420,7 +420,6 @@ def extract_graph_components(text: str, source_id: str):
             all_edges += edges
 
 
-
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
     return all_nodes, all_edges      
 
