@@ -9,7 +9,7 @@
 | [Yechan An](https://github.com/yes6686) | Computer Science | FE | email |
 | [Donghyck Kim](https://github.com/kimdonghyuk0) | Computer Science | BE | email |
 | [JeongGyun Yu](https://github.com/Mieulchi) | Computer Science | DevOps | sangsangujk@hansung.ac.kr |
-| [Serin Jang](https://github.com) | Computer Science | AI | email |
+| [Selyn Jang](https://github.com/selyn-a) | Computer Science | AI | email |
 
 
 </br>
@@ -44,7 +44,7 @@ PDF/노트를 업로드하면 → 엔티티/관계를 추출·중복 제거 → 
 
 ## Project Sample
 <p align="center">
- <img src="https://github.com/user-attachments/assets/dd41e574-109d-4268-8cf9-a9fca43a2c86" width="49%" align="left">
+ <img src="https://github.com/user-attachments/assets/dce5b3f9-ff9e-491a-8f53-099ccd46b71a" width="49%" align="left">
  <img src="https://github.com/user-attachments/assets/a45f8b4e-883c-4a66-8b09-1bfda87417e4" width="49%" align="right">
 </p>
 <p align="center">
