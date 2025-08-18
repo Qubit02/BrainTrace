@@ -210,7 +210,7 @@ flowchart LR
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
     <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
-      <img src="https://github.com/user-attachments/assets/832e41bc-781b-4e1d-bc81-204e9027c9a0" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/1c7bebe5-246b-4495-9fda-9758d610740a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>메모 생성 및 소스로 추가</b></div>
       <div align="center"><sub>메모를 소스로 승격해 그래프에 반영하여, 인사이트를 지식으로 연결하고 그래프가 즉시 재구성됩니다.</sub></div>
     </td> 
@@ -237,7 +237,7 @@ flowchart LR
 
 ---
 
-## 시연영상상
+## 시연영상
 
 ## ⬇️ 영상 보러 가기
 
