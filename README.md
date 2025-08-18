@@ -9,7 +9,7 @@
 | [Yechan An](https://github.com/yes6686) | Computer Science | FE | email |
 | [Donghyck Kim](https://github.com/kimdonghyuk0) | Computer Science | BE | email |
 | [JeongGyun Yu](https://github.com/Mieulchi) | Computer Science | DevOps | sangsangujk@hansung.ac.kr |
-| [JeongGyun Yu](https://github.com/Mieulchi) | Computer Science | DevOps | sangsangujk@hansung.ac.kr |
+| [Serin Jang](https://github.com) | Computer Science | AI | email |
 
 
 </br>
