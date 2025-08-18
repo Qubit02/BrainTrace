@@ -170,12 +170,12 @@ flowchart LR
 
 <table style="background:#ffffff;">
   <tr>
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/97312636-239b-4b67-89b2-0d66bee06c63" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>새 프로젝트 만들기</b></div>
       <div align="center"><sub>새 브레인을 생성하고 프로젝트 이름/설정을 정한 뒤, 소스 업로드로 그래프 구축을 시작합니다(샘플 프로젝트 시작 지원).</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 첨부 시 그래프 생성</b></div>
       <div align="center"><sub>파일 업로드와 동시에 노드·엣지가 생성되어 그래프에 반영됩니다(PDF/TXT/MD/DOCX/메모 등 지원).</sub></div>
@@ -183,12 +183,12 @@ flowchart LR
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/cfa1261a-5c2b-4205-ab56-88d42dc13f73" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 클릭 후 하이라이팅</b></div>
       <div align="center"><sub>해당 소스에서 유래한 노드/엣지만 강조되어 맥락 파악이 쉽고, 그래프·소스 패널이 동기화됩니다.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>채팅 질문 후 참고된 노드 보여주기</b></div>
       <div align="center"><sub>질문과 가장 관련된 노드를 그래프와 목록으로 함께 표시하며, 그래프 기반 컨텍스트로 답변 품질이 향상됩니다.</sub></div>
@@ -196,12 +196,12 @@ flowchart LR
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>출처 보기 기능</b></div>
       <div align="center"><sub>원문 문장과 파일·페이지 같은 메타정보로 근거를 빠르게 확인합니다.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>참고된 노드 목록과 소스 노드 보기</b></div>
       <div align="center"><sub>채팅 답변 시 참고된 노드와 소스 생성 시 만들어진 노드를 보여줍니다.</sub></div>
@@ -221,13 +221,13 @@ flowchart LR
     </td>
   </tr>
    <tr>
-  <td width="50%" valign="top">
+  <td width="50%" valign="top" style="padding:0; background:#ffffff;">
      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
     </p>
     <div align="center"><b>전체화면 라이트 모드 노드 검색</b></div>
     <div align="center"><sub>검색창에서 키워드를 입력하면 전체화면 그래프에서 해당 노드와 주변 맥락을 빠르게 탐색할 수 있습니다.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>전체화면 다크모드</b></div>
       <div align="center"><sub>다크 테마의 전체화면에서 그래프를 집중해 탐색할 수 있으며, 야간/대규모 그래프 탐색에 유용합니다.</sub></div>
