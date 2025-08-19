@@ -1,8 +1,8 @@
-## 소개
+# BrainTrace
 
 <p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
-BrainTrace는 업로드된 텍스트/문서에서 정보를 추출하여 지식 그래프로 조직하고, 단일 흐름에서 의미론적 검색, 출처 추적 및 시각적 탐색을 가능하게 합니다. 파일 간의 분산된 개념과 관계를 하나의 네트워크로 연결하여 문서 간 맥락을 재구성하고, 그래프 기반의 통찰력 발견, 증거 중심의 인용 및 관계 우선 탐색을 지원합니다. 단순한 개념 추출을 넘어, 텍스트를 노드-엣지 구조로 변환하여 의미론적 탐색, 문서 간 참조 및 지식 시각화를 하나의 원활한 경험으로 제공합니다.
+BrainTrace는 업로드된 텍스트와 문서에서 정보를 추출하여 지식 그래프로 구성합니다. 이를 통해 의미론적 검색, 출처 추적, 시각적 탐색을 하나의 흐름에서 제공합니다. 파일 간의 분산된 개념과 관계를 하나의 네트워크로 연결하여 문서 간 맥락을 재구성하고, 그래프 기반의 통찰력 발견과 증거 중심의 인용을 지원합니다. 단순한 개념 추출을 넘어, 텍스트를 노드-엣지 구조로 변환하여 의미론적 탐색과 문서 간 참조, 지식 시각화를 원활하게 경험할 수 있습니다.
 
 ---
 
@@ -161,6 +161,109 @@ flowchart LR
 
 ---
 
+## 청킹 함수의 동작
+
+청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다:
+
+<img width="960" height="460" alt="image" src="https://github.com/user-attachments/assets/ce93db48-6e44-4520-8d28-b4c3d6ea2623" />
+
+동작 절차:
+
+1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다. 이 단계에서는 텍스트를 분석하여 각 문장을 개별적으로 처리하고, 명사구를 식별하여 추출합니다.
+
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def extract_graph_components(text: str, source_id: str):
+       tokenized, sentences = split_into_tokenized_sentence(text)
+       if len(text) >= 2000:
+           chunks, nodes_and_edges, _ = recurrsive_chunking(tokenized, source_id, 0, [], "", 0)
+           all_nodes = nodes_and_edges["nodes"]
+           all_edges = nodes_and_edges["edges"]
+       else:
+           # 짧은 텍스트 처리 (주제 추출 + 단일 청크)
+           top_keyword, _, _ = lda_keyword_and_similarity(tokenized, None, None)
+       return all_nodes, all_edges
+   ```
+
+2. **LDA 모듈을 통한 주제 벡터 변환**: 각 문장을 주제 벡터로 변환합니다. LDA 모듈을 사용하여 문장의 주제를 분석하고, 이를 벡터 형태로 변환하여 주제 간의 관계를 파악합니다.
+
+   ```python
+   # backend/services/embedding_service.py (발췌)
+   def encode_text(text: str) -> List[float]:
+       """
+       주어진 텍스트를 KoE5 모델로 임베딩하여 벡터 반환
+       - 토크나이저로 입력 전처리
+       - CLS 토큰 임베딩 추출
+       """
+       try:
+           inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+           with torch.no_grad():
+               outputs = model(**inputs)
+           return outputs.last_hidden_state[:, 0].squeeze().tolist()
+       except Exception as e:
+           logging.error("텍스트 임베딩 생성 실패: %s", str(e))
+   ```
+
+3. **문장 유사도 계산 및 그룹화**: 문장쌍 간의 유사도를 계산하고, 하위 25% 이하의 유사도를 기준으로 그룹화합니다. 유사도 행렬을 구성하여 문장 간의 유사성을 평가하고, 이를 기반으로 문장을 그룹화합니다.
+
+   ```python
+   # backend/services/embedding_service.py (발췌)
+   def search_similar_nodes(
+       embedding: List[float],
+       brain_id: str,
+       limit: int = 3,
+       threshold: float = 0.5,
+       high_score_threshold: float = 0.8
+   ) -> List[Dict]:
+       # 유사도 계산 및 그룹화 로직
+   ```
+
+4. **Grouping**: 주제적으로 다른 문장들 사이를 경계로 삼아 청크를 구성합니다. 이 단계에서는 유사도가 낮은 문장들 사이를 경계로 삼아 청크를 형성합니다.
+
+   ```python
+   # backend/services/ollama_service.py (발췌)
+   def _extract_from_chunk(self, chunk: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
+       # ... LLM 응답을 구문 분석하고 유효한 노드/엣지를 정규화합니다.
+       sentences = manual_chunking(chunk)
+       if not sentences:
+           for node in valid_nodes:
+               node["original_sentences"] = []
+           return valid_nodes, valid_edges
+       sentence_embeds = np.vstack([encode_text(s) for s in sentences])
+       threshold = 0.8
+       for node in valid_nodes:
+           if not node["descriptions"]:
+               node["original_sentences"] = []
+               continue
+           desc_obj = node["descriptions"][0]
+           desc_vec = np.array(encode_text(desc_obj["description"]))
+           sim_scores = cosine_similarity(sentence_embeds, desc_vec.reshape(1, -1)).flatten()
+           above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
+           node_originals = []
+           if above:
+               for i, score in above:
+                   node_originals.append({
+                       "original_sentence": sentences[i],
+                       "source_id": desc_obj["source_id"],
+                       "score": round(float(score), 4)
+                   })
+           else:
+               best_i = int(np.argmax(sim_scores))
+               node_originals.append({
+                   "original_sentence": sentences[best_i],
+                   "source_id": desc_obj["source_id"],
+                   "score": round(float(sim_scores[best_i]), 4)
+               })
+           node["original_sentences"] = node_originals
+       return valid_nodes, valid_edges
+   ```
+
+---
+
+지식 그래프에 대한 설명은 [여기](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
+
+---
+
 ## 출력 화면
 
 <table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
@@ -239,7 +342,7 @@ flowchart LR
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>전체 화면 다크 모드</b></div>
-      <div align="center"><sub>어두운 테마의 전체 화면에서 그래프를 탐색하고 그래프 속성을 커스터마이징할 수 있습니다.</sub></div>
+      <div align="center"><sub>어두운 테마의 전체 화면에서 그래프를 탐색하며, 그래프 속성을 자유롭게 커스터마이징할 수 있습니다.</sub></div>
     </td>
   </tr>
 </table>
@@ -256,9 +359,9 @@ flowchart LR
 
 <br />
 
-## 팀
+## 귀요미들
 
-|                              풀스택                               |                                 백엔드                                 |                              데브옵스                              |                                AI                                 |
+|                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
 |              [Yechan An](https://github.com/yes6686)              |            [Donghyck Kim](https://github.com/kimdonghyuk0)             |            [JeongGyun Yu](https://github.com/Mieulchi)             |             [Selyn Jang](https://github.com/selyn-a)              |
