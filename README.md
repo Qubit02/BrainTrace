@@ -1,20 +1,20 @@
-## 소개
+## Introduction
 
-<p align="center"><i>지식그래프를 활용한 지식 관리 시스템</i></p>
+<p align="center"><i>A knowledge management system powered by knowledge graphs</i></p>
 
-BrainTrace는 사용자가 업로드한 텍스트/문서에서 정보를 추출해 지식 그래프 구조로 정리하고, 이를 바탕으로 의미 기반 탐색, 출처 추적, 시각 탐색이 자연스럽게 이어지도록 돕는 통합 플랫폼입니다. 분산된 문서 속 개념과 관계를 하나의 연결망으로 묶어 문서 간 주제 맥락을 재구성하고, 그래프 기반 인사이트 탐색·근거 중심 인용·관계 중심 내비게이션을 지원합니다. 단순한 개념 추출을 넘어 텍스트를 노드·엣지 구조로 변환하여 의미 연관 탐색, 다문서 교차 참조, 지식 시각화를 한 흐름 안에서 제공합니다.
+BrainTrace extracts information from uploaded texts/documents, organizes it into a knowledge graph, and enables semantic search, provenance tracking, and visual exploration in a single flow. It connects dispersed concepts and relations across files into one network to reconstruct cross-document context, supporting graph-based insight discovery, evidence-centered citation, and relation-first navigation. Beyond simple concept extraction, it transforms text into a node–edge structure to provide semantic exploration, cross-document references, and knowledge visualization as one seamless experience.
 
 ---
 
-## 시스템 전체 아키텍처
+## System Architecture
 
 <img width="2688" height="1278" alt="Image" src="https://github.com/user-attachments/assets/232bcdbe-6238-4b5b-8e5d-cace17a23d94" />
 
 ---
 
-## 지식그래프 생성 과정
+## Knowledge Graph Pipeline
 
-BrainTrace는 다양한 형식의 학습 자료를 아래의 5단계 과정을 통해 지식 그래프로 변환합니다:
+BrainTrace converts various types of learning materials into a knowledge graph through the following five steps:
 
 ```mermaid
 flowchart LR
@@ -25,14 +25,14 @@ flowchart LR
 ```
 
 1. Text Extraction & Tokenization:
-   PDF, 텍스트 파일, 메모 등 다양한 형식의 자료에서 글 내용을 뽑아낸 뒤, 그 안의 문장을 의미 있는 단위(문장, 명사 덩어리 등)로 잘게 나눕니다.
-   쉽게 말하면, 읽기용 문장을 분석용 조각들로 나누는 과정입니다.
+   Extract text from sources such as PDFs, text files, memos, Markdown, or DOCX, then split it into meaningful units (sentences, noun phrases, etc.).
+   In short, convert reading-friendly sentences into analysis-ready segments.
 
    ```python
-   # backend/routers/brain_graph.py (발췌)
+   # backend/routers/brain_graph.py (excerpt)
    @router.get("/getSourceContent",
-       summary="소스 파일의 텍스트 내용 조회",
-       description="특정 source_id의 파일 타입에 따라 텍스트 내용을 반환합니다.")
+       summary="Get text content of a source file",
+       description="Return text content based on file type for a given source_id.")
    async def get_source_content(source_id: str, brain_id: str):
        db = SQLiteHandler()
        pdf = db.get_pdf(int(source_id))
@@ -42,20 +42,21 @@ flowchart LR
        docx = db.get_docxfile(int(source_id))
        if pdf:
            content = pdf.get('pdf_text', '')
+           title = pdf.get('pdf_title', '')
            file_type = 'pdf'
        elif textfile:
            content = textfile.get('txt_text', '')
+           title = textfile.get('txt_title', '')
            file_type = 'textfile'
-       # ... (memo/md/docx 분기)
-       return {"content": content, "type": file_type}
+       # ... (include title in memo/md/docx branches as well)
+       return {"content": content, "title": title, "type": file_type}
    ```
 
 2. Chunking:
-   긴 글을 주제별로 비슷한 내용끼리 묶어 작은 청크로 나눕니다.
-   각 청크에는 대표 키워드를 붙여, 이후 그래프의 뼈대를 잡을 준비를 합니다.
+   Group similar content by topic into smaller chunks. Each chunk is labeled with representative keywords to prepare the skeleton of the graph.
 
    ```python
-   # backend/services/manual_chunking_sentences.py (발췌)
+   # backend/services/manual_chunking_sentences.py (excerpt)
    def extract_graph_components(text: str, source_id: str):
        tokenized, sentences = split_into_tokenized_sentence(text)
        if len(text) >= 2000:
@@ -63,7 +64,7 @@ flowchart LR
            all_nodes = nodes_and_edges["nodes"]
            all_edges = nodes_and_edges["edges"]
        else:
-           # 짧은 텍스트 처리 (토픽 추출 후 단일 청크)
+           # Short text handling (topic extraction + single chunk)
            top_keyword, _, _ = lda_keyword_and_similarity(tokenized, None, None)
            # ...
        # ...
@@ -71,14 +72,13 @@ flowchart LR
    ```
 
 3. Node & Edge Generation:
-   각 청크에서 개념(노드)과 개념 사이의 관계(엣지)를 찾아냅니다.
-   예: ‘원인–결과’, ‘구성요소–전체’, ‘개념–예시’ 같은 의미 있는 연결입니다.
-   왜 그렇게 판단했는지 근거를 보여주기 위해, 각 노드에 원문 문장(original_sentences)도 함께 연결합니다.
+   From each chunk, extract concepts (nodes) and relations (edges), such as Cause→Effect, Part→Whole, Concept→Example.
+   For evidence and traceability, we attach original sentences to each node as `original_sentences`.
 
    ```python
-   # backend/services/ollama_service.py (발췌)
+   # backend/services/ollama_service.py (excerpt)
    def _extract_from_chunk(self, chunk: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
-       # ... LLM 응답 파싱 후 유효 노드/엣지 정규화
+       # ... parse LLM response and normalize valid nodes/edges
        sentences = manual_chunking(chunk)
        if not sentences:
            for node in valid_nodes:
@@ -114,11 +114,10 @@ flowchart LR
    ```
 
 4. Graph Merge:
-   청크별로 나온 노드/엣지를 합쳐 하나의 지식 그래프로 만듭니다.
-   같은 개념은 자동 병합하고, 설명·출처 문장은 중복 없이 정리해 깔끔하게 유지합니다.
+   Merge nodes/edges from all chunks into a unified knowledge graph. Identical concepts are automatically merged, and descriptions/provenance sentences are deduplicated.
 
    ```python
-   # backend/neo4j_db/Neo4jHandler.py (발췌)
+   # backend/neo4j_db/Neo4jHandler.py (excerpt)
    def insert_nodes_and_edges(self, nodes, edges, brain_id):
        def _insert(tx, nodes, edges, brain_id):
            for node in nodes:
@@ -146,12 +145,10 @@ flowchart LR
    ```
 
 5. Graph View & Q&A (GraphRAG):
-   최종 그래프는 시각화되며,
-   질문은 KoE5 임베딩으로 벡터화 → Qdrant에서 유사 노드 검색 → Neo4j에서 관련 서브그래프 조회 →
-   LLM이 스키마 요약을 바탕으로 답변을 생성합니다(참고 노드/출처 포함).
+   The final graph is visualized. Questions are embedded with KoE5 → similar nodes are searched in Qdrant → related subgraphs are fetched from Neo4j → the LLM generates an answer based on the schema summary (with referenced nodes and provenance).
 
    ```python
-   # backend/routers/brain_graph.py (발췌)
+   # backend/routers/brain_graph.py (excerpt)
    if not embedding_service.is_index_ready(brain_id):
        embedding_service.initialize_collection(brain_id)
    question_embedding = embedding_service.encode_text(question)
@@ -166,86 +163,88 @@ flowchart LR
 
 ---
 
-## 결과물
+## Output Screens
 
 <table style="background:#ffffff;">
   <tr>
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/97312636-239b-4b67-89b2-0d66bee06c63" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>새 프로젝트 만들기</b></div>
-      <div align="center"><sub>새 브레인을 생성하고 프로젝트 이름/설정을 정한 뒤, 소스 업로드로 그래프 구축을 시작합니다(샘플 프로젝트 시작 지원).</sub></div>
+      <div align="center"><b>Create a New Project</b></div>
+      <div align="center"><sub>Create a new brain, set project name/settings, then start building the graph by uploading sources (sample project supported).</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>소스 첨부 시 그래프 생성</b></div>
-      <div align="center"><sub>파일 업로드와 동시에 노드·엣지가 생성되어 그래프에 반영됩니다(PDF/TXT/MD/DOCX/메모 등 지원).</sub></div>
+      <div align="center"><b>Graph Generation on Upload</b></div>
+      <div align="center"><sub>Nodes and edges are created as you upload files and immediately reflected in the graph (supports PDF/TXT/MD/DOCX/Memo).</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/cfa1261a-5c2b-4205-ab56-88d42dc13f73" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>소스 클릭 후 하이라이팅</b></div>
-      <div align="center"><sub>해당 소스에서 유래한 노드/엣지만 강조되어 맥락 파악이 쉽고, 그래프·소스 패널이 동기화됩니다.</sub></div>
+      <div align="center"><b>Highlight by Source</b></div>
+      <div align="center"><sub>Only nodes/edges originating from the selected source are highlighted; graph and source panels stay in sync.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>채팅 질문 후 참고된 노드 보여주기</b></div>
-      <div align="center"><sub>질문과 가장 관련된 노드를 그래프와 목록으로 함께 표시하며, 그래프 기반 컨텍스트로 답변 품질이 향상됩니다.</sub></div>
+      <div align="center"><b>Show Referenced Nodes after Q&A</b></div>
+      <div align="center"><sub>Nodes most relevant to the question are displayed in both the graph and a list, improving the answer with graph context.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>출처 보기 기능</b></div>
-      <div align="center"><sub>원문 문장과 파일·페이지 같은 메타정보로 근거를 빠르게 확인합니다.</sub></div>
+      <div align="center"><b>View Provenance</b></div>
+      <div align="center"><sub>Quickly verify evidence with original sentences and metadata such as file/page info.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>참고된 노드 목록과 소스 노드 보기</b></div>
-      <div align="center"><sub>채팅 답변 시 참고된 노드와 소스 생성 시 만들어진 노드를 보여줍니다.</sub></div>
+      <div align="center"><b>Referenced Node List & Source Nodes</b></div>
+      <div align="center"><sub>Show nodes referenced in the chat answer and nodes produced from sources.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background:#ffffff;">
     <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/832e41bc-781b-4e1d-bc81-204e9027c9a0" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>메모 생성 및 소스로 추가</b></div>
-      <div align="center"><sub>메모를 소스로 승격해 그래프에 반영하여, 인사이트를 지식으로 연결하고 그래프가 즉시 재구성됩니다.</sub></div>
+      <div align="center"><b>Create Memo and Add as Source</b></div>
+      <div align="center"><sub>Promote memos to sources and reflect them in the graph, connecting insights to knowledge with immediate graph updates.</sub></div>
     </td> 
     <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
       <img src="https://github.com/user-attachments/assets/afe3a647-cb89-47ec-a024-0b2516f154c9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>음성 녹음으로 메모 생성</b></div>
-      <div align="center"><sub>마이크로 녹음한 음성을 텍스트로 변환해 메모를 만들고, 필요 시 소스로 추가해 그래프에 반영합니다.</sub></div>
+      <div align="center"><b>Create Memo from Voice</b></div>
+      <div align="center"><sub>Transcribe recorded audio into text memos and optionally add them as sources to update the graph.</sub></div>
     </td>
   </tr>
    <tr>
   <td width="50%" valign="top" style="padding:0; background:#ffffff;">
      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
     </p>
-    <div align="center"><b>전체화면 라이트 모드 노드 검색</b></div>
-    <div align="center"><sub>검색창에서 키워드를 입력하면 전체화면 그래프에서 해당 노드와 주변 맥락을 빠르게 탐색할 수 있습니다.</sub></div>
+    <div align="center"><b>Fullscreen Light Mode Search</b></div>
+    <div align="center"><sub>Type keywords to quickly explore target nodes and surrounding context in the fullscreen graph.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background:#ffffff;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>전체화면 다크모드</b></div>
-      <div align="center"><sub>다크 테마의 전체화면에서 그래프를 집중해 탐색할 수 있으며, 야간/대규모 그래프 탐색에 유용합니다.</sub></div>
+      <div align="center"><b>Fullscreen Dark Mode</b></div>
+      <div align="center"><sub>Explore the graph in a dark-themed fullscreen view—great for night-time or large-scale graph exploration.</sub></div>
     </td>
   </tr>
 </table>
 
 ---
 
-## 시연영상상
+## Demo Video
 
-## ⬇️ 영상 보러 가기
+## ⬇️ Watch the Video
+
+- Link coming soon.
 
 ---
 
 <br />
 
-## 프로젝트 팀원
+## Team
 
 |                            Full-Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
