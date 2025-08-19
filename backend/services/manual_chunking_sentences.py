@@ -150,9 +150,9 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
 
                 for _, idx in consec_similarity:
                      result+=[{ "chunks": [c["index"] for c in chunk if c["index"]<=idx],
-                                "keyword": top_keyword}]
+                                "keyword": top_keyword+"*"}]
             else:
-                result = [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
+                result = [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword+"*"}]
         
         
         #chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
@@ -163,7 +163,7 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
         
         # 만족된 종료 조건이 있을 경우
         if flag != -1:
-            result += [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword}]
+            result += [{ "chunks": [c["index"] for c in chunk], "keyword": top_keyword+"*"}]
             # 포맷 문자열 수정 및 변수명 오타(flag) 수정
             logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
             return result ,{"nodes":[], "edges":[]}, already_made
@@ -249,11 +249,12 @@ def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, already_ma
                                     "descriptions":[c["index"] for c in go_chunk[idx]],
                                     "source_id":source_id}
                     else:
-                        chunk_node={"label":topics[t_idx],"name":topics[t_idx],"descriptions":[], "source_id":source_id}
+                        connective_node=topics[t_idx]+"*"
+                        chunk_node={"label":topics[t_idx],"name":connective_node,"descriptions":[], "source_id":source_id}
                     edge={"source": top_keyword, "target": topics[t_idx], "relation":"관련"}
                     nodes_and_edges["nodes"].append(chunk_node)
                     nodes_and_edges["edges"].append(edge)
-                    already_made.append(topics[t_idx])
+                    already_made.append(chunk_node["name"])
                     keywords.append(topics[t_idx])
                     break
                 else:
@@ -391,6 +392,7 @@ def extract_graph_components(text: str, source_id: str):
         if len(top_keyword)<1:
             logging.error("LDA  keyword 추출에 실패했습니다.")
 
+        top_keyword+="*"
         chunk=list(range(len(sentences)))
         chunks=[{"chunks":chunk, "keyword":top_keyword}]
         all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":[]})
@@ -403,8 +405,7 @@ def extract_graph_components(text: str, source_id: str):
         resolved_description=""
         if node["descriptions"] != []:
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-        else:
-            node["name"]=node["name"]+"*"
+
         node["original_sentences"]=[{"original_sentence":resolved_description,
                                     "source_id":source_id,
                                     "score": 1.0}]
@@ -450,5 +451,8 @@ def manual_chunking(text:str):
 
     return final_chunks
 
-text="장세린은 고양이를 좋아해"
+text="""파일에서 텍스트를 추출한 후에는, 해당 텍스트에서 명사구를 추출하여 토큰화한다. 토큰화가 필요한 이유는, 정확도가 높은 지식 그래프를 생성하기 위해서 추출된 텍스트를 적절한 크기로 분할(청킹, chunking)해야 하며, 이때 사용하는 LDA(Latent Dirichlet Allocation) 모델이 토큰화된 텍스트를 입력받기 때문이다. LDA 모델은 텍스트를 구성하는 단어들의 분포를 분석하여 각 문서(또는 문장)가 어떤 주제에 속하는지를 확률적으로 추론하는 기법이다. 청킹 함수에서는 LDA 모델이 산출한 각 문장의 토픽 정보를 기반으로, 주제가 유사한 문장들을 하나의 그룹으로 묶는다. 
+앞서 언급했듯이, 청킹함수는 텍스트 내에서 명사구만을 추출해 토큰화한다. 여기서 명사구란 명사와 이를 수식하는 형용사나 동사가 결합된 표현을을 의미한다. 명사구를 사용하는 이유는, 주제 키워드를 효과적으로 추출하는 동시에 LDA 모델이 문맥을 이해할 수 있을 만큼의 정보를 유지하기 위해서다. 단어 단위로 모든 품사를 토큰화할 경우, 주제어가 명사 형태로 깔끔하게 추출되지 않는 문제가 발생하고, 반대로 명사만 추출하면 맥락 정보가 지나치게 손실되어 LDA가 주제를 제대로 식별하지 못하는 문제가 있었다. 이러한 이유로, 명사구가 토큰화의 기준으로 선택되었다.
+텍스트에서 명사구를 추출하는 구체적인 과정은 다음과 같다. 먼저 전체 텍스트를 문장 단위로 분할하여 문자열 리스트를 생성한다. 이후 각 문장을 KoNLPy의 Okt 형태소 분석기를 이용해 단어 단위로 분리하고, 각 단어에 품사 태그를 부착한다. 이 중 명사와 해당 명사를 수식하는 형용사 또는 동사만을 선별하여, 연속된 단어들을 하나의 명사구 토큰으로 그룹화한다. 이러한 과정을 통해 토큰화가 완료되면, LDA 모델이 주제를 추출할 수 있는 형태의 입력 데이터가 준비된다. 최종적으로 이 토큰화된 텍스트는 청킹함수에 전달되어, 텍스트를 주제 단위로 분할하는 데 활용된다.
+"""
 print(extract_graph_components(text, "1234"))
