@@ -8,7 +8,7 @@ BrainTrace extracts information from uploaded texts/documents, organizes it into
 
 ## System Architecture
 
-<img width="2688" height="1278" alt="Image" src="https://github.com/user-attachments/assets/232bcdbe-6238-4b5b-8e5d-cace17a23d94" />
+![System Architecture](https://github.com/user-attachments/assets/232bcdbe-6238-4b5b-8e5d-cace17a23d94)
 
 ---
 
@@ -24,9 +24,8 @@ flowchart LR
   D --> E["Graph View & Q&A (GraphRAG)"]
 ```
 
-1. Text Extraction & Tokenization:
-   Extract text from sources such as PDFs, text files, memos, Markdown, or DOCX, then split it into meaningful units (sentences, noun phrases, etc.).
-   In short, convert reading-friendly sentences into analysis-ready segments.
+1. **Text Extraction & Tokenization**:
+   Extract text from sources such as PDFs, text files, memos, Markdown, or DOCX, then split it into meaningful units (sentences, noun phrases, etc.). In short, convert reading-friendly sentences into analysis-ready segments.
 
    ```python
    # backend/routers/brain_graph.py (excerpt)
@@ -52,7 +51,7 @@ flowchart LR
        return {"content": content, "title": title, "type": file_type}
    ```
 
-2. Chunking:
+2. **Chunking**:
    Group similar content by topic into smaller chunks. Each chunk is labeled with representative keywords to prepare the skeleton of the graph.
 
    ```python
@@ -71,9 +70,8 @@ flowchart LR
        return all_nodes, all_edges
    ```
 
-3. Node & Edge Generation:
-   From each chunk, extract concepts (nodes) and relations (edges), such as Cause→Effect, Part→Whole, Concept→Example.
-   For evidence and traceability, we attach original sentences to each node as `original_sentences`.
+3. **Node & Edge Generation**:
+   From each chunk, extract concepts (nodes) and relations (edges), such as Cause→Effect, Part→Whole, Concept→Example. For evidence and traceability, we attach original sentences to each node as `original_sentences`.
 
    ```python
    # backend/services/ollama_service.py (excerpt)
@@ -113,7 +111,7 @@ flowchart LR
        return valid_nodes, valid_edges
    ```
 
-4. Graph Merge:
+4. **Graph Merge**:
    Merge nodes/edges from all chunks into a unified knowledge graph. Identical concepts are automatically merged, and descriptions/provenance sentences are deduplicated.
 
    ```python
@@ -144,7 +142,7 @@ flowchart LR
                )
    ```
 
-5. Graph View & Q&A (GraphRAG):
+5. **Graph View & Q&A (GraphRAG)**:
    The final graph is visualized. Questions are embedded with KoE5 → similar nodes are searched in Qdrant → related subgraphs are fetched from Neo4j → the LLM generates an answer based on the schema summary (with referenced nodes and provenance).
 
    ```python
@@ -165,66 +163,80 @@ flowchart LR
 
 ## Output Screens
 
-<table style="background:#ffffff;">
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
   <tr>
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/97312636-239b-4b67-89b2-0d66bee06c63" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Create a New Project</b></div>
       <div align="center"><sub>Create a new brain, set project name/settings, then start building the graph by uploading sources (sample project supported).</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Graph Generation on Upload</b></div>
       <div align="center"><sub>Nodes and edges are created as you upload files and immediately reflected in the graph (supports PDF/TXT/MD/DOCX/Memo).</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
-  <tr style="background:#ffffff;">
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/cfa1261a-5c2b-4205-ab56-88d42dc13f73" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Highlight by Source</b></div>
       <div align="center"><sub>Only nodes/edges originating from the selected source are highlighted; graph and source panels stay in sync.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Show Referenced Nodes after Q&A</b></div>
       <div align="center"><sub>Nodes most relevant to the question are displayed in both the graph and a list, improving the answer with graph context.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
-  <tr style="background:#ffffff;">
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>View Provenance</b></div>
       <div align="center"><sub>Quickly verify evidence with original sentences and metadata such as file/page info.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Referenced Node List & Source Nodes</b></div>
       <div align="center"><sub>Show nodes referenced in the chat answer and nodes produced from sources.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
-  <tr style="background:#ffffff;">
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
-      <img src="https://github.com/user-attachments/assets/832e41bc-781b-4e1d-bc81-204e9027c9a0" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/1c7bebe5-246b-4495-9fda-9758d610740a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Create Memo and Add as Source</b></div>
       <div align="center"><sub>Promote memos to sources and reflect them in the graph, connecting insights to knowledge with immediate graph updates.</sub></div>
     </td> 
-    <td width="50%" valign="top" style="padding:8px; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/afe3a647-cb89-47ec-a024-0b2516f154c9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Create Memo from Voice</b></div>
       <div align="center"><sub>Transcribe recorded audio into text memos and optionally add them as sources to update the graph.</sub></div>
     </td>
   </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/79a58805-a6b2-4e08-88ff-6dfe9d301acd" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>Source Deletion</b></div>
+      <div align="center"><sub>Remove unwanted sources from the graph to keep your knowledge base clean and relevant.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/8497e9c6-d81d-4419-8509-8336fb8ab666" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>Exploration Feature</b></div>
+      <div align="center"><sub>Utilize advanced search capabilities to explore and navigate through the graph efficiently.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
    <tr>
-  <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+  <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
     </p>
     <div align="center"><b>Fullscreen Light Mode Search</b></div>
     <div align="center"><sub>Type keywords to quickly explore target nodes and surrounding context in the fullscreen graph.</sub></div>
     </td>
-    <td width="50%" valign="top" style="padding:0; background:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Fullscreen Dark Mode</b></div>
       <div align="center"><sub>Explore the graph in a dark-themed fullscreen view—great for night-time or large-scale graph exploration.</sub></div>
