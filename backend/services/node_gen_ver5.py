@@ -190,13 +190,14 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
         des="".join([sentences[idx] for idx in s_indices])
-        ori_sentences.append({"original_sentence":des,
-                    "source_id":source_id,
-                    "score": 1.0})    
+ 
     else:
         des = ""
     description.append({"description":des,
                         "source_id":source_id})
+    ori_sentences.append({"original_sentence":des,
+                    "source_id":source_id,
+                    "score": 1.0})   
     
     node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 

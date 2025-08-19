@@ -403,12 +403,11 @@ def extract_graph_components(text: str, source_id: str):
         resolved_description=""
         if node["descriptions"] != []:
             resolved_description="".join([sentences[idx] for idx in node["descriptions"]])
-            node["original_sentences"]=[{"original_sentence":resolved_description,
-                                    "source_id":source_id,
-                                    "score": 1.0}]
         else:
             node["name"]=node["name"]+"*"
-            node["original_sentences"]=[]
+        node["original_sentences"]=[{"original_sentence":resolved_description,
+                                    "source_id":source_id,
+                                    "score": 1.0}]
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
             
@@ -416,7 +415,7 @@ def extract_graph_components(text: str, source_id: str):
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
             relevant_sentences = [sentences[idx] for idx in current_chunk]
-            nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id,c["keyword"], already_made)
+            nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id, c["keyword"], already_made)
             all_nodes += nodes
             all_edges += edges
 
