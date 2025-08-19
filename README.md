@@ -16,13 +16,7 @@ BrainTrace는 업로드된 텍스트와 문서에서 정보를 추출하여 지�
 
 BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다:
 
-```mermaid
-flowchart LR
-  A["텍스트 추출"] --> B["토큰화"]
-  B --> C["청킹"]
-  C --> D["노드 및 엣지 생성"]
-  D --> E["그래프 병합"]
-```
+<img width="1536" height="1024" alt="Image" src="https://github.com/user-attachments/assets/2851efea-106e-4136-989f-0c3dba8b51f5" />
 
 1. **텍스트 추출**:
    PDF, 텍스트 파일, 메모, Markdown, DOCX 등의 소스에서 텍스트를 추출합니다.
