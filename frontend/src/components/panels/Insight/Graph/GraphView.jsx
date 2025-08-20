@@ -335,9 +335,15 @@ function GraphView({
     () => !localStorage.getItem("추가노드팝업닫힘")
   ); // 신규노드 하이라이트 표시 여부
 
+  // 노드 이름 비교 정규화 유틸리티 (공백/대소문자 무시)
+  const normalizeName = (name) =>
+    String(name || "")
+      .trim()
+      .toLowerCase();
+
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
   const referencedSet = useMemo(
-    () => new Set(referencedNodes || []),
+    () => new Set((referencedNodes || []).map((n) => normalizeName(n))),
     [referencedNodes]
   );
 
@@ -916,7 +922,9 @@ function GraphView({
       return;
 
     const referenced = graphData.nodes.filter((n) =>
-      searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)
+      searchQuery
+        ? searchReferencedSet.has(n.name)
+        : referencedSet.has(normalizeName(n.name))
     );
     if (referenced.length === 0) return;
 
@@ -1171,11 +1179,11 @@ function GraphView({
       referencedNodes &&
       referencedNodes.length > 0 &&
       graphData.nodes.length > 0 &&
-      !graphData.nodes.some((n) => referencedNodes.includes(n.name))
+      !graphData.nodes.some((n) => referencedSet.has(normalizeName(n.name)))
     ) {
       toast.info("참고된 노드가 그래프에 없습니다.");
     }
-  }, [showReferenced, referencedNodes, graphData.nodes]);
+  }, [showReferenced, referencedNodes, graphData.nodes, referencedSet]);
 
   return (
     <div
@@ -1267,7 +1275,9 @@ function GraphView({
         showReferenced &&
         referencedNodes &&
         referencedNodes.length > 0 &&
-        graphData.nodes.some((n) => referencedNodes.includes(n.name)) && (
+        graphData.nodes.some((n) =>
+          referencedSet.has(normalizeName(n.name))
+        ) && (
           <NodeStatusPopup
             type="REF"
             color="#f59e0b"
@@ -1418,7 +1428,7 @@ function GraphView({
               showReferenced &&
               (searchQuery
                 ? searchReferencedSet.has(node.name)
-                : referencedSet.has(node.name));
+                : referencedSet.has(normalizeName(node.name)));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
@@ -1426,7 +1436,7 @@ function GraphView({
               showReferenced &&
               (searchQuery
                 ? searchReferencedSet.has(label)
-                : referencedSet.has(label));
+                : referencedSet.has(normalizeName(label)));
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
             const baseSize = customNodeSize;

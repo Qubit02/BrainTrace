@@ -1,8 +1,24 @@
 """
-backend/run_ollama.py
+Ollama 런타임 관리 유틸리티
+-------------------------
 
-- Docker 개발환경: Ollama 컨테이너가 이미 뜨므로 HTTP로 readiness만 확인
-- EXE/로컬: HTTP로 붙어보고 안 뜨면 ollama CLI를 spawn해서 'serve' 기동
+실행 환경에 따라 Ollama 서버를 준비(ready)시키기 위한 헬퍼를 제공합니다.
+
+동작 개요:
+- Docker 환경(`IN_DOCKER=true`): 이미 띄워진 Ollama 컨테이너의 HTTP 상태(`/api/tags`)만 폴링하여 대기
+- 로컬/EXE: 우선 HTTP로 연결 시도 → 준비 안 되어 있으면 `ollama serve`를 백그라운드로 스폰하고 readiness 대기
+
+주요 함수:
+- `ensure_ollama_ready`: 위 로직을 캡슐화하여 Ollama가 준비될 때까지 대기. 필요 시 프로세스 스폰
+- `spawn_ollama`: 로컬에서 `ollama serve`를 백그라운드로 실행
+- `find_ollama_executable`: 플랫폼/배포 형태별 ollama 바이너리 탐색
+- `wait_for_http`: HTTP ready 상태를 폴링
+- `pull_model`: Ollama HTTP API로 모델 다운로드(`/api/pull`)
+
+환경 변수:
+- `OLLAMA_API_URL` (기본 `http://localhost:11434`)
+- `IN_DOCKER` ("1"/"true"/"yes" → Docker 모드)
+- `OLLAMA_EMBEDDED` (현재 로직에서 직접 사용하지 않지만, 배포 정책에 따라 내장 실행 여부에 활용 가능)
 """
 
 import os
@@ -14,7 +30,7 @@ import requests
 import subprocess
 import shutil
 from pathlib import Path
-from urllib.parse import urlparse
+import contextlib
 from typing import Optional
 
 __all__ = ("ensure_ollama_ready", "pull_model", "spawn_ollama")
@@ -27,6 +43,12 @@ OLLAMA_EMBEDDED = os.getenv("OLLAMA_EMBEDDED", "").lower() in ("1", "true", "yes
 
 
 def _api(url: str, path: str) -> str:
+    """API 엔드포인트를 조합합니다.
+
+    Args:
+        url: 베이스 URL (예: http://localhost:11434)
+        path: 엔드포인트 경로 (예: /api/tags)
+    """
     return f"{url.rstrip('/')}{path}"
 
 
@@ -39,7 +61,16 @@ def _is_ready(url: str, timeout: float = 3.0) -> bool:
 
 
 def wait_for_http(url: str, timeout: int = 120, interval: float = 1.5) -> None:
-    """Ollama HTTP(/api/tags)가 응답할 때까지 대기"""
+    """Ollama HTTP(/api/tags)가 응답할 때까지 대기.
+
+    Args:
+        url: Ollama 베이스 URL
+        timeout: 최대 대기 시간(초)
+        interval: 폴링 간격(초)
+
+    Raises:
+        TimeoutError: 지정 시간 내 준비되지 않은 경우
+    """
     deadline = time.time() + timeout
     last_err = None
     while time.time() < deadline:
@@ -90,7 +121,11 @@ def find_ollama_executable() -> Path:
 
 
 def spawn_ollama() -> subprocess.Popen:
-    """EXE/로컬에서 ollama serve 백그라운드 실행"""
+    """EXE/로컬에서 `ollama serve`를 백그라운드 실행합니다.
+
+    Returns:
+        subprocess.Popen: 실행 중인 ollama 프로세스 핸들
+    """
     path = find_ollama_executable()
     cmd = [str(path), "serve"]
     logging.info("▶️ spawn ollama: %s", " ".join(cmd))
@@ -105,8 +140,16 @@ def spawn_ollama() -> subprocess.Popen:
 
 def ensure_ollama_ready(timeout: int = 120) -> Optional[subprocess.Popen]:
     """
-    도커: spawn 금지, HTTP로 준비될 때까지 대기만.
-    로컬/EXE: 준비 안 되어 있으면 무조건 ollama serve 스폰 후 readiness 대기.
+    Ollama가 준비될 때까지 대기하고, 필요 시 백그라운드로 `ollama serve`를 기동합니다.
+
+    - Docker: spawn 금지, HTTP 준비 대기만 수행
+    - 로컬/EXE: 준비 안 되어 있으면 `serve` 프로세스를 스폰 후 readiness 대기
+
+    Returns:
+        Optional[subprocess.Popen]: 스폰한 프로세스 핸들(도커/이미 실행 중이면 None)
+
+    Raises:
+        RuntimeError: 스폰했지만 준비에 실패한 경우(리소스 정리 후 예외)
     """
     if IN_DOCKER:
         logging.info("Docker mode detected (IN_DOCKER=true). Not spawning ollama; waiting for %s", OLLAMA_API_URL)
@@ -136,7 +179,11 @@ def ensure_ollama_ready(timeout: int = 120) -> Optional[subprocess.Popen]:
 
 def pull_model(name: str, read_timeout: int = 1800) -> bool:
     """
-    모델 다운로드(/api/pull). 반드시 HTTP 사용 (CLI 금지).
+    Ollama HTTP API로 모델을 다운로드(/api/pull)합니다.
+
+    Notes:
+        - 스트리밍 응답을 순회하며 "status": "success" 메시지를 확인합니다.
+        - HTTP API만 사용(CLI 금지)하여 일관된 배포 환경을 유지합니다.
     """
     with requests.post(
         _api(OLLAMA_API_URL, "/api/pull"),

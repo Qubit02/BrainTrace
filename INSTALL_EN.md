@@ -129,13 +129,9 @@ pip install -r requirements.txt
 #### 2.1.3 Set Environment Variables
 
 ```bash
-# Create .env file (inside backend directory)
-cp .env.example .env
+# Create .env file (backend/.env)
 
-# Fill in required API keys and settings
 # OPENAI_API_KEY=your_api_key_here
-# NEO4J_URI=bolt://localhost:7687
-# OLLAMA_API_URL=http://localhost:11434
 ```
 
 #### 2.1.4 Run Backend

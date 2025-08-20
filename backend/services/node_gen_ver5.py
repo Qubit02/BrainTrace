@@ -23,7 +23,7 @@ model = AutoModel.from_pretrained(MODEL_NAME)
 model.eval()
 
 stopwords = set([
-    "사실", "경우", "시절", "내용", "점", "것", "수", "때", "정도", "이유", "상황", "뿐", "매우", "아주", "또한", "그리고", "그러나"
+    "사실", "경우", "시절", "내용", "점", "것", "수", "때", "정도", "이유", "상황", "뿐", "매우", "아주", "또한", "그리고", "그러나", "대한", "관한"
 ])
 
 okt = Okt()
@@ -84,7 +84,8 @@ def compute_scores(
     phrase_embeddings = {}
     central_vecs = []
 
-        # phrase별 평균 임베딩 계산
+        # phrase별 평균 임베딩 계산=>phrase별 말고 모든 문장 일반 임베딩으로?
+        # 이거 없애도 될듯(중복 계산, 이미 임베딩 벡터 산출할 때 구함)
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
             executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
@@ -117,6 +118,7 @@ def compute_scores(
     return scores, phrases, sim_matrix
 
 #유사도를 기반으로 각 명사구를 그룹으로 묶음
+#상위 5개의 노드를 먼저 선별하고 걔네끼리만 유사도를 계산하면 더 빠를듯
 def group_phrases(
     phrases: List[str],
     phrase_scores: List[dict],
@@ -157,35 +159,45 @@ def group_phrases(
     return group_infos
 
 def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str], phrase_info):
-    #edge의 source와 target이 함께 등장한 문장을 찾습니다.
-    #해당 문장을 edge의 relation으로 삼습니다.
+    """
+    루트 노드인 source keyword와 주변노드인 target keywords(여러 개)를 입력 받아,
+    이들 사이의 엣지들을 생성합니다.
+    """
     edges=[]
     for t in target_keywords:
         if t != source_keyword:
-            description=""
+            relation=""
             for s_idx in phrase_info[t]:
                 if source_keyword in sentences[s_idx]:
-                    description+=sentences[s_idx]
+                    relation+=sentences[s_idx]
+            relation="관련" if relation=="" else relation
             edges.append({"source":source_keyword, 
                         "target":t,
-                        "relation":description})
-            description="관련" if description=="" else description
+                        "relation":relation})
         
     return edges
 
 def make_node(name, phrase_info, sentences:list[str], source_id:str):
+    """
+    노드를 만들 키워드와 키워드의 등장 위치를 입력 받아 노드를 생성합니다.
+    args:   name: 노드를 만들 키워드
+            phrase_info: 해당 키워드의 등장 인덱스
+            sentences: 전체 텍스트가 문장 단위로 분해된 string의  list
+            source_id: 입력 문서의 고유 source_id       
+    """
     description=[]
     ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
     if len(s_indices)<=2:
         des="".join([sentences[idx] for idx in s_indices])
-        ori_sentences.append({"original_sentence":des,
-                    "source_id":source_id,
-                    "score": 1.0})    
+ 
     else:
         des = ""
     description.append({"description":des,
                         "source_id":source_id})
+    ori_sentences.append({"original_sentence":des,
+                    "source_id":source_id,
+                    "score": 1.0})   
     
     node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
 
@@ -193,16 +205,21 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
         
 
 def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+    """
+    최종적으로 분할된 청크를 입력으로 호출됩니다.
+    각 청크에서 노드와 엣지를 생성하고 
+    청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
+    """
     nodes=[]
     edges=[]
 
-    # 각 문장에서 명사구를 추출하고 각 명사구가 등장한 문장의 index를 수집
+    # 각 명사구가 등장한 문장의 index를 수집
     phrase_info = defaultdict(set)
     for s_idx, sentence in enumerate(sentences):
         phrases=extract_noun_phrases(sentence)
         for p in phrases:
             phrase_info[p].add(s_idx)
- 
+
     phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
@@ -229,8 +246,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
                     
         if cnt==5:
             break
+    
 
     return nodes, edges, already_made
 
-
-            

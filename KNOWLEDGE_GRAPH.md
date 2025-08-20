@@ -1,6 +1,6 @@
 # BrainTrace 지식그래프(Knowledge Graph) 상세 설명
 
-> **BrainTrace**는 문서를 업로드하면 자동으로 지식 그래프를 구축하고, 이를 기반으로 정확한 답변을 생성하는 AI 챗봇 시스템입니다.
+> **BrainTrace**는 문서를 업로드하면 자동으로 지식 그래프를 구축하고, 이를 기반으로 정확한 답변을 생성하는 AI 챗봇 시스템입니다. 이 시스템은 문서 간의 분산된 개념과 관계를 하나의 네트워크로 연결하여 문서 간 맥락을 재구성하고, 그래프 기반의 통찰력 발견과 증거 중심의 인용을 지원합니다.
 
 ## 목차
 
@@ -10,9 +10,7 @@
 
 ### 1.1 지식그래프의 정의
 
-지식 그래프는 관련 있는 정보를 서로 연결된 그래프 형태로 표현하는 기술입니다. 데이터를 통합하고 연결해 사용자에 대한 이해를 높이고, 빠른 정보 검색과 추론을 지원합니다. 개인화된 인공지능(AI)을 구현하는 핵심 기술 중 하나로 꼽힙니다.
-
-지식 그래프는 정보를 **노드(개체)**와 **엣지(관계)**로 구조화하여 데이터 간의 관계와 맥락을 이해하고, 새로운 지식을 추론하는 데 사용되는 그래프 데이터베이스의 한 유형입니다. 다양한 데이터 소스에서 정보를 수집하고 연결하여 복잡한 질문에 대한 답변을 제공하고 의미 있는 연관성을 발견하는 데 매우 유용합니다.
+지식 그래프는 관련 있는 정보를 서로 연결된 그래프 형태로 표현하는 기술입니다. 데이터를 통합하고 연결해 사용자에 대한 이해를 높이며, 빠른 정보 검색과 추론을 지원합니다. 이는 개인화된 인공지능(AI)을 구현하는 핵심 기술 중 하나로, 정보를 **노드(개체)**와 **엣지(관계)**로 구조화하여 데이터 간의 관계와 맥락을 이해하고 새로운 지식을 추론하는 데 사용됩니다.
 
 ### 1.2 지식그래프의 구성 요소
 
@@ -447,7 +445,7 @@ def insert_nodes_and_edges(self, nodes, edges, brain_id):
                 if isinstance(orig, dict):
                     new_originals.append(json.dumps(orig, ensure_ascii=False))
 
-            tx.run("""
+            tx.run("
                 MERGE (n:Node {name: $name, brain_id: $brain_id})
                 ON CREATE SET
                     n.label = $label,
@@ -465,18 +463,18 @@ def insert_nodes_and_edges(self, nodes, edges, brain_id):
                         WHEN n.original_sentences IS NULL THEN $new_originals
                         ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
                     END
-            """, name=node["name"], label=node["label"],
+            ", name=node["name"], label=node["label"],
                  new_descriptions=new_descriptions,
                  new_originals=new_originals,
                  brain_id=brain_id)
 
         # 엣지 저장
         for edge in edges:
-            tx.run("""
+            tx.run("
                 MATCH (a:Node {name: $source, brain_id: $brain_id})
                 MATCH (b:Node {name: $target, brain_id: $brain_id})
                 MERGE (a)-[r:REL {relation: $relation, brain_id: $brain_id}]->(b)
-            """, source=edge["source"], target=edge["target"],
+            ", source=edge["source"], target=edge["target"],
                  relation=edge["relation"], brain_id=brain_id)
 
     with self.driver.session() as session:

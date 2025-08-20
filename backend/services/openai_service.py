@@ -1,8 +1,28 @@
+"""
+OpenAI 기반 그래프 추출/질의응답 서비스
+-------------------------------------
+
+이 모듈은 OpenAI API를 활용해 텍스트로부터 노드/엣지(그래프 구성요소)를 추출하고,
+그래프 컨텍스트(스키마 텍스트)와 질문을 기반으로 답변을 생성하는 기능을 제공합니다.
+
+핵심 기능:
+- 긴 텍스트(≥2000자) 청킹 처리 후 각 청크에서 노드/엣지 추출
+- 추출된 노드의 description과 문장 임베딩 간 유사도 기반으로 original_sentences 산출
+- 스키마 텍스트를 생성하여 LLM 질의응답에 활용
+- 답변의 맨 끝(JSON 영역)에서 referenced_nodes를 파싱하여 노드 참조 목록을 추출
+
+환경 변수:
+- OPENAI_API_KEY: OpenAI API 호출에 사용 (dotenv를 통해 로드)
+
+주의:
+- 본 모듈은 외부 API 호출을 포함하므로, 장애/요금/레이트 리밋 고려가 필요합니다.
+- 임베딩/유사도 계산(threshold)은 휴리스틱으로, 도메인에 맞게 조정하세요.
+"""
+
 
 import logging
 from openai import OpenAI           # OpenAI 클라이언트 임포트
 import json
-from .chunk_service import chunk_text
 from .base_ai_service import BaseAIService
 from typing import List
 from .manual_chunking_sentences import manual_chunking
@@ -27,16 +47,17 @@ client = OpenAI(api_key=openai_api_key)
 
 
 class OpenAIService(BaseAIService) :
+    """OpenAI API를 사용해 그래프 추출/QA를 수행하는 서비스 구현체."""
     def __init__(self, model_name="gpt-4o"):
         # 인스턴스 속성으로 클라이언트 할당
         self.client = OpenAI(api_key=openai_api_key)
         self.model_name = model_name  # 모델명 저장
     def extract_referenced_nodes(self,llm_response: str) -> List[str]:
         """
-        LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱해
-        referenced_nodes만 추출한 뒤,
-        '레이블-노드' 형식일 경우 레이블과 '-'을 제거하고
-        노드 이름만 반환합니다.
+        LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱하여 referenced_nodes만 추출합니다.
+
+        - '레이블-노드' 형식일 경우 레이블과 '-'을 제거하고 노드 이름만 반환
+        - EOF 이후 JSON이 없거나 파싱 실패 시 빈 리스트 반환
         """
         parts = llm_response.split("EOF")
         if len(parts) < 2:
@@ -70,6 +91,7 @@ class OpenAIService(BaseAIService) :
         
         # 텍스트가 2000자 이상이면 청킹
         if len(text) >= 2000:
+            # 규칙 기반 수동 청킹(문장 단위)을 사용
             chunks = manual_chunking(text)
             logging.info(f"✅ 텍스트가 {len(chunks)}개의 청크로 분할되어 처리됩니다.")
             
@@ -91,7 +113,14 @@ class OpenAIService(BaseAIService) :
         return all_nodes, all_edges
 
     def _extract_from_chunk(self, chunk: str, source_id: str):
-        """개별 청크에서 노드와 엣지 정보를 추출합니다."""
+        """개별 청크에서 노드/엣지 정보를 추출하고 보강(original_sentences)합니다.
+
+        처리 단계:
+          1) 프롬프트 구성 → OpenAI 호출(응답을 JSON으로 강제)
+          2) 노드 필수 필드 검증/정규화 + description → descriptions로 이동, source_id 주입
+          3) 엣지의 source/target 검증(노드 name 참조)
+          4) 문장 단위 청킹 후 임베딩 계산, description과의 유사도로 original_sentences 구성
+        """
         prompt = (
         "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
         "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
@@ -112,6 +141,7 @@ class OpenAIService(BaseAIService) :
         f"텍스트: {chunk}"
         )
         try:
+            # 응답 포맷을 JSON으로 강제하여 파싱 안정성 확보
             completion = client.chat.completions.create(
                 model=self.model_name,  # 동적 모델 선택
                 messages=[
@@ -227,7 +257,10 @@ class OpenAIService(BaseAIService) :
             return [], []
 
     def _remove_duplicate_nodes(self, nodes: list) -> list:
-        """중복된 노드를 제거합니다."""
+        """중복된 노드를 제거합니다.
+
+        - 동일 (name, label) 조합을 하나로 합치고, descriptions는 병합합니다.
+        """
         seen = set()
         unique_nodes = []
         for node in nodes:
@@ -243,7 +276,7 @@ class OpenAIService(BaseAIService) :
         return unique_nodes
 
     def _remove_duplicate_edges(self, edges: list) -> list:
-        """중복된 엣지를 제거합니다."""
+        """중복된 엣지를 제거합니다. (source, target, relation) 동일 시 하나만 유지"""
         seen = set()
         unique_edges = []
         for edge in edges:
@@ -306,6 +339,7 @@ class OpenAIService(BaseAIService) :
 
 
         def to_dict(obj):
+            """입력 객체를 dict로 관용적으로 변환(Neo4j 레코드/객체 호환용)."""
             try:
                 if obj is None:
                     return {}
@@ -318,9 +352,11 @@ class OpenAIService(BaseAIService) :
             return {}
 
         def normalize_space(s: str) -> str:
+            """연속 공백을 단일 공백으로 정규화."""
             return " ".join(str(s).split())
 
         def filter_node(node_obj):
+            """노드 레코드/객체에서 name/label/original_sentences만 추출/정규화."""
             d = to_dict(node_obj)
             name = normalize_space(d.get("name", "알 수 없음") or "")
             label = normalize_space(d.get("label", "알 수 없음") or "")
