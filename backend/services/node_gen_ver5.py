@@ -205,6 +205,11 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
         
 
 def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+    """
+    최종적으로 분할된 청크를 입력으로 호출됩니다.
+    각 청크에서 노드와 엣지를 생성하고 
+    청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
+    """
     nodes=[]
     edges=[]
 
