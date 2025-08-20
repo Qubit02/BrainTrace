@@ -138,6 +138,24 @@
     transform: translateY(-1px);
 }
 
+.chat-session-new-chat-button:disabled {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.chat-session-new-chat-button.disabled {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 /* ====== 메모 리스트 ====== */
 .memo-list {
     flex: 1;
