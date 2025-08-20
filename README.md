@@ -2,9 +2,9 @@
 
 <p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
-Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의 문서를 업로드하면, GraphRAG 파이프라인을 통해 그 안의 내용을 지식 그래프로 변환합니다. 문서에서 핵심 개념과 개념 간의 관계를 추출해 노드–엣지 구조로 구성하며, 이를 기반으로 추론형 검색, 출처 추적, 시각적 탐색을 하나의 흐름 안에서 제공합니다.
+Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 문서를 업로드하면, GraphRAG 파이프라인을 통해 그 내용을 지식 그래프로 변환합니다. 문서에서 핵심 개념과 개념 간의 관계를 추출하여 노드-엣지 구조로 구성하며, 이를 기반으로 추론형 검색, 출처 추적, 시각적 탐색을 하나의 흐름 안에서 제공합니다.
 
-사용자가 질문을 입력하면, BrainT는 지식 그래프에서 관련 개념들을 찾아 맥락을 형성하고, 유사한 문서 청크를 함께 불러와 맥락 + 근거 기반의 Q&A를 생성합니다. 이 모든 과정은 로컬 또는 클라우드 환경에서 선택적으로 운영할 수 있어, 필요에 따라 유연하게 구성 가능하며, 외부 서버로 정보가 나가지 않는 보안 친화적인 운영도 지원합니다.
+사용자가 질문을 입력하면, BrainT는 지식 그래프에서 관련 개념들을 찾아 맥락을 형성하고, 유사한 문서 청크를 함께 불러와 맥락과 근거에 기반한 Q&A를 생성합니다. 이 모든 과정은 로컬 또는 클라우드 환경에서 선택적으로 운영할 수 있어, 필요에 따라 유연하게 구성 가능하며, 외부 서버로 정보가 나가지 않는 보안 친화적인 운영도 지원합니다.
 
 문서를 계속 추가할수록 그래프는 점점 정교해지고, 검색과 탐색도 더 똑똑해집니다. 흩어져 있던 정보들이 유기적으로 연결되며, 지식은 단순히 쌓이는 것이 아니라 구조화되고 살아 움직이는 형태로 진화합니다.
 
@@ -59,7 +59,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
        texts=[]
        for p in re.split(r'(?<=[.!?])\s+', text.strip()):
            texts.append(p.strip())
-   
+
        for idx, sentence in enumerate(texts):
            tokens = extract_noun_phrases(sentence)
            # 빈 토큰 배열인 경우 기본 토큰 추가
@@ -67,7 +67,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
                tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
            tokenized_sentences.append({"tokens": tokens,
                                        "index":idx})
-   
+
        return tokenized_sentences, texts
    ```
 
@@ -79,13 +79,13 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
    # backend/services/manual_chunking_sentences.py (발췌)
    def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword:str ,already_made:list[str], similarity_matrix, threshold: int):
        """유사도/키워드 기반 재귀 청킹.
-   
+
        로직 요약:
          - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
          - depth>0에서는 청크 크기/깊이 제한으로 종료 여부 판단
          - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
          - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
-   
+
        Args:
            chunk: 현재 단계에서 분할 대상인 (토큰화된 문장, 인덱스) 페어의 리스트({"tokens", "index"})
            source_id: 소스 식별자(그래프 노드 메타데이터)
@@ -94,11 +94,11 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
            top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
            threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
            lda_model, dictionary, num_topics: LDA 추정 관련 파라미터
-   
+
        Returns:
            Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges", "keyword"}, 업데이트된 already_made)
        """
-   
+
     result=[]
     nodes_and_edges={"nodes":[], "edges":[]}
     chunk_indices=[c["index"] for c in chunk] #현재 그룹 내부 문장들의 인덱스만 저장한 리스트를 생성
@@ -117,7 +117,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
             "source_id":source_id
             }
         nodes_and_edges["nodes"].append(top_node)
-        
+
         # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
         # 이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
         try:
@@ -127,7 +127,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
             else:
                 logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
                 return [], {}, []
-                
+
         except Exception as e:
             logging.error(f"threshold 계산 중 오류: {e}")
             threshold = 0.5  # 기본값 설정
@@ -140,7 +140,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
         if flag==3:
             result = nonrecurrsive_chunking(chunk, similarity_matrix, top_keyword)
             return result, nodes_and_edges, already_made
-        
+
         # chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
         # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
         # 만족된 종료 조건이 있을 경우
@@ -158,7 +158,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
     nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(chunk, new_chunk_groups, top_keyword, already_made, source_id)
     nodes_and_edges["nodes"]+=nodes
     nodes_and_edges["edges"]+=edges
-    
+
     # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
@@ -172,7 +172,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
     return current_result, nodes_and_edges, already_made
    ```
 
-5. **노드 및 엣지 생성**:
+4. **노드 및 엣지 생성**:
    각 청크에서 개념(노드)과 관계(엣지)를 추출합니다.
 
    ```python
@@ -180,26 +180,26 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
    def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
        """
        최종적으로 분할된 청크를 입력으로 호출됩니다.
-       각 청크에서 노드와 엣지를 생성하고 
+       각 청크에서 노드와 엣지를 생성하고
        청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
        """
        nodes=[]
        edges=[]
-   
+
        # 각 명사구가 등장한 문장의 index를 수집
        phrase_info = defaultdict(set)
        for s_idx, sentence in enumerate(sentences):
            phrases=extract_noun_phrases(sentence)
            for p in phrases:
                phrase_info[p].add(s_idx)
-   
+
        phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
        groups=group_phrases(phrases, phrase_scores, sim_matrix)
-   
+
        # score순으로 topic keyword를 정렬
        sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
        sorted_keywords=[k[0] for k in sorted_keywords]
-   
+
        cnt=0
        for t in sorted_keywords:
            if keyword != "":
@@ -215,15 +215,15 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
                            related_keywords.append(phrases[idx])
                            already_made.append(phrases[idx])
                            nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
-                           edges+=make_edges(sentences, t, related_keywords, phrase_info)   
-                       
+                           edges+=make_edges(sentences, t, related_keywords, phrase_info)
+
            if cnt==5:
                break
-   
+
        return nodes, edges, already_made
    ```
 
-6. **그래프 병합**:
+5. **그래프 병합**:
    모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
    ```python
    # backend/neo4j_db/Neo4jHandler.py (발췌)
@@ -267,13 +267,13 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
    def extract_noun_phrases(sentence: str) -> list[str]:
        """
        문장을 입력 받으면 명사구를 추출하고
-       추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
+       추출한 명사구들의 리스트로 토큰화하여 반환합니다.
        """
        #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
        words = okt.pos(sentence, norm=True, stem=True)
        phrases=[]
        current_phrase=[]
-   
+
        for word, tag in words:
            if '\n' in word:
                continue
@@ -287,11 +287,11 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
                    phrase = " ".join(current_phrase)
                    phrases.append(phrase)
                    current_phrase = []
-   
+
        if current_phrase:
            phrase = " ".join(current_phrase)
            phrases.append(phrase)
-   
+
        return phrases
 
    ```
@@ -306,47 +306,46 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
        청크를 구성하는 각 문장의 토픽 벡터를 생성합니다.
        각 문장의 토픽 벡터간의 유사도를 내적으로 계산하여 유사도 행렬을 생성합니다.
        추출한 토픽 키워드, 생성한 lda 모델, 유사도 행렬을 반환합니다.
-   
+
        Args:
            chunk: {"tokens": List[str], "index": int}의 리스트
            lda_model: 재사용 가능한 LDA 모델(없으면 학습)
            dictionary: 재사용 가능한 gensim Dictionary(없으면 생성)
-   
+
        Returns:
            Tuple[str, models.LdaModel, np.ndarray]: (top_keyword, lda_model, similarity_matrix)
        """
        tokens = [c["tokens"] for c in chunk]
-        
+
        # LDA 모델이 없으면 학습하고, 있으면 재사용
        try:
            dictionary = corpora.Dictionary(tokens)
            corpus = [dictionary.doc2bow(text) for text in tokens]
            lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
-   
+
        except Exception as e:
            logging.error(f"LDA 처리 중 오류 발생: {e}")
            return "", lda_model, np.array([])
-       
+
        corpus = [dictionary.doc2bow(text) for text in tokens]
-   
+
        topic_distributions = []
        for bow in corpus:
            dist = lda_model.get_document_topics(bow, minimum_probability=0)
            dense_vec = [prob for _, prob in sorted(dist, key=lambda x: x[0])]
            topic_distributions.append(dense_vec)
-   
+
        topic_vectors = np.array(topic_distributions)
        sim_matrix = cosine_similarity(topic_vectors)
-   
+
        # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
        top_topic_terms = lda_model.show_topic(0, topn= 1)
        # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
        # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
        top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
-   
+
        return top_keyword, sim_matrix
    ```
-
 
 3. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
 
@@ -356,12 +355,12 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
        """
        임계값을 기준으로 입력 그룹에서 더 작은 그룹들을 생성합니다.
        유사도 행렬을 참조하여 연속적인 두 문장 사이의 유사도가 임계값 이상이면 같은 그룹으로 묶습니다.
-   
+
        Args:
            chunk:입력 그룹, 문장 인덱스의 리스트
            similarity_matrix: 문장 간의 유사도 값을 저장하고 있는 행렬
            threshold: 그룹화의 기준이 되는 임계값
-   
+
        returns:
            new_chunk_groups: 새롭게 생성된 더 작은 그룹들
        """
@@ -381,22 +380,21 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
                else:
                    break
            new_chunk_groups.append(new_chunk)
-   
+
        return new_chunk_groups
 
    ```
 
+4. **각 청크에서 노드 및 엣지 생성**: 각 청크에서 tf-idf 키워드를 추출하고 노드와 엣지를 생성합니다.
 
-   4.  **generate nodes & edges from each chunk**: 각 청크에서 tf-idf 키워드를 추출하고 노드와 엣지를 생성합니다.
-   
    ```python
    # backend/services/manual_chunking_sentences.py (발췌)
    def extract_keywords_by_tfidf(tokenized_chunks: list[str]):
    """토큰화된 문장 리스트에서 TF-IDF 상위 키워드를 추출합니다.
-   
+
    Args:
     tokenized_chunks: 토큰화된 문장의 리스트
-   
+
    Returns:
     List[List[str]]: 문단별 키워드 리스트들의 리스트
    """
@@ -405,7 +403,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
    text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
    tfidf_matrix = vectorizer.fit_transform(text_chunks)
    feature_names = vectorizer.get_feature_names_out()
-   
+
    # 각 문단 i의 TF-IDF 벡터를 배열로 변환하고, 값이 큰 순서대로 상위 topn 키워드 선정
    keywords_per_paragraph = []
    for i in range(tfidf_matrix.shape[0]):
@@ -416,17 +414,46 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
          if k not in stop_words:
              keywords_per_paragraph.append(top_keywords)
              break
-   
+
    return keywords_per_paragraph
-   
+
    ```
-   
 
 지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
 
 ---
 
-## 출력 화면
+## 결과물
+
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6" />
+      <div align="center"><b>홈 화면</b></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="스크린샷 2025-08-21 003920" src="https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151" />
+      <div align="center"><b>메인 화면</b></div>
+    </td>
+  </tr>
+</table>
+
+---
+
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/2dea75e1-9a8e-4513-80a6-121650eb395b" />
+      <div align="center"><b>그래프 전체화면 (라이트모드)</b></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/5f11403c-00c8-4cf1-b4d9-07c85418c8fa" />
+      <div align="center"><b>그래프 전체화면 (다크모드)</b></div>
+    </td>
+  </tr>
+</table>
+
+### 주요 기능 데모
 
 <table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
   <tr>
@@ -521,7 +548,7 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
 |                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
-|              [Yechan An](https://github.com/yes6686)              |            [Donghyck Kim](https://github.com/kimdonghyuk0)             |            [JeongGyun Yu](https://github.com/Mieulchi)             |             [Selyn Jang](https://github.com/selyn-a)              |
+|            [안예찬 (팀장)](https://github.com/yes6686)            |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
 
 ---
 
