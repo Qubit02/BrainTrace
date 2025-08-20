@@ -53,81 +53,177 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
    추출된 텍스트를 의미 있는 단위(문장, 명사구 등)로 분할합니다.
 
    ```python
-   # backend/services/embedding_service.py (발췌)
-   def encode_text(text: str) -> List[float]:
-       """
-       주어진 텍스트를 KoE5 모델로 임베딩하여 벡터 반환
-       - 토크나이저로 입력 전처리
-       - CLS 토큰 임베딩 추출
-       """
-       try:
-           inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-           with torch.no_grad():
-               outputs = model(**inputs)
-           return outputs.last_hidden_state[:, 0].squeeze().tolist()
-       except Exception as e:
-           logging.error("텍스트 임베딩 생성 실패: %s", str(e))
+   # backend/services/node_gen_ver5.py (발췌)
+   def split_into_tokenized_sentence(text:str):
+       tokenized_sentences=[]
+       texts=[]
+       for p in re.split(r'(?<=[.!?])\s+', text.strip()):
+           texts.append(p.strip())
+   
+       for idx, sentence in enumerate(texts):
+           tokens = extract_noun_phrases(sentence)
+           # 빈 토큰 배열인 경우 기본 토큰 추가
+           if not tokens:
+               tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
+           tokenized_sentences.append({"tokens": tokens,
+                                       "index":idx})
+   
+       return tokenized_sentences, texts
    ```
 
 3. **청킹**:
-   주제별로 유사한 내용을 작은 청크로 그룹화하여 그래프의 골격을 준비합니다.
+   주제별로 유사한 문장들을 묶어 전체 텍스트를 1000~2000자 사이의 청크로 분할합니다.
+   지식 그래프의 골격을 생성합니다.
 
    ```python
    # backend/services/manual_chunking_sentences.py (발췌)
-   def extract_graph_components(text: str, source_id: str):
-       tokenized, sentences = split_into_tokenized_sentence(text)
-       if len(text) >= 2000:
-           chunks, nodes_and_edges, _ = recurrsive_chunking(tokenized, source_id, 0, [], "", 0)
-           all_nodes = nodes_and_edges["nodes"]
-           all_edges = nodes_and_edges["edges"]
-       else:
-           # 짧은 텍스트 처리 (주제 추출 + 단일 청크)
-           top_keyword, _, _ = lda_keyword_and_similarity(tokenized, None, None)
-       return all_nodes, all_edges
+   def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword:str ,already_made:list[str], similarity_matrix, threshold: int):
+       """유사도/키워드 기반 재귀 청킹.
+   
+       로직 요약:
+         - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
+         - depth>0에서는 청크 크기/깊이 제한으로 종료 여부 판단
+         - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
+         - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
+   
+       Args:
+           chunk: 현재 단계에서 분할 대상인 (토큰화된 문장, 인덱스) 페어의 리스트({"tokens", "index"})
+           source_id: 소스 식별자(그래프 노드 메타데이터)
+           depth: 현재 재귀 깊이(0부터 시작)
+           already_made: 중복 노드 생성을 방지하기 위한 이름 캐시
+           top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
+           threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
+           lda_model, dictionary, num_topics: LDA 추정 관련 파라미터
+   
+       Returns:
+           Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges", "keyword"}, 업데이트된 already_made)
+       """
+   
+    result=[]
+    nodes_and_edges={"nodes":[], "edges":[]}
+    chunk_indices=[c["index"] for c in chunk] #현재 그룹 내부 문장들의 인덱스만 저장한 리스트를 생성
+
+
+    if depth == 0:
+        # lda로 전체 텍스트의 키워드와 각 chunk의 주제간의 유사도를 구함
+        # depth가 0일 경우 lda가 추론한 전체 텍스트의 topic이 해당 chunk(==full text)의 top keyword가 됨
+        top_keyword, similarity_matrix = lda_keyword_and_similarity(chunk)
+        already_made.append(top_keyword)
+        top_keyword+="*"
+        # 지식 그래프의 루트 노드를 생성
+        top_node={"label":top_keyword,
+            "name":top_keyword,
+            "descriptions":[],
+            "source_id":source_id
+            }
+        nodes_and_edges["nodes"].append(top_node)
+        
+        # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
+        # 이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        try:
+            if similarity_matrix.size > 0:
+                flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
+                threshold = np.quantile(flattened, 0.25)
+            else:
+                logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
+                return [], {}, []
+                
+        except Exception as e:
+            logging.error(f"threshold 계산 중 오류: {e}")
+            threshold = 0.5  # 기본값 설정
+
+    else:
+        # depth가 0이 아닐 경우
+        # 종료 조건 체크
+        flag = check_termination_condition(chunk, depth)
+
+        if flag==3:
+            result = nonrecurrsive_chunking(chunk, similarity_matrix, top_keyword)
+            return result, nodes_and_edges, already_made
+        
+        # chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
+        # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
+        # 만족된 종료 조건이 있을 경우
+        if flag != -1:
+            result += [{ "chunks":chunk_indices, "keyword": top_keyword}]
+            # 포맷 문자열 수정 및 변수명 오타(flag) 수정
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
+            return result , nodes_and_edges, already_made
+
+
+    # 입력 그룹을 더 작은 그룹으로 분할
+    new_chunk_groups = grouping_into_smaller_chunks(chunk_indices, similarity_matrix, threshold)
+
+    # 생성된 작은 그룹들의 키워드를 추출하고 노드&엣지 생성
+    nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(chunk, new_chunk_groups, top_keyword, already_made, source_id)
+    nodes_and_edges["nodes"]+=nodes
+    nodes_and_edges["edges"]+=edges
+    
+    # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
+    current_result = []
+    for idx, c in enumerate(go_chunk):
+        result, graph, already_made_updated = recurrsive_chunking(c, source_id ,depth+1, keywords[idx], already_made, similarity_matrix, threshold*1.1,)
+        #중복되는 노드가 만들어지지 않도록 already_made를 업데이트
+        already_made=already_made_updated
+        current_result+=(result)
+        nodes_and_edges["nodes"]+=graph["nodes"]
+        nodes_and_edges["edges"]+=graph["edges"]
+
+    return current_result, nodes_and_edges, already_made
    ```
 
-4. **노드 및 엣지 생성**:
+5. **노드 및 엣지 생성**:
    각 청크에서 개념(노드)과 관계(엣지)를 추출합니다.
 
    ```python
-   # backend/services/ollama_service.py (발췌)
-   def _extract_from_chunk(self, chunk: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
-       # ... LLM 응답을 구문 분석하고 유효한 노드/엣지를 정규화합니다.
-       sentences = manual_chunking(chunk)
-       if not sentences:
-           for node in valid_nodes:
-               node["original_sentences"] = []
-           return valid_nodes, valid_edges
-       sentence_embeds = np.vstack([encode_text(s) for s in sentences])
-       threshold = 0.8
-       for node in valid_nodes:
-           if not node["descriptions"]:
-               node["original_sentences"] = []
-               continue
-           desc_obj = node["descriptions"][0]
-           desc_vec = np.array(encode_text(desc_obj["description"]))
-           sim_scores = cosine_similarity(sentence_embeds, desc_vec.reshape(1, -1)).flatten()
-           above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
-           node_originals = []
-           if above:
-               for i, score in above:
-                   node_originals.append({
-                       "original_sentence": sentences[i],
-                       "source_id": desc_obj["source_id"],
-                       "score": round(float(score), 4)
-                   })
-           else:
-               best_i = int(np.argmax(sim_scores))
-               node_originals.append({
-                   "original_sentence": sentences[best_i],
-                   "source_id": desc_obj["source_id"],
-                   "score": round(float(sim_scores[best_i]), 4)
-               })
-           node["original_sentences"] = node_originals
-       return valid_nodes, valid_edges
+   # backend/services/node_gen_ver5.py (발췌)
+   def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+       """
+       최종적으로 분할된 청크를 입력으로 호출됩니다.
+       각 청크에서 노드와 엣지를 생성하고 
+       청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
+       """
+       nodes=[]
+       edges=[]
+   
+       # 각 명사구가 등장한 문장의 index를 수집
+       phrase_info = defaultdict(set)
+       for s_idx, sentence in enumerate(sentences):
+           phrases=extract_noun_phrases(sentence)
+           for p in phrases:
+               phrase_info[p].add(s_idx)
+   
+       phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
+       groups=group_phrases(phrases, phrase_scores, sim_matrix)
+   
+       # score순으로 topic keyword를 정렬
+       sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
+       sorted_keywords=[k[0] for k in sorted_keywords]
+   
+       cnt=0
+       for t in sorted_keywords:
+           if keyword != "":
+               edges+=make_edges(sentences, keyword, [t], phrase_info)
+           if t not in already_made:
+               nodes.append(make_node(t, phrase_info, sentences, source_id))
+               already_made.append(t)
+               cnt+=1
+               if t in groups:
+                   related_keywords=[]
+                   for idx in range(min(len(groups[t]), 5)):
+                       if phrases[idx] not in already_made:
+                           related_keywords.append(phrases[idx])
+                           already_made.append(phrases[idx])
+                           nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                           edges+=make_edges(sentences, t, related_keywords, phrase_info)   
+                       
+           if cnt==5:
+               break
+   
+       return nodes, edges, already_made
    ```
 
-5. **그래프 병합**:
+6. **그래프 병합**:
    모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
    ```python
    # backend/neo4j_db/Neo4jHandler.py (발췌)
@@ -168,82 +264,163 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
 1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다.
 
    ```python
-   # backend/services/manual_chunking_sentences.py (발췌)
-   def extract_graph_components(text: str, source_id: str):
-       tokenized, sentences = split_into_tokenized_sentence(text)
-       if len(text) >= 2000:
-           chunks, nodes_and_edges, _ = recurrsive_chunking(tokenized, source_id, 0, [], "", 0)
-           all_nodes = nodes_and_edges["nodes"]
-           all_edges = nodes_and_edges["edges"]
-       else:
-           # 짧은 텍스트 처리 (주제 추출 + 단일 청크)
-           top_keyword, _, _ = lda_keyword_and_similarity(tokenized, None, None)
-       return all_nodes, all_edges
-   ```
-
-2. **LDA 모듈을 통한 주제 벡터 변환**: 각 문장을 주제 벡터로 변환합니다.
-
-   ```python
-   # backend/services/embedding_service.py (발췌)
-   def encode_text(text: str) -> List[float]:
-       try:
-           inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-           with torch.no_grad():
-               outputs = model(**inputs)
-           return outputs.last_hidden_state[:, 0].squeeze().tolist()
-       except Exception as e:
-           logging.error("텍스트 임베딩 생성 실패: %s", str(e))
-   ```
-
-3. **문장 유사도 계산 및 그룹화**: 문장쌍 유사도를 계산하고 낮은 유사도를 경계로 그룹화합니다.
-
-   ```python
-   # backend/services/embedding_service.py (발췌)
-   def search_similar_nodes(
-       embedding: List[float], brain_id: str, limit: int = 3,
-       threshold: float = 0.5, high_score_threshold: float = 0.8
-   ) -> List[Dict]:
-       # 유사도 계산 및 그룹화 로직
-   ```
-
-4. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
-
-   ```python
-   # backend/services/ollama_service.py (발췌)
-   def _extract_from_chunk(self, chunk: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
-       sentences = manual_chunking(chunk)
-       if not sentences:
-           for node in valid_nodes:
-               node["original_sentences"] = []
-           return valid_nodes, valid_edges
-       sentence_embeds = np.vstack([encode_text(s) for s in sentences])
-       threshold = 0.8
-       for node in valid_nodes:
-           if not node["descriptions"]:
-               node["original_sentences"] = []
+   def extract_noun_phrases(sentence: str) -> list[str]:
+       """
+       문장을 입력 받으면 명사구를 추출하고
+       추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
+       """
+       #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
+       words = okt.pos(sentence, norm=True, stem=True)
+       phrases=[]
+       current_phrase=[]
+   
+       for word, tag in words:
+           if '\n' in word:
                continue
-           desc_obj = node["descriptions"][0]
-           desc_vec = np.array(encode_text(desc_obj["description"]))
-           sim_scores = cosine_similarity(sentence_embeds, desc_vec.reshape(1, -1)).flatten()
-           above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
-           node_originals = []
-           if above:
-               for i, score in above:
-                   node_originals.append({
-                       "original_sentence": sentences[i],
-                       "source_id": desc_obj["source_id"],
-                       "score": round(float(score), 4)
-                   })
+           elif tag in ["Noun", "Alpha"]:
+               if word not in stopwords and len(word) > 1:
+                   current_phrase.append(word)
+           elif tag in ["Adjective", "Verb"] and len(word)>1 and word[-1] not in '다요죠며지만':
+               current_phrase.append(word)
            else:
-               best_i = int(np.argmax(sim_scores))
-               node_originals.append({
-                   "original_sentence": sentences[best_i],
-                   "source_id": desc_obj["source_id"],
-                   "score": round(float(sim_scores[best_i]), 4)
-               })
-           node["original_sentences"] = node_originals
-       return valid_nodes, valid_edges
+               if current_phrase:
+                   phrase = " ".join(current_phrase)
+                   phrases.append(phrase)
+                   current_phrase = []
+   
+       if current_phrase:
+           phrase = " ".join(current_phrase)
+           phrases.append(phrase)
+   
+       return phrases
+
    ```
+
+2. **LDA 모듈을 통한 주제 벡터 변환 & 유사도 계산**: 각 문장을 주제 벡터로 변환하고 벡터간의 내적값을 계산하여 행렬로 저장합니다.
+
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def lda_keyword_and_similarity(chunk:list[dict]):
+       """
+       gensim의 lda 모델을 사용하여 청크의 토픽 키워드를 추출하고
+       청크를 구성하는 각 문장의 토픽 벡터를 생성합니다.
+       각 문장의 토픽 벡터간의 유사도를 내적으로 계산하여 유사도 행렬을 생성합니다.
+       추출한 토픽 키워드, 생성한 lda 모델, 유사도 행렬을 반환합니다.
+   
+       Args:
+           chunk: {"tokens": List[str], "index": int}의 리스트
+           lda_model: 재사용 가능한 LDA 모델(없으면 학습)
+           dictionary: 재사용 가능한 gensim Dictionary(없으면 생성)
+   
+       Returns:
+           Tuple[str, models.LdaModel, np.ndarray]: (top_keyword, lda_model, similarity_matrix)
+       """
+       tokens = [c["tokens"] for c in chunk]
+        
+       # LDA 모델이 없으면 학습하고, 있으면 재사용
+       try:
+           dictionary = corpora.Dictionary(tokens)
+           corpus = [dictionary.doc2bow(text) for text in tokens]
+           lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+   
+       except Exception as e:
+           logging.error(f"LDA 처리 중 오류 발생: {e}")
+           return "", lda_model, np.array([])
+       
+       corpus = [dictionary.doc2bow(text) for text in tokens]
+   
+       topic_distributions = []
+       for bow in corpus:
+           dist = lda_model.get_document_topics(bow, minimum_probability=0)
+           dense_vec = [prob for _, prob in sorted(dist, key=lambda x: x[0])]
+           topic_distributions.append(dense_vec)
+   
+       topic_vectors = np.array(topic_distributions)
+       sim_matrix = cosine_similarity(topic_vectors)
+   
+       # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
+       top_topic_terms = lda_model.show_topic(0, topn= 1)
+       # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+       # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+       top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
+   
+       return top_keyword, sim_matrix
+   ```
+
+
+3. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
+
+   ```python
+      # backend/services/manual_chunking_sentneces.py (발췌)
+   def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, threshold:int):
+       """
+       임계값을 기준으로 입력 그룹에서 더 작은 그룹들을 생성합니다.
+       유사도 행렬을 참조하여 연속적인 두 문장 사이의 유사도가 임계값 이상이면 같은 그룹으로 묶습니다.
+   
+       Args:
+           chunk:입력 그룹, 문장 인덱스의 리스트
+           similarity_matrix: 문장 간의 유사도 값을 저장하고 있는 행렬
+           threshold: 그룹화의 기준이 되는 임계값
+   
+       returns:
+           new_chunk_groups: 새롭게 생성된 더 작은 그룹들
+       """
+       new_chunk_groups = []
+       visited = set()
+       for idx in range(len(chunk)):
+           if idx in visited:
+               continue
+           new_chunk = [idx]
+           visited.add(idx)
+           for next_idx in range(idx + 1, len(chunk)):
+               if next_idx in visited:
+                   continue
+               if similarity_matrix[chunk[next_idx]][chunk[next_idx-1]]>=threshold:
+                   new_chunk.append(next_idx)
+                   visited.add(next_idx)
+               else:
+                   break
+           new_chunk_groups.append(new_chunk)
+   
+       return new_chunk_groups
+
+   ```
+
+
+   4.  **generate nodes & edges from each chunk**: 각 청크에서 tf-idf 키워드를 추출하고 노드와 엣지를 생성합니다.
+   
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def extract_keywords_by_tfidf(tokenized_chunks: list[str]):
+   """토큰화된 문장 리스트에서 TF-IDF 상위 키워드를 추출합니다.
+   
+   Args:
+    tokenized_chunks: 토큰화된 문장의 리스트
+   
+   Returns:
+    List[List[str]]: 문단별 키워드 리스트들의 리스트
+   """
+   # 각 단어의 TF-IDF 점수를 계산한 메트릭스를 생성
+   vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=1000)
+   text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
+   tfidf_matrix = vectorizer.fit_transform(text_chunks)
+   feature_names = vectorizer.get_feature_names_out()
+   
+   # 각 문단 i의 TF-IDF 벡터를 배열로 변환하고, 값이 큰 순서대로 상위 topn 키워드 선정
+   keywords_per_paragraph = []
+   for i in range(tfidf_matrix.shape[0]):
+     row = tfidf_matrix[i].toarray().flatten()
+     top_indices = row.argsort()[::-1]
+     top_keywords = [feature_names[j] for j in top_indices if row[j] > 0  ]
+     for k in top_keywords:
+         if k not in stop_words:
+             keywords_per_paragraph.append(top_keywords)
+             break
+   
+   return keywords_per_paragraph
+   
+   ```
+   
 
 지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
 
