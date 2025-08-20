@@ -18,9 +18,9 @@ Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의
 
 ## 지식 그래프 파이프라인
 
-BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다:
+<p>BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다.</p>
 
-<img width="1485" height="500" alt="Image" src="https://github.com/user-attachments/assets/35238087-9962-4058-8fd3-09b1fbbb591b" />
+<img width="1200" height="500" alt="image" src="https://github.com/user-attachments/assets/f1ec3e72-3f07-4e7c-b8f1-dcc03797b41a" />
 
 1. **텍스트 추출**:
    PDF, 텍스트 파일, 메모, Markdown, DOCX 등의 소스에서 텍스트를 추출합니다.
@@ -161,7 +161,7 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
 
 ## 청킹 함수의 동작
 
-청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다:
+<p>청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다.</p>
 
 <img width="960" height="460" alt="image" src="https://github.com/user-attachments/assets/ce93db48-6e44-4520-8d28-b4c3d6ea2623" />
 
