@@ -9,7 +9,7 @@
  *
  * 표시되는 정보:
  * - 개발팀: brainTrace 개발팀
- * - 이메일: contact@braintrace.com
+ * - 이메일: yes490411@gmail.com
  * - 저작권: Copyright brainTrace All rights reserved.
  */
 // src/components/layout/AppFooter.jsx
@@ -21,7 +21,7 @@ export default function Footer() {
     <footer className="app-footer">
       <div className="footer-oss-info">
         <span>brainTrace 개발팀</span>
-        <span>E-mail : contact@braintrace.com</span>
+        <span>E-mail : yes490411@gmail.com</span>
         <span>Copyright brainTrace All rights reserved.</span>
       </div>
     </footer>
