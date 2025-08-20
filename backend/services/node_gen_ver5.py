@@ -23,7 +23,7 @@ model = AutoModel.from_pretrained(MODEL_NAME)
 model.eval()
 
 stopwords = set([
-    "사실", "경우", "시절", "내용", "점", "것", "수", "때", "정도", "이유", "상황", "뿐", "매우", "아주", "또한", "그리고", "그러나"
+    "사실", "경우", "시절", "내용", "점", "것", "수", "때", "정도", "이유", "상황", "뿐", "매우", "아주", "또한", "그리고", "그러나", "대한", "관한"
 ])
 
 okt = Okt()
@@ -241,6 +241,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
                     
         if cnt==5:
             break
+    
 
     return nodes, edges, already_made
 
