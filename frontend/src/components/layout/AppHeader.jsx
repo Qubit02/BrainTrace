@@ -15,6 +15,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import "./AppHeader.css";
 import { PiDropboxLogo } from "react-icons/pi";
+import { LiaFacebookMessenger } from "react-icons/lia";
+import { FiAperture } from "react-icons/fi";
+import { FaCentSign } from "react-icons/fa6";
+import { FiBold } from "react-icons/fi";
+import appIcon from "../../assets/icons/앱아이콘.png";
 
 export default function AppHeader() {
   const [today, setToday] = useState("");
@@ -82,8 +87,17 @@ export default function AppHeader() {
   return (
     <header className="app-header">
       <div className="header-left">
-        <PiDropboxLogo size={29} color="black" style={{ marginRight: 11 }} />
-        <span className="app-name">brainTrace</span>
+        <img
+          src={appIcon}
+          alt="BrainTrace App Icon"
+          style={{
+            width: 42,
+            height: 42,
+            marginRight: 8,
+            marginBottom: 2,
+          }}
+        />
+        <span className="app-name">BrainTrace</span>
       </div>
       <div className="header-right">
         <span className="today-text strong-date">{today}</span>
