@@ -2,7 +2,11 @@
 
 <p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
-BrainTrace는 업로드된 텍스트와 문서에서 정보를 추출하여 지식 그래프로 구성합니다. 이를 통해 의미론적 검색, 출처 추적, 시각적 탐색을 하나의 흐름에서 제공합니다. 파일 간의 분산된 개념과 관계를 하나의 네트워크로 연결하여 문서 간 맥락을 재구성하고, 그래프 기반의 통찰력 발견과 증거 중심의 인용을 지원합니다. 단순한 개념 추출을 넘어, 텍스트를 노드-엣지 구조로 변환하여 의미론적 탐색과 문서 간 참조, 지식 시각화를 원활하게 경험할 수 있습니다.
+Brain Trace System (BrainT) 는 PDF, TXT, DOCX, Markdown 등 다양한 형식의 문서를 업로드하면, GraphRAG 파이프라인을 통해 그 안의 내용을 지식 그래프로 변환합니다. 문서에서 핵심 개념과 개념 간의 관계를 추출해 노드–엣지 구조로 구성하며, 이를 기반으로 추론형 검색, 출처 추적, 시각적 탐색을 하나의 흐름 안에서 제공합니다.
+
+사용자가 질문을 입력하면, BrainT는 지식 그래프에서 관련 개념들을 찾아 맥락을 형성하고, 유사한 문서 청크를 함께 불러와 맥락 + 근거 기반의 Q&A를 생성합니다. 이 모든 과정은 로컬 또는 클라우드 환경에서 선택적으로 운영할 수 있어, 필요에 따라 유연하게 구성 가능하며, 외부 서버로 정보가 나가지 않는 보안 친화적인 운영도 지원합니다.
+
+문서를 계속 추가할수록 그래프는 점점 정교해지고, 검색과 탐색도 더 똑똑해집니다. 흩어져 있던 정보들이 유기적으로 연결되며, 지식은 단순히 쌓이는 것이 아니라 구조화되고 살아 움직이는 형태로 진화합니다.
 
 ---
 
@@ -161,9 +165,7 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
 
 <img width="960" height="460" alt="image" src="https://github.com/user-attachments/assets/ce93db48-6e44-4520-8d28-b4c3d6ea2623" />
 
-동작 절차:
-
-1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다. 이 단계에서는 텍스트를 분석하여 각 문장을 개별적으로 처리하고, 명사구를 식별하여 추출합니다.
+1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다.
 
    ```python
    # backend/services/manual_chunking_sentences.py (발췌)
@@ -179,16 +181,11 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
        return all_nodes, all_edges
    ```
 
-2. **LDA 모듈을 통한 주제 벡터 변환**: 각 문장을 주제 벡터로 변환합니다. LDA 모듈을 사용하여 문장의 주제를 분석하고, 이를 벡터 형태로 변환하여 주제 간의 관계를 파악합니다.
+2. **LDA 모듈을 통한 주제 벡터 변환**: 각 문장을 주제 벡터로 변환합니다.
 
    ```python
    # backend/services/embedding_service.py (발췌)
    def encode_text(text: str) -> List[float]:
-       """
-       주어진 텍스트를 KoE5 모델로 임베딩하여 벡터 반환
-       - 토크나이저로 입력 전처리
-       - CLS 토큰 임베딩 추출
-       """
        try:
            inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
            with torch.no_grad():
@@ -198,26 +195,22 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
            logging.error("텍스트 임베딩 생성 실패: %s", str(e))
    ```
 
-3. **문장 유사도 계산 및 그룹화**: 문장쌍 간의 유사도를 계산하고, 하위 25% 이하의 유사도를 기준으로 그룹화합니다. 유사도 행렬을 구성하여 문장 간의 유사성을 평가하고, 이를 기반으로 문장을 그룹화합니다.
+3. **문장 유사도 계산 및 그룹화**: 문장쌍 유사도를 계산하고 낮은 유사도를 경계로 그룹화합니다.
 
    ```python
    # backend/services/embedding_service.py (발췌)
    def search_similar_nodes(
-       embedding: List[float],
-       brain_id: str,
-       limit: int = 3,
-       threshold: float = 0.5,
-       high_score_threshold: float = 0.8
+       embedding: List[float], brain_id: str, limit: int = 3,
+       threshold: float = 0.5, high_score_threshold: float = 0.8
    ) -> List[Dict]:
        # 유사도 계산 및 그룹화 로직
    ```
 
-4. **Grouping**: 주제적으로 다른 문장들 사이를 경계로 삼아 청크를 구성합니다. 이 단계에서는 유사도가 낮은 문장들 사이를 경계로 삼아 청크를 형성합니다.
+4. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
 
    ```python
    # backend/services/ollama_service.py (발췌)
    def _extract_from_chunk(self, chunk: str, source_id: str) -> Tuple[List[Dict], List[Dict]]:
-       # ... LLM 응답을 구문 분석하고 유효한 노드/엣지를 정규화합니다.
        sentences = manual_chunking(chunk)
        if not sentences:
            for node in valid_nodes:
@@ -252,9 +245,7 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
        return valid_nodes, valid_edges
    ```
 
----
-
-지식 그래프에 대한 설명은 [여기](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
+지식 그래프에 대한 더 자세한 설명은 `KNOWLEDGE_GRAPH.md`에서 확인할 수 있습니다.
 
 ---
 
@@ -270,7 +261,7 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>업로드 시 그래프 생성</b></div>
-      <div align="center"><sub>파일을 업로드하면 자동으로 텍스트에 대한 노드와 엣지가 생성되어 그래프에 반영됩니다. PDF, TXT, MD, DOCX, 메모 형식을 지원합니다.</sub></div>
+      <div align="center"><sub>파일을 업로드하면 자동으로 노드와 엣지가 생성되어 그래프에 반영됩니다.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
@@ -283,7 +274,7 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Q&A 후 참조된 노드</b></div>
-      <div align="center"><sub>AI에게 질문 후 답변에 사용된 노드를 그래프 뷰에서 확인할 수 있습니다.</sub></div>
+      <div align="center"><sub>답변에 사용된 노드를 그래프 뷰에서 확인할 수 있습니다.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
@@ -291,12 +282,12 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>출처 보기</b></div>
-      <div align="center"><sub>AI 답변에 사용된 노드가 어떤 소스를 참고했는지 확인할 수 있습니다.</sub></div>
+      <div align="center"><sub>답변에 사용된 노드가 어떤 소스를 참고했는지 확인합니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 노드 보기</b></div>
-      <div align="center"><sub>특정 소스가 생성한 노드를 그래프 뷰에서 확인할 수 있습니다.</sub></div>
+      <div align="center"><sub>특정 소스가 생성한 노드를 그래프 뷰에서 확인합니다.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
@@ -322,40 +313,39 @@ BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 �
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/8497e9c6-d81d-4419-8509-8336fb8ab666" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>탐색 기능</b></div>
-      <div align="center"><sub>파일 내용이나 키워드를 입력하여 유사한 소스를 찾을 수 있습니다.</sub></div>
+      <div align="center"><sub>파일 내용이나 키워드로 유사한 소스를 찾습니다.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
-   <tr>
-  <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-     <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-    </p>
-    <div align="center"><b>전체 화면 라이트모드 노드 검색</b></div>
-    <div align="center"><sub>노드 검색 기능을 통해 원하는 노드로 카메라를 이동시킵니다.</sub></div>
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>전체 화면 라이트 모드 노드 검색</b></div>
+      <div align="center"><sub>노드 검색으로 원하는 노드로 카메라를 이동합니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>전체 화면 다크 모드</b></div>
-      <div align="center"><sub>어두운 테마의 전체 화면에서 그래프를 탐색하며, 그래프 속성을 자유롭게 커스터마이징할 수 있습니다.</sub></div>
+      <div align="center"><sub>어두운 테마에서 그래프를 탐색하며 속성을 자유롭게 조절합니다.</sub></div>
     </td>
   </tr>
 </table>
 
 ---
 
-## 데모 비디오
+## 데모 비디오(예정)
 
-## ⬇️ 비디오 보기
-
-- 링크 곧 제공 예정.
+- 링크 곧 제공 예정
 
 ---
 
-<br />
-
-## 귀요미들
+## 팀
 
 |                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
 |              [Yechan An](https://github.com/yes6686)              |            [Donghyck Kim](https://github.com/kimdonghyuk0)             |            [JeongGyun Yu](https://github.com/Mieulchi)             |             [Selyn Jang](https://github.com/selyn-a)              |
+
+---
+
+라이선스는 저장소의 `LICENSE` 파일을 참고하세요.
