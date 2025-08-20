@@ -30,3 +30,30 @@
 .footer-oss-info span {
     white-space: nowrap;
 }
+
+/* ───────── GitHub 링크 스타일 ───────── */
+.github-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #888;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.github-link:hover {
+    color: #333;
+    background-color: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.github-link:active {
+    transform: translateY(0);
+}
+
+.github-link svg {
+    color: #333;
+}

@@ -4,7 +4,7 @@
  새 프로젝트(브레인) 생성 모달 컴포넌트.
 
  주요 기능:
- 1. 배포 타입(cloud/local) 선택 UI 제공
+ 1. 구동 환경(cloud/local) 선택 UI 제공
  2. 프로젝트 이름 입력 및 생성 요청
  3. 생성 성공 시 상위(onCreated)로 결과 전달 후 닫기(onClose)
 
@@ -31,7 +31,7 @@ export default function NewBrainModal({ onClose, onCreated }) {
   // 프로젝트 이름 상태
   const [name, setName] = useState("");
 
-  // 배포 타입 상태 (cloud 또는 local)
+  // 구동 환경 상태 (cloud 또는 local)
   const [deploymentType, setDeploymentType] = useState("cloud");
 
   // API 요청 중 여부 상태
@@ -85,9 +85,9 @@ export default function NewBrainModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        {/* 배포 타입 선택 */}
+        {/* 구동 환경 선택 */}
         <div className="deployment-type-section">
-          <h4>배포 타입 선택</h4>
+          <h4>구동 환경 선택</h4>
           <div className="deployment-options">
             <div
               className={`deployment-option ${
