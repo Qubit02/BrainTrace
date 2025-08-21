@@ -537,9 +537,8 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ---
 
-## 데모 비디오(예정)
+[![데모 비디오](https://img.youtube.com/vi/CkKStA9WHhY/0.jpg)](https://youtu.be/CkKStA9WHhY)
 
-- 링크 곧 제공 예정
 
 ---
 
