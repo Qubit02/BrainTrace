@@ -438,8 +438,6 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
   </tr>
 </table>
 
----
-
 <table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
   <tr>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
@@ -536,13 +534,19 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 </table>
 
 ---
-# 데모 비디오
-[![데모 비디오](https://img.youtube.com/vi/CkKStA9WHhY/0.jpg)](https://youtu.be/CkKStA9WHhY)
 
+## 시연 영상
+
+<div align="center">
+  <a href="https://youtu.be/CkKStA9WHhY" target="_blank">
+    <img src="https://img.youtube.com/vi/CkKStA9WHhY/maxresdefault.jpg" alt="데모 비디오" style="width:70%; max-width:500px; border:2px solid #ddd; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); transition: transform 0.2s;" />
+  </a>
+  <p align="center" style="font-size:1em; color:gray; margin-top:10px;">*클릭하여 데모 비디오를 시청하세요*</p>
+</div>
 
 ---
 
-## 팀
+## 팀원 소개
 
 |                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
