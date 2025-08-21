@@ -20,7 +20,7 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 <p>BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다.</p>
 
-<img width="1200" height="500" alt="image" src="https://github.com/user-attachments/assets/f1ec3e72-3f07-4e7c-b8f1-dcc03797b41a" />
+<img width="1200" height="800" alt="image" src="https://github.com/user-attachments/assets/f1ec3e72-3f07-4e7c-b8f1-dcc03797b41a" />
 
 1. **텍스트 추출**:
    PDF, 텍스트 파일, 메모, Markdown, DOCX 등의 소스에서 텍스트를 추출합니다.
