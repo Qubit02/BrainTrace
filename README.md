@@ -1,4 +1,4 @@
-<img width="3000" height="500" alt="Brain Trace (1)" src="https://github.com/user-attachments/assets/81bd4a23-ead9-48ce-9925-cbd7990a0836" />
+<img width="3000" height="500" alt="Brain Trace (3)" src="https://github.com/user-attachments/assets/8f92baaa-158e-4475-b34a-5f1f440649ac" />
 
 <p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
