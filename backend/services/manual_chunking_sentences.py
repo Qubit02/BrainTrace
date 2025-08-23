@@ -433,7 +433,7 @@ def extract_graph_components(text: str, source_id: str):
 
     
     else:
-        top_keyword, _ =lda_keyword_and_similarity(tokenized, None, None)
+        top_keyword, _ =lda_keyword_and_similarity(tokenized)
         if len(top_keyword)<1:
             logging.error("LDA  keyword 추출에 실패했습니다.")
         already_made=[top_keyword]
@@ -496,4 +496,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-
