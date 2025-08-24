@@ -2,11 +2,18 @@
 
 > **BrainTrace**는 문서를 업로드하면 자동으로 지식 그래프를 구축하고, 이를 기반으로 정확한 답변을 생성하는 AI 챗봇 시스템입니다. 이 시스템은 문서 간의 분산된 개념과 관계를 하나의 네트워크로 연결하여 문서 간 맥락을 재구성하고, 그래프 기반의 통찰력 발견과 증거 중심의 인용을 지원합니다.
 
+---
+
 ## 목차
 
-<details>
-<summary><b>1. 지식그래프란 무엇인가?</b></summary>
-<div markdown="1">
+1. [지식그래프란 무엇인가?](#지식그래프란-무엇인가)
+2. [GraphRAG 방식의 필요성과 장점](#GraphRAG-방식의-필요성과-장점)
+3. [지식그래프 생성 과정](#지식그래프-생성-과정)
+4. [지식그래프 활용 사례](#지식그래프-활용-사례)
+
+---
+
+## 1. 지식그래프란 무엇인가?
 
 ### 1.1 지식그래프의 정의
 
@@ -16,243 +23,85 @@
 
 #### 노드(Node)
 
-- **정의**: 문서에서 추출된 핵심 개념이나 개체를 나타냅니다
-- **BrainT에서의 역할**: AI 모델이나 수동 청킹을 통해 텍스트에서 중요한 개념들을 노드로 추출
-- **속성**: `name`(개체명), `label`(분류), `description`(설명) 등
+- **정의**: 문서에서 추출된 핵심 개념이나 개체를 나타냅니다.
+- **BrainT에서의 역할**: AI 모델이나 수동 청킹을 통해 텍스트에서 중요한 개념들을 노드로 추출합니다.
+- **속성**: `name`(개체명), `label`(분류), `description`(설명) 등.
 
 #### 엣지(Edge)
 
-- **정의**: 노드 간의 의미적 관계를 나타냅니다
-- **BrainT에서의 역할**: "포함하다", "관련되다", "영향을 주다" 등의 관계를 엣지로 표현
-- **속성**: `source`(시작 노드), `target`(도착 노드), `relation`(관계 유형)
+- **정의**: 노드 간의 의미적 관계를 나타냅니다.
+- **BrainT에서의 역할**: "포함하다", "관련되다", "영향을 주다" 등의 관계를 엣지로 표현합니다.
+- **속성**: `source`(시작 노드), `target`(도착 노드), `relation`(관계 유형).
 
 #### 속성(Properties)
 
-- **정의**: 노드와 엣지에 추가되는 메타데이터입니다
-- **BrainT에서의 역할**: `source_id`(출처 문서), `original_sentences`(원문 문장), `descriptions`(다중 설명) 등의 속성을 관리
+- **정의**: 노드와 엣지에 추가되는 메타데이터입니다.
+- **BrainT에서의 역할**: `source_id`(출처 문서), `original_sentences`(원문 문장), `descriptions`(다중 설명) 등의 속성을 관리합니다.
 
 ### 1.3 지식그래프의 장점
 
 #### 1.3.1 의미적 데이터 통합
 
-- 다양한 출처의 데이터를 통합하고, 의미적으로 연결할 수 있습니다
-- 예: 여러 데이터베이스에서 "Apple"이라는 단어가 있을 때, 지식 그래프는 문맥에 따라 "사과"와 "애플사"를 구분할 수 있습니다
+- 다양한 출처의 데이터를 통합하고, 의미적으로 연결할 수 있습니다.
+- 예: 여러 데이터베이스에서 "Apple"이라는 단어가 있을 때, 지식 그래프는 문맥에 따라 "사과"와 "애플사"를 구분할 수 있습니다.
 
 #### 1.3.2 강력한 검색 및 질의
 
-- 복잡한 질문에 대한 답변을 제공할 수 있습니다
-- 예: "셰익스피어의 작품 중 영화로 제작된 것은?" 같은 질문에 대해 지식 그래프는 관련된 정보를 연결하여 답변할 수 있습니다
+- 복잡한 질문에 대한 답변을 제공할 수 있습니다.
+- 예: "셰익스피어의 작품 중 영화로 제작된 것은?" 같은 질문에 대해 지식 그래프는 관련된 정보를 연결하여 답변할 수 있습니다.
 
 #### 1.3.3 추론과 발견
 
-- 데이터를 단순히 저장하는 것뿐만 아니라, 데이터 간의 관계를 통해 새로운 지식을 추론할 수 있습니다
-- 예: 새로운 학술 논문이 추가되면, 기존 연구와의 연관성을 통해 새로운 연구 방향을 제안할 수 있습니다
+- 데이터를 단순히 저장하는 것뿐만 아니라, 데이터 간의 관계를 통해 새로운 지식을 추론할 수 있습니다.
+- 예: 새로운 학술 논문이 추가되면, 기존 연구와의 연관성을 통해 새로운 연구 방향을 제안할 수 있습니다.
 
 #### 1.3.4 데이터의 재사용과 상호 운용성
 
-- 데이터 모델이 유연하고 확장 가능하여 다양한 도메인에서 쉽게 재사용될 수 있습니다
-- 예: 건강, 금융, 교육 등 여러 도메인에서 동일한 지식 그래프 구조를 사용할 수 있습니다
+- 데이터 모델이 유연하고 확장 가능하여 다양한 도메인에서 쉽게 재사용될 수 있습니다.
+- 예: 건강, 금융, 교육 등 여러 도메인에서 동일한 지식 그래프 구조를 사용할 수 있습니다.
 
-</div>
-</details>
+---
 
-<details>
-<summary><b>2. GraphRAG 방식의 필요성과 장점</b></summary>
-<div markdown="1">
+## 2. GraphRAG 방식의 필요성과 장점
 
 ### 2.1 기존 RAG 방식의 한계
 
 #### 2.1.1 단순 RAG의 구조적 한계
 
-- **청크 기반 분할**: 문서를 일정 크기의 청크로 분할하여 벡터 검색에 활용
-- **벡터 유사도 의존**: 질문과 유사한 정보를 찾기 위해 벡터 검색에만 의존
-- **구조적 관계 부족**: 청크 간의 구조적 관계나 전체 맥락을 충분히 반영하지 못함
+- **청크 기반 분할**: 문서를 일정 크기의 청크로 분할하여 벡터 검색에 활용합니다.
+- **벡터 유사도 의존**: 질문과 유사한 정보를 찾기 위해 벡터 검색에만 의존합니다.
+- **구조적 관계 부족**: 청크 간의 구조적 관계나 전체 맥락을 충분히 반영하지 못합니다.
 
 #### 2.1.2 기존 RAG의 문제점
 
-- **전역 정보 연결성 부족**: 단순한 의미적 유사성에 의존하여 전반적인 정보의 연결성 파악이 어려움
-- **컨텍스트 중복**: 프롬프트에 청크를 결합하는 과정에서 중복된 내용이 포함되어 컨텍스트가 불필요하게 길어짐
-- **관계 추론 한계**: 개념 간 의미적 관계를 탐색하고 추론하는 능력이 제한적
-- **복합 질의 처리 부족**: 다중 경로를 거치는 관계 추론이나 복합 조건 질의 처리에 한계
+- **전역 정보 연결성 부족**: 단순한 의미적 유사성에 의존하여 전반적인 정보의 연결성 파악이 어렵습니다.
+- **컨텍스트 중복**: 프롬프트에 청크를 결합하는 과정에서 중복된 내용이 포함되어 컨텍스트가 불필요하게 길어집니다.
+- **관계 추론 한계**: 개념 간 의미적 관계를 탐색하고 추론하는 능력이 제한적입니다.
+- **복합 질의 처리 부족**: 다중 경로를 거치는 관계 추론이나 복합 조건 질의 처리에 한계가 있습니다.
 
 ### 2.2 GraphRAG 방식의 장점
 
 #### 2.2.1 구조적 정보 활용
 
-- **노드-엣지 구조**: 정보를 노드(개체)와 엣지(관계)로 구조화하여 의미적 관계를 명확히 표현
-- **전역 맥락 파악**: 문서 청크 수준이 아닌 문서 전체와 개념 간의 구조적 연결 정보를 활용
-- **개념 간 관계 탐색**: 단순 텍스트 유사도 검색을 넘어 개념 간 의미적 관계를 탐색하고 추론
+- **노드-엣지 구조**: 정보를 노드(개체)와 엣지(관계)로 구조화하여 의미적 관계를 명확히 표현합니다.
+- **전역 맥락 파악**: 문서 청크 수준이 아닌 문서 전체와 개념 간의 구조적 연결 정보를 활용합니다.
+- **개념 간 관계 탐색**: 단순 텍스트 유사도 검색을 넘어 개념 간 의미적 관계를 탐색하고 추론합니다.
 
 #### 2.2.2 고차원적 추론 능력
 
-- **다중 경로 추론**: 여러 경로를 거치는 관계 추론을 통해 복잡한 질문에 대한 답변 생성
-- **맥락적 개념 연결**: 관련된 개념들을 맥락적으로 연결하여 더 정확한 정보 제공
-- **복합 조건 처리**: 기존 RAG 방식으로는 한계가 있었던 복합 조건 질의 처리 가능
+- **다중 경로 추론**: 여러 경로를 거치는 관계 추론을 통해 복잡한 질문에 대한 답변을 생성합니다.
+- **맥락적 개념 연결**: 관련된 개념들을 맥락적으로 연결하여 더 정확한 정보를 제공합니다.
+- **복합 조건 처리**: 기존 RAG 방식으로는 한계가 있었던 복합 조건 질의 처리가 가능합니다.
 
 #### 2.2.3 새로운 지식 발견
 
-- **속성 기반 추론**: 각 노드가 보유한 속성(property) 정보를 통해 명시적으로 주어지지 않은 정보도 추론
-- **잠재적 연결 발견**: 새로운 데이터와 기존 정보 간의 밀접한 연관성을 발견하여 새로운 지식 제안
-- **지식 확장**: 기존 RAG 방식의 한계를 극복하고 지식 추론과 발견의 새로운 가능성 제시
+- **속성 기반 추론**: 각 노드가 보유한 속성(property) 정보를 통해 명시적으로 주어지지 않은 정보도 추론합니다.
+- **잠재적 연결 발견**: 새로운 데이터와 기존 정보 간의 밀접한 연관성을 발견하여 새로운 지식을 제안합니다.
+- **지식 확장**: 기존 RAG 방식의 한계를 극복하고 지식 추론과 발견의 새로운 가능성을 제시합니다.
 
-### 2.3 BrainT의 GraphRAG 구현 방식
+---
 
-#### 2.3.1 자동 지식 추출
-
-BrainT는 두 가지 방식으로 지식 그래프를 생성합니다:
-
-**1. AI 모델 기반 추출 (GPT/Ollama)**
-
-```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-async def process_text_endpoint(request_data: ProcessTextRequest):
-    text = request_data.text
-    source_id = request_data.source_id
-    brain_id = request_data.brain_id
-    model = request_data.model
-
-    # AI 모델 선택
-    if model == "gpt":
-        ai_service = get_ai_service_GPT()
-    elif model == "ollama":
-        ai_service = get_ai_service_Ollama()
-
-    # 텍스트에서 노드/엣지 추출
-    nodes, edges = ai_service.extract_graph_components(text, source_id)
-
-    # Neo4j에 그래프 데이터 저장
-    neo4j_handler = Neo4jHandler()
-    neo4j_handler.insert_nodes_and_edges(nodes, edges, brain_id)
-
-    # 벡터 데이터베이스에 임베딩 저장
-    embedding_service.update_index_and_get_embeddings(nodes, brain_id)
-```
-
-**2. 수동 청킹 기반 추출 (LDA + TF-IDF)**
-
-```python
-# backend/services/manual_chunking_sentences.py - 실제 프로젝트 코드
-def extract_graph_components(text: str, source_id: str):
-    # 문장 단위 분리 및 토큰화
-    tokenized, sentences = split_into_tokenized_sentence(text)
-
-    # 재귀적 청킹 (LDA 기반 주제 모델링)
-    if len(text) >= 2000:
-        chunks, nodes_and_edges, already_made = recurrsive_chunking(
-            tokenized, source_id, 0, [], "", 0
-        )
-        all_nodes = nodes_and_edges["nodes"]
-        all_edges = nodes_and_edges["edges"]
-    else:
-        chunks = [{"chunks": list(range(len(sentences))), "keyword": ""}]
-        already_made = []
-
-    # 각 청크에서 노드/엣지 추출
-    for chunk in chunks:
-        if len(chunk["chunks"]) <= 2:
-            continue
-        relevant_sentences = [sentences[idx] for idx in chunk["chunks"]]
-        nodes, edges, already_made = _extract_from_chunk(
-            relevant_sentences, source_id, chunk["keyword"], already_made
-        )
-        all_nodes += nodes
-        all_edges += edges
-
-    return all_nodes, all_edges
-```
-
-#### 2.3.2 벡터 기반 검색
-
-```python
-# backend/services/embedding_service.py - 실제 프로젝트 코드
-def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str):
-    collection_name = get_collection_name(brain_id)
-
-    # 여러 포맷으로 텍스트 생성
-    formats = [
-        "{name}는 {label}이다. {description}",
-        "{name} ({label}): {description}",
-        "{label}인 {name}에 대한 설명: {description}",
-        "{description}"
-    ]
-
-    for node in nodes:
-        for desc in node["descriptions"]:
-            description = desc.get("description")
-            if not description:
-                continue
-
-            for idx, fmt in enumerate(formats):
-                # 텍스트 생성
-                text = fmt.format(
-                    name=node["name"],
-                    label=node["label"],
-                    description=description
-                )
-
-                # 임베딩 생성
-                embedding = encode_text(text)
-
-                # Qdrant에 저장
-                client.upsert(
-                    collection_name=collection_name,
-                    points=[models.PointStruct(
-                        id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{idx}_{description}")),
-                        vector=embedding,
-                        payload={
-                            "source_id": node["source_id"],
-                            "name": node["name"],
-                            "label": node["label"],
-                            "description": description
-                        }
-                    )]
-                )
-```
-
-#### 2.3.3 그래프 기반 답변 생성
-
-```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-async def answer_endpoint(request_data: AnswerRequest):
-    question = request_data.question
-    brain_id = str(request_data.brain_id)
-    model = request_data.model
-
-    # 1. 벡터 검색으로 관련 노드 찾기
-    similar_nodes = embedding_service.search_similar_nodes(
-        question, brain_id, top_k=5
-    )
-
-    # 2. Neo4j에서 2단계 깊이 스키마 추출
-    neo4j_handler = Neo4jHandler()
-    graph_schema = neo4j_handler.query_schema_by_node_names(
-        [node["name"] for node in similar_nodes], brain_id
-    )
-
-    # 3. AI 모델로 답변 생성
-    if model == "gpt":
-        ai_service = get_ai_service_GPT()
-    else:
-        ai_service = get_ai_service_Ollama()
-
-    answer = ai_service.generate_answer(question, graph_schema)
-
-    # 4. 정확도 점수 계산
-    accuracy_score = compute_accuracy(similar_nodes, answer)
-
-    return {
-        "answer": answer,
-        "sources": collect_source_info(similar_nodes),
-        "confidence_score": accuracy_score
-    }
-```
-
-</div>
-</details>
-
-<details>
-<summary><b>3. 지식그래프 생성 과정</b></summary>
-<div markdown="1">
+## 3. 지식그래프 생성 과정
 
 ### 3.1 텍스트 전처리 단계
 
@@ -377,168 +226,9 @@ def _extract_from_chunk(self, chunk: str, source_id: str):
             logging.warning("스키마 누락 엣지: %s", edge)
 ```
 
-### 3.3 원문 매칭 및 임베딩 생성
+---
 
-#### 3.3.1 코사인 유사도 계산
-
-```python
-# backend/services/ollama_service.py - 실제 프로젝트 코드
-def _match_original_sentences(self, node: Dict, sentences: List[str]):
-    # 노드 설명 임베딩 생성
-    desc_embedding = encode_text(node["description"])
-
-    # 모든 문장 임베딩 생성
-    sentence_embeddings = [encode_text(s) for s in sentences]
-
-    # 코사인 유사도 계산
-    similarities = cosine_similarity(sentence_embeddings, [desc_embedding])
-
-    # threshold 이상인 문장들 선택
-    matched_sentences = []
-    for i, score in enumerate(similarities.flatten()):
-        if score >= 0.8:  # threshold
-            matched_sentences.append({
-                "original_sentence": sentences[i],
-                "source_id": node["source_id"],
-                "score": round(float(score), 4)
-            })
-
-    return matched_sentences
-```
-
-#### 3.3.2 원문 문장 매칭
-
-```python
-# backend/services/ollama_service.py - 실제 프로젝트 코드
-def _extract_from_chunk(self, chunk: str, source_id: str):
-    # ... 노드/엣지 추출 ...
-
-    # 원문 문장 매칭
-    sentences = manual_chunking(chunk)
-    for node in valid_nodes:
-        if node["descriptions"]:
-            matched_sentences = self._match_original_sentences(node, sentences)
-            node["original_sentences"] = matched_sentences
-        else:
-            node["original_sentences"] = []
-```
-
-### 3.4 데이터베이스 저장
-
-#### 3.4.1 Neo4j 그래프 데이터베이스 저장
-
-```python
-# backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
-def insert_nodes_and_edges(self, nodes, edges, brain_id):
-    def _insert(tx, nodes, edges, brain_id):
-        # 노드 저장
-        for node in nodes:
-            # descriptions를 JSON 문자열로 변환
-            new_descriptions = []
-            for desc in node.get("descriptions", []):
-                if isinstance(desc, dict):
-                    new_descriptions.append(json.dumps(desc, ensure_ascii=False))
-
-            # original_sentences를 JSON 문자열로 변환
-            new_originals = []
-            for orig in node.get("original_sentences", []):
-                if isinstance(orig, dict):
-                    new_originals.append(json.dumps(orig, ensure_ascii=False))
-
-            tx.run("
-                MERGE (n:Node {name: $name, brain_id: $brain_id})
-                ON CREATE SET
-                    n.label = $label,
-                    n.brain_id = $brain_id,
-                    n.descriptions = $new_descriptions,
-                    n.original_sentences = $new_originals
-                ON MATCH SET
-                    n.label = $label,
-                    n.brain_id = $brain_id,
-                    n.descriptions = CASE
-                        WHEN n.descriptions IS NULL THEN $new_descriptions
-                        ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions]
-                    END,
-                    n.original_sentences = CASE
-                        WHEN n.original_sentences IS NULL THEN $new_originals
-                        ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
-                    END
-            ", name=node["name"], label=node["label"],
-                 new_descriptions=new_descriptions,
-                 new_originals=new_originals,
-                 brain_id=brain_id)
-
-        # 엣지 저장
-        for edge in edges:
-            tx.run("
-                MATCH (a:Node {name: $source, brain_id: $brain_id})
-                MATCH (b:Node {name: $target, brain_id: $brain_id})
-                MERGE (a)-[r:REL {relation: $relation, brain_id: $brain_id}]->(b)
-            ", source=edge["source"], target=edge["target"],
-                 relation=edge["relation"], brain_id=brain_id)
-
-    with self.driver.session() as session:
-        session.execute_write(_insert, nodes, edges, brain_id)
-```
-
-#### 3.4.2 Qdrant 벡터 데이터베이스 저장
-
-```python
-# backend/services/embedding_service.py - 실제 프로젝트 코드
-def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str):
-    collection_name = get_collection_name(brain_id)
-
-    # 여러 포맷으로 텍스트 생성
-    formats = [
-        "{name}는 {label}이다. {description}",
-        "{name} ({label}): {description}",
-        "{label}인 {name}에 대한 설명: {description}",
-        "{description}"
-    ]
-
-    for node in nodes:
-        for desc in node["descriptions"]:
-            description = desc.get("description")
-            if not description:
-                continue
-
-            for idx, fmt in enumerate(formats):
-                # 텍스트 생성
-                text = fmt.format(
-                    name=node["name"],
-                    label=node["label"],
-                    description=description
-                )
-
-                # 임베딩 생성
-                embedding = encode_text(text)
-
-                # 고유 point_id 생성
-                pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{idx}_{description}"))
-
-                # Qdrant에 저장
-                client.upsert(
-                    collection_name=collection_name,
-                    points=[models.PointStruct(
-                        id=pid,
-                        vector=embedding,
-                        payload={
-                            "source_id": node["source_id"],
-                            "name": node["name"],
-                            "label": node["label"],
-                            "description": description,
-                            "point_id": pid
-                        }
-                    )]
-                )
-```
-
-</div>
-</details>
-
-<details>
-<summary><b>4. 지식그래프 활용 사례</b></summary>
-<div markdown="1">
+## 4. 지식그래프 활용 사례
 
 ### 4.1 질의응답 시스템
 
@@ -710,6 +400,8 @@ def compute_accuracy(
     return round(Acc, 3)
 ```
 
+---
+
 ### 4.2 시각화 및 탐색
 
 #### 4.2.1 3D 그래프 시각화
@@ -723,6 +415,8 @@ def compute_accuracy(
 - **검색 결과 하이라이팅**: 검색된 노드들을 특별한 색상으로 표시
 - **관계 하이라이팅**: 선택된 노드와 연결된 엣지들을 강조 표시
 - **경로 하이라이팅**: 두 노드 간의 최단 경로를 시각적으로 표시
+
+---
 
 ### 4.3 지식 분석 및 통찰
 
@@ -828,6 +522,8 @@ async def get_source_data_metrics(brain_id: str):
         raise HTTPException(status_code=500, detail="소스 데이터 메트릭 조회 중 오류가 발생했습니다.")
 ```
 
+---
+
 ### 4.4 지식 확장 및 연결
 
 #### 4.4.1 새로운 문서 통합
@@ -842,27 +538,4 @@ async def get_source_data_metrics(brain_id: str):
 - **학술 데이터베이스 연동**: 연구 논문과 학술 데이터베이스 연결
 - **뉴스 데이터 연동**: 실시간 뉴스 데이터와 연결
 
-</div>
-</details>
-
-<br/>
-<br/>
-
-## 참고 자료
-
-- **Neo4j Graph Database**: https://neo4j.com/
-- **Knowledge Graph Conference**: https://www.knowledgegraph.tech/
-- **Google Knowledge Graph**: https://developers.google.com/knowledge-graph
-- **Wikipedia Knowledge Graph**: https://www.wikidata.org/
-- **DBpedia**: https://dbpedia.org/
-- **YAGO**: https://yago-knowledge.org/
-
-## 관련 링크
-
-- [BrainT 프로젝트 README](./README.md)
-- [지식그래프 생성 로직 상세 분석](./KNOWLEDGE_GRAPH_GENERATION.md)
-- [AI 모델 통합 가이드](./AI_MODEL_INTEGRATION.md)
-
 ---
-
-**핵심 요약**: BrainTrace는 AI 모델이 문서에서 자동으로 지식을 추출하여 그래프로 구조화하고, 이를 기반으로 정확한 답변을 생성하는 시스템입니다. Neo4j와 벡터 검색을 결합하여 의미적 이해와 빠른 검색을 동시에 제공합니다.

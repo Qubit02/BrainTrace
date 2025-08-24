@@ -167,7 +167,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     model = None
     t0 = time.perf_counter()
     # 로깅은 포맷 문자열을 사용하는 방식이 권장됩니다 (여기선 기존 스타일 유지)
-    logging.info('model :', model)
+    logging.info('model : %s', model)
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
     if not source_id:

@@ -87,16 +87,7 @@ export default function AppHeader() {
   return (
     <header className="app-header">
       <div className="header-left">
-        <img
-          src={appIcon}
-          alt="BrainTrace App Icon"
-          style={{
-            width: 42,
-            height: 42,
-            marginRight: 8,
-            marginBottom: 2,
-          }}
-        />
+        <img src={appIcon} alt="BrainTrace App Icon" className="app-icon" />
         <span className="app-name">BrainTrace</span>
       </div>
       <div className="header-right">

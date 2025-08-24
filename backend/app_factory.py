@@ -191,7 +191,7 @@ for r in (
     app.include_router(r)
 
 # ── 정적 파일 ───────────────────────────────────
-app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
-app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")
-app.mount("/uploaded_mds", StaticFiles(directory="uploaded_mds"), name="uploaded_mds")
-app.mount("/uploaded_docx", StaticFiles(directory="uploaded_docx"), name="uploaded_docx")
+app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_files/uploaded_pdfs"), name="uploaded_pdfs")
+app.mount("/uploaded_txts", StaticFiles(directory="uploaded_files/uploaded_txts"), name="uploaded_txts")
+app.mount("/uploaded_mds", StaticFiles(directory="uploaded_files/uploaded_mds"), name="uploaded_mds")
+app.mount("/uploaded_docx", StaticFiles(directory="uploaded_files/uploaded_docx"), name="uploaded_docx")

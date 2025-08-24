@@ -318,7 +318,7 @@ async def get_mdfiles_by_brain(brain_id: int):
 
 # ───────── 파일 업로드 관련 ───────── #
 
-UPLOAD_MD_DIR = "uploaded_mds"
+UPLOAD_MD_DIR = os.path.join("C:\\brainT\\backend\\uploaded_files", "uploaded_mds")
 os.makedirs(UPLOAD_MD_DIR, exist_ok=True)
 
 def sanitize_filename(name):
