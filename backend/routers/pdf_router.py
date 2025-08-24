@@ -314,7 +314,7 @@ async def get_pdfs_by_brain(brain_id: int):
 
 # ───────── 파일 업로드 관련 ───────── #
 
-UPLOAD_DIR = "uploaded_pdfs"
+UPLOAD_DIR = os.path.join("C:\\brainT\\backend\\uploaded_files", "uploaded_pdfs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def sanitize_filename(name):
