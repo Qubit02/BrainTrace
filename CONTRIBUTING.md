@@ -39,7 +39,7 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 ---
 
-## 3) 커밋 규칙칙
+## 3) 커밋 규칙
 
 - 저장소에 정의된 **커밋 규칙(Conventional Commits 등)**을 따릅니다.  
   예) `feat: add /ingest backend endpoint`, `fix: handle empty graph at frontend`
@@ -71,4 +71,3 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 - PR 템플릿: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
 - 라이선스: [LICENSE](LICENSE)
 
-여러분의 기여가 BrainTrace를 더 단단하게 만듭니다. 감사합니다! 🙏
