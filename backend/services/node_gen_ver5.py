@@ -165,10 +165,11 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
     """
     edges=[]
     for t in target_keywords:
-        if t != source_keyword:
+        find=source_keyword[:-1] if source_keyword[-1] == "*" else source_keyword
+        if t != find:
             relation=""
             for s_idx in phrase_info[t]:
-                if source_keyword in sentences[s_idx]:
+                if find in sentences[s_idx]:
                     relation+=sentences[s_idx]
             relation="관련" if relation=="" else relation
             edges.append({"source":source_keyword, 
