@@ -118,3 +118,10 @@
     width: 140px;
     height: 36px;
 }
+
+.app-icon {
+    width: 41px;
+    height: 41px;
+    margin-right: 5px;
+    margin-bottom: 2px;
+}

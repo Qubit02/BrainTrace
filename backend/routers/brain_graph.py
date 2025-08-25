@@ -95,11 +95,14 @@ async def get_brain_graph(brain_id: str):
     Raises:
         Neo4jException: Neo4j 데이터베이스 오류
     """
+    # 요청 수신 로깅: 관측/디버깅을 위해 주요 파라미터를 기록
     logging.info(f"getNodeEdge 엔드포인트 호출됨 - brain_id: {brain_id}")
     try:
+        # 그래프 DB 핸들러 생성 (각 요청마다 독립 생성하여 세션 수명 관리)
         neo4j_handler = Neo4jHandler()
         logging.info("Neo4j 핸들러 생성됨")
         
+        # Neo4j에서 브레인 전체 그래프 조회
         graph_data = neo4j_handler.get_brain_graph(brain_id)
         logging.info(f"Neo4j에서 받은 데이터: nodes={len(graph_data['nodes'])}, links={len(graph_data['links'])}")
         
@@ -157,12 +160,14 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
             - 400: 필수 파라미터 누락
             - 500: 처리 중 오류 발생
     """
+    # 요청 본문 파라미터 언패킹
     text = request_data.text
     source_id = request_data.source_id
     brain_id = request_data.brain_id
     model = None
     t0 = time.perf_counter()
-    logging.info('model :', model)
+    # 로깅은 포맷 문자열을 사용하는 방식이 권장됩니다 (여기선 기존 스타일 유지)
+    logging.info('model : %s', model)
     if not text:
         raise HTTPException(status_code=400, detail="text 파라미터가 필요합니다.")
     if not source_id:
@@ -170,6 +175,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
+    # 보안/프라이버시 고려: 실제 서비스에서는 원문 전체를 로그에 남기지 않는 것이 안전합니다.
     logging.info("사용자 입력 텍스트: %s, source_id: %s, brain_id: %s", text, source_id, brain_id)
     
     # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
@@ -182,8 +188,10 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
 
     # Step 1: 텍스트에서 노드/엣지 추출 (AI 서비스)
     if ai_service==None:
+        # 기본 수동 청크 처리: 모델 미선택 시 규칙 기반으로 노드/엣지 추출
         nodes, edges=manual_chunking_sentences.extract_graph_components(text, source_id)
     else:
+        # 선택된 AI 서비스가 제공하는 추출 로직 호출
         nodes, edges = ai_service.extract_graph_components(text, source_id)
     logging.info("추출된 노드: %s", nodes)
     logging.info("추출된 엣지: %s", edges)
@@ -199,6 +207,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
         embedding_service.initialize_collection(brain_id)
     
     # 노드 정보 임베딩 및 저장
+    # - 각 노드 텍스트를 임베딩하여 Qdrant에 upsert
     embedding_service.update_index_and_get_embeddings(nodes, brain_id)
     logging.info("벡터 DB에 노드 임베딩 저장 완료")
     dur_ms = (time.perf_counter() - t0) * 1000
@@ -241,6 +250,7 @@ async def answer_endpoint(request_data: AnswerRequest):
     <br> Ollama 사용 → (model: "ollama")  
     <br> GPT 사용 → (model: "gpt")
     """
+    # 요청 파라미터 언패킹 및 기본 검증
     question = request_data.question
     session_id = request_data.session_id
     brain_id = str(request_data.brain_id)  # 문자열로 변환
@@ -272,6 +282,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         logging.info("🚀 실제 사용할 모델: %s", ai_service.model_name)
     
     try:
+        # SQLite 핸들러: 소스 메타데이터(title 등) 조회와 채팅 로그 저장에 사용
         db_handler = SQLiteHandler()
         
         # Step 1: 컬렉션이 없으면 초기화
@@ -309,6 +320,7 @@ async def answer_endpoint(request_data: AnswerRequest):
                    len(nodes_result), len(related_nodes_result), len(relationships_result))
         
         # Step 5: 스키마 간결화 및 텍스트 구성
+        # - 모델이 이해하기 쉽게 스키마를 텍스트로 요약/정리
         raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
         
         # Step 6: LLM을을 사용해 최종 답변 생성
@@ -321,6 +333,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
+        # 간단 정확도 산출: 답변/참고노드/브레인/스키마 텍스트 기반 지표
         accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id,Q,raw_schema_text)
         logging.info(f"정확도 : {accuracy}")
         # node의 출처 소스 id들 가져오기
@@ -386,6 +399,7 @@ async def get_source_ids(node_name: str, brain_id: str):
     반환값:
     - **sources**: source_id와 title을 포함하는 객체 리스트
     """
+    # 파라미터 기록: 운영 디버깅 시 활용
     logging.info(f"getSourceIds 엔드포인트 호출됨 - node_name: {node_name}, brain_id: {brain_id}")
     try:
         neo4j_handler = Neo4jHandler()
@@ -398,7 +412,8 @@ async def get_source_ids(node_name: str, brain_id: str):
             return {"sources": []}
             
         # descriptions 배열에서 모든 source_id 추출
-        seen_ids = set()  # 중복 제거를 위해 set 사용
+        # - JSON 항목 간 중복 제거를 위해 set 사용
+        seen_ids = set()
         sources = []
         
         for desc in descriptions:
@@ -452,6 +467,7 @@ async def get_nodes_by_source_id(source_id: str, brain_id: str):
     """
     logging.info(f"getNodesBySourceId 엔드포인트 호출됨 - source_id: {source_id}, brain_id: {brain_id}")
     try:
+        # 그래프 DB에서 source_id가 포함된 노드 조회
         neo4j_handler = Neo4jHandler()
         logging.info("Neo4j 핸들러 생성됨")
         

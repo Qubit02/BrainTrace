@@ -172,6 +172,16 @@ function ChatSession({
     setIsDeleting(true);
     try {
       await deleteChatSession(sessionToDelete);
+
+      // 해당 세션의 localStorage 데이터 삭제
+      try {
+        const sessionKey = `selectedModel_${sessionToDelete}`;
+        localStorage.removeItem(sessionKey);
+        console.log(`세션 ${sessionToDelete}의 localStorage 데이터 삭제 완료`);
+      } catch (localStorageError) {
+        console.warn("localStorage 삭제 실패:", localStorageError);
+      }
+
       if (selectedSession === sessionToDelete) setSelectedSession(null);
       await loadSessions();
     } catch (error) {

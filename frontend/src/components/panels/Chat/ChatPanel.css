@@ -835,8 +835,7 @@
   content: '정확도는 3가지 지표의 가중 평균으로 계산됩니다:\A\A• Q (검색 품질): 질문과 관련된 노드를 얼마나 잘 찾았는지\A• S (답변 충실도): AI가 참조한 노드들의 설명과 답변의 유사도\A• C (컨텍스트 밀도): 제공된 정보 중 실제 활용된 비율\A\A 정확도 : 0.15×Q + 0.8×S + 0.05×C';
   position: absolute;
   bottom: 100%;
-  right: 0;
-  width: 300px;
+  width: 230px;
   padding: 16px;
   background: #ffffff;
   color: #333333;
@@ -846,7 +845,6 @@
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
-  z-index: 1000;
   white-space: pre-line;
   text-align: left;
   margin-bottom: 8px;
@@ -1087,6 +1085,27 @@
 .chat-panel-model-item-inline.selected::before {
   opacity: 1;
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+/* 설치되지 않은 모델 스타일 */
+.chat-panel-model-item-inline.unselectable {
+  cursor: pointer;
+  opacity: 1;
+  background-color: #f8f9fa;
+}
+
+.chat-panel-model-item-inline.unselectable:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-panel-model-item-inline.unselectable .chat-panel-model-name-inline {
+  color: #6b7280;
+}
+
+.chat-panel-model-item-inline.unselectable .chat-panel-model-description-inline {
+  color: #9ca3af;
 }
 
 .chat-panel-model-item.selected::before {

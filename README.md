@@ -1,586 +1,558 @@
-# 지식 그래프 기반 AI 챗봇 시스템 <br/> (BrainT, Brain Trace System)
+<img width="3000" height="500" alt="Brain Trace (3)" src="https://github.com/user-attachments/assets/8f92baaa-158e-4475-b34a-5f1f440649ac" />
 
-<br/>
+<p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
-> Brain Trace System (이하 BrainT)는 문서를 업로드하면 자동으로 지식 그래프를 구축하고 <br/>
-> 이를 기반으로 정확한 답변을 생성하는 AI 챗봇 시스템이다.
+Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 문서를 업로드하면, GraphRAG 파이프라인을 통해 그 내용을 지식 그래프로 변환합니다. 문서에서 핵심 개념과 개념 간의 관계를 추출하여 노드-엣지 구조로 구성하며, 이를 기반으로 추론형 검색, 출처 추적, 시각적 탐색을 하나의 흐름 안에서 제공합니다.
 
-<br/>
-<br/>
+사용자가 질문을 입력하면, BrainT는 지식 그래프에서 관련 개념들을 찾아 맥락을 형성하고, 유사한 문서 청크를 함께 불러와 맥락과 근거에 기반한 Q&A를 생성합니다. 이 모든 과정은 로컬 또는 클라우드 환경에서 선택적으로 운영할 수 있어, 필요에 따라 유연하게 구성 가능하며, 외부 서버로 정보가 나가지 않는 보안 친화적인 운영도 지원합니다.
 
-## 📋 목차
+문서를 계속 추가할수록 그래프는 점점 정교해지고, 검색과 탐색도 더 똑똑해집니다. 흩어져 있던 정보들이 유기적으로 연결되며, 지식은 단순히 쌓이는 것이 아니라 구조화되고 살아 움직이는 형태로 진화합니다.
 
-<details>
-<summary><b>1. 개발배경 및 목적</b></summary>
-<div markdown="1">
+---
 
-### 1.1 개발 배경
+## 시스템 아키텍처
 
-&nbsp;&nbsp; 디지털 시대의 도래와 함께 문서와 지식의 양이 기하급수적으로 증가하면서, 사용자들은 방대한 정보 속에서 원하는 답변을 찾는 데 어려움을 겪고 있다. 기존의 검색 시스템은 단순한 키워드 매칭에 의존하여 정확도가 떨어지고, 사용자가 원하는 맥락적 정보를 제공하지 못하는 한계가 있다.
+![시스템 아키텍처](https://github.com/user-attachments/assets/232bcdbe-6238-4b5b-8e5d-cace17a23d94)
 
-&nbsp;&nbsp; 또한, 기업이나 교육기관에서 보유한 문서들을 체계적으로 관리하고 활용하는 시스템의 필요성이 증가하고 있다. 단순한 파일 저장소를 넘어서 문서 간의 관계를 파악하고, 지식을 구조화하여 효율적으로 활용할 수 있는 시스템이 요구되고 있다.
-  
-&nbsp;&nbsp; 본 팀은 이러한 문제를 개선하기 위해 문서를 자동으로 분석하여 지식 그래프를 구축하고, 이를 기반으로 정확한 답변을 생성하는 AI 챗봇 시스템인 Brain Trace System, BrainT를 제안한다.
+---
 
-### 1.2 개발 목적
+## 지식 그래프 파이프라인
 
-1. **지식 그래프 자동 구축**: 사용자가 문서를 입력 받아 지식 그래프 구축에 필요한 풍부한 메타데이터를 자동으로 생성하는 웹 시스템 개발
-2. **정확한 AI 답변 생성**: 구축된 지식 그래프를 바탕으로 사용자의 의도에 맞는 정보를 찾기 위해 정확도 높은 답변을 생성하는 AI 모델 개발
-3. **시각적 지식 표현**: 문서 내에서 지식 그래프의 구조를 직접 보여줄 수 있는 기능 구축
-4. **통합 웹 인터페이스**: 사용자가 원하는 정보를 단번에 찾아내고, 관련 소스를 확인할 수 있는 웹 인터페이스 제공
-5. **모니터링 시스템**: 문서 당 메타데이터의 정보와 비율, 성능, 검색어 빈도수 등을 파악할 수 있는 모니터링 시스템 구축
+<p>BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다.</p>
 
-</div>
-</details>
+<img width="2048" height="800" alt="flowchart_height_800" src="https://github.com/user-attachments/assets/f8efb47b-f155-466f-809b-d4ff0568e508" />
 
-<details>
-<summary><b>2. 개발환경(언어, Tool, 시스템 등)</b></summary>
-<div markdown="1">
 
-### 2.1 핵심 기술 스택
+1. **텍스트 추출**:
+   PDF, 텍스트 파일, 메모, Markdown, DOCX 등의 소스에서 텍스트를 추출합니다.
 
-#### 백엔드 기술
-- **FastAPI**: Python 기반 고성능 웹 프레임워크
-- **Neo4j**: 그래프 데이터베이스 (지식 그래프 저장)
-- **Qdrant**: 벡터 데이터베이스 (임베딩 저장)
-- **SQLite**: 관계형 데이터베이스 (메타데이터 및 모니터링 데이터)
-- **OpenAI GPT**: AI 모델 (노드/엣지 추출, 답변 생성)
-- **Ollama**: 로컬 AI 모델 (대안 AI 서비스)
+   ```python
+   # backend/routers/brain_graph.py (발췌)
+   @router.get("/getSourceContent",
+       summary="소스 파일의 텍스트 내용 가져오기",
+       description="주어진 source_id에 대한 파일 유형에 따라 텍스트 내용을 반환합니다.")
+   async def get_source_content(source_id: str, brain_id: str):
+       db = SQLiteHandler()
+       pdf = db.get_pdf(int(source_id))
+       textfile = db.get_textfile(int(source_id))
+       memo = db.get_memo(int(source_id))
+       md = db.get_mdfile(int(source_id))
+       docx = db.get_docxfile(int(source_id))
+       if pdf:
+           content = pdf.get('pdf_text', '')
+           title = pdf.get('pdf_title', '')
+           file_type = 'pdf'
+       elif textfile:
+           content = textfile.get('txt_text', '')
+           title = textfile.get('txt_title', '')
+           file_type = 'textfile'
+       # ... (memo/md/docx 분기에도 제목 포함)
+       return {"content": content, "title": title, "type": file_type}
+   ```
 
-#### 프론트엔드 기술
-- **React**: JavaScript 라이브러리 (사용자 인터페이스)
-- **HTML/CSS**: 웹 페이지 구조 및 스타일링
-- **JavaScript**: 클라이언트 사이드 로직
+2. **토큰화**:
+   추출된 텍스트를 의미 있는 단위(문장, 명사구 등)로 분할합니다.
 
-#### 자연어 처리 기술
-- **KoNLPy**: 한국어 자연어 처리 라이브러리
-- **Okt**: 한국어 형태소 분석기
-- **Sentence Transformers**: 텍스트 임베딩 생성
+   ```python
+   # backend/services/node_gen_ver5.py (발췌)
+   def split_into_tokenized_sentence(text:str):
+       tokenized_sentences=[]
+       texts=[]
+       for p in re.split(r'(?<=[.!?])\s+', text.strip()):
+           texts.append(p.strip())
 
-### 2.2 개발 환경
+       for idx, sentence in enumerate(texts):
+           tokens = extract_noun_phrases(sentence)
+           # 빈 토큰 배열인 경우 기본 토큰 추가
+           if not tokens:
+               tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
+           tokenized_sentences.append({"tokens": tokens,
+                                       "index":idx})
 
-![Windows 10](https://img.shields.io/badge/Windows%2010-%234D4D4D.svg?style=for-the-badge&logo=windows-terminal&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+       return tokenized_sentences, texts
+   ```
 
-### 2.3 개발 도구
+3. **청킹**:
+   주제별로 유사한 문장들을 묶어 전체 텍스트를 1000~2000자 사이의 청크로 분할합니다.
+   지식 그래프의 골격을 생성합니다.
 
-![Visual Studio Code](https://img.shields.io/badge/Visual%20Studio%20Code-0078d7.svg?style=for-the-badge&logo=visual-studio-code&logoColor=white)
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Neo4j](https://img.shields.io/badge/Neo4j-018bff?style=for-the-badge&logo=neo4j&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
-![Qdrant](https://img.shields.io/badge/Qdrant-FF6B4A?style=for-the-badge&logo=qdrant&logoColor=white)
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword:str ,already_made:list[str], similarity_matrix, threshold: int):
+       """유사도/키워드 기반 재귀 청킹.
 
-### 2.4 개발 언어
+       로직 요약:
+         - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
+         - depth>0에서는 청크 크기/깊이 제한으로 종료 여부 판단
+         - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
+         - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
 
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
-![html](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+       Args:
+           chunk: 현재 단계에서 분할 대상인 (토큰화된 문장, 인덱스) 페어의 리스트({"tokens", "index"})
+           source_id: 소스 식별자(그래프 노드 메타데이터)
+           depth: 현재 재귀 깊이(0부터 시작)
+           already_made: 중복 노드 생성을 방지하기 위한 이름 캐시
+           top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
+           threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
+           lda_model, dictionary, num_topics: LDA 추정 관련 파라미터
 
-</div>
-</details>
+       Returns:
+           Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges", "keyword"}, 업데이트된 already_made)
+       """
 
-<details>
-<summary><b>3. 시스템 구성 및 아키텍처</b></summary>
-<div markdown="1">
+    result=[]
+    nodes_and_edges={"nodes":[], "edges":[]}
+    chunk_indices=[c["index"] for c in chunk] #현재 그룹 내부 문장들의 인덱스만 저장한 리스트를 생성
 
-### 3.1 BrainT 시스템 전체 구성
 
-BrainT는 사용자가 정확도 높은 답변을 받고 지식 그래프를 확인할 수 있는 웹 서비스로 구현되었다. React 기반의 프론트엔드와 FastAPI 기반의 백엔드로 구성되어 있고, 모든 웹 서버 애플리케이션은 파이썬으로 작성되었다.
-
-<p align="center"><img src=./report/img/brainTArch1.jpg alt="brainTArch1" width="800"/></p>
-
-### 3.2 웹 서버 애플리케이션 구조
-
-웹 서버 애플리케이션은 크게 3가지의 모듈들로 구성되어 있고, 웹 프레임워크가 받은 request에 따라 모듈들이 동작한다.
-
-<p align="center"><img src=./report/img/brainTArch2.jpg alt="brainTArch2" width="600"/></p>
-
-#### 3.2.1 지식 그래프 생성 모듈
-문서를 업로드하는 사용자인 관리자 브라우저에서 문서를 업로드하면 FastAPI 내의 지식 그래프 생성 모듈이 데이터를 받아 문서의 메타데이터를 자동으로 처리한다. 문서를 분석하고 지식 그래프 생성하는 스레드들이 비동기적으로 처리하고 인터넷을 통해 AI 모델과 데이터를 주고받는다.
-
-#### 3.2.2 AI 답변 생성 모듈
-AI 답변 생성 모듈은 사용자가 질문을 입력하면 시스템 내의 AI 모델을 이용하여 정확한 답변을 생성한다. 데이터베이스에 저장된 지식 그래프는 JSON 트리 형태로 서버에 반환된다.
-
-#### 3.2.3 모니터링 모듈
-문서 당 메타데이터의 정보와 비율, 성능, 그리고 검색어의 빈도수와 같은 데이터들의 상태를 확인하는 관리자 브라우저에서 데이터베이스에 저장된 모니터링 데이터를 받는다.
-
-### 3.3 웹 클라이언트 애플리케이션 구조
-
-웹 클라이언트 애플리케이션은 크게 4가지의 모듈들로 구성되어 있다. 모듈들은 React 컴포넌트들로 동작한다.
-
-<p align="center"><img src=./report/img/brainTArch3.jpg alt="brainTArch3" width = "500"/></p>
-
-#### 3.3.1 지식 그래프 시각화 모듈
-사용자가 문서의 구조를 확인할 때 데이터베이스에서 반환 받은 노드와 관계 정보를 3D 그래프로 시각화한다. 노드와 엣지를 인터랙티브하게 조작할 수 있고, 참조된 노드들을 하이라이팅하여 보여준다.
-
-#### 3.3.2 채팅 인터페이스 모듈
-사용자가 질문을 입력하고 AI 답변을 받을 수 있도록 하는 기능을 한다. 답변과 함께 참조된 소스 정보와 정확도 점수를 표시한다.
-
-#### 3.3.3 소스 관리 모듈
-업로드된 문서들을 관리하고, 원문을 확인할 수 있으며, 문서 간의 관계를 파악할 수 있도록 한다.
-
-#### 3.3.4 모니터링 로그 기록 모듈
-사용자가 질문을 하고 답변을 받았을 때의 시간과 질문 내용, 참조된 노드들을 로그 파일에 기록한다.
-
-</div>
-</details>
-
-<details>
-<summary><b>4. 프로젝트 주요기능 및 구조도</b></summary>
-<div markdown="1">
-
-### 4.1 기능 및 특징 (프로젝트의 주요 기능과 특장점)
-
-#### 4.1.1 지식 그래프 자동 생성
-
-**지식그래프란 무엇인가?**
-
-지식그래프는 문서에서 추출된 핵심 개념들을 **노드(개체)**와 **엣지(관계)**로 구조화하여 정보 간의 의미적 연결을 표현하는 기술입니다. BrainT는 이 지식그래프를 통해 단순한 키워드 검색을 넘어서 사용자의 의도를 정확히 파악하고, 관련된 모든 정보를 연결하여 정확한 답변을 생성합니다.
-
-**지식그래프를 사용하는 이유:**
-- **의미적 이해**: 문서의 맥락과 관계를 이해하여 정확한 정보 검색
-- **추론 가능**: 직접 언급되지 않은 정보도 관계를 통해 추론
-- **시각적 표현**: 복잡한 정보를 직관적인 그래프로 표현
-- **확장성**: 새로운 정보 추가 시 기존 지식과 자동 연결
-
-📖 **지식그래프에 대한 상세한 설명은 [여기](./KNOWLEDGE_GRAPH.md)를 참고하세요.**
-
-**주요 기능:**
-
-###### AI 기반 노드/엣지 추출
-BrainT는 두 가지 방식으로 지식 그래프를 생성합니다:
-
-1. **AI 모델 기반 추출** (GPT/Ollama)
-```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-async def process_text_endpoint(request_data: ProcessTextRequest):
-    # AI 모델 선택 (GPT 또는 Ollama)
-    if model == "gpt":
-        ai_service = get_ai_service_GPT()
-    elif model == "ollama":
-        ai_service = get_ai_service_Ollama()
-    else:
-        ai_service = None  # 수동 청킹 사용 (manual_chunking_sentences)
-    
-    # 텍스트에서 노드/엣지 추출
-    if ai_service is None:
-        nodes, edges = manual_chunking_sentences.extract_graph_components(text, source_id)
-    else:
-        nodes, edges = ai_service.extract_graph_components(text, source_id)
-    
-    # Neo4j에 그래프 데이터 저장
-    neo4j_handler = Neo4jHandler()
-    neo4j_handler.insert_nodes_and_edges(nodes, edges, brain_id)
-    
-    # 벡터 데이터베이스에 임베딩 저장
-    embedding_service.update_index_and_get_embeddings(nodes, brain_id)
-```
-
-2. **수동 청킹 기반 추출** (LDA + TF-IDF)
-```python
-# backend/services/manual_chunking_sentences.py - 실제 프로젝트 코드
-def extract_graph_components(text: str, source_id: str):
-    # 문장 단위 분리 및 토큰화
-    tokenized, sentences = split_into_tokenized_sentence(text)
-    
-    # 재귀적 청킹 (LDA 기반 주제 모델링)
-    if len(text) >= 2000:
-        chunks, nodes_and_edges, already_made = recurrsive_chunking(
-            tokenized, source_id, 0, [], "", 0
-        )
-    
-    # 각 청크에서 노드/엣지 추출
-    for chunk in chunks:
-        relevant_sentences = [sentences[idx] for idx in chunk["chunks"]]
-        nodes, edges, already_made = _extract_from_chunk(
-            relevant_sentences, source_id, chunk["keyword"], already_made
-        )
-```
-
-###### 다중 포맷 지원
-- **PDF**: PyPDF2를 통한 텍스트 추출
-- **TXT**: 직접 텍스트 처리
-- **MD**: 마크다운 파싱 및 텍스트 추출
-- **DOCX**: python-docx를 통한 구조화된 텍스트 추출
-
-###### 실시간 처리
-```python
-# backend/services/chunk_service.py - 실제 프로젝트 코드
-def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200):
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", ".", " ", ""]
-    )
-    return text_splitter.split_text(text)
-```
-
-###### 중복 제거 및 통합
-```python
-# backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
-def insert_nodes_and_edges(self, nodes, edges, brain_id):
-    with self.driver.session() as session:
-        # MERGE를 사용한 중복 노드 처리 및 original_sentences 관리
-        for node in nodes:
-            session.run("""
-                MERGE (n:Node {name: $name, brain_id: $brain_id})
-                ON CREATE SET
-                    n.label = $label,
-                    n.brain_id = $brain_id,
-                    n.descriptions = $new_descriptions,
-                    n.original_sentences = $new_originals
-                ON MATCH SET 
-                    n.label = $label, 
-                    n.brain_id = $brain_id,
-                    n.descriptions = CASE 
-                        WHEN n.descriptions IS NULL THEN $new_descriptions 
-                        ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions] 
-                    END,
-                    n.original_sentences = CASE
-                        WHEN n.original_sentences IS NULL THEN $new_originals
-                        ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences]
-                    END
-            """, name=node["name"], brain_id=brain_id, 
-                 label=node["label"], new_descriptions=new_descriptions, new_originals=new_originals)
-```
-
-#### 4.1.2 정확한 AI 답변 생성
-- **컨텍스트 기반 검색**: 벡터 데이터베이스를 통한 의미적 검색
-- **출처 추적**: 답변의 근거가 되는 원문 문장 자동 추출
-- **정확도 점수**: 답변의 신뢰도를 수치화하여 제공
-- **다중 모델 지원**: GPT, Ollama 등 다양한 AI 모델 선택 가능
-- **참조 노드 추출**: 답변에서 언급된 노드들을 자동으로 식별
-- **소스 매핑**: 노드와 원본 소스 파일 간의 관계 추적
-
-**답변 생성 프로세스:**
-```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-async def answer_endpoint(request_data: AnswerRequest):
-    # 1. 벡터 검색으로 관련 노드 찾기
-    similar_nodes, Q = embedding_service.search_similar_nodes(
-        question, brain_id, top_k=5
-    )
-    
-    # 2. Neo4j에서 1단계 깊이 스키마 추출
-    graph_schema = neo4j_handler.query_schema_by_node_names(
-        [node["name"] for node in similar_nodes], brain_id
-    )
-    
-    # 3. AI 모델로 답변 생성
-    if model == "openai":
-        ai_service = get_ai_service_GPT()
-    elif model == "ollama":
-        ai_service = get_ai_service_Ollama(model_name)
-    else:
-        raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
-    
-    # 4. 스키마 텍스트 생성 및 답변 생성
-    raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
-    final_answer = ai_service.generate_answer(raw_schema_text, question)
-    
-    # 5. 참조 노드 추출 및 정확도 점수 계산
-    referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
-    final_answer = final_answer.split("EOF")[0].strip()
-    accuracy = compute_accuracy(final_answer, referenced_nodes, brain_id, Q, raw_schema_text)
-    
-    # 6. 소스 ID와 제목 매핑
-    node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
-    all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
-    id_to_title = db_handler.get_titles_by_ids(all_ids)
-    
-    # 7. 최종 구조화된 답변 반환
-    enriched = []
-    for node in referenced_nodes:
-        unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
-        sources = []
-        for sid in unique_sids:
-            if sid not in id_to_title:
-                continue
-            orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
-            sources.append({
-                "id": str(sid),
-                "title": id_to_title[sid],
-                "original_sentences": orig_sents
-            })
-        enriched.append({
-            "name": node,
-            "source_ids": sources
-        })
-    
-    # 8. AI 답변 저장 및 최종 반환
-    chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
-    
-    return {
-        "answer": final_answer,
-        "referenced_nodes": enriched,
-        "chat_id": chat_id,
-        "accuracy": accuracy
-    }
-```
-
-#### 4.1.3 인터랙티브 시각화
-- **3D 그래프 뷰**: 노드와 엣지를 직관적으로 표현
-- **실시간 하이라이팅**: 채팅 답변과 연동된 노드 강조 표시
-- **전체화면 모드**: 집중된 그래프 탐색 환경 제공
-- **애니메이션 효과**: 타임랩스 뷰를 통한 생성 과정 시각화
-- **노드 검색**: 그래프 내 특정 노드 검색 기능
-
-**그래프 데이터 조회:**
-```python
-# backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
-def get_brain_graph(self, brain_id: str) -> Dict[str, List]:
-    with self.driver.session() as session:
-        # 노드 조회
-        nodes_result = session.run("""
-            MATCH (n)
-            WHERE n.brain_id = $brain_id
-            RETURN DISTINCT n.name as name
-        """, brain_id=brain_id)
-        
-        nodes = [{"name": record["name"]} for record in nodes_result]
-        
-        # 엣지(관계) 조회
-        edges_result = session.run("""
-            MATCH (source)-[r]->(target)
-            WHERE source.brain_id = $brain_id AND target.brain_id = $brain_id
-            RETURN DISTINCT source.name as source, target.name as target, r.relation as relation
-        """, brain_id=brain_id)
-        
-        links = [
-            {
-                "source": record["source"],
-                "target": record["target"],
-                "relation": record["relation"]
+    if depth == 0:
+        # lda로 전체 텍스트의 키워드와 각 chunk의 주제간의 유사도를 구함
+        # depth가 0일 경우 lda가 추론한 전체 텍스트의 topic이 해당 chunk(==full text)의 top keyword가 됨
+        top_keyword, similarity_matrix = lda_keyword_and_similarity(chunk)
+        already_made.append(top_keyword)
+        top_keyword+="*"
+        # 지식 그래프의 루트 노드를 생성
+        top_node={"label":top_keyword,
+            "name":top_keyword,
+            "descriptions":[],
+            "source_id":source_id
             }
-            for record in edges_result
-        ]
-        
-        return {"nodes": nodes, "links": links}
-```
+        nodes_and_edges["nodes"].append(top_node)
 
-#### 4.1.4 통합 관리 시스템
-- **프로젝트 관리**: 브레인(프로젝트) 단위의 체계적 관리
-- **소스 관리**: 문서 업로드, 검색, 삭제 기능
-- **메모 시스템**: 텍스트 및 음성 메모 작성 및 관리
-- **모니터링 대시보드**: 성능 지표 및 사용 통계 실시간 확인
-- **채팅 세션 관리**: 대화 기록 저장 및 관리
-- **정확도 추적**: 답변별 정확도 점수 기록 및 분석
+        # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
+        # 이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        try:
+            if similarity_matrix.size > 0:
+                flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
+                threshold = np.quantile(flattened, 0.25)
+            else:
+                logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
+                return [], {}, []
 
-**브레인 생성 및 관리:**
-```python
-# backend/sqlite_db/brain_handler.py - 실제 프로젝트 코드
-def create_brain(self, brain_name: str, created_at: str | None = None) -> dict:
-    conn = sqlite3.connect(self.db_path)
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO Brain (brain_name, created_at)
-        VALUES (?, ?)
-    """, (brain_name, created_at or datetime.date.today().isoformat()))
-    
-    brain_id = cur.lastrowid
-    conn.commit()
-    conn.close()
-    
-    return {
-        "brain_id": brain_id,
-        "brain_name": brain_name,
-        "created_at": created_at,
-    }
-```
+        except Exception as e:
+            logging.error(f"threshold 계산 중 오류: {e}")
+            threshold = 0.5  # 기본값 설정
 
-### 4.2 개발과정 (주요 단계와 방법)
+    else:
+        # depth가 0이 아닐 경우
+        # 종료 조건 체크
+        flag = check_termination_condition(chunk, depth)
 
-#### 4.2.1 1단계: 시스템 설계 및 아키텍처 구축
-- **요구사항 분석**: 사용자 니즈 및 기술적 요구사항 정의
-- **데이터베이스 설계**: Neo4j 그래프 DB, Qdrant 벡터 DB, SQLite 관계형 DB 설계
-- **API 설계**: RESTful API 엔드포인트 설계 및 문서화
-- **프론트엔드 설계**: React 컴포넌트 구조 및 상태 관리 설계
+        if flag==3:
+            result = nonrecurrsive_chunking(chunk, similarity_matrix, top_keyword)
+            return result, nodes_and_edges, already_made
 
-#### 4.2.2 2단계: 백엔드 핵심 기능 구현
-- **텍스트 처리 파이프라인**: 청킹, 토큰화, 임베딩 생성
-- **AI 모델 통합**: OpenAI GPT 및 Ollama 모델 연동
-- **지식 그래프 생성**: 노드/엣지 추출 및 데이터베이스 저장
-- **벡터 검색 시스템**: 임베딩 기반 유사도 검색 구현
+        # chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
+        # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
+        # 만족된 종료 조건이 있을 경우
+        if flag != -1:
+            result += [{ "chunks":chunk_indices, "keyword": top_keyword}]
+            # 포맷 문자열 수정 및 변수명 오타(flag) 수정
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
+            return result , nodes_and_edges, already_made
 
-#### 4.2.3 3단계: 프론트엔드 사용자 인터페이스 구현
-- **반응형 레이아웃**: 패널 기반의 유연한 UI 구성
-- **그래프 시각화**: 3D 그래프 렌더링 및 인터랙션
-- **채팅 인터페이스**: 실시간 질의응답 UI 구현
-- **파일 관리**: 드래그 앤 드롭 파일 업로드 시스템
 
-#### 4.2.4 4단계: 고급 기능 및 최적화
-- **모니터링 시스템**: 성능 지표 및 사용 통계 수집
-- **성능 최적화**: 병렬 처리 및 메모리 최적화
-- **에러 처리**: 예외 상황 처리 및 복구 메커니즘
-- **테스트 및 검증**: 단위 테스트 및 통합 테스트 수행
+    # 입력 그룹을 더 작은 그룹으로 분할
+    new_chunk_groups = grouping_into_smaller_chunks(chunk_indices, similarity_matrix, threshold)
 
-### 4.3 결과물 (결과물에 대한 설명 및 사진, 프로젝트 실행 및 테스트 방법)
+    # 생성된 작은 그룹들의 키워드를 추출하고 노드&엣지 생성
+    nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(chunk, new_chunk_groups, top_keyword, already_made, source_id)
+    nodes_and_edges["nodes"]+=nodes
+    nodes_and_edges["edges"]+=edges
 
-#### 4.3.1 작품 사진 및 주요 기능 설명
+    # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
+    current_result = []
+    for idx, c in enumerate(go_chunk):
+        result, graph, already_made_updated = recurrsive_chunking(c, source_id ,depth+1, keywords[idx], already_made, similarity_matrix, threshold*1.1,)
+        #중복되는 노드가 만들어지지 않도록 already_made를 업데이트
+        already_made=already_made_updated
+        current_result+=(result)
+        nodes_and_edges["nodes"]+=graph["nodes"]
+        nodes_and_edges["edges"]+=graph["edges"]
 
-본 시스템은 사용자 중심의 직관적인 인터페이스를 기반으로, 브레인(프로젝트) 생성부터 소스 추가, 챗봇 질의응답, 지식그래프 시각화, 메모 작성까지 학습 전반을 통합 관리할 수 있도록 설계되었습니다.
-
-##### 패널 공통 기능
-- **접기/펼치기**: 각 패널은 필요 시 접고 펼 수 있어 작업 집중도 향상
-- **리사이즈**: 마우스를 이용한 패널 간 크기 조절 가능
-
-##### 1. 프로젝트 패널 (메인 화면)
-- **새 브레인 생성**: 홈 화면에서 신규 프로젝트 생성
-- **브레인 관리**: 기존 브레인 리스트 확인 및 설정 변경
-- **홈 이동 버튼**: 홈 화면으로 빠르게 복귀
-
-<img src=./report/img/executeScreenshot1.jpg alt="executeScreenshot1" width = "1000" />
-
-##### 2. 소스 패널 (문서 업로드 화면)
-**소스 추가**
-- 드래그 앤 드롭으로 다양한 파일 업로드 (PDF, TXT, MD, DOCX 등)
-- 로컬 탐색기를 통한 파일 선택
-
-**탐색 기능**
-- 텍스트 기반 키워드 검색으로 관련 소스 자동 추천
-
-**소스파일 기능**
-- 클릭 시 원문 확인 및 텍스트 하이라이팅 가능
-- "노드 보기"로 해당 소스로 생성된 지식 노드 확인
-
-**지식 평가**
-- 브레인(프로젝트) 전체에 대한 노드/엣지 밀도 및 연결도 기반의 지식 점수 제공
-
-**소스 삭제**
-- 연관 노드 확인 후 Neo4j에서 source_id 기반으로 안전 삭제
-
-<img src=./report/img/executeScreenshot2.jpg alt="executeScreenshot2" width = "1000" />
-
-##### 3. 채팅 패널 (채팅 인터페이스 화면)
-**채팅 세션 관리**
-- 채팅 생성, 이름 변경, 삭제 기능 제공
-
-**모델 설정**
-- GPT / Ollama 등 다양한 모델 선택 및 다운로드
-
-**답변 생성 기능**
-- 소스 기반 질의응답
-- 정확도 점수 및 참고 노드 목록 출력
-- 출처(원문 링크) 제공
-- 답변 내 노드 클릭 시 참조 문장의 원문 하이라이팅
-- 복사 버튼으로 답변 텍스트 복사 가능
-
-**하이라이팅 연동**
-- 답변에 사용된 노드를 그래프에서 자동 하이라이팅
-
-<img src=./report/img/executeScreenshot3.jpg alt="executeScreenshot3" width = "1000" />
-
-##### 4. 인사이트 패널
-
-###### 4.1 그래프 뷰 (지식 그래프 시각화 화면)
-**노드 조작**
-- 마우스로 잡아 끌어당기는 인터랙션 지원
-
-**호버 기능**
-- 노드/엣지 위에 마우스를 올리면 정보 표시 (노드 이름, 관계, 소스/타겟 등)
-
-**하이라이팅**
-- 채팅에서 참조된 노드 및 소스 추가로 생성된 노드 자동 하이라이팅
-
-**툴 아이콘**
-- 전체화면 모드 전환
-- 노드 검색 기능
-- 생성 애니메이션(타임랩스 뷰) 지원
-
-<img src=./report/img/executeScreenshot4.jpg alt="executeScreenshot4" height = "300" />
-
-###### 4.2 전체화면 모드
-- **테마 전환**: 다크모드 / 라이트모드 지원
-- **설정 기능**: 그래프 커스터마이징 설정 제공 (개선 예정)
-- **초기화**: 새로고침으로 그래프 상태 리셋
-- **패널 연동**: 타 패널의 하이라이팅 효과 연동 지원
-
-###### 4.3 메모 패널
-**메모 작성**
-- 새 메모 생성 및 편집
-- 메모를 드래그하여 소스로 변환 가능
-
-**음성 메모 기능**
-- 마이크를 통한 음성 녹음 → 텍스트 변환 저장
-
-**휴지통 관리**
-- 삭제된 메모 복원 / 완전 삭제 / 전체 비우기
-
-##### 5. 모니터링 시스템
-
-###### 5.1 전체 모니터링 페이지 (Data Overview)
-문서 당 메타데이터의 정보와 비율, 성능, 그리고 검색어의 빈도수와 같은 데이터들의 상태를 확인하는 관리자 브라우저에서 데이터베이스에 저장된 모니터링 데이터를 받습니다. 관리자는 브라우저에서 모니터링 관련 데이터들을 확인할 수 있습니다.
-
-<img src=./report/img/executeScreenshot5.jpg alt="executeScreenshot5" width = "1000" />
-
-###### 5.2 상세 모니터링 페이지 (Document Details)
-각 문서별 상세한 분석 정보와 성능 지표를 제공하여 문서의 품질과 시스템 성능을 모니터링할 수 있습니다.
-
-<img src=./report/img/executeScreenshot6.jpg alt="executeScreenshot6" width = "1000" />
-
-#### 4.3.2 프로젝트 실행 및 테스트 방법
-
-##### 설치 및 실행 방법
-1. **백엔드 실행**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   python main.py
+    return current_result, nodes_and_edges, already_made
    ```
 
-2. **프론트엔드 실행**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
+4. **노드 및 엣지 생성**:
+   각 청크에서 개념(노드)과 관계(엣지)를 추출합니다.
+
+   ```python
+   # backend/services/node_gen_ver5.py (발췌)
+   def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+       """
+       최종적으로 분할된 청크를 입력으로 호출됩니다.
+       각 청크에서 노드와 엣지를 생성하고
+       청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
+       """
+       nodes=[]
+       edges=[]
+
+       # 각 명사구가 등장한 문장의 index를 수집
+       phrase_info = defaultdict(set)
+       for s_idx, sentence in enumerate(sentences):
+           phrases=extract_noun_phrases(sentence)
+           for p in phrases:
+               phrase_info[p].add(s_idx)
+
+       phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
+       groups=group_phrases(phrases, phrase_scores, sim_matrix)
+
+       # score순으로 topic keyword를 정렬
+       sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
+       sorted_keywords=[k[0] for k in sorted_keywords]
+
+       cnt=0
+       for t in sorted_keywords:
+           if keyword != "":
+               edges+=make_edges(sentences, keyword, [t], phrase_info)
+           if t not in already_made:
+               nodes.append(make_node(t, phrase_info, sentences, source_id))
+               already_made.append(t)
+               cnt+=1
+               if t in groups:
+                   related_keywords=[]
+                   for idx in range(min(len(groups[t]), 5)):
+                       if phrases[idx] not in already_made:
+                           related_keywords.append(phrases[idx])
+                           already_made.append(phrases[idx])
+                           nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                           edges+=make_edges(sentences, t, related_keywords, phrase_info)
+
+           if cnt==5:
+               break
+
+       return nodes, edges, already_made
    ```
 
-3. **데이터베이스 설정**
-   - Neo4j 데이터베이스 실행
-   - Qdrant 벡터 데이터베이스 실행
-   - SQLite 데이터베이스 자동 생성
+5. **그래프 병합**:
+   모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
+   ```python
+   # backend/neo4j_db/Neo4jHandler.py (발췌)
+   def insert_nodes_and_edges(self, nodes, edges, brain_id):
+       def _insert(tx, nodes, edges, brain_id):
+           for node in nodes:
+               new_descriptions = [json.dumps(d, ensure_ascii=False) for d in node.get("descriptions", []) if isinstance(d, dict)]
+               new_originals = [json.dumps(o, ensure_ascii=False) for o in node.get("original_sentences", []) if isinstance(o, dict)]
+               tx.run(
+                   """
+                   MERGE (n:Node {name: $name, brain_id: $brain_id})
+                   ON CREATE SET n.label=$label, n.descriptions=$new_descriptions, n.original_sentences=$new_originals
+                   ON MATCH SET  n.label=$label,
+                                 n.descriptions = CASE WHEN n.descriptions IS NULL THEN $new_descriptions ELSE n.descriptions + [item IN $new_descriptions WHERE NOT item IN n.descriptions] END,
+                                 n.original_sentences = CASE WHEN n.original_sentences IS NULL THEN $new_originals ELSE n.original_sentences + [item IN $new_originals WHERE NOT item IN n.original_sentences] END
+                   """,
+                   name=node["name"], label=node["label"], new_descriptions=new_descriptions, new_originals=new_originals, brain_id=brain_id
+               )
+           for edge in edges:
+               tx.run(
+                   """
+                   MATCH (a:Node {name:$source, brain_id:$brain_id})
+                   MATCH (b:Node {name:$target, brain_id:$brain_id})
+                   MERGE (a)-[r:REL {relation:$relation, brain_id:$brain_id}]->(b)
+                   """,
+                   source=edge["source"], target=edge["target"], relation=edge["relation"], brain_id=brain_id
+               )
+   ```
 
-##### 테스트 방법
-1. **단위 테스트**: `backend/tests/` 디렉토리의 테스트 파일들 실행
-2. **통합 테스트**: 전체 시스템 연동 테스트
-3. **사용자 테스트**: 실제 문서 업로드 및 질의응답 테스트
+---
 
+## 청킹 함수의 동작
+
+<p>청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다.</p>
+
+<img width="960" height="460" alt="image" src="https://github.com/user-attachments/assets/ce93db48-6e44-4520-8d28-b4c3d6ea2623" />
+
+1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다.
+
+   ```python
+   def extract_noun_phrases(sentence: str) -> list[str]:
+       """
+       문장을 입력 받으면 명사구를 추출하고
+       추출한 명사구들의 리스트로 토큰화하여 반환합니다.
+       """
+       #문장을 품사를 태깅한 단어의 리스트로 변환합니다.
+       words = okt.pos(sentence, norm=True, stem=True)
+       phrases=[]
+       current_phrase=[]
+
+       for word, tag in words:
+           if '\n' in word:
+               continue
+           elif tag in ["Noun", "Alpha"]:
+               if word not in stopwords and len(word) > 1:
+                   current_phrase.append(word)
+           elif tag in ["Adjective", "Verb"] and len(word)>1 and word[-1] not in '다요죠며지만':
+               current_phrase.append(word)
+           else:
+               if current_phrase:
+                   phrase = " ".join(current_phrase)
+                   phrases.append(phrase)
+                   current_phrase = []
+
+       if current_phrase:
+           phrase = " ".join(current_phrase)
+           phrases.append(phrase)
+
+       return phrases
+
+   ```
+
+2. **LDA 모듈을 통한 주제 벡터 변환 & 유사도 계산**: 각 문장을 주제 벡터로 변환하고 벡터간의 내적값을 계산하여 행렬로 저장합니다.
+
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def lda_keyword_and_similarity(chunk:list[dict]):
+       """
+       gensim의 lda 모델을 사용하여 청크의 토픽 키워드를 추출하고
+       청크를 구성하는 각 문장의 토픽 벡터를 생성합니다.
+       각 문장의 토픽 벡터간의 유사도를 내적으로 계산하여 유사도 행렬을 생성합니다.
+       추출한 토픽 키워드, 생성한 lda 모델, 유사도 행렬을 반환합니다.
+
+       Args:
+           chunk: {"tokens": List[str], "index": int}의 리스트
+           lda_model: 재사용 가능한 LDA 모델(없으면 학습)
+           dictionary: 재사용 가능한 gensim Dictionary(없으면 생성)
+
+       Returns:
+           Tuple[str, models.LdaModel, np.ndarray]: (top_keyword, lda_model, similarity_matrix)
+       """
+       tokens = [c["tokens"] for c in chunk]
+
+       # LDA 모델이 없으면 학습하고, 있으면 재사용
+       try:
+           dictionary = corpora.Dictionary(tokens)
+           corpus = [dictionary.doc2bow(text) for text in tokens]
+           lda_model = models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=20, iterations=400, random_state=8)
+
+       except Exception as e:
+           logging.error(f"LDA 처리 중 오류 발생: {e}")
+           return "", lda_model, np.array([])
+
+       corpus = [dictionary.doc2bow(text) for text in tokens]
+
+       topic_distributions = []
+       for bow in corpus:
+           dist = lda_model.get_document_topics(bow, minimum_probability=0)
+           dense_vec = [prob for _, prob in sorted(dist, key=lambda x: x[0])]
+           topic_distributions.append(dense_vec)
+
+       topic_vectors = np.array(topic_distributions)
+       sim_matrix = cosine_similarity(topic_vectors)
+
+       # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
+       top_topic_terms = lda_model.show_topic(0, topn= 1)
+       # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
+       # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
+       top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
+
+       return top_keyword, sim_matrix
+   ```
+
+3. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
+
+   ```python
+      # backend/services/manual_chunking_sentneces.py (발췌)
+   def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, threshold:int):
+       """
+       임계값을 기준으로 입력 그룹에서 더 작은 그룹들을 생성합니다.
+       유사도 행렬을 참조하여 연속적인 두 문장 사이의 유사도가 임계값 이상이면 같은 그룹으로 묶습니다.
+
+       Args:
+           chunk:입력 그룹, 문장 인덱스의 리스트
+           similarity_matrix: 문장 간의 유사도 값을 저장하고 있는 행렬
+           threshold: 그룹화의 기준이 되는 임계값
+
+       returns:
+           new_chunk_groups: 새롭게 생성된 더 작은 그룹들
+       """
+       new_chunk_groups = []
+       visited = set()
+       for idx in range(len(chunk)):
+           if idx in visited:
+               continue
+           new_chunk = [idx]
+           visited.add(idx)
+           for next_idx in range(idx + 1, len(chunk)):
+               if next_idx in visited:
+                   continue
+               if similarity_matrix[chunk[next_idx]][chunk[next_idx-1]]>=threshold:
+                   new_chunk.append(next_idx)
+                   visited.add(next_idx)
+               else:
+                   break
+           new_chunk_groups.append(new_chunk)
+
+       return new_chunk_groups
+
+   ```
+
+4. **각 청크에서 노드 및 엣지 생성**: 각 청크에서 tf-idf 키워드를 추출하고 노드와 엣지를 생성합니다.
+
+   ```python
+   # backend/services/manual_chunking_sentences.py (발췌)
+   def extract_keywords_by_tfidf(tokenized_chunks: list[str]):
+   """토큰화된 문장 리스트에서 TF-IDF 상위 키워드를 추출합니다.
+
+   Args:
+    tokenized_chunks: 토큰화된 문장의 리스트
+
+   Returns:
+    List[List[str]]: 문단별 키워드 리스트들의 리스트
+   """
+   # 각 단어의 TF-IDF 점수를 계산한 메트릭스를 생성
+   vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=1000)
+   text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
+   tfidf_matrix = vectorizer.fit_transform(text_chunks)
+   feature_names = vectorizer.get_feature_names_out()
+
+   # 각 문단 i의 TF-IDF 벡터를 배열로 변환하고, 값이 큰 순서대로 상위 topn 키워드 선정
+   keywords_per_paragraph = []
+   for i in range(tfidf_matrix.shape[0]):
+     row = tfidf_matrix[i].toarray().flatten()
+     top_indices = row.argsort()[::-1]
+     top_keywords = [feature_names[j] for j in top_indices if row[j] > 0  ]
+     for k in top_keywords:
+         if k not in stop_words:
+             keywords_per_paragraph.append(top_keywords)
+             break
+
+   return keywords_per_paragraph
+
+   ```
+
+지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
+
+---
+
+## 결과물
+
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6" />
+      <div align="center"><b>홈 화면</b></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="스크린샷 2025-08-21 003920" src="https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151" />
+      <div align="center"><b>메인 화면</b></div>
+    </td>
+  </tr>
+</table>
+
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/2dea75e1-9a8e-4513-80a6-121650eb395b" />
+      <div align="center"><b>그래프 전체화면 (라이트모드)</b></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/5f11403c-00c8-4cf1-b4d9-07c85418c8fa" />
+      <div align="center"><b>그래프 전체화면 (다크모드)</b></div>
+    </td>
+  </tr>
+</table>
+
+### 주요 기능 데모
+
+<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/97312636-239b-4b67-89b2-0d66bee06c63" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>새 프로젝트 생성</b></div>
+      <div align="center"><sub>프로젝트 이름과 환경을 선택하여 새 프로젝트를 시작할 수 있습니다.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>업로드 시 그래프 생성</b></div>
+      <div align="center"><sub>파일을 업로드하면 자동으로 노드와 엣지가 생성되어 그래프에 반영됩니다.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/cfa1261a-5c2b-4205-ab56-88d42dc13f73" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>소스 하이라이팅</b></div>
+      <div align="center"><sub>특정 소스를 클릭하여 내용을 확인하고 하이라이팅할 수 있습니다.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>Q&A 후 참조된 노드</b></div>
+      <div align="center"><sub>답변에 사용된 노드를 그래프 뷰에서 확인할 수 있습니다.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>출처 보기</b></div>
+      <div align="center"><sub>답변에 사용된 노드가 어떤 소스를 참고했는지 확인합니다.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>소스 노드 보기</b></div>
+      <div align="center"><sub>특정 소스가 생성한 노드를 그래프 뷰에서 확인합니다.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/1c7bebe5-246b-4495-9fda-9758d610740a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>메모 작성 및 소스로 추가</b></div>
+      <div align="center"><sub>메모를 작성하고 소스로 변환하여 그래프에 반영할 수 있습니다.</sub></div>
+    </td> 
+    <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/afe3a647-cb89-47ec-a024-0b2516f154c9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>음성에서 메모 생성</b></div>
+      <div align="center"><sub>녹음된 오디오를 텍스트로 변환하여 메모로 저장합니다.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr style="background-color:#ffffff;">
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/79a58805-a6b2-4e08-88ff-6dfe9d301acd" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>소스 삭제</b></div>
+      <div align="center"><sub>특정 소스를 삭제하면 해당 소스로 생성된 노드도 함께 삭제됩니다.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/8497e9c6-d81d-4419-8509-8336fb8ab666" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>탐색 기능</b></div>
+      <div align="center"><sub>파일 내용이나 키워드로 유사한 소스를 찾습니다.</sub></div>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="height:16px;"></td></tr>
+  <tr>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>전체 화면 라이트 모드 노드 검색</b></div>
+      <div align="center"><sub>노드 검색으로 원하는 노드로 카메라를 이동합니다.</sub></div>
+    </td>
+    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
+      <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>전체 화면 다크 모드</b></div>
+      <div align="center"><sub>어두운 테마에서 그래프를 탐색하며 속성을 자유롭게 조절합니다.</sub></div>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 시연 영상
+
+<div align="center">
+  <a href="https://youtu.be/CkKStA9WHhY" target="_blank">
+    <img src="https://img.youtube.com/vi/CkKStA9WHhY/maxresdefault.jpg" alt="데모 비디오" style="width:70%; max-width:500px; border:2px solid #ddd; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); transition: transform 0.2s;" />
+  </a>
 </div>
-</details>
 
+---
 
+## 팀원 소개
 
-<br/>
-<br/>
+|                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
+| :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
+| <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
+|            [안예찬 (팀장)](https://github.com/yes6686)            |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
 
-## 🔑 GUIDES
+---
 
-BrainT 실행을 위한 모든 사항은 아래 문서를 참고해주세요.
-
-<h4>License : <a href="LICENSE">MIT License</a> / <a href="LICENSE_3rd.md">Third Party</a> </h4>
-<h4>Install : <a href="INSTALL_KO.md">KO</a> / <a href="INSTALL_EN.md">EN</a> </h4>
-<h4>Contribute : <a href="CONTRIBUTE.md">How to Contribute</a>
-<h4>Related Article : <a href="#">Knowledge Graph-based AI Chatbot System</a>
-
-<br/>
-<br/>
-
-## 📷 시연 영상
-
-하단 이미지를 클릭하시면 영상을 시청하실 수 있습니다. (youtube)
-
-[<img src="https://user-images.githubusercontent.com/example/brainT-demo.png" alt="BrainT"/>](https://www.youtube.com/watch?v=example)
-
-<br/>
-<br/>
-
-## 📖 참고자료
-
-- 지식 그래프 기술 : Neo4j. 2024. Neo4j Graph Database. https://neo4j.com/ (2024)
-- AI 모델 (GPT) : OpenAI. 2024. OpenAI API. https://openai.com/api/ (2024)
-- 한국어 언어처리 : KoNLPy. 2024. KoNLPy. https://github.com/konlpy/konlpy (2024)
-- 벡터 데이터베이스 : Qdrant. 2024. Qdrant Vector Database. https://qdrant.tech/ (2024)
-- 웹 프레임워크 : FastAPI. 2024. FastAPI. https://fastapi.tiangolo.com/ (2024)
-- 프론트엔드 프레임워크 : React. 2024. React. https://react.dev/ (2024) 
+라이선스는 저장소의 [LICENSE](./LICENSE) 파일을 참고하세요.

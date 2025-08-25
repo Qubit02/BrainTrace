@@ -335,9 +335,15 @@ function GraphView({
     () => !localStorage.getItem("추가노드팝업닫힘")
   ); // 신규노드 하이라이트 표시 여부
 
+  // 노드 이름 비교 정규화 유틸리티 (공백/대소문자 무시)
+  const normalizeName = (name) =>
+    String(name || "")
+      .trim()
+      .toLowerCase();
+
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
   const referencedSet = useMemo(
-    () => new Set(referencedNodes || []),
+    () => new Set((referencedNodes || []).map((n) => normalizeName(n))),
     [referencedNodes]
   );
 
@@ -749,6 +755,20 @@ function GraphView({
       const zoom = getInitialZoomScale(graphData.nodes.length);
       fgRef.current.centerAt(0, 0, 0);
       fgRef.current.zoom(zoom, 0);
+
+      // 초기 로드 시 시뮬레이션을 더 활발하게 시작
+      setTimeout(() => {
+        if (fgRef.current) {
+          const simulation = fgRef.current.d3Force();
+          if (simulation) {
+            // 시뮬레이션을 강하게 시작하여 노드들이 빠르게 분산되도록 함
+            simulation.alpha(1);
+            simulation.alphaDecay(0.01); // 천천히 감소하여 오래 지속
+            simulation.velocityDecay(0.2); // 속도 감소를 줄여서 더 오래 움직이도록
+            fgRef.current.d3ReheatSimulation();
+          }
+        }
+      }, 100);
     }
   }, [loading, graphData]);
 
@@ -902,7 +922,9 @@ function GraphView({
       return;
 
     const referenced = graphData.nodes.filter((n) =>
-      searchQuery ? searchReferencedSet.has(n.name) : referencedSet.has(n.name)
+      searchQuery
+        ? searchReferencedSet.has(n.name)
+        : referencedSet.has(normalizeName(n.name))
     );
     if (referenced.length === 0) return;
 
@@ -1157,11 +1179,13 @@ function GraphView({
       referencedNodes &&
       referencedNodes.length > 0 &&
       graphData.nodes.length > 0 &&
-      !graphData.nodes.some((n) => referencedNodes.includes(n.name))
+      !graphData.nodes.some((n) => referencedSet.has(normalizeName(n.name)))
     ) {
       toast.info("참고된 노드가 그래프에 없습니다.");
     }
-  }, [showReferenced, referencedNodes, graphData.nodes]);
+  }, [showReferenced, referencedNodes, graphData.nodes, referencedSet]);
+
+  const cleanNodeName = (name) => (name || "").replace(/\*$/, "");
 
   return (
     <div
@@ -1239,7 +1263,7 @@ function GraphView({
         <NodeStatusPopup
           type="NEW"
           color="#10b981"
-          nodes={newlyAddedNodeNames}
+          nodes={newlyAddedNodeNames.map(cleanNodeName)}
           onClose={() => {
             setShowNewlyAdded(false);
             setNewlyAddedNodeNames([]);
@@ -1253,11 +1277,13 @@ function GraphView({
         showReferenced &&
         referencedNodes &&
         referencedNodes.length > 0 &&
-        graphData.nodes.some((n) => referencedNodes.includes(n.name)) && (
+        graphData.nodes.some((n) =>
+          referencedSet.has(normalizeName(n.name))
+        ) && (
           <NodeStatusPopup
             type="REF"
             color="#f59e0b"
-            nodes={referencedNodes}
+            nodes={referencedNodes.map(cleanNodeName)}
             onClose={() => {
               setShowReferenced(false);
               if (onClearReferencedNodes) onClearReferencedNodes();
@@ -1272,7 +1298,7 @@ function GraphView({
           <NodeStatusPopup
             type="FOCUS"
             color="#3b82f6"
-            nodes={focusNodeNames}
+            nodes={focusNodeNames.map(cleanNodeName)}
             onClose={() => {
               setShowFocus(false);
               if (onClearFocusNodes) onClearFocusNodes();
@@ -1293,7 +1319,9 @@ function GraphView({
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-label">노드:</span>
-                <span className="tooltip-value">{hoveredNode.name}</span>
+                <span className="tooltip-value">
+                  {cleanNodeName(hoveredNode.name || hoveredNode.id)}
+                </span>
               </div>
               <div className="tooltip-row">
                 <span className="tooltip-info">
@@ -1306,11 +1334,15 @@ function GraphView({
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-value">
-                  {hoveredLink.source?.name || hoveredLink.source}
+                  {cleanNodeName(
+                    hoveredLink.source?.name || hoveredLink.source
+                  )}
                 </span>
                 <span className="tooltip-arrow">→</span>
                 <span className="tooltip-value">
-                  {hoveredLink.target?.name || hoveredLink.target}
+                  {cleanNodeName(
+                    hoveredLink.target?.name || hoveredLink.target
+                  )}
                 </span>
               </div>
               <div className="tooltip-row tooltip-indent">
@@ -1367,24 +1399,24 @@ function GraphView({
           linkWidth={customLinkWidth}
           linkDirectionalArrowLength={6.5}
           linkDirectionalArrowRelPos={1}
-          cooldownTime={5000}
-          d3VelocityDecay={0.2}
+          cooldownTime={8000} // 시뮬레이션 지속 시간 증가
+          d3VelocityDecay={0.1} // 속도 감소를 줄여서 더 오래 움직이도록
           d3Force={(fg) => {
             fg.force(
               "center",
               d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
             );
-            fg.force("collide", d3.forceCollide(50));
+            fg.force("collide", d3.forceCollide(80)); // 노드 간 충돌 거리 증가
 
-            // 초기 물리 설정 - 기본값 사용
-            fg.force("charge", d3.forceManyBody().strength(-30));
+            // 초기 물리 설정 - 더 강한 반발력과 넓은 링크 거리
+            fg.force("charge", d3.forceManyBody().strength(-150)); // 반발력 강화
             fg.force(
               "link",
               d3
                 .forceLink()
                 .id((d) => d.id)
-                .distance(100)
-                .strength(0.5)
+                .distance(200) // 링크 거리 증가
+                .strength(0.3) // 링크 장력 감소로 더 자유로운 움직임
             );
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
@@ -1399,12 +1431,12 @@ function GraphView({
             } else {
               ctx.globalAlpha = node.__opacity ?? 1;
             }
-            const label = node.name || node.id;
+            const label = cleanNodeName(node.name || node.id);
             const isReferenced =
               showReferenced &&
               (searchQuery
-                ? searchReferencedSet.has(node.name)
-                : referencedSet.has(node.name));
+                ? searchReferencedSet.has(label)
+                : referencedSet.has(normalizeName(label)));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
@@ -1412,7 +1444,7 @@ function GraphView({
               showReferenced &&
               (searchQuery
                 ? searchReferencedSet.has(label)
-                : referencedSet.has(label));
+                : referencedSet.has(normalizeName(label)));
             const r = (5 + Math.min(node.linkCount * 0.5, 3)) / globalScale;
 
             const baseSize = customNodeSize;

@@ -1,4 +1,17 @@
-// src/components/layout/ProjectPanel.jsx
+/*
+ ProjectPanel.jsx
+
+ 왼쪽 사이드바에서 프로젝트(브레인) 목록을 표시하고, 선택/생성 동작을 제공하는 컴포넌트.
+
+ 주요 기능:
+ 1. 백엔드에서 브레인 목록 조회 및 표시(최근 생성 순 정렬)
+ 2. 항목 클릭 시 해당 프로젝트로 이동 및 상위(onProjectChange)로 알림
+ 3. 새 프로젝트 생성 모달 열기(NewBrainModal)
+
+ UX/접근성:
+ - 현재 선택된 프로젝트는 비활성화 상태로 표시
+ - 로컬 프로젝트는 보안 아이콘(MdSecurity)로 구분
+*/
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -21,10 +34,12 @@ import NewBrainModal from "./NewBrainModal";
  */
 export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
   const nav = useNavigate();
+  // ===== 상태 =====
   const [brains, setBrains] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
   /* ───────── DB 호출 ───────── */
+  // 선택된 브레인이 바뀌었을 때 목록을 새로 조회하여 동기화합니다.
   useEffect(() => {
     listBrains()
       .then((data) => {
@@ -34,12 +49,23 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
   }, [selectedBrainId]);
 
   /* ───────── 이벤트 ───────── */
+  /**
+   * 프로젝트 클릭 핸들러
+   * - 상위로 선택된 id를 전달하고 해당 라우트로 이동합니다.
+   * @param {number} id - 선택한 브레인 id
+   */
   const handleProjectClick = (id) => {
     onProjectChange?.(id);
     nav(`/project/${id}`);
   };
 
   /* ───────── 프로젝트 타입 판별 ───────── */
+  /**
+   * 프로젝트 타입(cloud/local) 판별
+   * - 우선적으로 `deployment_type`을 사용하고, 없을 경우 이름으로 추정합니다.
+   * @param {object} brain
+   * @returns {"cloud"|"local"}
+   */
   const getProjectType = (brain) => {
     // deployment_type 필드가 있으면 우선 사용
     if (brain.deployment_type) {
@@ -58,6 +84,11 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
     return "local";
   };
 
+  /**
+   * 타입 라벨 반환
+   * @param {"cloud"|"local"} type
+   * @returns {string}
+   */
   const getProjectTypeTitle = (type) => {
     return type === "cloud" ? "클라우드 프로젝트" : "로컬 프로젝트";
   };
@@ -69,6 +100,7 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
         <div className="sidebar-icons">
           {brains
             .slice()
+            // 최근 생성 순서(내림차순)로 정렬
             .sort((a, b) => b.brain_id - a.brain_id)
             .map((b) => {
               const projectType = getProjectType(b);

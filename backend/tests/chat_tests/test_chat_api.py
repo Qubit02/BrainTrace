@@ -9,7 +9,28 @@ from test_utils import TestDataManager, test_transaction
 
 # 테스트 설정
 BASE_URL = "http://localhost:8000"
-TEST_BRAIN_ID = 1
+
+def get_or_create_test_brain():
+    """테스트용 Brain을 생성하거나 기존 것을 반환"""
+    try:
+        # 기존 Brain 목록 조회
+        response = requests.get(f"{BASE_URL}/brains/", timeout=30)
+        if response.status_code == 200:
+            brains = response.json()
+            if brains:
+                return brains[0]["brain_id"]  # 첫 번째 Brain 사용
+        
+        # Brain이 없으면 생성
+        brain_data = {"brain_name": "테스트용 브레인"}
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
+        if response.status_code == 201:
+            return response.json()["brain_id"]
+    except Exception as e:
+        print(f"Brain 생성/조회 실패: {e}")
+    
+    return 1  # 기본값
+
+TEST_BRAIN_ID = get_or_create_test_brain()
 
 class TestChatApi:
     """Chat API 테스트"""
@@ -27,7 +48,7 @@ class TestChatApi:
             "brain_id": TEST_BRAIN_ID
         }
         
-        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data)
+        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data, timeout=30)
         assert response.status_code == 200
         
         result = response.json()
@@ -45,7 +66,7 @@ class TestChatApi:
         self.test_chat_session_creation()
         
         # 세션 조회
-        response = requests.get(f"{BASE_URL}/chatsession/{self.created_session_id}")
+        response = requests.get(f"{BASE_URL}/chatsession/{self.created_session_id}", timeout=30)
         assert response.status_code == 200
         
         result = response.json()
@@ -57,7 +78,7 @@ class TestChatApi:
     
     def test_chat_session_list_retrieval(self):
         """채팅 세션 목록 조회 테스트"""
-        response = requests.get(f"{BASE_URL}/chatsession/")
+        response = requests.get(f"{BASE_URL}/chatsession/", timeout=30)
         assert response.status_code == 200
         
         sessions = response.json()
@@ -83,7 +104,7 @@ class TestChatApi:
         self.test_chat_session_creation()
         
         # 세션 삭제
-        response = requests.delete(f"{BASE_URL}/chatsession/{self.created_session_id}")
+        response = requests.delete(f"{BASE_URL}/chatsession/{self.created_session_id}", timeout=30)
         assert response.status_code == 200
         
         result = response.json()
@@ -93,7 +114,7 @@ class TestChatApi:
         print("채팅 세션 삭제 성공")
         
         # 삭제 확인
-        response = requests.get(f"{BASE_URL}/chatsession/{self.created_session_id}")
+        response = requests.get(f"{BASE_URL}/chatsession/{self.created_session_id}", timeout=30)
         # 삭제된 세션은 조회할 수 없어야 함
         assert response.status_code == 404
         
@@ -162,7 +183,7 @@ class TestChatApi:
             "brain_name": "채팅 테스트 브레인"
         }
         
-        response = requests.post(f"{BASE_URL}/brains/", json=brain_data)
+        response = requests.post(f"{BASE_URL}/brains/", json=brain_data, timeout=30)
         assert response.status_code == 201
         
         brain_id = response.json()["brain_id"]
@@ -173,14 +194,14 @@ class TestChatApi:
             "brain_id": brain_id
         }
         
-        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data)
+        response = requests.post(f"{BASE_URL}/chatsession/", json=session_data, timeout=30)
         assert response.status_code == 200
         
         session_id = response.json()["session_id"]
         self.data_manager.add_session_id(session_id)
         
         # 세션 목록에서 Brain ID 확인
-        response = requests.get(f"{BASE_URL}/chatsession/")
+        response = requests.get(f"{BASE_URL}/chatsession/", timeout=30)
         assert response.status_code == 200
         
         sessions = response.json()
@@ -191,7 +212,7 @@ class TestChatApi:
         
         # 정리
         try:
-            requests.delete(f"{BASE_URL}/brains/{brain_id}")
+            requests.delete(f"{BASE_URL}/brains/{brain_id}", timeout=30)
         except:
             pass
     

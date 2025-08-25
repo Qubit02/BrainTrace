@@ -314,7 +314,7 @@ async def get_textfiles_by_brain(brain_id: int):
 
 # ───────── 파일 업로드 관련 ───────── #
 
-UPLOAD_TXT_DIR = "uploaded_txts"
+UPLOAD_TXT_DIR = os.path.join("C:\\brainT\\backend\\uploaded_files", "uploaded_txts")
 os.makedirs(UPLOAD_TXT_DIR, exist_ok=True)
 
 def sanitize_filename(name):

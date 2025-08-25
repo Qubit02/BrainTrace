@@ -1,4 +1,27 @@
-// GraphViewForFullscreen.jsx - 반발력, 링크거리, 링크장력 3개만 구현
+/*
+ GraphViewForFullscreen.jsx
+ 
+ 전체화면 그래프 보기 컴포넌트
+ 
+ 주요 기능:
+ 1. 전체화면 모드에서 그래프 탐색/검색/하이라이트 제어
+ 2. 다크모드 토글 및 고급 설정 패널 제공
+ 3. 그래프 통계(노드/링크/하이라이트) 표시
+ 4. 핵심 커스터마이징(노드 크기/링크 두께/텍스트 투명도 + 반발력/링크 거리/장력)
+ 
+ UI 구성:
+ - SpaceBackground: 다크모드 시 우주 배경
+ - GraphView: 실제 그래프 렌더링 뷰(풀스크린 플래그, 커스터마이징 전달)
+ - Toolbar: 좌측 검색/우측 토글들(다크모드/설정/새로고침/해제)
+ - Advanced Controls Panel: 표시/물리 슬라이더 제어
+ - Status Bar: 현재 하이라이트/포커스/새 노드 상태, 단축키 도움말
+ 
+ 상호작용/단축키:
+ - Ctrl/Cmd + F: 검색 입력 포커스
+ - Ctrl/Cmd + K: 고급 설정 패널 토글
+ - Ctrl/Cmd + D: 다크모드 토글
+ - ESC: 닫기 및 초기화
+ */
 
 import React, { useState, useEffect, useCallback } from "react";
 import GraphView from "./GraphView";
@@ -16,8 +39,29 @@ import {
   FiLoader,
 } from "react-icons/fi";
 
+// ===== 메인 컴포넌트 =====
+/**
+ * 전체화면 그래프 뷰 컴포넌트
+ *
+ * 전달 props:
+ * - isFullscreen?: boolean            전체화면 렌더링 여부 (기본값: true)
+ * - referencedNodes?: string[]        하이라이트할 노드 이름 배열
+ * - focusNodeNames?: string[]         포커스할 노드 이름 배열
+ * - brainId?: string | number         그래프 동기화용 식별자 (localStorage 신호에 활용)
+ * - onGraphDataUpdate?: (data) => void 그래프 데이터 변경 시 상위로 전달
+ * - onNewlyAddedNodes?: (names) => void 신규 노드 감지 시 상위로 전달 (GraphView에서 사용)
+ * - onClearHighlights?: () => void    하이라이트 초기화 핸들러 (없다면 localStorage 신호 사용)
+ * - onRefresh?: () => void            그래프 새로고침 핸들러 (없다면 localStorage 신호 사용)
+ * - onClose?: () => void              ESC 시 전체화면 종료 등 상위 처리
+ * - 그 외 props는 GraphView로 전달됩니다.
+ *
+ * 반환:
+ * - 전체화면 컨테이너 + GraphView + 오버레이 UI(툴바/패널/상태바)
+ */
 function GraphViewForFullscreen(props) {
   const { isFullscreen = true, ...restProps } = props;
+
+  // ===== 상태/설정 =====
   const [allNodes, setAllNodes] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [localReferencedNodes, setLocalReferencedNodes] = useState(
@@ -32,10 +76,10 @@ function GraphViewForFullscreen(props) {
   // 다크모드 상태
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 상단에 색상 변수 선언
+  // 색상 상수 (다크/라이트에 따라 자동 전환)
   const ICON_COLOR = isDarkMode ? "white" : "black";
 
-  // 핵심 커스터마이징 + 3개 물리 설정
+  // 핵심 커스터마이징 + 3개 물리 설정 (0-100 스케일)
   const [graphSettings, setGraphSettings] = useState({
     nodeSize: 6, // 노드 크기
     linkWidth: 1, // 링크 두께
@@ -47,12 +91,27 @@ function GraphViewForFullscreen(props) {
     linkStrength: 40, // 링크 장력
   });
 
-  // 다크모드 토글 함수
+  // ===== 콜백 =====
+  /**
+   * 다크모드 토글
+   * - 상태를 반전시켜 배경/아이콘 색 등 UI를 전환합니다.
+   */
   const toggleDarkMode = () => {
     setIsDarkMode((prev) => !prev);
   };
 
-  // GraphView에서 그래프 데이터 업데이트 시 처리
+  /**
+   * 그래프 데이터 업데이트 핸들러
+   *
+   * @param {Object} graphData - GraphView에서 전달되는 그래프 데이터
+   * @param {Array} graphData.nodes - 노드 배열
+   * @param {Array} graphData.links - 링크 배열
+   *
+   * 동작:
+   * - 모든 노드의 이름을 수집하여 검색용 목록(allNodes)으로 저장
+   * - 그래프 통계(노드/링크 수) 업데이트
+   * - 상위 onGraphDataUpdate 콜백이 존재하면 그대로 전달
+   */
   const handleGraphDataUpdate = useCallback(
     (graphData) => {
       if (graphData && graphData.nodes) {
@@ -69,15 +128,37 @@ function GraphViewForFullscreen(props) {
     [props.onGraphDataUpdate]
   );
 
+  /**
+   * 신규 추가 노드 감지 핸들러
+   *
+   * @param {string[]} nodeNames - 새로 추가된 노드들의 이름 배열
+   *
+   * 동작:
+   * - 상태에 저장하여 상태바 및 GraphView 하이라이트에 반영
+   */
   const handleNewlyAddedNodes = useCallback((nodeNames) => {
     console.log("풀스크린에서 새로 추가된 노드 감지:", nodeNames);
     setNewlyAddedNodes(nodeNames || []);
   }, []);
 
+  // ===== 이펙트 =====
+  /**
+   * 상위에서 전달되는 referencedNodes 변경 시 로컬 상태 동기화
+   */
   useEffect(() => {
     setLocalReferencedNodes(props.referencedNodes || []);
   }, [props.referencedNodes]);
 
+  /**
+   * 노드명 검색 핸들러
+   *
+   * @param {string} query - 검색어(공백 분리 멀티 토큰 지원)
+   *
+   * 동작:
+   * - allNodes에서 검색어 토큰 중 하나라도 포함하는 노드명을 매칭
+   * - 매칭 결과를 하이라이트 대상으로 설정
+   * - 빈 검색어나 노드가 없으면 상위에서 내려온 referencedNodes로 복원
+   */
   const handleSearch = useCallback(
     (query) => {
       if (!query.trim() || allNodes.length === 0) {
@@ -95,6 +176,15 @@ function GraphViewForFullscreen(props) {
     [allNodes, props.referencedNodes]
   );
 
+  /**
+   * 검색 입력 처리 핸들러
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e
+   *
+   * 동작:
+   * - 입력값을 상태에 반영하고 로딩 애니메이션 표시
+   * - 300ms 지연 후 실제 검색(handleSearch) 실행
+   */
   const handleSearchInput = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
@@ -107,6 +197,13 @@ function GraphViewForFullscreen(props) {
     }, 300);
   };
 
+  /**
+   * 검색/하이라이트 초기화
+   *
+   * 동작:
+   * - 검색어 및 하이라이트 상태를 모두 초기화
+   * - onClearHighlights 콜백이 있으면 호출, 없으면 localStorage 신호 발행
+   */
   const clearSearch = () => {
     console.log("검색 및 하이라이트 해제");
     setSearchQuery("");
@@ -128,7 +225,14 @@ function GraphViewForFullscreen(props) {
     }
   };
 
-  // 키보드 단축키
+  /**
+   * 키보드 단축키 이펙트
+   *
+   * - Ctrl/Cmd + F: 검색창 포커스
+   * - ESC: 닫기(onClose) 호출 후 검색 초기화
+   * - Ctrl/Cmd + K: 고급 설정 패널 토글
+   * - Ctrl/Cmd + D: 다크모드 토글
+   */
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {

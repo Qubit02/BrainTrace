@@ -1,3 +1,48 @@
+
+"""
+로컬 SQLite 핸들러 (초기화 / 시퀀스-ID 발급)
+---------------------------------------
+
+이 클래스는 앱 내부에서 사용할 **로컬 SQLite DB**를 초기화하고, 공용 시퀀스 테이블을 통해
+증가형 ID를 발급하는 유틸리티입니다.
+
+핵심 기능
+- 경로 설정: 인자 미지정 시 현재 파일의 부모 디렉터리 기준 `backend/data/sqlite.db` 생성.
+- DB 초기화(`_init_db`):
+  - 연결 옵션: `timeout=30`, `check_same_thread=False`
+  - PRAGMA: `journal_mode=WAL`, `busy_timeout=30000`
+  - 테이블 생성:
+    - `Sequence(name PRIMARY KEY, value INTEGER)`  ← 전역 시퀀스 저장
+    - `Brain(brain_id AUTOINCREMENT, brain_name, created_at, is_important, deployment_type)`
+    - `Memo(memo_id, memo_text, memo_title, memo_date, is_source, type, brain_id, is_deleted)`
+    - `Pdf(pdf_id, pdf_title, pdf_date, pdf_path, brain_id, type, pdf_text)`
+    - `TextFile(txt_id, txt_title, txt_date, txt_path, brain_id, type, txt_text)`
+    - `MDFile(md_id, md_title, md_path, md_date, type, brain_id, md_text)`
+    - `DocxFile(docx_id, docx_title, docx_path, docx_date, type, brain_id, docx_text)`
+    - `Chat(chat_id, session_id, is_ai, message, referenced_nodes, accuracy)`
+    - `ChatSession(session_id AUTOINCREMENT, session_name, created_at, brain_id)`
+  - 초기 시퀀스 값: `('content_id', 0)` 삽입(있으면 무시).
+  - 완료 후 `commit` 및 로그 출력.
+- 시퀀스 발급(`_get_next_id`):
+  - 트랜잭션으로 `Sequence` 테이블의 `content_id` 값을 읽어 `+1` 업데이트 후 반환.
+
+동시성/트랜잭션
+- WAL 모드 + `busy_timeout`으로 다중 접근에 대비.
+- `_get_next_id()`는 `BEGIN TRANSACTION`으로 원자적 증가를 보장.
+- **반드시** `_init_db()`가 선행되어 `Sequence` 레코드가 존재해야 함.
+
+사용 예시
+- 앱 시작 시 `BaseHandler(...). _init_db()`로 스키마 준비.
+- 신규 리소스 ID가 필요할 때 `_get_next_id()` 호출.
+
+주의/안내
+- 현재 구현은 예외 발생 시 `finally`에서 `conn` 참조가 없을 수 있으므로, 실제 운용 시에는
+  `conn`을 `None`으로 초기화 후 존재 여부 체크 뒤 close 하는 패턴 권장.
+- `_get_next_id()` 연결에서는 PRAGMA들이 다시 설정되지 않으므로, 필요 시 동일 PRAGMA를
+  재적용하거나 **공용 커넥션/커넥션 팩토리**를 사용하는 구조로 개선 권장.
+- 스키마 변경 시 마이그레이션 전략(버전 관리)이 필요할 수 있음.
+"""
+
 import sqlite3, json, logging, os, hashlib, datetime
 from typing import List, Dict, Any, Optional
 

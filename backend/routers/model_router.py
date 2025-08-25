@@ -60,17 +60,37 @@ AVAILABLE_MODELS = [
 # ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(prefix="/models", tags=["models"])
 
-# Ollama 서버 기본 URL (서비스명:포트)
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://ollama:11434")
+# ───────── Ollama 서버 URL 환경별 설정 ───────── #
+def get_ollama_api_url() -> str:
+    """
+    실행 환경에 따라 Ollama API URL을 결정합니다.
+    
+    - Docker 환경: ollama:11434 (서비스명으로 접근)
+    - 로컬 환경: localhost:11434
+    
+    Returns:
+        str: Ollama API 기본 URL
+    """
+    # 환경변수로 명시적 설정이 있으면 우선 사용
+    if os.getenv("OLLAMA_API_URL"):
+        return os.getenv("OLLAMA_API_URL")
+    
+    # 도커 환경 감지
+    if os.getenv("IN_DOCKER") == "true":
+        return "http://ollama:11434"
+    else:
+        return "http://localhost:11434"
+
+OLLAMA_API_URL = get_ollama_api_url()
 
 
 def get_installed_models() -> List[str]:
     """
-    Ollama HTTP API(GET /v1/models)로 설치된 모델 목록을 조회합니다.
+    Ollama HTTP API(GET /api/tags)로 설치된 모델 목록을 조회합니다.
 
     처리 과정:
-    1. GET {OLLAMA_API_URL}/v1/models 호출 (10초 타임아웃)
-    2. 응답 JSON의 `data` 필드에서 모델 ID 목록 추출
+    1. GET {OLLAMA_API_URL}/api/tags 호출 (10초 타임아웃)
+    2. 응답 JSON의 `models` 필드에서 모델 정보 추출
     3. 모델명 리스트 반환
 
     Returns:
@@ -80,15 +100,15 @@ def get_installed_models() -> List[str]:
         Exception: API 호출 또는 파싱 중 오류 발생 시
     """
     try:
-        resp = requests.get(f"{OLLAMA_API_URL}/v1/models", timeout=10)
+        resp = requests.get(f"{OLLAMA_API_URL}/api/tags", timeout=10)
         resp.raise_for_status()
         payload = resp.json()
-        data = payload.get("data") or []
+        models = payload.get("models") or []
         installed = []
-        for entry in data:
-            # entry가 dict 형태로 {'id': 'gemma3:4b', ...}
-            if isinstance(entry, dict) and entry.get("id"):
-                installed.append(entry["id"])
+        for model in models:
+            # model이 dict 형태로 {'name': 'gemma3:4b', ...}
+            if isinstance(model, dict) and model.get("name"):
+                installed.append(model["name"])
         return installed
     except Exception as e:
         logging.error(f"설치된 모델 목록 조회 실패: {e}")
@@ -112,6 +132,32 @@ def list_models():
     ]
 
 
+@router.get("/installed")
+def get_installed_models_info():
+    """
+    Ollama에 실제 설치된 모델들의 상세 정보를 반환합니다.
+    
+    Returns:
+        Dict: 설치된 모델 목록과 각 모델의 상세 정보
+    """
+    try:
+        resp = requests.get(f"{OLLAMA_API_URL}/api/tags", timeout=10)
+        resp.raise_for_status()
+        payload = resp.json()
+        
+        # Ollama /api/tags 응답 그대로 반환 (모델 상세 정보 포함)
+        return {
+            "models": payload.get("models", []),
+            "total_count": len(payload.get("models", []))
+        }
+    except Exception as e:
+        logging.error(f"설치된 모델 상세 정보 조회 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get installed models info: {e}"
+        )
+
+
 @router.post("/{model_name}/install")
 def install_model(model_name: str):
     """
@@ -126,7 +172,7 @@ def install_model(model_name: str):
 
     try:
         logging.info(f"모델 '{model_name}' 다운로드 시작...")
-        # HTTP API를 통한 모델 풀 요청
+        # Ollama HTTP API를 통한 모델 풀 요청
         resp = requests.post(
             f"{OLLAMA_API_URL}/api/pull",
             json={"model": model_name},

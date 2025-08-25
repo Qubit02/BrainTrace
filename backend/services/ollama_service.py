@@ -1,18 +1,25 @@
 """
-services/ollama_service.py
+Ollama LLM 서비스 구현체
+-----------------------
 
-Ollama AI 모델 관리 및 채팅 API 서비스 구현체입니다.
+Ollama HTTP API를 사용하여 모델 준비(옵션), 채팅/생성 호출, 텍스트에서 그래프 구성요소 추출,
+스키마 텍스트 생성, 질의응답 등을 수행합니다.
 
-주요 기능:
-- AI 모델 설치 (HTTP API로 다운로드)
-- 단일/스트림 채팅 요청 (HTTP API)
-- 노드·엣지 추출, 컨텍스트 생성, 답변 생성
+핵심 기능:
+- 모델 자동 풀링(환경변수에 따라) 및 API URL 환경별 결정
+- 긴 텍스트 청킹 후 각 청크에서 노드/엣지 추출 → 중복 정리
+- description과 문장 임베딩 간 유사도로 `original_sentences` 산출
+- 스키마 텍스트를 만들고, 이를 기반으로 답변 생성
 
 의존성:
-- FastAPI 기반 애플리케이션에서 사용
 - requests: Ollama HTTP API 호출
-- dotenv: 환경변수 로드
-- 기타: scikit-learn, numpy, 사용자 정의 BaseAIService 등
+- dotenv: 환경 변수 로딩
+- scikit-learn / numpy: 코사인 유사도 및 배열 연산
+- 프로젝트 서비스: `BaseAIService`, `chunk_text`, `manual_chunking`, `encode_text`
+
+주의:
+- 외부 HTTP 호출이 포함되므로 타임아웃/네트워크 오류를 고려하고 로깅합니다.
+- Ollama API의 응답 스키마(`api/chat`, `api/generate`) 차이를 반영하여 파싱합니다.
 """
 
 import os
@@ -24,7 +31,6 @@ import requests
 from dotenv import load_dotenv
 
 from .base_ai_service import BaseAIService
-from .chunk_service import chunk_text
 from .embedding_service import encode_text
 from .manual_chunking_sentences import manual_chunking
 from sklearn.metrics.pairwise import cosine_similarity
@@ -32,11 +38,38 @@ import numpy as np
 
 # 환경변수 로드
 load_dotenv()
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://ollama:11434")
+
+# ───────── Ollama 서버 URL 환경별 설정 ───────── #
+def get_ollama_api_url() -> str:
+    """
+    실행 환경에 따라 Ollama API URL을 결정합니다.
+    
+    - Docker 환경: ollama:11434 (서비스명으로 접근)
+    - 로컬 환경: localhost:11434
+    
+    Returns:
+        str: Ollama API 기본 URL
+    """
+    # 환경변수로 명시적 설정이 있으면 우선 사용
+    if os.getenv("OLLAMA_API_URL"):
+        return os.getenv("OLLAMA_API_URL")
+    
+    # 도커 환경 감지
+    if os.getenv("IN_DOCKER") == "true":
+        return "http://ollama:11434"
+    else:
+        return "http://localhost:11434"
+
+OLLAMA_API_URL = get_ollama_api_url()
 OLLAMA_PULL_MODEL = os.getenv("OLLAMA_PULL_MODEL", "false").lower() in ("1", "true", "yes")
 
 
 class OllamaAIService(BaseAIService):
+    """Ollama HTTP API를 사용하는 그래프/QA 서비스 구현체.
+
+    Args:
+        model_name: 사용할 Ollama 모델 이름(예: "gemma3:4b")
+    """
     def __init__(self, model_name: str):
         self.model_name = model_name
 
@@ -44,7 +77,7 @@ class OllamaAIService(BaseAIService):
         if OLLAMA_PULL_MODEL:
             try:
                 resp = requests.post(
-                    f"{OLLAMA_API_URL}/api/pull",        # 모델 풀링 엔드포인트 :contentReference[oaicite:6]{index=6}
+                    f"{OLLAMA_API_URL}/api/pull",        # 모델 풀링 엔드포인트
                     json={"model": self.model_name},
                     timeout=60
                 )
@@ -55,6 +88,11 @@ class OllamaAIService(BaseAIService):
                 logging.warning(f"Ollama 모델 '{self.model_name}' 풀링 오류: {e}")
 
     def extract_referenced_nodes(self, llm_response: str) -> List[str]:
+        """응답 텍스트의 EOF 이후 JSON에서 `referenced_nodes`만 추출.
+
+        - "레이블-노드" 형식이면 '-' 기준으로 레이블 제거 후 노드명만 반환
+        - JSON 파싱 실패 시 빈 리스트 반환
+        """
         parts = llm_response.split("EOF")
         if len(parts) < 2:
             return []
@@ -72,8 +110,15 @@ class OllamaAIService(BaseAIService):
     def extract_graph_components(
         self, text: str, source_id: str
     ) -> Tuple[List[Dict], List[Dict]]:
+        """텍스트에서 노드/엣지 추출.
+
+        처리 흐름:
+          - 길이≥2000이면 청킹(`chunk_text`), 아니면 원문 단일 청크 처리
+          - 청크별 `_extract_from_chunk` 호출
+          - 노드/엣지 중복 제거 후 반환
+        """
         all_nodes, all_edges = [], []
-        chunks = chunk_text(text) if len(text) >= 2000 else [text]
+        chunks = manual_chunking(text) if len(text) >= 2000 else [text]
         logging.info(f"총 {len(chunks)}개 청크로 분할")
         for idx, chunk in enumerate(chunks, 1):
             logging.info(f"청크 {idx}/{len(chunks)} 처리")
@@ -89,6 +134,13 @@ class OllamaAIService(BaseAIService):
     def _extract_from_chunk(
         self, chunk: str, source_id: str
     ) -> Tuple[List[Dict], List[Dict]]:
+        """단일 청크에서 노드/엣지 및 `original_sentences` 계산.
+
+        단계:
+          1) 프롬프트 구성 → Ollama `/api/chat` 호출(비스트리밍)
+          2) 결과 JSON 파싱 및 노드/엣지 검증/정규화
+          3) 문장 청킹(`manual_chunking`)과 임베딩으로 original_sentences 구성
+        """
         prompt = (
             "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
             # ...기존 프롬프트 내용 그대로 유지...
@@ -97,7 +149,7 @@ class OllamaAIService(BaseAIService):
         try:
             # Ollama 네이티브 chat 엔드포인트 호출
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:7]{index=7}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트
                 json={
                     "model": self.model_name,
                     "messages": [
@@ -110,7 +162,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            content = data["message"]["content"]       # Ollama 응답 스키마 파싱 :contentReference[oaicite:8]{index=8}
+            content = data["message"]["content"]       # Ollama 응답 스키마 파싱
             parsed = json.loads(content)
         except Exception as e:
             logging.error(f"_extract_from_chunk 오류: {e}")
@@ -147,6 +199,7 @@ class OllamaAIService(BaseAIService):
                 node["original_sentences"] = []
             return valid_nodes, valid_edges
 
+        # 모든 문장 임베딩 한 번에 계산(성능 최적화)
         sentence_embeds = np.vstack([encode_text(s) for s in sentences])
         threshold = 0.8
         for node in valid_nodes:
@@ -178,6 +231,7 @@ class OllamaAIService(BaseAIService):
 
     # 중복 제거 유틸리티 (기존 로직 유지)
     def _remove_duplicate_nodes(self, nodes: List[Dict]) -> List[Dict]:
+        """동일 (name, label) 노드 병합. `descriptions`는 합칩니다."""
         seen = set(); unique = []
         for node in nodes:
             key = (node["name"], node["label"])
@@ -192,6 +246,7 @@ class OllamaAIService(BaseAIService):
         return unique
 
     def _remove_duplicate_edges(self, edges: List[Dict]) -> List[Dict]:
+        """동일 (source, target, relation) 엣지는 하나만 유지합니다."""
         seen = set(); unique = []
         for edge in edges:
             key = (edge["source"], edge["target"], edge["relation"])
@@ -201,6 +256,11 @@ class OllamaAIService(BaseAIService):
         return unique
 
     def generate_answer(self, schema_text: str, question: str) -> str:
+        """스키마 텍스트와 질문으로 Ollama `/api/generate` 호출.
+
+        - 출력 마지막에 EOF와 JSON(referenced_nodes)을 포함하도록 프롬프트 유도
+        - 스트리밍 비활성화, 타임아웃 지정
+        """
         prompt = (
             "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
             "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
@@ -221,7 +281,7 @@ class OllamaAIService(BaseAIService):
         try:
             print("debug", schema_text, question)
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트 :contentReference[oaicite:9]{index=9}
+                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트
                 json={
                     "model": self.model_name,
                     "prompt": prompt,
@@ -231,7 +291,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["response"].strip()            # Ollama /api/generate 응답 파싱 :contentReference[oaicite:10]{index=10}
+            return data["response"].strip()            # Ollama /api/generate 응답 파싱
         except Exception as e:
             logging.error(f"generate_answer 오류: {e}")
             raise
@@ -246,6 +306,7 @@ class OllamaAIService(BaseAIService):
 
 
         def to_dict(obj):
+            """객체/레코드를 dict로 관용 변환(Neo4j 드라이버 호환)."""
             try:
                 if obj is None:
                     return {}
@@ -258,9 +319,11 @@ class OllamaAIService(BaseAIService):
             return {}
 
         def normalize_space(s: str) -> str:
+            """여러 공백을 하나로 통일."""
             return " ".join(str(s).split())
 
         def filter_node(node_obj):
+            """name/label/original_sentences만 추출해 정규화."""
             d = to_dict(node_obj)
             name = normalize_space(d.get("name", "알 수 없음") or "")
             label = normalize_space(d.get("label", "알 수 없음") or "")
@@ -388,7 +451,7 @@ class OllamaAIService(BaseAIService):
         """
         try:
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트 :contentReference[oaicite:11]{index=11}
+                f"{OLLAMA_API_URL}/api/chat",          # chat 엔드포인트
                 json={
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": message}],
@@ -398,7 +461,7 @@ class OllamaAIService(BaseAIService):
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["message"]["content"].strip()  # Ollama /api/chat 응답 파싱 :contentReference[oaicite:12]{index=12}
+            return data["message"]["content"].strip()  # Ollama /api/chat 응답 파싱
         except Exception as e:
             logging.error(f"chat 오류: {e}")
             raise

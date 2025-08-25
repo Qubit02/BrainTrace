@@ -1,3 +1,17 @@
+'''
+BrainTrace 앱 초기화 모듈 (app_factory)
+
+- FastAPI 애플리케이션 인스턴스 생성 및 수명주기(lifespan) 관리
+- 실행 환경 감지(Docker/로컬) 후 Neo4j/Ollama 준비 및 종료 제어
+- SQLite 초기화, CORS/예외 처리, 정적 파일 서빙 설정
+- 주요 라우터 등록(brain_graph, brain, memo 등)
+- run_neo4j로 Neo4j 기동, ensure_ollama_ready로 Ollama 준비
+
+주의:
+- Docker 환경: 외부 컨테이너(neo4j, ollama)는 기동되어 있다고 가정 → ensure_ollama_ready 로 HTTP 준비 대기
+'''
+
+
 # src/app_factory.py
 import os, signal, logging
 from contextlib import asynccontextmanager
@@ -22,10 +36,11 @@ from routers import (
 
 # ── Docker 감지 유틸 ────────────────────────────────
 def is_running_in_docker() -> bool:
-    """
-    도커 환경 여부 감지:
-      1) IN_DOCKER=true|1|yes
-      2) /.dockerenv 존재
+    """도커 환경 여부를 판단합니다.
+
+    규칙:
+      1) 환경변수 IN_DOCKER=true|1|yes
+      2) 파일 /.dockerenv 존재
       3) /proc/1/cgroup 내 'docker' 또는 'kubepods' 문자열
     """
     env_val = os.getenv("IN_DOCKER", "").lower() in ("1", "true", "yes")
@@ -46,6 +61,27 @@ def is_running_in_docker() -> bool:
     )
     return result
 
+def create_uploaded_files_directory():
+    # Define the paths for the uploaded_files directory and its subdirectories
+    base_path = os.path.join(os.path.dirname(__file__), 'uploaded_files')
+    subdirectories = ['uploaded_txts', 'uploaded_pdfs', 'uploaded_docx', 'uploaded_mds']
+
+    # Create the base directory if it doesn't exist
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+        logging.info(f"Created directory: {base_path}")
+
+    # Create each subdirectory if it doesn't exist
+    for subdirectory in subdirectories:
+        sub_path = os.path.join(base_path, subdirectory)
+        if not os.path.exists(sub_path):
+            os.makedirs(sub_path)
+            logging.info(f"Created subdirectory: {sub_path}")
+
+# Call the function to ensure the directories are created
+create_uploaded_files_directory()
+
+
 # ── 로깅 기본 설정 ───────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
@@ -60,9 +96,21 @@ sqlite_handler = SQLiteHandler()
 neo4j_process = None
 ollama_process = None  # ensure_ollama_ready가 프로세스를 리턴할 수 있음(로컬/EXE)
 
+# ── Lifespan: 앱 기동/종료 시 초기화/정리 ─────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global neo4j_process, ollama_process
+    """앱 수명주기 동안 필요한 리소스를 준비/정리합니다.
+
+    시작 시:
+      - SQLite 초기화
+      - Docker 여부에 따라 Neo4j/Ollama 준비 로직 분기
+        • Docker: 외부 컨테이너 준비 대기만
+        • 로컬/EXE: Neo4j 내장 실행, Ollama 준비(필요 시 spawn)
+
+    종료 시:
+      - 보유한 프로세스(Neo4j/Ollama) 정상 종료 시도
+    """
 
     # 1) SQLite 초기화
     sqlite_handler._init_db()
@@ -141,8 +189,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── 전역 예외 처리 ─────────────────────────────────
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
+    """도메인 예외(AppException)를 표준 에러 응답으로 변환합니다."""
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
@@ -162,7 +212,7 @@ for r in (
     app.include_router(r)
 
 # ── 정적 파일 ───────────────────────────────────
-app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_pdfs"), name="uploaded_pdfs")
-app.mount("/uploaded_txts", StaticFiles(directory="uploaded_txts"), name="uploaded_txts")
-app.mount("/uploaded_mds", StaticFiles(directory="uploaded_mds"), name="uploaded_mds")
-app.mount("/uploaded_docx", StaticFiles(directory="uploaded_docx"), name="uploaded_docx")
+app.mount("/uploaded_pdfs", StaticFiles(directory="uploaded_files/uploaded_pdfs"), name="uploaded_pdfs")
+app.mount("/uploaded_txts", StaticFiles(directory="uploaded_files/uploaded_txts"), name="uploaded_txts")
+app.mount("/uploaded_mds", StaticFiles(directory="uploaded_files/uploaded_mds"), name="uploaded_mds")
+app.mount("/uploaded_docx", StaticFiles(directory="uploaded_files/uploaded_docx"), name="uploaded_docx")

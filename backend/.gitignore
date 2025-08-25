@@ -3,11 +3,12 @@
 /data
 /__pycache__/
 
-/uploaded_txts/
-/uploaded_pdfs/
-/uploaded_docx/
-/uploaded_mds/
+/uploaded_files/uploaded_txts/*
+/uploaded_files/uploaded_pdfs/*
+/uploaded_files/uploaded_docx/*
+/uploaded_files/uploaded_mds/*
 
 neo4j
 build
 dist
+models

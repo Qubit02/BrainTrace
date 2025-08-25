@@ -52,7 +52,7 @@ router = APIRouter(
 )
 
 # ───────── 파일 업로드 설정 ───────── #
-UPLOAD_DOCX_DIR = "uploaded_docx"
+UPLOAD_DOCX_DIR = os.path.join("C:\\brainT\\backend\\uploaded_files", "uploaded_docx")
 os.makedirs(UPLOAD_DOCX_DIR, exist_ok=True)
 
 def sanitize_filename(name):
