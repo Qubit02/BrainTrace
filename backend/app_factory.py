@@ -62,15 +62,23 @@ def is_running_in_docker() -> bool:
     return result
 
 def create_uploaded_files_directory():
-    # Define the path for the uploaded_files directory
-    uploaded_files_path = os.path.join(os.path.dirname(__file__), 'uploaded_files')
+    # Define the paths for the uploaded_files directory and its subdirectories
+    base_path = os.path.join(os.path.dirname(__file__), 'uploaded_files')
+    subdirectories = ['uploaded_txts', 'uploaded_pdfs', 'uploaded_docx', 'uploaded_mds']
 
-    # Check if the directory exists, if not, create it
-    if not os.path.exists(uploaded_files_path):
-        os.makedirs(uploaded_files_path)
-        logging.info(f"Created directory: {uploaded_files_path}")
+    # Create the base directory if it doesn't exist
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+        logging.info(f"Created directory: {base_path}")
 
-# Call the function to ensure the directory is created
+    # Create each subdirectory if it doesn't exist
+    for subdirectory in subdirectories:
+        sub_path = os.path.join(base_path, subdirectory)
+        if not os.path.exists(sub_path):
+            os.makedirs(sub_path)
+            logging.info(f"Created subdirectory: {sub_path}")
+
+# Call the function to ensure the directories are created
 create_uploaded_files_directory()
 
 
