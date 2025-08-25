@@ -1185,6 +1185,8 @@ function GraphView({
     }
   }, [showReferenced, referencedNodes, graphData.nodes, referencedSet]);
 
+  const cleanNodeName = (name) => (name || "").replace(/\*$/, "");
+
   return (
     <div
       className={`graph-area ${isDarkMode ? "dark-mode" : ""}`}
@@ -1261,7 +1263,7 @@ function GraphView({
         <NodeStatusPopup
           type="NEW"
           color="#10b981"
-          nodes={newlyAddedNodeNames}
+          nodes={newlyAddedNodeNames.map(cleanNodeName)}
           onClose={() => {
             setShowNewlyAdded(false);
             setNewlyAddedNodeNames([]);
@@ -1281,7 +1283,7 @@ function GraphView({
           <NodeStatusPopup
             type="REF"
             color="#f59e0b"
-            nodes={referencedNodes}
+            nodes={referencedNodes.map(cleanNodeName)}
             onClose={() => {
               setShowReferenced(false);
               if (onClearReferencedNodes) onClearReferencedNodes();
@@ -1296,7 +1298,7 @@ function GraphView({
           <NodeStatusPopup
             type="FOCUS"
             color="#3b82f6"
-            nodes={focusNodeNames}
+            nodes={focusNodeNames.map(cleanNodeName)}
             onClose={() => {
               setShowFocus(false);
               if (onClearFocusNodes) onClearFocusNodes();
@@ -1317,7 +1319,9 @@ function GraphView({
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-label">노드:</span>
-                <span className="tooltip-value">{hoveredNode.name}</span>
+                <span className="tooltip-value">
+                  {cleanNodeName(hoveredNode.name || hoveredNode.id)}
+                </span>
               </div>
               <div className="tooltip-row">
                 <span className="tooltip-info">
@@ -1330,11 +1334,15 @@ function GraphView({
             <div className="tooltip-content">
               <div className="tooltip-row">
                 <span className="tooltip-value">
-                  {hoveredLink.source?.name || hoveredLink.source}
+                  {cleanNodeName(
+                    hoveredLink.source?.name || hoveredLink.source
+                  )}
                 </span>
                 <span className="tooltip-arrow">→</span>
                 <span className="tooltip-value">
-                  {hoveredLink.target?.name || hoveredLink.target}
+                  {cleanNodeName(
+                    hoveredLink.target?.name || hoveredLink.target
+                  )}
                 </span>
               </div>
               <div className="tooltip-row tooltip-indent">
@@ -1423,12 +1431,12 @@ function GraphView({
             } else {
               ctx.globalAlpha = node.__opacity ?? 1;
             }
-            const label = node.name || node.id;
+            const label = cleanNodeName(node.name || node.id);
             const isReferenced =
               showReferenced &&
               (searchQuery
-                ? searchReferencedSet.has(node.name)
-                : referencedSet.has(normalizeName(node.name)));
+                ? searchReferencedSet.has(label)
+                : referencedSet.has(normalizeName(label)));
             const isImportantNode = node.linkCount >= 3;
             const isNewlyAdded = newlyAddedNodeNames.includes(node.name);
             const isFocus = showFocus && focusNodeNames?.includes(node.name);
