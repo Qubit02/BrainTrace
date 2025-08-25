@@ -29,6 +29,7 @@ from collections import defaultdict
 from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import extract_noun_phrases
 
+
 okt = Okt()
 
 # 불용어 정의 
@@ -115,6 +116,7 @@ def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, 
         new_chunk_groups.append(new_chunk)
 
     return new_chunk_groups
+
 
 def check_termination_condition(chunk: list[dict], depth:int):
     """
@@ -367,10 +369,22 @@ def lda_keyword_and_similarity(chunk:list[dict]):
     sim_matrix = cosine_similarity(topic_vectors)
 
     # LDA 모델에서 첫 번째 토픽의 상위 키워드를 추출
-    top_topic_terms = lda_model.show_topic(0, topn= 1)
+    top_topic_terms = lda_model.show_topic(0, topn= 5)
     # top_topic_terms가 비어있지 않고 첫 번째 요소가 존재하는지 확인
-    # (LDA 모델이 토픽을 생성하지 못했을 경우 방지)
-    top_keyword = top_topic_terms[0][0] if top_topic_terms and len(top_topic_terms) > 0 else ""
+    top_keyword=""
+
+    #LDA가 추출한 키워드 중 첫번째 명사 키워드를 top_keyword로 지정
+    for topic in top_topic_terms:
+        word_with_tag=okt.pos(topic[0], norm=True, stem=True)
+        
+        for word, tag in word_with_tag:
+            if tag in ["Noun", "Alpha"]:
+                top_keyword=word
+                break
+        
+        if top_keyword != "":
+            break
+
 
     return top_keyword, sim_matrix
 
@@ -497,21 +511,3 @@ def manual_chunking(text:str):
 
     return final_chunks
 
-
-text="""
-안예찬은 비 오는 날을 좋아한다.
-안예찬은 시끄러운 소음을 싫어한다.
-안예찬은 고양이를 좋아한다.
-안예찬은 붐비는 장소를 싫어한다.
-안예찬은 밤하늘의 별을 좋아한다.
-안예찬은 매운 음식을 싫어한다.
-안예찬은 클래식 음악을 좋아한다.
-안예찬은 지루한 대화를 싫어한다.
-안예찬은 자전거 타는 것을 좋아한다.
-안예찬은 아침 일찍 일어나는 걸 싫어한다.
-안예찬은 퍼즐 맞추는 걸 좋아한다.
-안예찬은 복잡한 계산을 싫어한다.
-
-"""
-
-print(extract_graph_components(text, "1234"))
