@@ -61,6 +61,19 @@ def is_running_in_docker() -> bool:
     )
     return result
 
+def create_uploaded_files_directory():
+    # Define the path for the uploaded_files directory
+    uploaded_files_path = os.path.join(os.path.dirname(__file__), 'uploaded_files')
+
+    # Check if the directory exists, if not, create it
+    if not os.path.exists(uploaded_files_path):
+        os.makedirs(uploaded_files_path)
+        logging.info(f"Created directory: {uploaded_files_path}")
+
+# Call the function to ensure the directory is created
+create_uploaded_files_directory()
+
+
 # ── 로깅 기본 설정 ───────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
