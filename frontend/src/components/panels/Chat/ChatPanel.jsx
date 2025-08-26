@@ -127,6 +127,7 @@ const TitleEditor = ({
         <input
           className="chat-panel-title-input"
           value={editingTitle}
+          placeholder="Untitled"
           autoFocus
           onChange={(e) => setEditingTitle(e.target.value)}
           onBlur={handleEditTitleFinish}
@@ -1108,15 +1109,12 @@ function ChatPanel({
    * 편집된 제목을 서버에 저장하고 편집 모드를 종료
    */
   const handleEditTitleFinish = async () => {
-    if (editingTitle.trim() && selectedSessionId) {
+    const finalTitle = editingTitle.trim() || "Untitled";
+    if (selectedSessionId) {
       try {
-        await renameChatSession(selectedSessionId, editingTitle.trim());
-        setSessionName(editingTitle.trim());
-        console.log(
-          "세션 이름 수정 완료:",
-          selectedSessionId,
-          editingTitle.trim()
-        );
+        await renameChatSession(selectedSessionId, finalTitle);
+        setSessionName(finalTitle);
+        console.log("세션 이름 수정 완료:", selectedSessionId, finalTitle);
       } catch (error) {
         console.error("세션 이름 수정 실패:", error);
         alert("세션 이름 수정에 실패했습니다.");
@@ -1393,6 +1391,13 @@ function ChatPanel({
     installingModel,
     brainInfo,
   };
+
+  useEffect(() => {
+    if (sessionName === "Untitled") {
+      setIsEditingTitle(true);
+      setEditingTitle(""); // Clear the input field
+    }
+  }, [sessionName]);
 
   return (
     <div className="panel-container">
