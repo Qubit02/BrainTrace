@@ -304,7 +304,6 @@ class OllamaAIService(BaseAIService):
         desc_str는 original_sentences[].original_sentence를 모아 공백 정리 및 중복 제거
         """
 
-
         def to_dict(obj):
             """객체/레코드를 dict로 관용 변환(Neo4j 드라이버 호환)."""
             try:
