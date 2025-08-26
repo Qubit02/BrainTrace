@@ -16,7 +16,7 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ---
 
-## 지식 그래프 파이프라인
+## 지식 그래프 생성 파이프라인
 
 <p>BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다.</p>
 
@@ -256,7 +256,7 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ---
 
-## 청킹 함수의 동작
+## 청킹 함수 동작 과정
 
 <p>청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다.</p>
 
@@ -548,10 +548,10 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ## 팀원 소개
 
-|                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
+|                            팀장 / Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
-|            [안예찬 (팀장)](https://github.com/yes6686)            |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
+|            [안예찬](https://github.com/yes6686)            |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
 
 ---
 
