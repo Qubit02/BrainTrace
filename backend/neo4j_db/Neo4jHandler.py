@@ -27,15 +27,26 @@ import json
 from exceptions.custom_exceptions import Neo4jException
 from collections import defaultdict
 
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체하거나 환경 변수로 주입 권장
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+#도커 위한 Neo4j 환경변수들입니다 삭제하지 말아주세요
+NEO4J_URI      = os.getenv("NEO4J_URI", "bolt://localhost:7687").strip()
+NEO4J_USER     = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+
 from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     """Neo4j 연결 및 그래프 CRUD 기능을 제공하는 핸들러 클래스."""
 
     def __init__(self):
         """Neo4j 드라이버를 초기화합니다."""
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        self.driver = GraphDatabase.driver(
+            NEO4J_URI,
+            max_connection_lifetime=300,
+        )
 
     def close(self):
         """드라이버 연결을 종료합니다."""
