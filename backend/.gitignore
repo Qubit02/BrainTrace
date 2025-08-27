@@ -2,6 +2,10 @@
 .data/
 /data
 /__pycache__/
+*.pyc
+*.log
+.DS_Store
+.env
 
 /uploaded_files/uploaded_txts/*
 /uploaded_files/uploaded_pdfs/*
