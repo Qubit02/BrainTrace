@@ -3,6 +3,9 @@
 # Install all packages: pip install -r requirements.txt
 # =============================================================================
 
+# torch-cpu 링크
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # 웹 서버 및 API 프레임워크
 fastapi==0.104.1
 uvicorn==0.24.0
@@ -20,7 +23,7 @@ qdrant-client==1.9.0
 
 # 오디오 처리
 librosa==0.10.1
-torch==2.7.1
+torch==2.4.1+cpu
 
 # PDF 처리
 PyPDF2
