@@ -61,6 +61,27 @@ def is_running_in_docker() -> bool:
     )
     return result
 
+def create_uploaded_files_directory():
+    # Define the paths for the uploaded_files directory and its subdirectories
+    base_path = os.path.join(os.path.dirname(__file__), 'uploaded_files')
+    subdirectories = ['uploaded_txts', 'uploaded_pdfs', 'uploaded_docx', 'uploaded_mds']
+
+    # Create the base directory if it doesn't exist
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+        logging.info(f"Created directory: {base_path}")
+
+    # Create each subdirectory if it doesn't exist
+    for subdirectory in subdirectories:
+        sub_path = os.path.join(base_path, subdirectory)
+        if not os.path.exists(sub_path):
+            os.makedirs(sub_path)
+            logging.info(f"Created subdirectory: {sub_path}")
+
+# Call the function to ensure the directories are created
+create_uploaded_files_directory()
+
+
 # ── 로깅 기본 설정 ───────────────────────────────
 logging.basicConfig(
     level=logging.INFO,

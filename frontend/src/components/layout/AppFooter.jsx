@@ -25,7 +25,6 @@ export default function Footer() {
       <div className="footer-oss-info">
         <span>brainTrace 개발팀</span>
         <span>E-mail : yes490411@gmail.com</span>
-        <span>Copyright brainTrace All rights reserved.</span>
         <a
           href="https://github.com/Metamong0711/BrainTrace"
           target="_blank"
@@ -35,6 +34,7 @@ export default function Footer() {
           <FaGithub size={16} />
           <span>GitHub</span>
         </a>
+        <span>Copyright brainTrace All rights reserved.</span>
       </div>
     </footer>
   );

@@ -41,7 +41,7 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 ## 3) 커밋 규칙
 
-- 저장소에 정의된 **커밋 규칙(Conventional Commits 등)**을 따릅니다.  
+- 저장소에 정의된 `커밋 규칙(Conventional Commits 등)`을 따릅니다.  
   예) `feat: add /ingest backend endpoint`, `fix: handle empty graph at frontend`
 - 이슈 자동 종료: 커밋 또는 PR 본문에 **`Closes #<이슈번호>`**
 
