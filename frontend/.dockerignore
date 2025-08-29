@@ -1,0 +1,18 @@
+# ==== 공통 ====
+.DS_Store
+*.log
+.vscode/
+
+# ==== 빌드 산출물 ====
+dist/
+.next/
+
+# ==== 의존성 캐시 ====
+node_modules/
+
+# ==== 인스톨러·도구 폴더 (공백 포함) ====
+installer tools/
+
+# ==== 기타 (필요 시 추가) ====
+*.map
+npm-debug.log*

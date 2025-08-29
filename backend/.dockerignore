@@ -1,0 +1,24 @@
+# ==== 공통 ====
+.DS_Store
+*.log
+.vscode/
+__pycache__/
+*.py[cod]
+
+# ==== 가상환경 ====
+venv/
+
+# ==== 파이썬 빌드 아티팩트 ====
+build/
+dist/
+
+# ==== 대용량 데이터 ====
+models/
+neo4j/data/
+uploaded_*/
+
+# ==== 기타 (필요 시 추가) ====
+*.sqlite        # 임시/테스트 DB
+*.csv
+*.ckpt
+*.bin
