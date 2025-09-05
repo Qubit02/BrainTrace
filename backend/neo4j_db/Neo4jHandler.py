@@ -27,15 +27,26 @@ import json
 from exceptions.custom_exceptions import Neo4jException
 from collections import defaultdict
 
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "YOUR_PASSWORD")  # 실제 비밀번호로 교체하거나 환경 변수로 주입 권장
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+#도커 위한 Neo4j 환경변수들입니다 삭제하지 말아주세요
+NEO4J_URI      = os.getenv("NEO4J_URI", "bolt://localhost:7687").strip()
+NEO4J_USER     = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+
 from exceptions.custom_exceptions import Neo4jException
 class Neo4jHandler:
     """Neo4j 연결 및 그래프 CRUD 기능을 제공하는 핸들러 클래스."""
 
     def __init__(self):
         """Neo4j 드라이버를 초기화합니다."""
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        self.driver = GraphDatabase.driver(
+            NEO4J_URI,
+            max_connection_lifetime=300,
+        )
 
     def close(self):
         """드라이버 연결을 종료합니다."""
@@ -161,92 +172,111 @@ class Neo4jHandler:
                     }
                 
                             
-                #                    // 0) 시작 노드
-                # MATCH (start:Node)
-                # WHERE start.brain_id = $brain_id
-                #   AND start.name IN $names
+            # // 0) 시작 노드
+            # MATCH (start:Node)
+            # WHERE start.brain_id = $brain_id
+            # AND start.name IN $names
 
-                # // 1) 시작 노드가 "설명 있음"인지 판정 (이름에 '*' 없으면 설명 있음)
-                # WITH start, NOT (start.name ENDS WITH '*') AS has_desc
+            # // 1) 시작 노드가 "설명 있음"인지 판정 (description 체크)
+            # WITH start, 
+            #     ANY(d IN start.descriptions 
+            #         WHERE toString(d) CONTAINS '"description"' 
+            #         AND NOT toString(d) CONTAINS '"description": ""'
+            #         AND NOT toString(d) CONTAINS '"description":""') AS has_desc
 
-                # // 2) 시작이 '*'일 때만 경로 탐색 (0..5)
-                # //    ★ 경로 전체 노드가 같은 brain_id 인지 강제
-                # OPTIONAL MATCH p = (start)-[*0..5]-(n:Node)
-                # WHERE NOT has_desc
-                #   AND ALL(m IN nodes(p) WHERE m.brain_id = $brain_id)
-                # // 관계에도 brain_id가 있다면 아래 줄도 함께 사용
-                # //  AND ALL(r IN relationships(p) WHERE r.brain_id = $brain_id)
-                # WITH start, has_desc, collect(p) AS paths
+            # // 2) 시작이 description 없을 때만 경로 탐색 (0..5)
+            # //    ★ 경로 전체 노드가 같은 brain_id 인지 강제
+            # OPTIONAL MATCH p = (start)-[*0..5]-(n:Node)
+            # WHERE NOT has_desc
+            # AND ALL(m IN nodes(p) WHERE m.brain_id = $brain_id)
+            # // 관계에도 brain_id가 있다면 아래 줄도 함께 사용
+            # //  AND ALL(r IN relationships(p) WHERE r.brain_id = $brain_id)
+            # WITH start, has_desc, collect(p) AS paths
 
-                # // 3) 경로별 노드/관계 리스트 준비
-                # WITH start, has_desc,
-                #      CASE
-                #        WHEN has_desc THEN [[start]]
-                #        WHEN size(paths) = 0 THEN [[start]]
-                #        ELSE [x IN paths | nodes(x)]
-                #      END AS nodesLists,
-                #      CASE
-                #        WHEN has_desc THEN [[]]
-                #        WHEN size(paths) = 0 THEN [[]]
-                #        ELSE [x IN paths | relationships(x)]
-                #      END AS relsLists
+            # // 3) 경로별 노드/관계 리스트 준비
+            # WITH start, has_desc,
+            #     CASE
+            #     WHEN has_desc THEN [[start]]
+            #     WHEN size(paths) = 0 THEN [[start]]
+            #     ELSE [x IN paths | nodes(x)]
+            #     END AS nodesLists,
+            #     CASE
+            #     WHEN has_desc THEN [[]]
+            #     WHEN size(paths) = 0 THEN [[]]
+            #     ELSE [x IN paths | relationships(x)]
+            #     END AS relsLists
 
-                # // 4) 각 경로 순회
-                # UNWIND range(0, size(nodesLists)-1) AS idx
-                # WITH start, nodesLists[idx] AS ns, relsLists[idx] AS rs
+            # // 4) 각 경로 순회
+            # UNWIND range(0, size(nodesLists)-1) AS idx
+            # WITH start, nodesLists[idx] AS ns, relsLists[idx] AS rs
 
-                # // 5) 해당 경로에서 '첫 설명 노드(= 첫 non-*)' 인덱스
-                # WITH start, ns, rs,
-                #      head([i IN range(0, size(ns)-1)
-                #            WHERE NOT ns[i].name ENDS WITH '*']) AS firstIdx
+            # // 5) 해당 경로에서 '첫 설명 노드(= 첫 description 있는 노드)' 인덱스
+            # WITH start, ns, rs,
+            #     head([i IN range(0, size(ns)-1)
+            #         WHERE ANY(d IN ns[i].descriptions 
+            #                 WHERE toString(d) CONTAINS '"description"' 
+            #                 AND NOT toString(d) CONTAINS '"description": ""'
+            #                 AND NOT toString(d) CONTAINS '"description":""')]) AS firstIdx
 
-                # // 6) 첫 non-*까지(포함) 슬라이스 (없으면 경로 끝까지)
-                # WITH start,
-                #      ns[0..coalesce(firstIdx, size(ns)-1)+1] AS pNodes,
-                #      rs[0..coalesce(firstIdx, size(rs)-1)]   AS pRels
+            # // 6) 첫 description 있는 노드까지(포함) 슬라이스 (없으면 경로 끝까지)
+            # WITH start,
+            #     ns[0..coalesce(firstIdx, size(ns)-1)+1] AS pNodes,
+            #     rs[0..coalesce(firstIdx, size(rs)-1)]   AS pRels
 
-                # // 7) 결과 집계
-                # WITH collect(DISTINCT start) AS startNodes,
-                #      collect(pNodes) AS pNodeLists,
-                #      collect(pRels)  AS pRelLists
-                # WITH startNodes,
-                #      reduce(ns=[], l IN pNodeLists | ns + l) AS nodeFlat,
-                #      reduce(rs=[], l IN pRelLists  | rs + l) AS relFlat
-                # RETURN
-                #   startNodes,
-                #   [n IN nodeFlat WHERE n IS NOT NULL | n] AS allRelatedNodes,
-                #   [r IN relFlat  WHERE r IS NOT NULL  | r] AS allRelationships;
-
-
+            # // 7) 결과 집계
+            # WITH collect(DISTINCT start) AS startNodes,
+            #     collect(pNodes) AS pNodeLists,
+            #     collect(pRels)  AS pRelLists
+            # WITH startNodes,
+            #     reduce(ns=[], l IN pNodeLists | ns + l) AS nodeFlat,
+            #     reduce(rs=[], l IN pRelLists  | rs + l) AS relFlat
+            # RETURN
+            # startNodes,
+            # [n IN nodeFlat WHERE n IS NOT NULL | n] AS allRelatedNodes,
+            # [r IN relFlat  WHERE r IS NOT NULL  | r] AS allRelationships
               
 
                 optimized_query = optimized_query = optimized_query = optimized_query = '''
-                            // 시작 노드
-                MATCH (start:Node)
-                WHERE start.brain_id = $brain_id
-                AND start.name IN $names
+                    // 시작 노드
+                    MATCH (start:Node)
+                    WHERE start.brain_id = $brain_id
+                    AND start.name IN $names
 
-                WITH start, (start.name ENDS WITH '*') AS isStar
+                    WITH start, 
+                        ANY(d IN start.descriptions 
+                            WHERE toString(d) CONTAINS '"description"' 
+                            AND NOT toString(d) CONTAINS '"description": ""'
+                            AND NOT toString(d) CONTAINS '"description":""') AS hasDesc
 
-                // A) 시작이 '*' → '첫 non-*'에서 멈추는 경로
-                OPTIONAL MATCH p_star = (start)-[*0..5]-(target:Node)
-                WHERE isStar
-                AND ALL(m IN nodes(p_star) WHERE m.brain_id = $brain_id)
-                AND NOT target.name ENDS WITH '*'
-                AND ALL(m IN nodes(p_star)[..-1] WHERE m.name ENDS WITH '*')
+                    // A) 시작이 description 없음 → 첫 description 있는 노드에서 멈추는 경로
+                    OPTIONAL MATCH p_noDesc = (start)-[*0..5]-(target:Node)
+                    WHERE NOT hasDesc
+                    AND ALL(m IN nodes(p_noDesc) WHERE m.brain_id = $brain_id)
+                    AND ANY(d IN target.descriptions 
+                        WHERE toString(d) CONTAINS '"description"' 
+                        AND NOT toString(d) CONTAINS '"description": ""'
+                        AND NOT toString(d) CONTAINS '"description":""')
+                    AND ALL(m IN nodes(p_noDesc)[..-1] 
+                        WHERE NOT ANY(d IN m.descriptions 
+                                    WHERE toString(d) CONTAINS '"description"' 
+                                    AND NOT toString(d) CONTAINS '"description": ""'
+                                    AND NOT toString(d) CONTAINS '"description":""'))
 
-                // B) 시작이 non-* → 한 홉 non-* 이웃만
-                OPTIONAL MATCH p_non = (start)-[*1..1]-(t1:Node)
-                WHERE NOT isStar
-                AND t1.brain_id = $brain_id
-                AND NOT t1.name ENDS WITH '*'
+                    // B) 시작이 description 있음 → 한 홉 description 있는 이웃만
+                    OPTIONAL MATCH p_hasDesc = (start)-[*1..1]-(t1:Node)
+                    WHERE hasDesc
+                    AND t1.brain_id = $brain_id
+                    AND ANY(d IN t1.descriptions 
+                        WHERE toString(d) CONTAINS '"description"' 
+                        AND NOT toString(d) CONTAINS '"description": ""'
+                        AND NOT toString(d) CONTAINS '"description":""')
 
-                // 두 케이스 합치기
-                WITH start,
-                    coalesce(collect(DISTINCT p_star), []) + coalesce(collect(DISTINCT p_non), []) AS rawPaths
+                    // 두 케이스 합치기
+                    WITH start,
+                    coalesce(collect(DISTINCT p_noDesc), []) + coalesce(collect(DISTINCT p_hasDesc), []) AS rawPaths
 
-                //  Fallback: 경로가 없으면 [[start]] / [[]] 로 대체
-                WITH start,
+                    // Fallback: 경로가 없으면 [[start]] / [[]] 로 대체
+                    WITH start,
                     CASE
                     WHEN size(rawPaths)=0 THEN [[start]]
                     ELSE [p IN rawPaths | nodes(p)]
@@ -256,20 +286,22 @@ class Neo4jHandler:
                     ELSE [p IN rawPaths | relationships(p)]
                     END AS relsLists
 
-                UNWIND range(0, size(nodesLists)-1) AS idx
-                WITH start, nodesLists[idx] AS pathNodes, relsLists[idx] AS pathRels
+                    UNWIND range(0, size(nodesLists)-1) AS idx
+                    WITH start, nodesLists[idx] AS pathNodes, relsLists[idx] AS pathRels
 
-                WITH collect(DISTINCT start) AS startNodes,
+                    WITH collect(DISTINCT start) AS startNodes,
                     reduce(ns=[], l IN collect(pathNodes) | ns + l) AS allPathNodes,
-                    reduce(rs=[], l IN collect(pathRels)  | rs + l) AS allPathRels
+                    reduce(rs=[], l IN collect(pathRels) | rs + l) AS allPathRels
 
-                RETURN
-                startNodes,
-                [n IN allPathNodes WHERE n IS NOT NULL | n] AS allRelatedNodes,
-                [r IN allPathRels  WHERE r IS NOT NULL | r] AS allRelationships,
-                size([n IN startNodes WHERE NOT n.name ENDS WITH '*']) AS validStartCount,
-                size(allPathNodes) AS totalNodes;
-                '''
+                    RETURN
+                    startNodes,
+                    [n IN allPathNodes WHERE n IS NOT NULL | n] AS allRelatedNodes,
+                    [r IN allPathRels WHERE r IS NOT NULL | r] AS allRelationships,
+                    size([n IN startNodes WHERE ANY(d IN n.descriptions 
+                                                    WHERE toString(d) CONTAINS '"description"' 
+                                                    AND NOT toString(d) CONTAINS '"description": ""')]) AS validStartCount,
+                    size(allPathNodes) AS totalNodes
+                    '''
                 
                 # 쿼리 실행
                 result = session.run(optimized_query, names=existing_nodes, brain_id=brain_id)

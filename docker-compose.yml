@@ -1,61 +1,51 @@
-version: "3.9"
+version: '3.9'
 
 services:
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
       target: dev
-    depends_on:
-      - neo4j
-      - ollama
-    environment:
-      # 컨테이너 환경 플래그(앱 코드에서 분기 시 사용)
-      IN_DOCKER: "true"
-      # 내부 서비스 호스트명 사용
-      NEO4J_URI: "bolt://neo4j:7687"
-      OLLAMA_API_URL: "http://ollama:11434"
-    #일단 .env파일 같이 빌드. 조정해야함
-    env_file: ./backend/.env
     volumes:
-      - ./backend:/app
+      - ./backend:/app # 코드 변경 -> 자동 reload
+    env_file: ./backend/.env
+    environment:
+      IN_DOCKER: 'true'
+      NEO4J_URI: 'bolt://neo4j:7687'
+      OLLAMA_API_URL: 'http://ollama:11434'
     ports:
-      - "8000:8000"
+      - '8000:8000'
+    depends_on: [neo4j, ollama]
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
       target: dev
-    environment:
-      # Windows/WSL에서 파일 변경 감지 안정화
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
     volumes:
       - ./frontend:/app
-      # node_modules는 컨테이너 쪽에 유지
       - frontend_node_modules:/app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
     ports:
-      - "5173:5173"
-    depends_on:
-      - backend
+      - '5173:5173'
+    depends_on: [backend]
 
   neo4j:
     image: neo4j:5
     environment:
-      NEO4J_dbms_security_auth__enabled: false
-    volumes:
-      - neo4j_data:/data
+      NEO4J_dbms_security_auth__enabled: 'false'
+    volumes: [neo4j_data:/data]
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - '7474:7474'
+      - '7687:7687'
 
   ollama:
     image: ollama/ollama:latest
-    volumes:
-      - ollama_models:/root/.ollama
+    volumes: [ollama_models:/root/.ollama]
     ports:
-      - "11434:11434"
+      - '11434:11434'
 
 volumes:
   neo4j_data:

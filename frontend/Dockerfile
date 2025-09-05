@@ -6,14 +6,14 @@ FROM node:20.16.0-bookworm-slim AS base
 WORKDIR /app
 
 # 의존성 레이어 캐시 (package.json, lock만 복사)
-COPY frontend/package*.json ./
+COPY ./package*.json ./
 RUN npm ci
 
 ######################## dev ########################
 FROM base AS dev
 
 # 앱 소스 (volumes 마운트와 병행 가능)
-COPY frontend/ ./
+COPY ./ ./
 
 # 개발 서버 포트 문서화
 EXPOSE 5173

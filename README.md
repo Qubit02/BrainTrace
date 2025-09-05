@@ -16,12 +16,11 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ---
 
-## 지식 그래프 파이프라인
+## 지식 그래프 생성 파이프라인
 
 <p>BrainTrace는 다양한 유형의 학습 자료를 다음의 다섯 단계로 지식 그래프로 변환합니다.</p>
 
 <img width="2048" height="800" alt="flowchart_height_800" src="https://github.com/user-attachments/assets/f8efb47b-f155-466f-809b-d4ff0568e508" />
-
 
 1. **텍스트 추출**:
    PDF, 텍스트 파일, 메모, Markdown, DOCX 등의 소스에서 텍스트를 추출합니다.
@@ -256,7 +255,7 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ---
 
-## 청킹 함수의 동작
+## 청킹 함수 동작 과정
 
 <p>청킹 함수는 재귀적으로 호출되며 다음 동작을 반복합니다.</p>
 
@@ -426,31 +425,13 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ## 결과물
 
-<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
-  <tr>
-    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6" />
-      <div align="center"><b>홈 화면</b></div>
-    </td>
-    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img width="1000" height="650" alt="스크린샷 2025-08-21 003920" src="https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151" />
-      <div align="center"><b>메인 화면</b></div>
-    </td>
-  </tr>
-</table>
+### 홈 화면
 
-<table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
-  <tr>
-    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/2dea75e1-9a8e-4513-80a6-121650eb395b" />
-      <div align="center"><b>그래프 전체화면 (라이트모드)</b></div>
-    </td>
-    <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img width="1000" height="650" alt="image" src="https://github.com/user-attachments/assets/5f11403c-00c8-4cf1-b4d9-07c85418c8fa" />
-      <div align="center"><b>그래프 전체화면 (다크모드)</b></div>
-    </td>
-  </tr>
-</table>
+![홈 화면](https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6)
+
+### 메인 화면
+
+![메인 화면](https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151)
 
 ### 주요 기능 데모
 
@@ -548,10 +529,10 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ## 팀원 소개
 
-|                            Full Stack                             |                                Backend                                 |                               DevOps                               |                                AI                                 |
+|                         팀장 / Full Stack                         |                                Backend                                 |                               DevOps                               |                                AI                                 |
 | :---------------------------------------------------------------: | :--------------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="https://github.com/yes6686.png?size=200" width="100" /> | <img src="https://github.com/kimdonghyuk0.png?size=200" width="100" /> | <img src="https://github.com/Mieulchi.png?size=200" width="100" /> | <img src="https://github.com/selyn-a.png?size=200" width="100" /> |
-|            [안예찬 (팀장)](https://github.com/yes6686)            |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
+|               [안예찬](https://github.com/yes6686)                |               [김동혁](https://github.com/kimdonghyuk0)                |               [유정균](https://github.com/Mieulchi)                |               [장세린](https://github.com/selyn-a)                |
 
 ---
 
