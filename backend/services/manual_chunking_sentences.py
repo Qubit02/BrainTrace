@@ -108,8 +108,8 @@ def check_termination_condition(chunk: list[dict], depth:int):
     """
     flag=-1
     size = sum([len(c["tokens"]) for c in chunk])
-    # flag 1:chunk가 세 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
-    if len(chunk)<=3 or size<=20:
+    # flag 1:chunk가 다섯 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
+    if len(chunk)<=5 or size<=50:
         flag=1
     
     #depth가 5 이상일 경우 더 깊이 탐색하지 않음
@@ -417,7 +417,7 @@ def extract_graph_components(text: str, source_id: str):
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
 
-    #텍스트가 2000자 이하인 경우는 재귀 청킹 함수을 호출하지 않는다.
+    #텍스트가 1000자 이하인 경우는 재귀 청킹 함수을 호출하지 않는다.
     else:
         top_keyword, _ =lda_keyword_and_similarity(tokenized)
         if len(top_keyword)<1:

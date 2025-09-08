@@ -3,44 +3,53 @@
 # Install all packages: pip install -r requirements.txt
 # =============================================================================
 
-# torch-cpu 링크
+# torch-cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# 웹 서버 및 API 프레임워크
+# web server & API framework
 fastapi==0.104.1
 uvicorn==0.24.0
 
-# 데이터베이스
+# database
 neo4j==5.14.1
 
-# LLM 및 AI 처리
-langchain==0.1.0
+# LLM & AI processing
 openai==1.78.1
 transformers>=4.40.0
 
-# 벡터 검색
+# vector search
 qdrant-client==1.9.0
 
-# 오디오 처리
+# audio processing
 librosa==0.10.1
 torch==2.4.1+cpu
 
-# PDF 처리
+# PDF processing
 PyPDF2
 
-# 기타 필수 의존성
-numpy>=1.24.0
+# topic extraction form texts
+gensim
+
+# language identification
+langid>=1.1.6
+
+# Korean text POS taggind / embedding
+konlpy
+JPype1                   
+
+# English text embedding
+spacy>=3.8.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# other essential dependancies
+numpy==1.26.4
 tqdm
-python-dotenv            # ← 'dotenv'가 아니라 'python-dotenv'가 올바른 패키지명
-python-multipart         # FastAPI에서 File/Form 업로드 시 필수 (미사용이면 제거 가능)
+python-dotenv           
+python-multipart        
 python-docx
 
-# Embedding/KoNLPy
-gensim
-konlpy
-JPype1                   # ← import 'jpype'용 실제 패키지명
 
-# ── deptry(DEP003)로 확인된 "전이 의존"을 직접 명시 ──
-pydantic>=2              # FastAPI는 Pydantic v2와 함께 동작
-requests                 # services/*, run_ollama.py 등에서 직접 사용
+# Explicitly listed "transitive dependencies" detected by deptry (DEP003)
+pydantic>=2              
+requests                 
 scikit-learn
