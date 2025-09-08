@@ -45,7 +45,7 @@ stopwords = set([
 ])
 
 stopwords_en= set([
-    
+    "the", "an", "which", "they", "this", "you", "me"
 ])
 
 
