@@ -53,3 +53,5 @@ python-docx
 pydantic>=2              
 requests                 
 scikit-learn
+
+sentence-transformers
