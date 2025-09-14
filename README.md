@@ -425,13 +425,23 @@ Brain Trace System (BrainT)은 PDF, TXT, DOCX, Markdown 등 다양한 형식의 
 
 ## 결과물
 
-### 홈 화면
+<div style="margin-left:20px;">
+
+<details open>
+<summary>&nbsp;<b>홈 화면</b></summary>
 
 ![홈 화면](https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6)
 
-### 메인 화면
+</details>
+
+<details open>
+<summary>&nbsp;<b>메인 화면</b></summary>
 
 ![메인 화면](https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151)
+
+</details>
+
+</div>
 
 ### 주요 기능 데모
 
