@@ -17,16 +17,18 @@
 - KoE5 모델은 첫 토큰([CLS]) 임베딩을 사용합니다.
 - 임베딩 저장 시, Qdrant `payload`에 `source_id`, `name`, `description`, `format_index`, `point_id` 등을 포함합니다.
 """
-
+import torch
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 import torch
 from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
 import numpy as np
 import logging
 import os
-import uuid
 from typing import List, Dict, Optional
+import langid
+import uuid
 
 # ================================================
 # Qdrant 및 KoE5 임베딩 모델 초기화
@@ -43,6 +45,11 @@ client = QdrantClient(path=QDRANT_PATH)
 MODEL_NAME = "nlpai-lab/KoE5"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModel.from_pretrained(MODEL_NAME)
+
+# 영어 임베딩 모델
+model.eval()
+eng_model = SentenceTransformer("all-MiniLM-L6-v2")  
+
 # 모델의 hidden size를 벡터 차원으로 사용
 EMBED_DIM = model.config.hidden_size  # 예: 1024
 
@@ -119,6 +126,80 @@ def encode_text(text: str) -> List[float]:
         logging.error("텍스트 임베딩 생성 실패: %s", str(e))
         raise RuntimeError(f"텍스트 임베딩 생성 실패: {str(e)}")
 
+
+def get_embeddings_batch(texts: List[str]) -> np.ndarray:
+    lang, _ =langid.classify("".join(texts))
+
+    if lang == "ko":
+        inputs = tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True, max_length=512
+        )
+        with torch.no_grad():
+            outputs = model(**inputs)
+        cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰 임베딩
+        return cls_embeddings.cpu().numpy()
+    
+    elif lang == "en":
+        embeddings = eng_model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+        return embeddings
+    
+    else:
+        raise ValueError(f"지원하지 않는 언어 코드: {lang}")
+
+def store_embeddings(node:dict, brain_id:str, embeddings:list):
+
+    collection_name = get_collection_name(brain_id)
+
+    for idx, desc in enumerate(node["descriptions"]):
+        description=desc["description"]
+        source_id=node["source_id"]
+        phrase=node["name"]
+
+        if description == "":
+            try:
+                description = node["name"]
+                emb = get_embeddings_batch([description])
+                if emb is None or emb.size == 0:
+                    logging.warning("임베딩 생성 실패: %s", description)
+                    continue
+                emb = emb[0] if emb.ndim > 1 else emb
+            except Exception as e:
+                logging.error("임베딩 생성 중 오류: %s - %s", description, str(e))
+                continue
+        else:
+            if embeddings is None or embeddings.size == 0:  # 빈 리스트 체크
+                highlighted_description = description.replace(phrase, f"[{phrase}]")
+                emb = get_embeddings_batch([highlighted_description])
+                emb = emb[0] if emb.ndim > 1 else emb
+            else:
+                emb = np.array(embeddings[idx])
+                if emb.ndim > 1:
+                    emb = emb[0]
+        
+        desc_hash = str(hash(description)) if description else "empty"
+        pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{desc_hash}"))
+        
+        # Qdrant에 upsert (예외 처리)
+        try:
+            client.upsert(
+                collection_name=collection_name,
+                points=[
+                    models.PointStruct(
+                        id=pid,
+                        vector=emb,
+                        payload={
+                            "source_id": source_id,
+                            "name": phrase,
+                            "description": description,
+                            "point_id": pid
+                        }
+                    )
+                ]
+            )
+            logging.info("노드 %s descriptor %d 저장 완료(UUID: %s)", source_id, idx, pid)
+        except Exception as e:
+            logging.error("Qdrant upsert 실패 (node: %s, idx: %d): %s", source_id, idx, str(e))
+    
 
 def update_index_and_get_embeddings(nodes: List[Dict], brain_id: str) -> Dict[str, List[List[float]]]:
     """
