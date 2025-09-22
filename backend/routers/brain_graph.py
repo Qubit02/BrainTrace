@@ -185,7 +185,12 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
         ai_service = get_ai_service_Ollama()
     else:
         ai_service=None
-
+    
+    # 노드 정보를 벡터 DB에 임베딩
+    # 컬렉션이 없으면 초기화
+    if not embedding_service.is_index_ready(brain_id):
+        embedding_service.initialize_collection(brain_id)
+    
     # Step 1: 텍스트에서 노드/엣지 추출 (AI 서비스)
     if ai_service==None:
         # 기본 수동 청크 처리: 모델 미선택 시 규칙 기반으로 노드/엣지 추출
@@ -201,11 +206,6 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     neo4j_handler.insert_nodes_and_edges(nodes, edges, brain_id)
     logging.info("Neo4j에 노드와 엣지 삽입 완료")
 
-    # Step 3: 노드 정보를 벡터 DB에 임베딩
-    # 컬렉션이 없으면 초기화
-    if not embedding_service.is_index_ready(brain_id):
-        embedding_service.initialize_collection(brain_id)
-    
     # 노드 정보 임베딩 및 저장
     # - 각 노드 텍스트를 임베딩하여 Qdrant에 upsert
     # embedding_service.update_index_and_get_embeddings(nodes, brain_id)

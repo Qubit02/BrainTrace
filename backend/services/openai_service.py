@@ -80,7 +80,7 @@ class OpenAIService(BaseAIService) :
         except json.JSONDecodeError:
             return []
             
-    def generate_referenced_nodes(self, llm_response: str, brain_id: int) -> List[str]:
+    def generate_referenced_nodes(self, llm_response: str, brain_id: str) -> List[str]:
         """
         LLM이 생성한 답변을 임베딩하여 일정 유사도 이상의 노드들을 참고한 노드로 반환
         
