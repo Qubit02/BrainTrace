@@ -27,7 +27,8 @@ import numpy as np
 from collections import defaultdict
 from .node_gen_ver5 import _extract_from_chunk
 from .node_gen_ver5 import split_into_tokenized_sentence
-import langid
+from .node_gen_ver5 import store_embeddings
+
 
 # 한국어용 형태소 분석기
 okt = Okt()
@@ -378,7 +379,7 @@ def lda_keyword_and_similarity(chunk:list[dict]):
 
 
 
-def extract_graph_components(text: str, source_id: str):
+def extract_graph_components(text: str, id: tuple):
     """전체 파이프라인을 수행해 노드/엣지를 생성합니다.
 
     단계:
@@ -393,19 +394,14 @@ def extract_graph_components(text: str, source_id: str):
     짧은 텍스트는 자체적으로 토픽을 추출하고 전체 텍스트를 하나의 청크로 간주합니다.
     각 청크에서 노드와 엣지를 추출하여 반환합니다.
     """
-    
+    brain_id, source_id = id
+
     # 모든 노드와 엣지를 저장할 리스트
     all_nodes = []
     all_edges = []
     chunks=[]
-
-    lang, _ =langid.classify(text)
-    if lang=="en":
-        logging.info("영어 텍스트입니다.")
-    elif lang=="ko":    
-        logging.info("한국어 텍스트입니다.")
     
-    tokenized, sentences = split_into_tokenized_sentence(text, lang)
+    tokenized, sentences = split_into_tokenized_sentence(text)
     
     #텍스트가 2000자 이상인 경우 재귀 청킹 함수를 호출한다
     if len(text)>=2000:
@@ -442,6 +438,8 @@ def extract_graph_components(text: str, source_id: str):
                                     "score": 1.0}]
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
+        store_embeddings(node, brain_id, None)
+
 
     for c in chunks:
         if "chunks" in c:
@@ -449,7 +447,7 @@ def extract_graph_components(text: str, source_id: str):
             relevant_sentences = [sentences[idx] for idx in current_chunk]
             relevant_sentences="".join(relevant_sentences)
             if c["keyword"] != "":
-                nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id, lang , c["keyword"], already_made)
+                nodes, edges, already_made = _extract_from_chunk(relevant_sentences, id, c["keyword"], already_made)
             all_nodes += nodes
             all_edges += edges
 
@@ -467,8 +465,8 @@ def manual_chunking(text:str):
     Returns:
         List[str]: 재귀 청킹 결과(각 청크의 텍스트)
     """
-    lang, _ =langid.classify(text)
-    tokenized, sentences = split_into_tokenized_sentence(text, lang)
+
+    tokenized, sentences = split_into_tokenized_sentence(text)
     chunks, _, _ =recurrsive_chunking(tokenized, "-1" , 0, [], None, 0, None, None)
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
 
