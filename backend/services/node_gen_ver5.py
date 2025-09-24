@@ -1,34 +1,56 @@
 """
-성능 개선을 위해 gpu 연산을 도입하고, 임베딩을 병렬적으로 처리하도록 수정했습니다.
+청크로부터 노드&엣지 생성모듈
+----------------------------------------
+
+청킹 함수로부터 분할된 작은 텍스트 그룹(청크)에서 노드와 엣지를 추출합니다.
+청킹함수가 생성한 지식그래프의 뺘대와 연결되어 하나의 그래프로 병합됩니다.
+
+구성 요소 개요:
+- `extract_keywords_by_tfidf`: 각 청크 토큰에서 TF-IDF 상위 키워드 추출
+- `lda_keyword_and_similarity`: LDA를 통해 전체/부분 토픽 추정 및 토픽 분포 유사도 행렬 계산
+- `recurrsive_chunking`: 유사도 기반 재귀 청킹(종료 조건/깊이/토큰 수 등 고려)
+- `extract_graph_components`: 전체 파이프라인 실행 → 노드/엣지 구축
+- `manual_chunking`: 소스 없는(-1) 케이스에 대한 청킹 결과만 반환
+
+주의:
+- 형태소 분석기(Okt), gensim LDA 등 외부 라이브러리에 의존합니다. 대형 텍스트에서는 시간이 소요될 수 있습니다.
+- 재귀 청킹은 종료 조건(depth, 토큰 수, 유사도 행렬 유효성 등)을 통해 무한 분할을 방지합니다.
 """
 import logging
 
 #pip install konlpy, pip install transformers torch scikit-learn
 
 import re
-import torch
 from collections import defaultdict
-from transformers import AutoTokenizer, AutoModel
 from typing import List, Dict
 from konlpy.tag import Okt
 from sklearn.metrics.pairwise import cosine_similarity
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 from tqdm import tqdm
+import spacy
+from .embedding_service import store_embeddings
+from .embedding_service import get_embeddings_batch
+import langid
 
-
-MODEL_NAME = "nlpai-lab/KoE5"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModel.from_pretrained(MODEL_NAME)
-model.eval()
 
 stopwords = set([
     "사실", "경우", "시절", "내용", "점", "것", "수", "때", "정도", "이유", "상황", "뿐", "매우", "아주", "또한", "그리고", "그러나", "대한", "관한"
 ])
 
+stopwords_en= set([
+    "the", "an", "which", "they", "this", "you", "me"
+])
+
+
+# 한국어용 형태소 분석기
 okt = Okt()
 
-def extract_noun_phrases(sentence: str) -> list[str]:
+# 영어용 spaCy 모델 
+nlp_en = spacy.load("en_core_web_sm")
+
+
+def extract_noun_phrases_ko(sentence: str) -> list[str]:
     """
     문장을 입력 받으면 명사구를 추출하고
     추출한 명사구들의 리스트로 토큰화하여 반환합니다. 
@@ -58,20 +80,37 @@ def extract_noun_phrases(sentence: str) -> list[str]:
 
     return phrases
 
-# 한 phrase의 임베딩을 계산하는 병렬 처리용 함수
-def compute_phrase_embedding(phrase: str, indices: List[int], sentences: List[str], total_sentences: int) -> tuple:
+def extract_noun_phrases_en(sentence: str) -> list[str]:
+    """
+    영어 문장에서 명사구를 추출합니다.
+    """
+    doc = nlp_en(sentence)
+    phrases = []
+
+    # spaCy의 noun_chunks 사용
+    for chunk in doc.noun_chunks:
+        phrase = chunk.text.strip()
+        phrase=phrase.lower()
+        if phrase  not in stopwords_en and len(phrase)>=2:
+            phrases.append(phrase)
+
+    return phrases
+
+
+def compute_phrase_embedding(
+    phrase: str, 
+    indices: List[int], 
+    sentences: List[str], 
+    total_sentences: int
+) -> tuple:
     highlighted_texts = [sentences[idx].replace(phrase, f"[{phrase}]") for idx in indices]
     embeddings = get_embeddings_batch(highlighted_texts)
     avg_emb = np.mean(embeddings, axis=0)
     tf = len(indices) / total_sentences
-    return phrase, (tf, avg_emb)
+    return phrase, (tf, avg_emb), embeddings
 
-def get_embeddings_batch(texts: List[str]) -> np.ndarray:
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰 임베딩
-    return cls_embeddings.cpu().numpy()
+
+    
 
 def compute_scores(
     phrase_info: List[dict], 
@@ -79,6 +118,7 @@ def compute_scores(
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
 
     scores = {}
+    all_embeddings = {}
     total_sentences = len(sentences)
 
     phrase_embeddings = {}
@@ -93,8 +133,9 @@ def compute_scores(
         ]
 
         for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
-            phrase, (tf, avg_emb) = future.result()
+            phrase, (tf, avg_emb), embedded_vec = future.result()
             phrase_embeddings[phrase] = (tf, avg_emb)
+            all_embeddings[phrase]=embedded_vec
             central_vecs.append(avg_emb)
 
     # 중심 벡터 계산
@@ -115,7 +156,7 @@ def compute_scores(
     emb_array = np.stack(emb_list)
     sim_matrix = cosine_similarity(emb_array)
 
-    return scores, phrases, sim_matrix
+    return scores, phrases, sim_matrix, all_embeddings
 
 #유사도를 기반으로 각 명사구를 그룹으로 묶음
 #상위 5개의 노드를 먼저 선별하고 걔네끼리만 유사도를 계산하면 더 빠를듯
@@ -178,7 +219,7 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         
     return edges
 
-def make_node(name, phrase_info, sentences:list[str], source_id:str):
+def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
     """
     노드를 만들 키워드와 키워드의 등장 위치를 입력 받아 노드를 생성합니다.
     args:   name: 노드를 만들 키워드
@@ -189,39 +230,82 @@ def make_node(name, phrase_info, sentences:list[str], source_id:str):
     description=[]
     ori_sentences=[]
     s_indices=[idx for idx in phrase_info[name]]
+    brain_id, source_id=id
+
     if len(s_indices)<=2:
-        des="".join([sentences[idx] for idx in s_indices])
- 
+        for idx in s_indices:
+            description.append({"description":sentences[idx],
+                            "source_id":source_id})
+            ori_sentences.append({"original_sentence":sentences[idx],
+                            "source_id":source_id,
+                            "score": 1.0})   
+
     else:
-        des = ""
-    description.append({"description":des,
+        description.append({"description":"",
                         "source_id":source_id})
-    ori_sentences.append({"original_sentence":des,
-                    "source_id":source_id,
-                    "score": 1.0})   
+        ori_sentences.append({"original_sentence":"",
+                        "source_id":source_id,
+                        "score": 1.0})   
     
     node={"label":name, "name":name,"source_id":source_id, "descriptions":description, "original_sentences":ori_sentences}
+    store_embeddings(node, brain_id, embeddings)
 
     return node
+
+def split_into_tokenized_sentence(text:str):
+    """
+        텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
+        Returns:
+            Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
+    """
+
+    tokenized_sentences=[]
+    texts=[]
+    for p in re.split(r'(?<=[.!?])\s+', text.strip()):
+        texts.append(p.strip())
+
+    for idx, sentence in enumerate(texts):
+        lang=check_lang(sentence)
+
+        if lang == "ko":
+            tokens = extract_noun_phrases_ko(sentence)
+        elif lang == "en":
+            tokens = extract_noun_phrases_en(sentence)
+        else:
+            tokens = [sentence.strip()]
+
+        if not tokens:
+            tokens = [sentence.strip()]  # fallback
+            logging.error(f"한국어도 영어도 아닌 텍스트가 포함되어있습니다: {sentence}")
+
+        tokenized_sentences.append({"tokens": tokens, "index": idx})
+
+    return tokenized_sentences, texts
+
         
 
-def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     """
     최종적으로 분할된 청크를 입력으로 호출됩니다.
-    각 청크에서 노드와 엣지를 생성하고 
-    청킹 함수가 생성한 지식 그래프의 뼈대와 병합합니다.
+    각 청크에서 중요한 키워드를 골라 노드를 생성하고
+    keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
+    이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
     """
     nodes=[]
     edges=[]
 
-    # 각 명사구가 등장한 문장의 index를 수집
+    # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
+    # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
     phrase_info = defaultdict(set)
-    for s_idx, sentence in enumerate(sentences):
-        phrases=extract_noun_phrases(sentence)
-        for p in phrases:
-            phrase_info[p].add(s_idx)
 
-    phrase_scores, phrases, sim_matrix = compute_scores(phrase_info, sentences)
+    phrases, sentences = split_into_tokenized_sentence(sentences)
+
+    for p in phrases:
+        for token in p["tokens"]:
+            phrase_info[token].add(p["index"])
+
+    
+    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     #score순으로 topic keyword를 정렬
@@ -233,7 +317,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
         if keyword != "":
             edges+=make_edges(sentences, keyword, [t], phrase_info)
         if t not in already_made:
-            nodes.append(make_node(t, phrase_info, sentences, source_id))
+            nodes.append(make_node(t, phrase_info, sentences, id, all_embeddings[t]))
             already_made.append(t)
             cnt+=1
             if t in groups:
@@ -242,7 +326,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
                     if phrases[idx] not in already_made:
                         related_keywords.append(phrases[idx])
                         already_made.append(phrases[idx])
-                        nodes.append(make_node(phrases[idx], phrase_info, sentences, source_id))
+                        nodes.append(make_node(phrases[idx], phrase_info, sentences, id, all_embeddings[phrases[idx]]))
                         edges+=make_edges(sentences, t, related_keywords, phrase_info)   
                     
         if cnt==5:
@@ -251,3 +335,7 @@ def _extract_from_chunk(sentences: list[str], source_id:str ,keyword: str, alrea
 
     return nodes, edges, already_made
 
+
+def check_lang(text:str):
+    lang, _ =langid.classify(text)
+    return lang

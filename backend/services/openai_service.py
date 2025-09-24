@@ -29,7 +29,7 @@ from .manual_chunking_sentences import manual_chunking
 import numpy as np
 import os
 from dotenv import load_dotenv  # dotenv 추가
-from .embedding_service import encode_text
+from . import embedding_service
 from sklearn.metrics.pairwise import cosine_similarity
 
 
@@ -52,6 +52,7 @@ class OpenAIService(BaseAIService) :
         # 인스턴스 속성으로 클라이언트 할당
         self.client = OpenAI(api_key=openai_api_key)
         self.model_name = model_name  # 모델명 저장
+
     def extract_referenced_nodes(self,llm_response: str) -> List[str]:
         """
         LLM 응답 문자열에서 EOF 뒤의 JSON을 파싱하여 referenced_nodes만 추출합니다.
@@ -77,6 +78,66 @@ class OpenAIService(BaseAIService) :
             ]
             return cleaned
         except json.JSONDecodeError:
+            return []
+            
+    def generate_referenced_nodes(self, llm_response: str, brain_id: str) -> List[str]:
+        """
+        LLM이 생성한 답변을 임베딩하여 일정 유사도 이상의 노드들을 참고한 노드로 반환
+        
+        Args:
+            llm_response: LLM이 생성한 답변 텍스트
+            brain_id: 검색할 brain의 ID
+        
+        Returns:
+            유사도 0.7 이상인 노드들의 name 리스트
+        """
+        # 지식그래프에 정보가 없다는 응답인 경우 빈 리스트 반환
+        if "지식그래프에 해당 정보가 없습니다" in llm_response:
+            logging.info("지식그래프에 정보 없음 - 빈 리스트 반환")
+            return []
+        
+        try:
+         
+            # LLM 응답을 임베딩
+            response_embedding = embedding_service.encode_text(llm_response)
+            
+            # 벡터DB에서 유사한 노드 검색 (threshold 0.7)
+            # search_similar_nodes는 (nodes, score_avg) 튜플을 반환
+            similar_nodes, avg_score = embedding_service.search_similar_nodes(
+                embedding=response_embedding, 
+                brain_id=brain_id,
+                limit=20,  # limit 파라미터 사용 (top_k가 아님)
+                threshold=0.7  # threshold 명시
+            )
+            
+            if not similar_nodes:
+                logging.info("답변과 유사한 노드를 찾지 못했습니다.")
+                return []
+            
+            # 유사도 0.7 이상인 노드만 필터링
+            threshold = 0.7
+            referenced_nodes = []
+            
+            for node in similar_nodes:
+                # node는 {"name": ..., "score": ...} 형태
+                if node.get("score", 0) >= threshold:
+                    referenced_nodes.append(node["name"])
+            
+            logging.info(f"✅ 유사도 {threshold} 이상인 {len(referenced_nodes)}개 노드를 참조 노드로 선정")
+            if referenced_nodes:
+                # 상위 10개만 반환 (너무 많은 노드 방지)
+                if len(referenced_nodes) > 10:
+                    referenced_nodes = referenced_nodes[:10]
+                    logging.info("상위 10개 노드만 선택")
+                
+                logging.info(f"선정된 노드: {', '.join(referenced_nodes[:5])}{'...' if len(referenced_nodes) > 5 else ''}")
+            
+            return referenced_nodes
+            
+        except Exception as e:
+            logging.error(f"generate_referenced_nodes 처리 중 오류 발생: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
             return []
 
     def extract_graph_components(self,text: str, source_id: str):
@@ -301,15 +362,8 @@ class OpenAIService(BaseAIService) :
         "지식그래프 컨텍스트:\n" + schema_text + "\n\n"
         "질문: " + question + "\n\n"
         "출력 형식:\n"
-        "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n\n"
-        "EOF\n"
-        "{\n"
-        '  "referenced_nodes": ["노드 이름1", "노드 이름2", ...]\n'
-        "}\n"
-        "※ 'referenced_nodes'에는 참고한 노드 이름만 정확히 JSON 배열로 나열하고, 도메인 정보, 노드 간 관계, 설명은 포함하지 마."
-        "※ 반드시 EOF를 출력해"
+        "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n"
 
-     
         )
 
 
@@ -336,6 +390,7 @@ class OpenAIService(BaseAIService) :
             {node_name}: {desc_str}
         desc_str는 original_sentences[].original_sentence를 모아 공백 정리 및 중복 제거
         """
+        
 
 
         def to_dict(obj):

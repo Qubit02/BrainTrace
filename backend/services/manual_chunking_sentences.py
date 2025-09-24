@@ -1,12 +1,11 @@
 """
-수동 청킹 및 키워드 기반 그래프 구성 모듈
+재귀적 청킹 및 그래프 뼈대 생성모듈
 ----------------------------------------
 
 이 모듈은 규칙 기반(수동)으로 텍스트를 문장 단위로 분할/토큰화하고,
 LDA/TF-IDF/인접 유사도 등을 활용해 재귀적으로 청킹하여 키워드 노드/엣지를 생성합니다.
 
 구성 요소 개요:
-- `split_into_tokenized_sentence`: 문장 단위 분할과 명사구 추출
 - `extract_keywords_by_tfidf`: 각 청크 토큰에서 TF-IDF 상위 키워드 추출
 - `lda_keyword_and_similarity`: LDA를 통해 전체/부분 토픽 추정 및 토픽 분포 유사도 행렬 계산
 - `recurrsive_chunking`: 유사도 기반 재귀 청킹(종료 조건/깊이/토큰 수 등 고려)
@@ -27,9 +26,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 from collections import defaultdict
 from .node_gen_ver5 import _extract_from_chunk
-from .node_gen_ver5 import extract_noun_phrases
+from .node_gen_ver5 import split_into_tokenized_sentence
+from .node_gen_ver5 import store_embeddings
 
 
+# 한국어용 형태소 분석기
 okt = Okt()
 
 # 불용어 정의 
@@ -64,26 +65,6 @@ def extract_keywords_by_tfidf(tokenized_chunks: list[str]):
 
     return keywords_per_paragraph
 
-
-def tokenization(paragraphs: list[dict]) -> list[list[str]]:
-    """문단 리스트에서 명사/명사구를 추출해 토큰화합니다.
-
-    Args:
-        paragraphs: {"text": str, "index": int} 형식 문단 리스트
-
-    Returns:
-        List[Dict]: {"tokens": List[str], "index": int} 리스트
-    """
-    tokenized = []
-    okt = Okt()
-    for p in paragraphs:
-        tokens = okt.nouns(p["text"])
-        filtered_tokens = [t for t in tokens if t not in stop_words and len(t)>1]
-        tokenized_para={}
-        tokenized_para["tokens"]=filtered_tokens
-        tokenized_para["index"]=p["index"]
-        tokenized.append(tokenized_para)
-    return tokenized
 
 def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, threshold:int):
     """
@@ -128,8 +109,8 @@ def check_termination_condition(chunk: list[dict], depth:int):
     """
     flag=-1
     size = sum([len(c["tokens"]) for c in chunk])
-    # flag 1:chunk가 세 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
-    if len(chunk)<=3 or size<=20:
+    # flag 1:chunk가 다섯 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
+    if len(chunk)<=5 or size<=50:
         flag=1
     
     #depth가 5 이상일 경우 더 깊이 탐색하지 않음
@@ -211,13 +192,16 @@ def gen_node_edges_for_new_groups(chunk:list[dict], new_chunk_groups, top_keywor
     # 각 chunk의 대표 키워드로 노드를 생성한다
     for idx, topics in enumerate(chunk_topics):
         for t_idx in range(len(topics)):
+            #토픽 키워드가 이미 노드가 생성된 키워드가 아니면 노드를 생성
             if topics[t_idx] not in already_made:
-                if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 20:
+                #토픽 키워드가 파생된 문장의 길이가 15토큰 이하이면 문장을 description으로 저장
+                if sum([len(sentence["tokens"]) for sentence in go_chunk[idx]])< 15:
                     chunk_node={"label":topics[t_idx],"name":topics[t_idx],
                                 "descriptions":[c["index"] for c in go_chunk[idx]],
                                 "source_id":source_id}
                     edge={"source": top_keyword, "target": topics[t_idx], "relation":"관련"}
                     keywords.append(topics[t_idx])
+                #토픽 키워드가 파생된 문장의 길이가 길면 description이 빈 노드를 생성
                 else:
                     connective_node=topics[t_idx]+"*"
                     chunk_node={"label":topics[t_idx],"name":connective_node,"descriptions":[], "source_id":source_id}
@@ -227,10 +211,12 @@ def gen_node_edges_for_new_groups(chunk:list[dict], new_chunk_groups, top_keywor
                 edges.append(edge)
                 already_made.append(topics[t_idx])
                 break
-            else:
-                if t_idx>=len(topics):
-                    keywords.append("None")
     
+    #키워드 중복 등으로 인하여 토픽 키워드의 개수가 chunk의 개수보다 적을 경우
+    check_num_t=len(go_chunk)-len(keywords)
+    if check_num_t > 0:
+        keywords+=check_num_t*["none"]
+
     
     return nodes, edges, go_chunk, keywords
 
@@ -320,6 +306,9 @@ def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword
     # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
     current_result = []
     for idx, c in enumerate(go_chunk):
+        if idx > len(keywords)-1 or len(keywords)==0:
+            logging.error(f"keyword generation error\nkeywords:{keywords}\nnumber of chunks:{len(go_chunk)}")
+            break
         result, graph, already_made_updated = recurrsive_chunking(c, source_id ,depth+1, keywords[idx], already_made, similarity_matrix, threshold*1.1,)
         #중복되는 노드가 만들어지지 않도록 already_made를 업데이트
         already_made=already_made_updated
@@ -389,32 +378,8 @@ def lda_keyword_and_similarity(chunk:list[dict]):
     return top_keyword, sim_matrix
 
 
-def split_into_tokenized_sentence(text:str):
-    """텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
 
-    Returns:
-        Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
-    """
-
-    tokenized_sentences=[]
-    texts=[]
-    for p in re.split(r'(?<=[.!?])\s+', text.strip()):
-        texts.append(p.strip())
-
-    for idx, sentence in enumerate(texts):
-        tokens = extract_noun_phrases(sentence)
-        # 빈 토큰 배열인 경우 기본 토큰 추가
-        if not tokens:
-            tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
-        tokenized_sentences.append({"tokens": tokens,
-                                    "index":idx})
-
-        
-    return tokenized_sentences, texts
-
-
-
-def extract_graph_components(text: str, source_id: str):
+def extract_graph_components(text: str, id: tuple):
     """전체 파이프라인을 수행해 노드/엣지를 생성합니다.
 
     단계:
@@ -429,13 +394,16 @@ def extract_graph_components(text: str, source_id: str):
     짧은 텍스트는 자체적으로 토픽을 추출하고 전체 텍스트를 하나의 청크로 간주합니다.
     각 청크에서 노드와 엣지를 추출하여 반환합니다.
     """
-    
+    brain_id, source_id = id
+
     # 모든 노드와 엣지를 저장할 리스트
     all_nodes = []
     all_edges = []
     chunks=[]
+    
     tokenized, sentences = split_into_tokenized_sentence(text)
     
+    #텍스트가 2000자 이상인 경우 재귀 청킹 함수를 호출한다
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, "", [],  None, 0)
         if chunks==[]:
@@ -445,7 +413,7 @@ def extract_graph_components(text: str, source_id: str):
         all_nodes=nodes_and_edges["nodes"]
         all_edges=nodes_and_edges["edges"]
 
-    
+    #텍스트가 1000자 이하인 경우는 재귀 청킹 함수을 호출하지 않는다.
     else:
         top_keyword, _ =lda_keyword_and_similarity(tokenized)
         if len(top_keyword)<1:
@@ -470,13 +438,16 @@ def extract_graph_components(text: str, source_id: str):
                                     "score": 1.0}]
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
+        store_embeddings(node, brain_id, None)
+
 
     for c in chunks:
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
             relevant_sentences = [sentences[idx] for idx in current_chunk]
+            relevant_sentences="".join(relevant_sentences)
             if c["keyword"] != "":
-                nodes, edges, already_made = _extract_from_chunk(relevant_sentences, source_id, c["keyword"], already_made)
+                nodes, edges, already_made = _extract_from_chunk(relevant_sentences, id, c["keyword"], already_made)
             all_nodes += nodes
             all_edges += edges
 
@@ -494,6 +465,7 @@ def manual_chunking(text:str):
     Returns:
         List[str]: 재귀 청킹 결과(각 청크의 텍스트)
     """
+
     tokenized, sentences = split_into_tokenized_sentence(text)
     chunks, _, _ =recurrsive_chunking(tokenized, "-1" , 0, [], None, 0, None, None)
     #chunking 결과를 바탕으로, 더 이상 chunking하지 않는 chunk들은 node/edge를
@@ -510,4 +482,3 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
-
