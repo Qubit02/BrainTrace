@@ -12,7 +12,7 @@ app.whenReady().then(() => {
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
-        icon: path.join(__dirname, '..', 'public', 'brain.png'),
+        icon: path.join(__dirname, '..', 'public', 'AppIcon.png'),
         webPreferences: {
             
             preload: path.join(__dirname, 'preload.js'),
@@ -20,6 +20,7 @@ app.whenReady().then(() => {
             contextIsolation: true,
         }
     });
+    mainWindow.setMenu(null);
 
     // ✅ 파일 탐색기 IPC 핸들러 등록
     ipcMain.handle('open-file-dialog', async () => {
