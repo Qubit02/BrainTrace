@@ -562,7 +562,7 @@ const ChatMessage = ({
                           }
                         }}
                       >
-                        {nodeName}
+                        {nodeName.replace(/\*/g, "")}
                       </span>
                       <button
                         className={`chat-panel-modern-source-btn${

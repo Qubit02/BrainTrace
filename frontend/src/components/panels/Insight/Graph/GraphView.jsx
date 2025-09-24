@@ -338,8 +338,12 @@ function GraphView({
   // 노드 이름 비교 정규화 유틸리티 (공백/대소문자 무시)
   const normalizeName = (name) =>
     String(name || "")
+      .replace(/\*/g, "")
       .trim()
       .toLowerCase();
+
+  // 표시용 클린 노드명 생성 (모든 *) 제거
+  const cleanNodeName = (name) => (name || "").replace(/\*/g, "");
 
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
   const referencedSet = useMemo(
@@ -923,7 +927,7 @@ function GraphView({
 
     const referenced = graphData.nodes.filter((n) =>
       searchQuery
-        ? searchReferencedSet.has(n.name)
+        ? searchReferencedSet.has(cleanNodeName(n.name))
         : referencedSet.has(normalizeName(n.name))
     );
     if (referenced.length === 0) return;
@@ -1064,7 +1068,7 @@ function GraphView({
   const searchInputRef = useRef(null); // 검색 입력 필드 ref
 
   // 모든 노드 이름 목록 (검색용)
-  const allNodeNames = graphData.nodes.map((node) => node.name);
+  const allNodeNames = graphData.nodes.map((node) => cleanNodeName(node.name));
 
   /**
    * 노드 검색 로직을 처리합니다 (부분일치, 대소문자 무시).
@@ -1184,8 +1188,6 @@ function GraphView({
       toast.info("참고된 노드가 그래프에 없습니다.");
     }
   }, [showReferenced, referencedNodes, graphData.nodes, referencedSet]);
-
-  const cleanNodeName = (name) => (name || "").replace(/\*$/, "");
 
   return (
     <div
