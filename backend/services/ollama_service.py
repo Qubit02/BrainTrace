@@ -36,6 +36,8 @@ from .manual_chunking_sentences import manual_chunking
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+from utils.context_packing import get_ollama_num_ctx, approx_tokens
+
 # 환경변수 로드
 load_dotenv()
 
@@ -317,36 +319,63 @@ class OllamaAIService(BaseAIService):
 
     def generate_answer(self, schema_text: str, question: str) -> str:
         """스키마 텍스트와 질문으로 Ollama `/api/generate` 호출.
-
-        - 출력 마지막에 EOF와 JSON(referenced_nodes)을 포함하도록 프롬프트 유도
-        - 스트리밍 비활성화, 타임아웃 지정
+        - /api/show로 모델 컨텍스트 길이(num_ctx) 조회
+        - 입력 프롬프트 예산 초과 시 컨텍스트 안전 축약(헤드 80% + 테일 20%)
+        - /api/generate 호출 시 options.num_ctx 명시
+        - 답변 뒤 EOF + referenced_nodes JSON 출력 요구
         """
-        prompt = (
-            "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
-            "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
-            "지식그래프 컨텍스트 형식:\n"
-            "1. [관계 목록] start_name -> relation_label -> end_name\n (모든 노드가 관계를 가지고 있는 것은 아님)"
-            "2. [노드 목록] NODE: {node_name} | DESCRIPTION: {desc_str}\n"
-            "지식그래프 컨텍스트:\n" + schema_text + "\n\n"
-            "질문: " + question + "\n\n"
-            "출력 형식:\n"
-            "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n\n"
-            
-        )
         try:
-            print("debug", schema_text, question)
+            # 1) 컨텍스트 한계/예산 계산 (URL은 전역 OLLAMA_API_URL 그대로 사용)
+            model_name = getattr(self, "model_name", "unknown")
+            num_ctx_limit = get_ollama_num_ctx(model_name, base_url=OLLAMA_API_URL)
+            prompt_budget = int(num_ctx_limit * 0.8)  # 출력 여유 20%
+
+            approx_in_tokens = approx_tokens(schema_text) + approx_tokens(question) + 128
+            if approx_in_tokens > prompt_budget:
+                budget_chars = prompt_budget * 4  # 1토큰≈4문자 가정
+                head = schema_text[: int(budget_chars * 0.8)]
+                tail = schema_text[-int(budget_chars * 0.2):]
+                schema_text = head + "\n...\n" + tail
+                logging.warning(
+                    "Ollama context overflow → trimmed schema_text "
+                    "(model=%s, num_ctx=%d, prompt_budget≈%d, approx_in≈%d)",
+                    model_name, num_ctx_limit, prompt_budget, approx_in_tokens
+                )
+
+            # 2) 프롬프트 구성 (EOF + referenced_nodes JSON 요구)
+            prompt = (
+                "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 "
+                "추론 가능한 범위 내에서만 자연어로 답변해줘. "
+                "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 "
+                "'지식그래프에 해당 정보가 없습니다.'라고 출력해.\n\n"
+                "지식그래프 컨텍스트 형식:\n"
+                "1. [관계 목록] start_name -> relation_label -> end_name\n(모든 노드가 관계를 가지고 있는 것은 아님)\n"
+                "2. [노드 목록] NODE: {node_name} | DESCRIPTION: {desc_str}\n\n"
+                f"지식그래프 컨텍스트:\n{schema_text}\n\n"
+                f"질문: {question}\n\n"
+                "출력 형식:\n"
+                "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n"
+                "EOF\n"
+                '{"referenced_nodes": ["노드명1","노드명2"]}\n'
+            )
+
+            # 3) Ollama 호출 (전역 OLLAMA_API_URL 그대로 사용)
             resp = requests.post(
-                f"{OLLAMA_API_URL}/api/generate",       # 일반 생성 엔드포인트
+                f"{OLLAMA_API_URL}/api/generate",
                 json={
-                    "model": self.model_name,
+                    "model": model_name,
                     "prompt": prompt,
-                    "stream": False
+                    "stream": False,
+                    "options": {
+                        "num_ctx": num_ctx_limit,
+                    },
                 },
-                timeout=60
+                timeout=120,
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["response"].strip()            # Ollama /api/generate 응답 파싱
+            return data.get("response", "").strip()
+
         except Exception as e:
             logging.error(f"generate_answer 오류: {e}")
             raise
@@ -495,7 +524,7 @@ class OllamaAIService(BaseAIService):
         else:
             raw_schema_text = "컨텍스트에서 해당 정보를 찾을 수 없습니다."
 
-        logging.info("컨텍스트 텍스트 생성 완료 (%d자)", len(raw_schema_text))
+        #logging.info("컨텍스트 텍스트 생성 완료 (%d자)", len(raw_schema_text))
         return raw_schema_text
 
 

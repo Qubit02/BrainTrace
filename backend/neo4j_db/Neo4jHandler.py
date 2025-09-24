@@ -666,7 +666,7 @@ class Neo4jHandler:
         '''
         rows = self._execute_with_retry(query, {"names": node_names, "brain_id": brain_id})
         
-        logging.info(f"get_descriptions_bulk 쿼리 결과: {rows}")
+        #logging.info(f"get_descriptions_bulk 쿼리 결과: {rows}")
 
         result: Dict[str, List[int]] = defaultdict(list)
         for rec in rows:
