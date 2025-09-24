@@ -326,7 +326,7 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 6: LLM을을 사용해 최종 답변 생성
         logging.info("🚀 답변 생성 시작 - 모델: %s", ai_service.model_name if hasattr(ai_service, 'model_name') else '알 수 없음')
         final_answer = ai_service.generate_answer(raw_schema_text, question)
-        referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
+        referenced_nodes = ai_service.generate_referenced_nodes(final_answer,brain_id) 
         final_answer = final_answer.split("EOF")[0].strip()
         
         # referenced_nodes 내용을 텍스트로 final_answer 뒤에 추가
