@@ -228,9 +228,8 @@ const ModelDropdown = ({
         </span>
         <IoChevronDown
           size={14}
-          className={`chat-panel-dropdown-arrow-inline ${
-            showModelDropdown ? "rotated" : ""
-          }`}
+          className={`chat-panel-dropdown-arrow-inline ${showModelDropdown ? "rotated" : ""
+            }`}
         />
       </div>
       {showModelDropdown && (
@@ -254,9 +253,8 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline ${
-                  selectedModel === model ? "selected" : ""
-                }`}
+                className={`chat-panel-model-item-inline ${selectedModel === model ? "selected" : ""
+                  }`}
                 onClick={() => handleModelSelect(model)}
               >
                 <div className="chat-panel-model-info-inline">
@@ -339,9 +337,8 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline unselectable ${
-                  selectedModel === model ? "selected" : ""
-                }`}
+                className={`chat-panel-model-item-inline unselectable ${selectedModel === model ? "selected" : ""
+                  }`}
                 title="설치 후 사용 가능합니다"
                 onClick={(e) => {
                   // 설치되지 않은 모델은 선택할 수 없음
@@ -536,9 +533,8 @@ const ChatMessage = ({
 }) => {
   return (
     <div
-      className={`chat-panel-message-wrapper ${
-        message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
-      }`}
+      className={`chat-panel-message-wrapper ${message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
+        }`}
     >
       <div className="chat-panel-message">
         <div className="chat-panel-message-body">
@@ -562,14 +558,13 @@ const ChatMessage = ({
                           }
                         }}
                       >
-                        {nodeName}
+                        {nodeName.replace(/\*/g, "")}
                       </span>
                       <button
-                        className={`chat-panel-modern-source-btn${
-                          openSourceNodes[`${message.chat_id}_${nodeName}`]
-                            ? " active"
-                            : ""
-                        }`}
+                        className={`chat-panel-modern-source-btn${openSourceNodes[`${message.chat_id}_${nodeName}`]
+                          ? " active"
+                          : ""
+                          }`}
                         onClick={() =>
                           toggleSourceList(message.chat_id, nodeName)
                         }
@@ -681,8 +676,8 @@ const ChatMessage = ({
                   message.accuracy >= 0.8
                     ? "high"
                     : message.accuracy >= 0.6
-                    ? "medium"
-                    : "low"
+                      ? "medium"
+                      : "low"
                 }
               >
                 {(message.accuracy * 100).toFixed(1)}%

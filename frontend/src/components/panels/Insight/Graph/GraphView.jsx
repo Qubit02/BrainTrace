@@ -126,9 +126,8 @@ const NodeStatusPopup = ({ type, color, nodes, onClose }) => {
 
   return (
     <div
-      className={`graph-popup ${isExpanded ? "expanded" : ""} ${
-        canExpand ? "expandable" : ""
-      }`}
+      className={`graph-popup ${isExpanded ? "expanded" : ""} ${canExpand ? "expandable" : ""
+        }`}
       onClick={toggleExpand}
     >
       <div className="popup-content">
@@ -338,8 +337,12 @@ function GraphView({
   // 노드 이름 비교 정규화 유틸리티 (공백/대소문자 무시)
   const normalizeName = (name) =>
     String(name || "")
+      .replace(/\*/g, "")
       .trim()
       .toLowerCase();
+
+  // 표시용 클린 노드명 생성 (모든 *) 제거
+  const cleanNodeName = (name) => (name || "").replace(/\*/g, "");
 
   // referencedSet을 useMemo로 변경하여 불필요한 재생성 방지
   const referencedSet = useMemo(
@@ -401,8 +404,8 @@ function GraphView({
       typeof height === "number"
         ? height
         : height === "100%"
-        ? window.innerHeight
-        : containerRef.current.clientHeight || 550;
+          ? window.innerHeight
+          : containerRef.current.clientHeight || 550;
 
     setDimensions({ width, height: calcHeight });
   };
@@ -923,7 +926,7 @@ function GraphView({
 
     const referenced = graphData.nodes.filter((n) =>
       searchQuery
-        ? searchReferencedSet.has(n.name)
+        ? searchReferencedSet.has(cleanNodeName(n.name))
         : referencedSet.has(normalizeName(n.name))
     );
     if (referenced.length === 0) return;
@@ -1064,7 +1067,7 @@ function GraphView({
   const searchInputRef = useRef(null); // 검색 입력 필드 ref
 
   // 모든 노드 이름 목록 (검색용)
-  const allNodeNames = graphData.nodes.map((node) => node.name);
+  const allNodeNames = graphData.nodes.map((node) => cleanNodeName(node.name));
 
   /**
    * 노드 검색 로직을 처리합니다 (부분일치, 대소문자 무시).
@@ -1184,8 +1187,6 @@ function GraphView({
       toast.info("참고된 노드가 그래프에 없습니다.");
     }
   }, [showReferenced, referencedNodes, graphData.nodes, referencedSet]);
-
-  const cleanNodeName = (name) => (name || "").replace(/\*$/, "");
 
   return (
     <div
@@ -1387,9 +1388,9 @@ function GraphView({
           graphData={
             isAnimating
               ? {
-                  nodes: visibleNodes,
-                  links: visibleLinks,
-                }
+                nodes: visibleNodes,
+                links: visibleLinks,
+              }
               : graphData
           }
           linkLabel={(link) => `${link.relation}`}
@@ -1539,8 +1540,8 @@ function GraphView({
                   ? "#e2e8f0"
                   : "white"
                 : isDarkMode
-                ? "#64748b"
-                : "#cec8c8ff";
+                  ? "#64748b"
+                  : "#cec8c8ff";
               ctx.lineWidth = 0.5 / globalScale;
               ctx.shadowBlur = 0;
             }
@@ -1553,8 +1554,8 @@ function GraphView({
                 ? "#f1f5f9"
                 : "#cbd5e1"
               : isImportantNode || isReferenced || isNewlyAdded || isFocus
-              ? "#111"
-              : "#555";
+                ? "#111"
+                : "#555";
 
             // 줌 레벨이 임계값 이상일 때만 텍스트 표시
             if (globalScale >= textDisplayZoomThreshold) {
