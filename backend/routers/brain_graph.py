@@ -296,7 +296,11 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색, Q는 검색된 노드와 질문의 유사도 평균으로 정확도 계산에 쓰임
         similar_nodes,Q = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
-            raise QdrantException("질문과 유사한 노드를 찾지 못했습니다.")
+            return {
+            "answer": "해당 노드와 관련된 노드가 존재하지 않습니다.",
+            "referenced_nodes": [],
+            "accuracy": 0
+              }
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]
@@ -307,7 +311,11 @@ async def answer_endpoint(request_data: AnswerRequest):
         neo4j_handler = Neo4jHandler()
         result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
         if not result:
-            raise Neo4jException("스키마 조회 결과가 없습니다.")
+                return {
+                "answer": "해당 노드와 관련된 노드가 존재하지 않습니다.",
+                "referenced_nodes": [],
+                "accuracy": 0
+                }
             
         logging.info("### Neo4j 조회 결과 전체: %s", result)
         

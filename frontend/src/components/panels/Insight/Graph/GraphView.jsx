@@ -1394,6 +1394,7 @@ function GraphView({
                 }
               : graphData
           }
+          nodeLabel={(node) => cleanNodeName(node.name || node.id)}
           linkLabel={(link) => `${link.relation}`}
           onNodeClick={handleNodeClick}
           nodeRelSize={customNodeSize}

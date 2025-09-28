@@ -402,7 +402,7 @@ def extract_graph_components(text: str, id: tuple):
     chunks=[]
     
     tokenized, sentences = split_into_tokenized_sentence(text)
-    
+ 
     #텍스트가 2000자 이상인 경우 재귀 청킹 함수를 호출한다
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, "", [],  None, 0)
