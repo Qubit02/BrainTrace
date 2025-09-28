@@ -16,7 +16,7 @@
 ### Basic Requirements
 
 - **Operating System**: Windows 10/11
-- **Python**: 3.12 or later
+- **Python**: 3.12
 - **Node.js**: 20.19.0 or later
 - **Neo4j**: see below
 - **Ollama**: see below
