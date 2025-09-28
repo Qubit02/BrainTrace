@@ -149,7 +149,7 @@ def get_embeddings_batch(texts: List[str]) -> np.ndarray:
 def store_embeddings(node:dict, brain_id:str, embeddings:list):
 
     collection_name = get_collection_name(brain_id)
-
+    print(node)
     for idx, desc in enumerate(node["descriptions"]):
         description=desc["description"]
         source_id=node["source_id"]
