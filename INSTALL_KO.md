@@ -409,13 +409,13 @@ echo "Edited: $CONF"
 
 #### 2.2.2 Ollama 설정 (로컬 AI 모델)
 
+[Ollama 다운로드](https://ollama.com/download)
+
 #### 2.2.3 백엔드 실행
 
 ```bash
 python main.py
 ```
-
-[Ollama 다운로드](https://ollama.com/download)
 
 ### 2.3 프론트엔드 설정
 
