@@ -165,66 +165,133 @@ npm run dev
 
 ```powershell
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
-# 0) 버전/경로
-$VER      = '2025.07.1'
-$ZIP_NAME = "neo4j-community-$VER-windows.zip"
-$ZIP_URL  = "https://neo4j.com/artifact.php?name=$ZIP_NAME"
+# --- 0) 버전 설정 -------------------------------------------------------------
+# 'latest' 또는 '2025.08.0' 같은 고정 버전 지정 가능
+$Version = 'latest'
+
+# TLS1.2 강제 (구형 PowerShell 호환용)
+if (-not ([Net.ServicePointManager]::SecurityProtocol -band [Net.SecurityProtocolType]::Tls12)) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+}
 
 $ROOT    = (Get-Location).Path
-$STAGE   = Join-Path $ROOT "neo4j"       # 1차 작업용(stage)
+$STAGE   = Join-Path $ROOT "neo4j_stage"   # 임시 폴더
 $BACKEND = Join-Path $ROOT "backend"
-$TARGET  = Join-Path $BACKEND "neo4j"    # 최종 목적지: backend/neo4j
+$TARGET  = Join-Path $BACKEND "neo4j"      # 최종 목적지
 
-# 1) stage 준비
+# --- 1) 최신 버전 자동 탐지 --------------------------------------------------
+function Get-LatestNeo4jVersion {
+  $pages = @(
+    'https://neo4j.com/graph-data-science-software/',
+    'https://neo4j.com/deployment-center/'
+  )
+
+  foreach ($u in $pages) {
+    try { $resp = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 30 } catch { continue }
+
+    # 링크 목록이 없을 수 있으니 null-safe
+    $links = @()
+    if ($resp.Links) { $links = $resp.Links }
+
+    # 조건을 파이프라인으로 나눠서 필터링 (줄 앞에 -and 시작 안 함)
+    $href = $links `
+      | Where-Object { $_.href -match 'download-thanks\.html' } `
+      | Where-Object { $_.href -match 'edition=community' } `
+      | Where-Object { ($_.href -match 'winzip') -or ($_.href -match 'packaging=zip') } `
+      | Where-Object { $_.href -match 'release=' } `
+      | Select-Object -First 1 -ExpandProperty href
+
+    if ($href) {
+      # 쿼리 파라미터에서 release 값 추출
+      $q = ([uri]"https://dummy.local/?$([uri]$href).Query").Query.TrimStart('?')
+      $pairs = @{}
+      foreach ($kv in $q -split '&') {
+        $k,$v = $kv -split '=',2
+        if ($k) { $pairs[$k] = [uri]::UnescapeDataString($v) }
+      }
+      if ($pairs['release']) { return $pairs['release'] }
+    }
+
+    # 페이지 본문에서 “Neo4j Community Edition <ver>” 패턴 탐색 (보조 수단)
+    $m = [regex]::Match($resp.Content, 'Neo4j Community Edition\s+(?<v>(2025\.\d{2}\.\d+|\d+\.\d+\.\d+))')
+    if ($m.Success) { return $m.Groups['v'].Value }
+  }
+
+  throw "최신 버전을 찾지 못했습니다. 직접 `$Version 변수에 버전을 지정하세요."
+}
+
+if ($Version -eq 'latest') {
+  $Version = Get-LatestNeo4jVersion
+}
+Write-Host "Using Neo4j Community version: $Version"
+
+# --- 2) 다운로드 --------------------------------------------------------------
+$zipFileName = "neo4j-community-$Version-windows.zip"
+$ZIPPATH     = Join-Path $STAGE $zipFileName
+
+$urls = @(
+  "https://go.neo4j.com/download-thanks.html?edition=community&flavour=winzip&release=$Version",
+  "https://neo4j.com/download-thanks/?edition=community&packaging=zip&architecture=x64&release=$Version",
+  "https://neo4j.com/artifact.php?name=$zipFileName",
+  "https://dist.neo4j.org/$zipFileName"
+)
+
 if (Test-Path $STAGE) { Remove-Item $STAGE -Recurse -Force }
 New-Item -ItemType Directory -Path $STAGE | Out-Null
 if (-not (Test-Path $BACKEND)) { New-Item -ItemType Directory -Path $BACKEND | Out-Null }
 
-# 2) ZIP 다운로드 → stage에 저장
-$ZIPPATH = Join-Path $STAGE $ZIP_NAME
-Invoke-WebRequest -Uri $ZIP_URL -OutFile $ZIPPATH
+function Try-Download($url) {
+  try {
+    Invoke-WebRequest -Uri $url -OutFile $ZIPPATH -TimeoutSec 1200 -UseBasicParsing
+    if ((Get-Item $ZIPPATH).Length -gt 10MB) { return $true }
+    else { Remove-Item $ZIPPATH -Force }
+  } catch { return $false }
+  return $false
+}
 
-# 3) 압축 해제(같은 stage 안에 풀림)
+$ok = $false
+foreach ($u in $urls) {
+  Write-Host "Trying: $u"
+  if (Try-Download $u) { $ok = $true; break }
+}
+if (-not $ok) { throw "Neo4j ZIP 다운로드 실패" }
+
+# --- 3) 압축 해제 & 폴더명 정리 ---------------------------------------------
 Expand-Archive -Path $ZIPPATH -DestinationPath $STAGE -Force
 
-# 4) 추출된 "neo4j-community-*" 폴더를 'neo4j'로 리네임
-$extracted = Get-ChildItem -Path $STAGE -Directory |
-  Where-Object { $_.Name -like "neo4j-community-*" } | Select-Object -First 1
-if (-not $extracted) { throw "Neo4j folder not found under $STAGE" }
+$extracted = Get-ChildItem -Path $STAGE -Directory `
+  | Where-Object { $_.Name -like "neo4j-community-*" } `
+  | Select-Object -First 1
+if (-not $extracted) { throw "압축 해제 후 폴더를 찾을 수 없음" }
 
 $prepared = Join-Path $STAGE "neo4j"
 if (Test-Path $prepared) { Remove-Item $prepared -Recurse -Force }
 Rename-Item -Path $extracted.FullName -NewName "neo4j"
 
-# 5) neo4j.conf에서 '#dbms.security.auth_enabled=false' 주석 해제
+# --- 4) conf 수정 ------------------------------------------------------------
 $CONF = Join-Path $prepared "conf\neo4j.conf"
 if (-not (Test-Path $CONF)) { throw "neo4j.conf not found: $CONF" }
 
 $content = Get-Content $CONF
 $changed = $false
-
-# a) 정확히 주석 처리된 줄이면 주석만 제거
 $new = $content -replace '^\s*#\s*(dbms\.security\.auth_enabled\s*=\s*false)\s*$', '$1'
 if ($new -ne $content) { $changed = $true; $content = $new }
-
-# b) 해당 키가 없으면 줄 추가(개발 편의용)
 if (-not ($content -match '^\s*dbms\.security\.auth_enabled\s*=')) {
   $content += 'dbms.security.auth_enabled=false'
   $changed = $true
 }
-
 if ($changed) { $content | Set-Content $CONF -Encoding UTF8 }
 
-# 6) stage/neo4j -> backend/neo4j 이동
+# --- 5) backend/neo4j 로 이동 ------------------------------------------------
 if (Test-Path $TARGET) { Remove-Item $TARGET -Recurse -Force }
 Move-Item -LiteralPath $prepared -Destination $TARGET -Force
 
-# (선택) stage 정리
 Remove-Item $STAGE -Recurse -Force
-
 Write-Host "Prepared and moved to: $TARGET"
 Write-Host "Edited: $CONF"
+
 ```
 
 **Git Bash 실행 (저장소 루트에서)**
