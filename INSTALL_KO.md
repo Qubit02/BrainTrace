@@ -414,6 +414,7 @@ echo "Edited: $CONF"
 #### 2.2.3 백엔드 실행
 
 ```bash
+cd backend
 python main.py
 ```
 
