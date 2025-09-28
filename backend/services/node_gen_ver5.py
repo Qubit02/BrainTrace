@@ -205,12 +205,14 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
     이들 사이의 엣지들을 생성합니다.
     """
     edges=[]
+    source=source_keyword[:-1] if source_keyword[-1] == "*" else source_keyword
+    source_idx = [idx for idx in phrase_info[source]]
     for t in target_keywords:
-        find=source_keyword[:-1] if source_keyword[-1] == "*" else source_keyword
-        if t != find:
+        if t != source:
+            target_idx=[idx for idx in phrase_info[t]]
             relation=""
-            for s_idx in phrase_info[t]:
-                if find in sentences[s_idx]:
+            for s_idx in source_idx:
+                if s_idx in target_idx:
                     relation+=sentences[s_idx]
             relation="관련" if relation=="" else relation
             edges.append({"source":source_keyword, 
@@ -261,9 +263,9 @@ def split_into_tokenized_sentence(text:str):
 
     tokenized_sentences=[]
     texts=[]
-    for p in re.split(r'(?<=[.!?])\s+', text.strip()):
-        texts.append(p.strip())
-
+    texts = [s.strip() for s in re.split(r'(?<=[.!?])\s+|(?<=[다요]\.)\s*', text.strip()) if s.strip()]
+    
+    print(f"texts:{texts}")
     for idx, sentence in enumerate(texts):
         lang=check_lang(sentence)
 
@@ -299,11 +301,13 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     phrase_info = defaultdict(set)
 
     phrases, sentences = split_into_tokenized_sentence(sentences)
+    print(f"phrases:{phrases}")
 
     for p in phrases:
         for token in p["tokens"]:
             phrase_info[token].add(p["index"])
 
+    print(f"phrase info:{phrase_info}")
     
     phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)

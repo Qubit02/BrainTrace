@@ -23,6 +23,7 @@ import logging
 import traceback
 import uvicorn
 
+
 def global_except_hook(exc_type, exc_value, exc_tb):
     """처리되지 않은 예외를 콘솔과 파일로 기록하고 안전 종료합니다.
 
