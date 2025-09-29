@@ -19,6 +19,8 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./ChatPanel.css";
 import {
   getReferencedNodes,
@@ -228,9 +230,8 @@ const ModelDropdown = ({
         </span>
         <IoChevronDown
           size={14}
-          className={`chat-panel-dropdown-arrow-inline ${
-            showModelDropdown ? "rotated" : ""
-          }`}
+          className={`chat-panel-dropdown-arrow-inline ${showModelDropdown ? "rotated" : ""
+            }`}
         />
       </div>
       {showModelDropdown && (
@@ -254,9 +255,8 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline ${
-                  selectedModel === model ? "selected" : ""
-                }`}
+                className={`chat-panel-model-item-inline ${selectedModel === model ? "selected" : ""
+                  }`}
                 onClick={() => handleModelSelect(model)}
               >
                 <div className="chat-panel-model-info-inline">
@@ -339,9 +339,8 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline unselectable ${
-                  selectedModel === model ? "selected" : ""
-                }`}
+                className={`chat-panel-model-item-inline unselectable ${selectedModel === model ? "selected" : ""
+                  }`}
                 title="설치 후 사용 가능합니다"
                 onClick={(e) => {
                   // 설치되지 않은 모델은 선택할 수 없음
@@ -536,9 +535,8 @@ const ChatMessage = ({
 }) => {
   return (
     <div
-      className={`chat-panel-message-wrapper ${
-        message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
-      }`}
+      className={`chat-panel-message-wrapper ${message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
+        }`}
     >
       <div className="chat-panel-message">
         <div className="chat-panel-message-body">
@@ -565,11 +563,10 @@ const ChatMessage = ({
                         {nodeName.replace(/\*/g, "")}
                       </span>
                       <button
-                        className={`chat-panel-modern-source-btn${
-                          openSourceNodes[`${message.chat_id}_${nodeName}`]
-                            ? " active"
-                            : ""
-                        }`}
+                        className={`chat-panel-modern-source-btn${openSourceNodes[`${message.chat_id}_${nodeName}`]
+                          ? " active"
+                          : ""
+                          }`}
                         onClick={() =>
                           toggleSourceList(message.chat_id, nodeName)
                         }
@@ -681,8 +678,8 @@ const ChatMessage = ({
                   message.accuracy >= 0.8
                     ? "high"
                     : message.accuracy >= 0.6
-                    ? "medium"
-                    : "low"
+                      ? "medium"
+                      : "low"
                 }
               >
                 {(message.accuracy * 100).toFixed(1)}%
@@ -1061,18 +1058,43 @@ function ChatPanel({
       // 설치 완료 후 모델 목록 재로드
       await loadModels();
 
-      // 성공 메시지 표시
-      alert(`${modelName} 모델이 성공적으로 설치되었습니다.`);
+      // 성공 메시지 표시 (Toast 사용)
+      toast.success(`${modelName} 모델이 성공적으로 설치되었습니다.`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
     } catch (error) {
       console.error("모델 설치 실패:", error);
 
       // 타임아웃 에러인 경우 특별 처리
       if (error.response?.status === 408) {
-        alert(
-          `${modelName} 모델 다운로드가 시간 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.`
+        toast.error(
+          `${modelName} 모델 다운로드가 시간 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.`,
+          {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          }
         );
       } else {
-        alert(`모델 설치에 실패했습니다: ${error.message}`);
+        toast.error(`모델 설치에 실패했습니다: ${error.message}`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
       }
     } finally {
       setInstallingModel(null);
@@ -1401,6 +1423,7 @@ function ChatPanel({
 
   return (
     <div className="panel-container">
+      <ToastContainer />
       <div className="chat-panel-header-custom">
         <div className="chat-panel-header-left">
           <span className="header-title">Chat</span>
