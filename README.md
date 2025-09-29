@@ -1,13 +1,4 @@
 <img width="3000" height="500" alt="Brain Trace (3)" src="https://github.com/user-attachments/assets/8f92baaa-158e-4475-b34a-5f1f440649ac" />
-.
-
-
-
-<div align="center">
-  <a href="https://youtu.be/CkKStA9WHhY" target="_blank">
-    <img src="https://img.youtube.com/vi/CkKStA9WHhY/maxresdefault.jpg" alt="데모 비디오" style="width:70%; max-width:500px; border:2px solid #ddd; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); transition: transform 0.2s;" />
-  </a>
-</div>
 
 <p align="center"><i>지식 그래프를 활용한 지식 관리 시스템</i></p>
 
@@ -537,6 +528,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 ---
 
 ## 시연 영상
+
 <div align="center">
   <a href="https://youtu.be/CkKStA9WHhY" target="_blank">
     <img src="https://img.youtube.com/vi/CkKStA9WHhY/maxresdefault.jpg" alt="데모 비디오" style="width:70%; max-width:500px; border:2px solid #ddd; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); transition: transform 0.2s;" />
