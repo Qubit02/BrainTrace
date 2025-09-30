@@ -176,6 +176,10 @@ export default function SourcePanel({
       loadAllFiles();
     }
     setOpenedFile(null);
+    // 프로젝트 변경 시 검색 상태 초기화
+    setShowSearchInput(false);
+    setSearchText("");
+    setFilteredSourceIds(null);
   }, [selectedBrainId]);
 
   /**
@@ -190,6 +194,10 @@ export default function SourcePanel({
         setOpenedFile(targetFile);
         setIsSourceOpen(true);
         setLocalFocusSource(null); // 포커스 초기화
+        // 외부에서 소스 클릭 시 검색 상태 초기화
+        setShowSearchInput(false);
+        setSearchText("");
+        setFilteredSourceIds(null);
       } else {
         // 파일이 없는 경우 toast 메시지
         toast.error("해당 소스 파일이 삭제되었거나 존재하지 않습니다.");
@@ -283,6 +291,10 @@ export default function SourcePanel({
   const closeSource = () => {
     setOpenedFile(null);
     setIsSourceOpen(false);
+    // 소스 닫을 때 검색 상태 초기화
+    setShowSearchInput(false);
+    setSearchText("");
+    setFilteredSourceIds(null);
     onBackFromSource?.();
   };
 
@@ -312,6 +324,10 @@ export default function SourcePanel({
     if (file) {
       setOpenedFile(file);
       setIsSourceOpen(true);
+      // 파일 열 때 검색 상태 초기화
+      setShowSearchInput(false);
+      setSearchText("");
+      setFilteredSourceIds(null);
     } else {
       console.log("파일을 찾을 수 없음:", { id, type, allFiles });
       alert("파일을 찾을 수 없습니다.");
