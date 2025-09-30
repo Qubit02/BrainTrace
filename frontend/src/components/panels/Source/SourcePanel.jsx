@@ -176,6 +176,10 @@ export default function SourcePanel({
       loadAllFiles();
     }
     setOpenedFile(null);
+    // 프로젝트 변경 시 검색 상태 초기화
+    setShowSearchInput(false);
+    setSearchText("");
+    setFilteredSourceIds(null);
   }, [selectedBrainId]);
 
   /**
