@@ -79,16 +79,12 @@ function GraphViewForFullscreen(props) {
   // 색상 상수 (다크/라이트에 따라 자동 전환)
   const ICON_COLOR = isDarkMode ? "white" : "black";
 
-  // 핵심 커스터마이징 + 3개 물리 설정 (0-100 스케일)
+  // 핵심 커스터마이징 설정
   const [graphSettings, setGraphSettings] = useState({
     nodeSize: 6, // 노드 크기
     linkWidth: 1, // 링크 두께
     textZoomThreshold: 0.5, // 텍스트 표시 시작점
-    textAlpha: 1.0, // 텍스트 투명도(신규)
-    // 3개 물리 설정 (0-100 범위)
-    repelStrength: 1, // 반발력
-    linkDistance: 40, // 링크 거리
-    linkStrength: 40, // 링크 장력
+    textAlpha: 1.0, // 텍스트 투명도
   });
 
   // ===== 콜백 =====
@@ -289,10 +285,6 @@ function GraphViewForFullscreen(props) {
         customLinkWidth={graphSettings.linkWidth}
         textDisplayZoomThreshold={graphSettings.textZoomThreshold}
         textAlpha={graphSettings.textAlpha}
-        // 3개 물리 설정 전달
-        repelStrength={graphSettings.repelStrength}
-        linkDistance={graphSettings.linkDistance}
-        linkStrength={graphSettings.linkStrength}
       />
 
       <div className="fullscreen-overlay">
@@ -529,90 +521,17 @@ function GraphViewForFullscreen(props) {
                         min="0.0"
                         max="1"
                         step="0.05"
-                        value={graphSettings.textAlpha}
+                        value={1 - graphSettings.textAlpha}
                         onChange={(e) =>
                           setGraphSettings((prev) => ({
                             ...prev,
-                            textAlpha: parseFloat(e.target.value),
-                          }))
-                        }
-                        className="fullscreen-slider"
-                        style={{ direction: "rtl" }}
-                      />
-                      <span className="fullscreen-slider-value">
-                        {graphSettings.textAlpha}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3개 물리 설정 */}
-                <div className="fullscreen-control-group">
-                  <label>물리 설정</label>
-                  <div className="fullscreen-slider-container">
-                    {/* 반발력 */}
-                    <div className="fullscreen-slider-item">
-                      <span className="fullscreen-slider-label">반발력</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={graphSettings.repelStrength}
-                        onChange={(e) =>
-                          setGraphSettings((prev) => ({
-                            ...prev,
-                            repelStrength: parseInt(e.target.value),
+                            textAlpha: 1 - parseFloat(e.target.value),
                           }))
                         }
                         className="fullscreen-slider"
                       />
                       <span className="fullscreen-slider-value">
-                        {graphSettings.repelStrength}%
-                      </span>
-                    </div>
-
-                    {/* 링크 거리 */}
-                    <div className="fullscreen-slider-item">
-                      <span className="fullscreen-slider-label">링크 거리</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={graphSettings.linkDistance}
-                        onChange={(e) =>
-                          setGraphSettings((prev) => ({
-                            ...prev,
-                            linkDistance: parseInt(e.target.value),
-                          }))
-                        }
-                        className="fullscreen-slider"
-                      />
-                      <span className="fullscreen-slider-value">
-                        {graphSettings.linkDistance}%
-                      </span>
-                    </div>
-
-                    {/* 링크 장력 */}
-                    <div className="fullscreen-slider-item">
-                      <span className="fullscreen-slider-label">링크 장력</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={graphSettings.linkStrength}
-                        onChange={(e) =>
-                          setGraphSettings((prev) => ({
-                            ...prev,
-                            linkStrength: parseInt(e.target.value),
-                          }))
-                        }
-                        className="fullscreen-slider"
-                      />
-                      <span className="fullscreen-slider-value">
-                        {graphSettings.linkStrength}%
+                        {Math.round((1 - graphSettings.textAlpha) * 100)}%
                       </span>
                     </div>
                   </div>
