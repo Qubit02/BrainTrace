@@ -227,6 +227,7 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     해당 노드들의 2단계 깊이 스키마를 추출 후 LLM을 이용해 최종 답변 생성
     <br> Ollama 사용 → (model: "ollama")  
     <br> GPT 사용 → (model: "gpt")
+    <br> 딥서치 사용 → (use_deep_search : true) 디폴트 값 false로 설정
     """,
     response_description="생성된 답변을 반환합니다.",
     responses={
@@ -256,6 +257,7 @@ async def answer_endpoint(request_data: AnswerRequest):
     brain_id = str(request_data.brain_id)  # 문자열로 변환
     model = request_data.model
     model_name = request_data.model_name
+    use_deep_search = request_data.use_deep_search
     if not question:
         raise HTTPException(status_code=400, detail="question 파라미터가 필요합니다.")
     if not brain_id:
@@ -307,9 +309,14 @@ async def answer_endpoint(request_data: AnswerRequest):
         logging.info("sim node name: %s", similar_node_names)
         logging.info("sim node score: %s", [f"{node['name']}:{node['score']:.2f}" for node in similar_nodes])
         
-        # Step 4: 유사한 노드들의 1*단계 깊이 스키마 조회
+        # Step 4: 유사한 노드들의 스키마 조회
         neo4j_handler = Neo4jHandler()
-        result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+
+        if(use_deep_search):
+            result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
+        else:
+            result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+
         if not result:
                 return {
                 "answer": "해당 노드와 관련된 노드가 존재하지 않습니다.",
