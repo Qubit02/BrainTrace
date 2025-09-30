@@ -89,3 +89,4 @@ class AnswerRequest(BaseModel):
     brain_id: int = Field(..., description="브레인 ID")
     model: str = Field("ollama", description="사용할 프레임워크 (openai 또는 ollama)")
     model_name:str = Field("gemma3:4b", description="사용할 모델명 (ollama: gemma3:4b, openai: gpt-5, gpt-4o 등)")
+    use_deep_search: bool = Field(default=False, description="깊은 탐색 사용 여부 (True: 시작 노드에서 설명 없는 노드도 설명 있는 노드가 나올때까지 탐색, False: 시작 노드에서 설명 있는 노드만 탐색)")
