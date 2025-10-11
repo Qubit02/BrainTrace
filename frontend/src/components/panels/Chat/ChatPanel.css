@@ -1961,6 +1961,7 @@
   margin-bottom: 3px;
 }
 
+/* 모델 드롭다운과 완전히 동일한 스타일 적용 */
 .chat-panel-search-mode-value-inline {
   font-weight: 400;
   color: rgb(137, 136, 136);
@@ -1969,9 +1970,10 @@
   font-size: 15px;
   letter-spacing: 0.055em;
   margin-left: 3px;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   box-shadow: none;
   background: transparent;
+  line-height: inherit; /* 모델 드롭다운과 동일하게 */
 }
 
 .chat-panel-search-mode-menu-inline {
