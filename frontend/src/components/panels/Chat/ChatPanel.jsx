@@ -557,6 +557,7 @@ const SearchModeDropdown = ({
  * - 소스 개수 표시
  * - 모델 선택 드롭다운 포함
  * - 전송 버튼 (로딩 중일 때 정지 버튼으로 변경)
+ * - 자동 스크롤 (입력 시 맨 아래로)
  *
  * @param {string} inputText - 입력 텍스트
  * @param {function} setInputText - 입력 텍스트 설정 함수
@@ -572,6 +573,7 @@ const SearchModeDropdown = ({
  * @param {string|null} installingModel - 설치 중인 모델
  * @param {string} searchMode - 현재 선택된 탐색 모드
  * @param {function} handleSearchModeSelect - 탐색 모드 선택 핸들러
+ * @param {object} textareaRef - 입력창 ref
  */
 const ChatInput = ({
   inputText,
@@ -592,11 +594,13 @@ const ChatInput = ({
   setShowSearchModeDropdown,
   handleSearchModeSelect,
   modelDropdownRef,
+  textareaRef,
 }) => {
   return (
     <form className="chat-controls" onSubmit={handleSubmit}>
       <div className="chat-panel-input-with-button">
         <textarea
+          ref={textareaRef}
           className="chat-panel-input"
           placeholder="무엇이든 물어보세요"
           value={inputText}
@@ -936,6 +940,7 @@ function ChatPanel({
   // UI 관련 상태
   const messagesEndRef = useRef(null); // 메시지 끝 참조 (자동 스크롤용)
   const modelDropdownRef = useRef(null); // 모델 드롭다운 참조 (위치 계산용)
+  const textareaRef = useRef(null); // 입력창 참조 (자동 스크롤용)
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 열린 소스 노드 상태
   const [showConfirm, setShowConfirm] = useState(false); // 확인 다이얼로그 표시
   const [isInitialLoading, setIsInitialLoading] = useState(true); // 초기 로딩 상태
@@ -1055,6 +1060,14 @@ function ChatPanel({
       setEditingTitle("Untitled");
     }
   }, [sessionInfo?.isNewSession, selectedSessionId]);
+
+  // ===== 입력창 자동 스크롤 =====
+  useEffect(() => {
+    // 텍스트 입력 시 textarea를 맨 아래로 스크롤
+    if (textareaRef?.current) {
+      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+    }
+  }, [inputText]);
 
   // ===== 스크롤을 맨 아래로 내리는 함수 =====
   useEffect(() => {
@@ -1585,6 +1598,7 @@ function ChatPanel({
     setShowSearchModeDropdown,
     handleSearchModeSelect,
     modelDropdownRef,
+    textareaRef, // 빈 채팅 상태에서 사용
   };
 
   useEffect(() => {
@@ -1682,6 +1696,7 @@ function ChatPanel({
             <form className="chat-panel-input-wrapper" onSubmit={handleSubmit}>
               <div className="chat-panel-input-with-button rounded">
                 <textarea
+                  ref={textareaRef}
                   className="chat-panel-input"
                   placeholder="무엇이든 물어보세요"
                   value={inputText}

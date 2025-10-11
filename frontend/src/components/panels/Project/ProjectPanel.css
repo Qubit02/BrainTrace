@@ -160,7 +160,26 @@
   cursor: default;
 }
 
-/* 프로젝트 아이콘 이미지 스타일링 */
+/* 프로젝트 타입 아이콘 (클라우드/로컬) */
+.project-type-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  color: #2c2c2c;
+}
+
+.sidebar-icon:hover .project-type-icon {
+  transform: scale(1.08);
+  color: #1a1a1a;
+}
+
+.sidebar-icon.active .project-type-icon {
+  color: #2196f3;
+}
+
+/* 프로젝트 아이콘 이미지 스타일링 (레거시 - 이미지 사용 시) */
 .sidebar-icon img {
   flex-shrink: 0;
   transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);

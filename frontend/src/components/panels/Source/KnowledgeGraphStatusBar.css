@@ -472,7 +472,7 @@
     position: absolute;
     left: auto;
     right: 0;
-    top: -40px; /* 마우스에 더 가깝게 조정 */
+    bottom: calc(100% + 1px); /* 위쪽으로 표시 (bottom 사용) */
     transform: none;
     
     /* 크기 */
@@ -500,10 +500,10 @@
     transition: opacity 0.18s ease;
 }
 
-/* 툴팁이 화면 위쪽 경계를 벗어날 경우를 대비한 스타일 */
-.qmark-tooltip .custom-tooltip.bottom {
-    top: auto;
-    bottom: -40px; /* 아래쪽도 조정 */
+/* 마지막 total 메트릭의 툴팁은 더 위쪽에 표시 */
+.data-metric.total .qmark-tooltip .custom-tooltip {
+    bottom: calc(100% + 12px); /* 더 위쪽으로 */
+    max-width: 280px; /* 긴 설명을 위해 너비 확장 */
 }
 
 /* 툴팁이 화면 왼쪽 경계를 벗어날 경우를 대비한 스타일 */

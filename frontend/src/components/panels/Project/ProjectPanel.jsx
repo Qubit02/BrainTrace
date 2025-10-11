@@ -24,6 +24,7 @@ import "./ProjectPanel.css";
 import { IoHomeOutline } from "react-icons/io5";
 import { AiOutlinePlus } from "react-icons/ai";
 import { MdSecurity } from "react-icons/md";
+import { BiCloud, BiLaptop } from "react-icons/bi";
 
 import NewBrainModal from "./NewBrainModal";
 
@@ -116,19 +117,20 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
                       : () => handleProjectClick(b.brain_id)
                   }
                 >
-                  <img
-                    width={30}
-                    src={
-                      selectedBrainId === b.brain_id
-                        ? "/brainbanzzak.png"
-                        : "/brainnormal.png"
-                    }
-                    style={{ flexShrink: 0 }}
-                    alt={b.brain_name}
-                  />
+                  {/* 클라우드/로컬 아이콘 표시 */}
+                  <div
+                    className="project-type-icon"
+                    title={getProjectTypeTitle(projectType)}
+                  >
+                    {projectType === "local" ? (
+                      <BiLaptop size={26} />
+                    ) : (
+                      <BiCloud size={26} />
+                    )}
+                  </div>
                   <span className="brain-name-ellipsis">{b.brain_name}</span>
 
-                  {/* 로컬 프로젝트일 때만 MdSecurity 아이콘 표시 */}
+                  {/* 로컬 프로젝트일 때 보안 아이콘 표시 */}
                   {projectType === "local" && (
                     <div
                       className="local-security-icon"

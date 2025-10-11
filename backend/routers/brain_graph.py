@@ -405,6 +405,103 @@ async def answer_endpoint(request_data: AnswerRequest):
     500: ErrorExamples[50002]
     }
 )
+@router.get("/getNodeDescriptions",
+    summary="노드의 descriptions 조회",
+    description="특정 노드의 descriptions 배열을 조회하여 반환합니다.",
+    response_description="노드의 descriptions 배열을 반환합니다.",
+    responses={
+        404: {
+            "description": "노드를 찾을 수 없음",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "노드를 찾을 수 없습니다."
+                    }
+                }
+            }
+        },
+        500: ErrorExamples[50002]
+    }
+)
+async def get_node_descriptions_endpoint(node_name: str, brain_id: str):
+    """
+    특정 노드의 descriptions 배열을 조회합니다.
+    
+    Args:
+        node_name (str): 조회할 노드의 이름
+        brain_id (str): 브레인 ID
+    
+    Returns:
+        dict: descriptions 정보
+            - node_name: 노드 이름
+            - brain_id: 브레인 ID
+            - descriptions: description 객체들의 배열
+                - 각 객체는 description, source_id 등을 포함
+            - descriptions_count: descriptions 배열의 길이
+    
+    Example Response:
+        {
+            "node_name": "인공지능",
+            "brain_id": "brain123",
+            "descriptions": [
+                {
+                    "description": "컴퓨터가 인간의 지능을 모방하는 기술",
+                    "source_id": "101"
+                },
+                {
+                    "description": "기계학습과 딥러닝을 포함하는 광범위한 분야",
+                    "source_id": "102"
+                }
+            ],
+            "descriptions_count": 2
+        }
+    """
+    logging.info(f"getNodeDescriptions 엔드포인트 호출됨 - node_name: {node_name}, brain_id: {brain_id}")
+    
+    # 파라미터 검증
+    if not node_name:
+        raise HTTPException(status_code=400, detail="node_name 파라미터가 필요합니다.")
+    if not brain_id:
+        raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
+    
+    try:
+        # Neo4j 핸들러 생성
+        neo4j_handler = Neo4jHandler()
+        logging.info("Neo4j 핸들러 생성됨")
+        
+        # Neo4j에서 노드의 descriptions 배열 조회
+        descriptions = neo4j_handler.get_node_descriptions(node_name, brain_id)
+        
+        # 노드가 존재하지 않거나 descriptions가 없는 경우
+        if descriptions is None:
+            logging.warning(f"노드 '{node_name}'를 찾을 수 없습니다. (brain_id: {brain_id})")
+            raise HTTPException(status_code=404, detail="노드를 찾을 수 없습니다.")
+        
+        # descriptions가 빈 배열인 경우도 정상 응답으로 처리
+        logging.info(f"조회된 descriptions 개수: {len(descriptions)}")
+        
+        # 응답 데이터 구성
+        response_data = {
+            "node_name": node_name,
+            "brain_id": brain_id,
+            "descriptions": descriptions,
+            "descriptions_count": len(descriptions)
+        }
+        
+        # 각 description의 source_id 목록도 추가 (선택적)
+        source_ids = list(set(desc.get("source_id") for desc in descriptions if "source_id" in desc))
+        if source_ids:
+            response_data["unique_source_ids"] = source_ids
+            response_data["unique_source_count"] = len(source_ids)
+        
+        return response_data
+        
+    except HTTPException:
+        # HTTP 예외는 그대로 전달
+        raise
+    except Exception as e:
+        logging.error("descriptions 조회 오류: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"descriptions 조회 중 오류가 발생했습니다: {str(e)}")
 async def get_source_ids(node_name: str, brain_id: str):
     """
     노드의 모든 source_id와 제목을 반환합니다:
@@ -466,6 +563,8 @@ async def get_source_ids(node_name: str, brain_id: str):
     except Exception as e:
         logging.error("source_id 조회 오류: %s", str(e))
         raise HTTPException(status_code=500, detail=f"source_id 조회 중 오류가 발생했습니다: {str(e)}")
+
+
 
 @router.get("/getNodesBySourceId",
     summary="source_id로 노드 조회",
