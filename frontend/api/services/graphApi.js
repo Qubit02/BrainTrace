@@ -309,16 +309,21 @@ export const requestAnswer = async (
   session_id,
   brain_id,
   model,
-  model_name
+  model_name,
+  searchParams = {}
 ) => {
   try {
-    const response = await api.post(`/brainGraph/answer`, {
+    const requestPayload = {
       question: question,
       session_id: session_id,
       brain_id: brain_id,
       model: model,
       model_name: model_name,
-    });
+      use_deep_search: searchParams.deep_search || false,
+    };
+
+    const response = await api.post(`/brainGraph/answer`, requestPayload);
+    
     return response.data;
   } catch (error) {
     console.error('Answer 요청 중 에러 발생:', error);
