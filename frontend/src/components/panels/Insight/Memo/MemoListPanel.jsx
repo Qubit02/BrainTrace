@@ -386,6 +386,7 @@ function MemoListPanel({
   onHardDelete, // 메모 완전 삭제 시 호출
   onEmptyTrash, // 휴지통 비우기 시 호출
 }) {
+  // ===== 오디오 녹음 훅 =====
   const {
     isRecording,
     isTranscribing,
@@ -395,68 +396,76 @@ function MemoListPanel({
     handleMicClick,
   } = useAudioRecorder(onAdd);
 
-  // 휴지통 모드 상태
-  const [showTrash, setShowTrash] = useState(false);
+  // ===== UI 상태 관리 (통합) =====
+  const [uiState, setUiState] = useState({
+    showTrash: false, // 휴지통 모드
+    showEmptyTrashDialog: false, // 휴지통 비우기 확인 다이얼로그
+    isAddingMemo: false, // 메모 추가 중 상태
+  });
 
-  // 휴지통 비우기 확인 다이얼로그 상태
-  const [showEmptyTrashDialog, setShowEmptyTrashDialog] = useState(false);
-
-  // 새 메모 추가 중 상태 (연속 클릭 방지)
-  const [isAddingMemo, setIsAddingMemo] = useState(false);
-
+  // ===== 파생 상태 (useMemo로 최적화) =====
   // 표시할 메모 리스트 (휴지통 모드에 따라 필터링)
   const displayedMemos = useMemo(() => {
-    return filterMemosByMode(memos, showTrash);
-  }, [memos, showTrash]);
+    return filterMemosByMode(memos, uiState.showTrash);
+  }, [memos, uiState.showTrash]);
 
-  // 메모 삭제 처리 함수
-  const handleDeleteMemo = (memoId) => {
-    onDelete(memoId);
-  };
+  // 휴지통에 있는 메모 개수
+  const trashedMemosCount = useMemo(() => {
+    return memos.filter(isMemoDeleted).length;
+  }, [memos]);
 
-  // 메모 복구 처리 함수
-  const handleRestoreMemo = (memoId) => {
-    if (onRestore) {
-      onRestore(memoId);
-    }
-  };
+  // 일반 메모 개수
+  const regularMemosCount = useMemo(() => {
+    return memos.filter(isRegularMemo).length;
+  }, [memos]);
 
-  // 메모 완전 삭제 처리 함수
-  const handleHardDeleteMemo = (memoId) => {
-    if (onHardDelete) {
-      onHardDelete(memoId);
-    }
-  };
+  // ===== 이벤트 핸들러 =====
 
-  // 새 메모 추가 처리 함수 (연속 클릭 방지)
+  /**
+   * 새 메모 추가 처리 (연속 클릭 방지)
+   */
   const handleAddMemo = async () => {
-    if (isAddingMemo) return; // 이미 추가 중이면 무시
+    if (uiState.isAddingMemo) return;
 
-    setIsAddingMemo(true);
+    setUiState((prev) => ({ ...prev, isAddingMemo: true }));
     try {
       await onAdd("");
     } finally {
-      // 약간의 지연 후 상태 초기화 (UI 업데이트 시간 확보)
-      setTimeout(() => setIsAddingMemo(false), TIMING.ADD_MEMO_DELAY);
+      setTimeout(() => {
+        setUiState((prev) => ({ ...prev, isAddingMemo: false }));
+      }, TIMING.ADD_MEMO_DELAY);
     }
   };
 
-  // 휴지통 토글 함수
+  /**
+   * 휴지통 모드 토글
+   */
   const toggleTrash = () => {
-    setShowTrash((prev) => !prev);
+    setUiState((prev) => ({ ...prev, showTrash: !prev.showTrash }));
   };
 
-  // 휴지통 비우기 처리 함수
+  /**
+   * 휴지통 비우기 확인 다이얼로그 표시
+   */
   const handleEmptyTrash = () => {
-    setShowEmptyTrashDialog(true);
+    setUiState((prev) => ({ ...prev, showEmptyTrashDialog: true }));
   };
 
-  // 휴지통 비우기 확인 처리 함수
+  /**
+   * 휴지통 비우기 확인 처리
+   */
   const handleConfirmEmptyTrash = () => {
     if (onEmptyTrash && displayedMemos.length > 0) {
       onEmptyTrash();
     }
-    setShowEmptyTrashDialog(false);
+    setUiState((prev) => ({ ...prev, showEmptyTrashDialog: false }));
+  };
+
+  /**
+   * 휴지통 비우기 취소
+   */
+  const handleCancelEmptyTrash = () => {
+    setUiState((prev) => ({ ...prev, showEmptyTrashDialog: false }));
   };
 
   return (
@@ -467,14 +476,14 @@ function MemoListPanel({
           {/* 메모 아이콘 + Note 텍스트 */}
           <div className="memo-list-title-row">
             <span className="memo-title-text">
-              {showTrash ? UI_TEXT.TITLE_TRASH : UI_TEXT.TITLE_NORMAL}
+              {uiState.showTrash ? UI_TEXT.TITLE_TRASH : UI_TEXT.TITLE_NORMAL}
             </span>
           </div>
         </div>
 
         <div className="memo-list-header-right">
           {/* 마이크 버튼 및 녹음 상태 UI (휴지통 모드에서는 숨김) */}
-          {!showTrash && (
+          {!uiState.showTrash && (
             <div className="mic-wrapper">
               {/* 녹음 중 상태 표시 */}
               <RecordingStatus
@@ -499,20 +508,22 @@ function MemoListPanel({
           )}
 
           {/* 새 메모 추가 버튼 (휴지통 모드에서는 숨김) */}
-          {!showTrash && (
+          {!uiState.showTrash && (
             <button
               className={`chat-session-new-chat-button ${
-                isAddingMemo ? "disabled" : ""
+                uiState.isAddingMemo ? "disabled" : ""
               }`}
               onClick={handleAddMemo}
-              disabled={isAddingMemo}
+              disabled={uiState.isAddingMemo}
             >
-              {isAddingMemo ? UI_TEXT.BUTTON_ADDING : UI_TEXT.BUTTON_ADD}
+              {uiState.isAddingMemo
+                ? UI_TEXT.BUTTON_ADDING
+                : UI_TEXT.BUTTON_ADD}
             </button>
           )}
 
           {/* 휴지통 모드에서만 비우기 버튼 표시 */}
-          {showTrash && displayedMemos.length > 0 && (
+          {uiState.showTrash && displayedMemos.length > 0 && (
             <button
               className="empty-trash-button"
               onClick={handleEmptyTrash}
@@ -529,7 +540,7 @@ function MemoListPanel({
       <div className="memo-list">
         {/* 메모가 없을 때 표시되는 안내 */}
         {displayedMemos.length === 0 && (
-          <MemoEmptyState isTrashMode={showTrash} />
+          <MemoEmptyState isTrashMode={uiState.showTrash} />
         )}
 
         {/* 메모 아이템 목록 렌더링 */}
@@ -539,11 +550,11 @@ function MemoListPanel({
             memo={memo}
             isSelected={selectedId === memo.memo_id}
             isHighlighted={highlightedId === memo.memo_id}
-            isTrashMode={showTrash}
+            isTrashMode={uiState.showTrash}
             onSelect={onSelect}
-            onDelete={handleDeleteMemo}
-            onRestore={handleRestoreMemo}
-            onHardDelete={handleHardDeleteMemo}
+            onDelete={onDelete}
+            onRestore={onRestore}
+            onHardDelete={onHardDelete}
           />
         ))}
       </div>
@@ -564,7 +575,7 @@ function MemoListPanel({
           }}
         >
           <div className="memo-header-icons">
-            {!showTrash ? (
+            {!uiState.showTrash ? (
               <BsTrash
                 className="header-icon"
                 onClick={toggleTrash}
@@ -583,11 +594,11 @@ function MemoListPanel({
       </div>
 
       {/* 휴지통 비우기 확인 다이얼로그 */}
-      {showEmptyTrashDialog && (
+      {uiState.showEmptyTrashDialog && (
         <ConfirmDialog
           message={`휴지통에 있는 ${displayedMemos.length}개의 메모를 모두 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`}
           onOk={handleConfirmEmptyTrash}
-          onCancel={() => setShowEmptyTrashDialog(false)}
+          onCancel={handleCancelEmptyTrash}
           isLoading={false}
         />
       )}
