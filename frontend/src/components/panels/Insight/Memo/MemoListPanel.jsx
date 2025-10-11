@@ -76,6 +76,131 @@ function formatTime(seconds) {
   return `${min}:${sec}`;
 }
 
+/**
+ * 날짜를 한국 시간대 기준으로 포맷팅
+ *
+ * @param {string|number|Date} dateValue - 날짜 값
+ * @returns {string} YYYY.MM.DD 형식 문자열 (실패 시 빈 문자열)
+ */
+function formatDateKST(dateValue) {
+  if (!dateValue) return "";
+
+  try {
+    let date;
+    if (typeof dateValue === "string") {
+      date = new Date(dateValue);
+    } else if (typeof dateValue === "number") {
+      date = new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else {
+      return "";
+    }
+
+    // 유효한 날짜인지 확인
+    if (isNaN(date.getTime())) {
+      return "";
+    }
+
+    // 한국 시간대(KST, Asia/Seoul)로 변환
+    const koreanDate = new Date(
+      date.toLocaleString("en-US", {
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const year = koreanDate.getFullYear();
+    const month = `${koreanDate.getMonth() + 1}`.padStart(2, "0");
+    const day = `${koreanDate.getDate()}`.padStart(2, "0");
+    return `${year}.${month}.${day}`;
+  } catch (error) {
+    console.error("날짜 포맷팅 오류:", error);
+    return "";
+  }
+}
+
+/**
+ * 메모가 삭제되었는지 확인
+ *
+ * @param {Object} memo - 메모 객체
+ * @returns {boolean} 삭제 여부
+ */
+function isMemoDeleted(memo) {
+  return memo.is_deleted === true || memo.is_deleted === 1;
+}
+
+/**
+ * 메모가 활성 상태인지 확인 (삭제되지 않음)
+ *
+ * @param {Object} memo - 메모 객체
+ * @returns {boolean} 활성 상태 여부
+ */
+function isMemoActive(memo) {
+  return (
+    memo.is_deleted === false ||
+    memo.is_deleted === null ||
+    memo.is_deleted === undefined ||
+    memo.is_deleted === 0
+  );
+}
+
+/**
+ * 메모가 소스로 변환되었는지 확인
+ *
+ * @param {Object} memo - 메모 객체
+ * @returns {boolean} 소스 변환 여부
+ */
+function isMemoSource(memo) {
+  return memo.is_source === 1 || memo.is_source === true;
+}
+
+/**
+ * 일반 메모인지 확인 (삭제되지 않고 소스가 아닌 메모)
+ *
+ * @param {Object} memo - 메모 객체
+ * @returns {boolean} 일반 메모 여부
+ */
+function isRegularMemo(memo) {
+  return isMemoActive(memo) && !isMemoSource(memo);
+}
+
+/**
+ * 메모 리스트를 모드에 따라 필터링
+ *
+ * @param {Array} memos - 전체 메모 배열
+ * @param {boolean} isTrashMode - 휴지통 모드 여부
+ * @returns {Array} 필터링된 메모 배열
+ */
+function filterMemosByMode(memos, isTrashMode) {
+  if (!Array.isArray(memos)) return [];
+
+  return memos.filter((memo) => {
+    if (isTrashMode) {
+      // 휴지통 모드: 삭제된 메모만
+      return isMemoDeleted(memo);
+    } else {
+      // 일반 모드: 삭제되지 않고 소스가 아닌 메모만
+      return isRegularMemo(memo);
+    }
+  });
+}
+
+/**
+ * 메모 미리보기 텍스트 생성
+ *
+ * @param {string} content - 메모 내용
+ * @param {number} maxLength - 최대 길이
+ * @returns {string} 미리보기 텍스트
+ */
+function generatePreview(content, maxLength = MEMO_DEFAULTS.PREVIEW_LENGTH) {
+  if (!content || content.length === 0) {
+    return MEMO_DEFAULTS.EMPTY_CONTENT;
+  }
+
+  const preview = content.slice(0, maxLength).replace(/\n/g, " ");
+  return `${preview}...`;
+}
+
 function MemoListPanel({
   memos, // 메모 리스트
   selectedId, // 선택된 메모 ID
@@ -107,20 +232,7 @@ function MemoListPanel({
 
   // 표시할 메모 리스트 (휴지통 모드에 따라 필터링)
   const displayedMemos = useMemo(() => {
-    return memos.filter((memo) => {
-      if (showTrash) {
-        // 휴지통 모드: is_deleted가 true인 메모만 표시
-        return memo.is_deleted === true;
-      } else {
-        // 일반 모드: is_deleted가 false이거나 null인 메모만 표시하고, is_source가 0인 메모만 표시
-        return (
-          (memo.is_deleted === false ||
-            memo.is_deleted === null ||
-            memo.is_deleted === undefined) &&
-          (memo.is_source === 0 || memo.is_source === false)
-        );
-      }
-    });
+    return filterMemosByMode(memos, showTrash);
   }, [memos, showTrash]);
 
   // 메모 삭제 처리 함수
@@ -301,19 +413,8 @@ function MemoListPanel({
                 <div className="memo-title">
                   {memo.memo_title || MEMO_DEFAULTS.UNTITLED}
                 </div>
-                <div className="memo-preview">
-                  {content.length > 0
-                    ? content
-                        .slice(0, MEMO_DEFAULTS.PREVIEW_LENGTH)
-                        .replace(/\n/g, " ")
-                    : MEMO_DEFAULTS.EMPTY_CONTENT}
-                  ...
-                </div>
-                <div className="memo-date">
-                  {memo.memo_date
-                    ? new Date(memo.memo_date).toLocaleDateString()
-                    : ""}
-                </div>
+                <div className="memo-preview">{generatePreview(content)}</div>
+                <div className="memo-date">{formatDateKST(memo.memo_date)}</div>
               </div>
 
               {/* 메모 삭제/복구/완전삭제 버튼 */}
