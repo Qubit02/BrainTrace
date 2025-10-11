@@ -37,72 +37,16 @@
 
 ## 상세 설치 가이드
 
-### 1. 도커로 실행
-
-```bash
-# 저장소 클론
-git clone https://github.com/OSSBrainTrace/BrainTrace.git
-cd BrainTrace
-
-# 도커 컴포즈로 실행
-docker-compose up -d
-
-# 브라우저에서 접속
-# 프론트엔드: http://localhost:5173
-# 백엔드 API: http://localhost:8000
-# Neo4j: http://localhost:7474
-```
-
-### 전체 스택 실행
-
-```bash
-# 모든 서비스 실행
-docker-compose up -d
-
-# 로그 확인
-docker-compose logs -f
-
-# 특정 서비스만 실행
-docker-compose up backend frontend
-```
-
-### 개별 서비스 실행
-
-```bash
-# 백엔드만 실행
-docker-compose up backend
-
-# 프론트엔드만 실행
-docker-compose up frontend
-
-# 데이터베이스만 실행
-docker-compose up neo4j ollama
-```
-
-### 서비스 중지 및 정리
-
-```bash
-# 서비스 중지
-docker-compose down
-
-# 볼륨까지 삭제
-docker-compose down -v
-
-# 이미지 재빌드
-docker-compose build --no-cache
-```
-
-
-### 2. 일반 환경 실행
+### 1. 일반 환경 실행
 
 ```bash
 git clone https://github.com/Qubit02/BrainTrace.git
 cd BrainTrace
 ```
 
-### 2.1 백엔드 설정
+### 1.1 백엔드 설정
 
-#### 2.1.1 Python 가상환경 생성 및 활성화
+#### 1.1.1 Python 가상환경 생성 및 활성화(BrainTrace/ 에서 시작)
 
 ```bash
 cd backend
@@ -123,13 +67,13 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-#### 2.1.2 의존성 설치
+#### 1.1.2 의존성 설치
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 2.1.3 환경 변수 설정
+#### 1.1.3 환경 변수 설정
 
 ```bash
 # .env 파일 생성 -> backend/.env
@@ -138,11 +82,13 @@ pip install -r requirements.txt
 # OPENAI_API_KEY=your_api_key_here
 ```
 
-### 2.2 데이터베이스 설정
+### 1.2 데이터베이스 설정
 
-### 2.2.1 Neo4j 설치
+#### 1.2.1 Neo4j 설치
 
-> 아래에서 사용하는 스크립트는 실행 위치를 자동 감지합니다. **저장소 루트(backend 폴더가 보이는 위치)** 또는 **backend/**에서 실행하세요.
+> 아래에서 사용하는 스크립트는 실행 위치를 자동 감지합니다. **저장소 루트(BrainTrace/)** 또는 **backend/** 에서 실행하세요.
+
+#### 윈도우 설치
 
 <details>
 <summary><strong>PowerShell (Windows)</strong></summary>
@@ -451,6 +397,8 @@ echo "🛠️ conf 적용: $CONF"
 
 </details> 
 
+#### Mac에서 설치
+
 <details><summary><strong>macOS / Linux</strong></summary>
 
 ```bash
@@ -572,32 +520,80 @@ echo "🛠️ conf 적용: $CONF"
 ```
 </details>
 
-#### 2.2.2 Ollama 설정 (로컬 AI 모델)
+#### 1.2.2 Ollama 설정 (로컬 AI 모델)
 
 [Ollama 다운로드](https://ollama.com/download)
 
-#### 2.2.3 백엔드 실행
-
-```bash
-cd backend
-python main.py
-```
-
-### 2.3 프론트엔드 설정
-
-#### 2.3.1 의존성 설치
+#### 1.2.3 백엔드 실행
 
 ```bash
 cd frontend
 npm install
 ```
 
-#### 2.3.2 프론트엔드 실행
+### 1.3 프론트엔드 실행
+
+#### 1.3.1 의존성 설치(BrainTrace/ 에서 시작)
+
+```bash
+cd frontend
+npm install
+```
+
+#### 1.3.2 프론트엔드 실행
 
 ```bash
 npm run dev
 ```
 
+### 2. 도커로 실행
+
+```bash
+# 저장소 클론
+git clone https://github.com/Qubit02/BrainTrace.git
+cd BrainTrace
+
+# 도커 컴포즈로 실행
+docker-compose up -d
+
+# 브라우저에서 접속
+# 프론트엔드: http://localhost:5173
+# 백엔드 API: http://localhost:8000
+# Neo4j: http://localhost:7474
+```
+
+### 전체 스택 실행
+
+```bash
+# 모든 서비스 실행
+docker-compose up -d
+```
+
+### 개별 서비스 실행
+
+```bash
+# 백엔드만 실행
+docker-compose up backend
+
+# 프론트엔드만 실행
+docker-compose up frontend
+
+# 데이터베이스만 실행
+docker-compose up neo4j ollama
+```
+
+### 서비스 중지 및 정리
+
+```bash
+# 서비스 중지
+docker-compose down
+
+# 볼륨까지 삭제
+docker-compose down -v
+
+# 이미지 재빌드
+docker-compose build --no-cache
+```
 
 
 ## 접속 정보
