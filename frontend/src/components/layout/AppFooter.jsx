@@ -23,7 +23,7 @@ export default function Footer() {
   return (
     <footer className="app-footer">
       <div className="footer-oss-info">
-        <span>brainTrace 개발팀</span>
+        <span>Qubit 개발팀</span>
         <span>E-mail : yes490411@gmail.com</span>
         <a
           href="https://github.com/Metamong0711/BrainTrace"
