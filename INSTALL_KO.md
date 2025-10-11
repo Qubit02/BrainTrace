@@ -50,8 +50,7 @@ docker-compose up -d
 # 브라우저에서 접속
 # 프론트엔드: http://localhost:5173
 # 백엔드 API: http://localhost:8000
-# Neo4j: http:
-//localhost:7474
+# Neo4j: http://localhost:7474
 ```
 
 ### 전체 스택 실행
