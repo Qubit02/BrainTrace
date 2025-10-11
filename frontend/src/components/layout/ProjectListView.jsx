@@ -482,10 +482,29 @@ export default function ProjectListView() {
               {/* 프로젝트 아이콘 */}
               <div className="project-icon">
                 {project.deployment_type === "local" ? (
-                  <BiLaptop size={30} style={{ color: "#2c2c2c" }} />
+                  <BiLaptop size={30} />
                 ) : (
-                  <BiCloud size={30} style={{ color: "#2c2c2c" }} />
+                  <BiCloud size={30} />
                 )}
+                {/* 배포 타입 표시 */}
+                <div className="deployment-badge">
+                  {project.deployment_type === "local" ? (
+                    <>
+                      로컬
+                      <MdSecurity
+                        size={12}
+                        style={{
+                          marginLeft: "4px",
+                          marginBottom: "3px",
+                          color: "black",
+                          verticalAlign: "middle",
+                        }}
+                      />
+                    </>
+                  ) : (
+                    "클라우드"
+                  )}
+                </div>
               </div>
 
               {/* 중요도 별표 */}
