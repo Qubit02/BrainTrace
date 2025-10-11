@@ -127,27 +127,40 @@ def encode_text(text: str) -> List[float]:
         raise RuntimeError(f"텍스트 임베딩 생성 실패: {str(e)}")
 
 
-def get_embeddings_batch(texts: List[str]) -> np.ndarray:
-    lang, _ =langid.classify("".join(texts))
+def get_embeddings_batch(texts: List[str], lang:str) -> np.ndarray:
+    """
+    주어진 텍스트 리스트를 언어에 맞는 모델로 임베딩 후 numpy 배열로 반환.
+    항상 shape이 (N, D)인 2D numpy 배열을 반환하도록 보정함.
+    """
+    lang="ko"
 
+    # ---- 한국어 임베딩 ----
     if lang == "ko":
         inputs = tokenizer(
             texts, return_tensors="pt", padding=True, truncation=True, max_length=512
         )
         with torch.no_grad():
             outputs = model(**inputs)
-        cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰 임베딩
-        return cls_embeddings.cpu().numpy()
-    
+        cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] 토큰
+        embeddings = cls_embeddings.cpu().numpy()
+
+    # ---- 영어 임베딩 ----
     elif lang == "en":
-        embeddings = eng_model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
-        return embeddings
-    
+        embeddings = eng_model.encode(
+            texts, convert_to_numpy=True, normalize_embeddings=True
+        )
+
     else:
         raise ValueError(f"지원하지 않는 언어 코드: {lang}")
 
+    # ---- shape 강제 보정 ----
+    embeddings = np.atleast_2d(embeddings)  # 항상 2D로 유지
+    return embeddings
+
+
 def store_embeddings(node:dict, brain_id:str, embeddings:list):
 
+    lang="ko"
     collection_name = get_collection_name(brain_id)
 
     for idx, desc in enumerate(node["descriptions"]):
@@ -157,8 +170,9 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
 
         if description == "":
             try:
+                print("case: 1")
                 description = node["name"]
-                emb = get_embeddings_batch([description])
+                emb = get_embeddings_batch([description], lang)
                 if emb is None or emb.size == 0:
                     logging.warning("임베딩 생성 실패: %s", description)
                     continue
@@ -168,10 +182,12 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
                 continue
         else:
             if embeddings is None or embeddings.size == 0:  # 빈 리스트 체크
+                print("case: 2")
                 highlighted_description = description.replace(phrase, f"[{phrase}]")
-                emb = get_embeddings_batch([highlighted_description])
+                emb = get_embeddings_batch([highlighted_description], lang)
                 emb = emb[0] if emb.ndim > 1 else emb
             else:
+                print("case: 3")
                 emb = np.array(embeddings[idx])
                 if emb.ndim > 1:
                     emb = emb[0]
@@ -181,12 +197,13 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
         
         # Qdrant에 upsert (예외 처리)
         try:
+            vector_as_list = emb.tolist()
             client.upsert(
                 collection_name=collection_name,
                 points=[
                     models.PointStruct(
                         id=pid,
-                        vector=emb,
+                        vector=vector_as_list,
                         payload={
                             "source_id": source_id,
                             "name": phrase,

@@ -445,7 +445,7 @@ def extract_graph_components(text: str, id: tuple):
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
             relevant_sentences = [sentences[idx] for idx in current_chunk]
-            relevant_sentences="".join(relevant_sentences)
+            relevant_sentences="\n".join(relevant_sentences)
             if c["keyword"] != "":
                 nodes, edges, already_made = _extract_from_chunk(relevant_sentences, id, c["keyword"], already_made)
             all_nodes += nodes
