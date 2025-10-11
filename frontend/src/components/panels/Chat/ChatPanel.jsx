@@ -230,8 +230,9 @@ const ModelDropdown = ({
         </span>
         <IoChevronDown
           size={14}
-          className={`chat-panel-dropdown-arrow-inline ${showModelDropdown ? "rotated" : ""
-            }`}
+          className={`chat-panel-dropdown-arrow-inline ${
+            showModelDropdown ? "rotated" : ""
+          }`}
         />
       </div>
       {showModelDropdown && (
@@ -255,8 +256,9 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline ${selectedModel === model ? "selected" : ""
-                  }`}
+                className={`chat-panel-model-item-inline ${
+                  selectedModel === model ? "selected" : ""
+                }`}
                 onClick={() => handleModelSelect(model)}
               >
                 <div className="chat-panel-model-info-inline">
@@ -339,8 +341,9 @@ const ModelDropdown = ({
             return (
               <div
                 key={model}
-                className={`chat-panel-model-item-inline unselectable ${selectedModel === model ? "selected" : ""
-                  }`}
+                className={`chat-panel-model-item-inline unselectable ${
+                  selectedModel === model ? "selected" : ""
+                }`}
                 title="설치 후 사용 가능합니다"
                 onClick={(e) => {
                   // 설치되지 않은 모델은 선택할 수 없음
@@ -422,6 +425,90 @@ const ModelDropdown = ({
 };
 
 /**
+ * SearchModeDropdown 컴포넌트
+ *
+ * 탐색 모드 선택 드롭다운 컴포넌트
+ *
+ * 기능:
+ * - 빠른 탐색 / 더 깊은 탐색 선택
+ * - 선택된 탐색 모드를 맨 위에 배치
+ * - 체크마크로 현재 선택된 모드 표시
+ *
+ * @param {string} searchMode - 현재 선택된 탐색 모드 ("fast" | "deep")
+ * @param {boolean} showSearchModeDropdown - 드롭다운 표시 여부
+ * @param {function} setShowSearchModeDropdown - 드롭다운 표시 설정 함수
+ * @param {function} handleSearchModeSelect - 탐색 모드 선택 핸들러
+ */
+const SearchModeDropdown = ({
+  searchMode,
+  showSearchModeDropdown,
+  setShowSearchModeDropdown,
+  handleSearchModeSelect,
+}) => {
+  const searchModes = [
+    {
+      id: "fast",
+      name: "빠른 탐색",
+      description: "기본 탐색으로 빠르게 답변을 받습니다",
+    },
+    {
+      id: "deep",
+      name: "더 깊은 탐색",
+      description: "더 많은 연관 정보를 탐색하여 상세한 답변을 제공합니다",
+    },
+  ];
+
+  return (
+    <div className="chat-panel-search-mode-selector-inline">
+      <div
+        className="chat-panel-search-mode-dropdown-inline"
+        onClick={() => setShowSearchModeDropdown(!showSearchModeDropdown)}
+      >
+        <span className="chat-panel-search-mode-value-inline">
+          {searchMode === "deep" ? "더 깊은 탐색" : "빠른 탐색"}
+        </span>
+        <IoChevronDown
+          size={14}
+          className={`chat-panel-dropdown-arrow-inline ${
+            showSearchModeDropdown ? "rotated" : ""
+          }`}
+        />
+      </div>
+      {showSearchModeDropdown && (
+        <div className="chat-panel-search-mode-menu-inline">
+          {searchModes.map((mode) => (
+            <div
+              key={mode.id}
+              className={`chat-panel-search-mode-item-inline ${
+                searchMode === mode.id ? "selected" : ""
+              }`}
+              onClick={() => handleSearchModeSelect(mode.id)}
+            >
+              <div className="chat-panel-search-mode-info-inline">
+                <div className="chat-panel-search-mode-header-inline">
+                  <span className="chat-panel-search-mode-name-inline">
+                    {mode.name}
+                  </span>
+                  {searchMode === mode.id && (
+                    <IoCheckmarkOutline
+                      size={16}
+                      className="chat-panel-search-mode-checkmark-inline"
+                    />
+                  )}
+                </div>
+                <div className="chat-panel-search-mode-description-inline">
+                  {mode.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * ChatInput 컴포넌트
  *
  * 메시지 입력 및 전송 컴포넌트
@@ -444,6 +531,8 @@ const ModelDropdown = ({
  * @param {function} handleModelSelect - 모델 선택 핸들러
  * @param {function} handleInstallModel - 모델 설치 핸들러
  * @param {string|null} installingModel - 설치 중인 모델
+ * @param {string} searchMode - 현재 선택된 탐색 모드
+ * @param {function} handleSearchModeSelect - 탐색 모드 선택 핸들러
  */
 const ChatInput = ({
   inputText,
@@ -459,6 +548,10 @@ const ChatInput = ({
   handleInstallModel,
   installingModel,
   brainInfo,
+  searchMode,
+  showSearchModeDropdown,
+  setShowSearchModeDropdown,
+  handleSearchModeSelect,
 }) => {
   return (
     <form className="chat-controls" onSubmit={handleSubmit}>
@@ -488,6 +581,12 @@ const ChatInput = ({
           handleInstallModel={handleInstallModel}
           installingModel={installingModel}
           brainInfo={brainInfo}
+        />
+        <SearchModeDropdown
+          searchMode={searchMode}
+          showSearchModeDropdown={showSearchModeDropdown}
+          setShowSearchModeDropdown={setShowSearchModeDropdown}
+          handleSearchModeSelect={handleSearchModeSelect}
         />
         <button
           type="submit"
@@ -535,8 +634,9 @@ const ChatMessage = ({
 }) => {
   return (
     <div
-      className={`chat-panel-message-wrapper ${message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
-        }`}
+      className={`chat-panel-message-wrapper ${
+        message.is_ai ? "chat-panel-bot-message" : "chat-panel-user-message"
+      }`}
     >
       <div className="chat-panel-message">
         <div className="chat-panel-message-body">
@@ -563,10 +663,11 @@ const ChatMessage = ({
                         {nodeName.replace(/\*/g, "")}
                       </span>
                       <button
-                        className={`chat-panel-modern-source-btn${openSourceNodes[`${message.chat_id}_${nodeName}`]
-                          ? " active"
-                          : ""
-                          }`}
+                        className={`chat-panel-modern-source-btn${
+                          openSourceNodes[`${message.chat_id}_${nodeName}`]
+                            ? " active"
+                            : ""
+                        }`}
                         onClick={() =>
                           toggleSourceList(message.chat_id, nodeName)
                         }
@@ -678,8 +779,8 @@ const ChatMessage = ({
                   message.accuracy >= 0.8
                     ? "high"
                     : message.accuracy >= 0.6
-                      ? "medium"
-                      : "low"
+                    ? "medium"
+                    : "low"
                 }
               >
                 {(message.accuracy * 100).toFixed(1)}%
@@ -807,6 +908,10 @@ function ChatPanel({
   const [showModelDropdown, setShowModelDropdown] = useState(false); // 모델 드롭다운 표시
   const [installingModel, setInstallingModel] = useState(null); // 설치 중인 모델
 
+  // 탐색 모드 관련 상태
+  const [searchMode, setSearchMode] = useState("fast"); // 탐색 모드 ("fast" | "deep")
+  const [showSearchModeDropdown, setShowSearchModeDropdown] = useState(false); // 탐색 모드 드롭다운 표시
+
   // 브레인 정보 상태
   const [brainInfo, setBrainInfo] = useState(null); // 현재 브레인 정보
 
@@ -930,11 +1035,20 @@ function ChatPanel({
   // ===== 드롭다운 외부 클릭 시 닫기 =====
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // 모델 드롭다운 닫기
       if (
         showModelDropdown &&
         !event.target.closest(".chat-panel-model-selector-inline")
       ) {
         setShowModelDropdown(false);
+      }
+
+      // 탐색 모드 드롭다운 닫기
+      if (
+        showSearchModeDropdown &&
+        !event.target.closest(".chat-panel-search-mode-selector-inline")
+      ) {
+        setShowSearchModeDropdown(false);
       }
     };
 
@@ -942,7 +1056,7 @@ function ChatPanel({
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [showModelDropdown]);
+  }, [showModelDropdown, showSearchModeDropdown]);
 
   // ===== 브레인 정보 불러오기 =====
   useEffect(() => {
@@ -1116,6 +1230,18 @@ function ChatPanel({
   };
 
   /**
+   * 탐색 모드 선택 함수
+   *
+   * 탐색 모드를 선택하고 드롭다운을 닫음
+   *
+   * @param {string} mode - 선택할 탐색 모드 ("fast" | "deep")
+   */
+  const handleSearchModeSelect = (mode) => {
+    setSearchMode(mode);
+    setShowSearchModeDropdown(false);
+  };
+
+  /**
    * 제목 편집 시작 함수
    *
    * 제목 편집 모드를 활성화하고 현재 세션 이름을 편집 필드에 설정
@@ -1177,11 +1303,6 @@ function ChatPanel({
       return;
     }
 
-    console.log("🔍 세션 ID 검증:", {
-      selectedSessionId,
-      type: typeof selectedSessionId,
-    });
-
     setIsLoading(true);
 
     // 1. 사용자 질문을 즉시 UI에 추가 (optimistic update)
@@ -1223,12 +1344,18 @@ function ChatPanel({
       const model = isGptModel ? "openai" : "ollama";
       const model_name = selectedModel; // 🚀 항상 selectedModel 사용 (GPT 모델도 포함)
 
+      // 탐색 모드에 따른 추가 파라미터 설정
+      const searchParams = {
+        deep_search: searchMode === "deep", // "deep" 모드일 때 true
+      };
+
       const res = await requestAnswer(
         inputText,
         selectedSessionId,
         selectedBrainId,
         model,
-        model_name
+        model_name,
+        searchParams
       );
 
       // 3. 응답 처리
@@ -1272,16 +1399,13 @@ function ChatPanel({
       }
 
       // 6. 참조 노드 정보가 있으면 그래프 업데이트
-      console.log("🔍 전체 응답 구조:", res);
       if (
         res?.referenced_nodes &&
         res.referenced_nodes.length > 0 &&
         typeof onReferencedNodesUpdate === "function"
       ) {
-        console.log("📋 referenced_nodes 원본:", res.referenced_nodes);
         // enriched 구조에서 노드 이름만 추출
         const nodeNames = res.referenced_nodes.map((n) => n.name || String(n));
-        console.log("💬 채팅 응답에서 참조된 노드들:", nodeNames);
         onReferencedNodesUpdate(nodeNames);
       }
     } catch (err) {
@@ -1412,6 +1536,10 @@ function ChatPanel({
     handleInstallModel,
     installingModel,
     brainInfo,
+    searchMode,
+    showSearchModeDropdown,
+    setShowSearchModeDropdown,
+    handleSearchModeSelect,
   };
 
   useEffect(() => {
@@ -1534,6 +1662,12 @@ function ChatPanel({
                   handleInstallModel={handleInstallModel}
                   installingModel={installingModel}
                   brainInfo={brainInfo}
+                />
+                <SearchModeDropdown
+                  searchMode={searchMode}
+                  showSearchModeDropdown={showSearchModeDropdown}
+                  setShowSearchModeDropdown={setShowSearchModeDropdown}
+                  handleSearchModeSelect={handleSearchModeSelect}
                 />
                 <button
                   type="submit"
