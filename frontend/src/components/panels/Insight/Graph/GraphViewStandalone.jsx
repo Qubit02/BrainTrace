@@ -63,6 +63,149 @@ const DEFAULTS = {
   BRAIN_ID: "default-brain-id",
 };
 
+// ===== 유틸리티 함수 =====
+
+/**
+ * localStorage에 JSON 데이터를 안전하게 저장
+ *
+ * @param {string} key - localStorage 키
+ * @param {any} value - 저장할 값 (자동으로 JSON 직렬화됨)
+ * @returns {boolean} 성공 여부
+ */
+const setStorageItem = (key, value) => {
+  try {
+    const serialized = JSON.stringify(value);
+    localStorage.setItem(key, serialized);
+    return true;
+  } catch (error) {
+    console.error(`❌ localStorage 저장 실패 (${key}):`, error);
+    return false;
+  }
+};
+
+/**
+ * localStorage에서 JSON 데이터를 안전하게 읽기
+ *
+ * @param {string} key - localStorage 키
+ * @returns {any|null} 파싱된 값 (실패 시 null)
+ */
+const getStorageItem = (key) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : null;
+  } catch (error) {
+    console.error(`❌ localStorage 읽기 실패 (${key}):`, error);
+    return null;
+  }
+};
+
+/**
+ * localStorage에서 항목을 안전하게 제거
+ *
+ * @param {string} key - localStorage 키
+ * @returns {boolean} 성공 여부
+ */
+const removeStorageItem = (key) => {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.error(`❌ localStorage 삭제 실패 (${key}):`, error);
+    return false;
+  }
+};
+
+/**
+ * 그래프 상태 동기화 메시지를 메인 창에 전송
+ *
+ * @param {string} brainId - 브레인 ID
+ * @param {string} action - 동기화 액션 (SYNC_ACTIONS 상수 사용)
+ * @param {Object} additionalData - 추가 데이터 (선택사항)
+ */
+const sendSyncMessage = (brainId, action, additionalData = {}) => {
+  const message = {
+    brainId,
+    timestamp: Date.now(),
+    action,
+    ...additionalData,
+  };
+  return setStorageItem(STORAGE_KEYS.GRAPH_STATE_SYNC, message);
+};
+
+/**
+ * 그래프 업데이트 통계를 메인 창에 전송
+ *
+ * @param {string} brainId - 브레인 ID
+ * @param {number} nodeCount - 노드 개수
+ * @param {number} linkCount - 링크 개수
+ */
+const sendGraphUpdate = (brainId, nodeCount, linkCount) => {
+  const update = {
+    brainId,
+    nodeCount,
+    linkCount,
+    timestamp: Date.now(),
+  };
+  return setStorageItem(STORAGE_KEYS.STANDALONE_GRAPH_UPDATE, update);
+};
+
+/**
+ * URL 쿼리 파라미터를 안전하게 파싱
+ *
+ * @param {URLSearchParams} searchParams - URL 검색 파라미터 객체
+ * @param {string} key - 파라미터 키
+ * @param {any} defaultValue - 기본값 (파싱 실패 시)
+ * @returns {any} 파싱된 값 또는 기본값
+ */
+const parseUrlParam = (searchParams, key, defaultValue = null) => {
+  const param = searchParams.get(key);
+  if (!param) return defaultValue;
+
+  try {
+    // URL 디코딩 후 JSON 파싱 시도
+    const decoded = decodeURIComponent(param);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.warn(`⚠️ URL 파라미터 파싱 실패 (${key}):`, error);
+    return defaultValue;
+  }
+};
+
+/**
+ * URL에서 브레인 ID를 안전하게 추출
+ *
+ * @param {URLSearchParams} searchParams - URL 검색 파라미터 객체
+ * @returns {string} 브레인 ID (없으면 기본값)
+ */
+const getBrainIdFromUrl = (searchParams) => {
+  const brainId = searchParams.get(URL_PARAMS.BRAIN_ID);
+  return brainId && brainId.trim() ? brainId.trim() : DEFAULTS.BRAIN_ID;
+};
+
+/**
+ * URL에서 참조된 노드 배열을 안전하게 추출
+ *
+ * @param {URLSearchParams} searchParams - URL 검색 파라미터 객체
+ * @returns {string[]} 노드 이름 배열 (파싱 실패 시 빈 배열)
+ */
+const getReferencedNodesFromUrl = (searchParams) => {
+  const nodes = parseUrlParam(searchParams, URL_PARAMS.REFERENCED_NODES, []);
+
+  // 배열이 아니면 빈 배열 반환
+  if (!Array.isArray(nodes)) {
+    console.warn("⚠️ referencedNodes가 배열이 아닙니다:", nodes);
+    return [];
+  }
+
+  // 문자열 배열인지 검증
+  const validNodes = nodes.filter((node) => typeof node === "string");
+  if (validNodes.length !== nodes.length) {
+    console.warn("⚠️ 일부 노드가 문자열이 아닙니다. 필터링됨");
+  }
+
+  return validNodes;
+};
+
 /**
  * Standalone 전체화면 그래프 뷰
  *
@@ -75,7 +218,7 @@ const DEFAULTS = {
  */
 function GraphViewStandalone() {
   const searchParams = new URLSearchParams(window.location.search);
-  const brainId = searchParams.get(URL_PARAMS.BRAIN_ID) || DEFAULTS.BRAIN_ID;
+  const brainId = getBrainIdFromUrl(searchParams);
 
   // ===== 상태 관리 =====
   // MainLayout과 동일한 상태 구조 유지
@@ -99,14 +242,10 @@ function GraphViewStandalone() {
       console.log("📊 Standalone Graph data updated:", graphData);
 
       // 메인 창에 그래프 업데이트 알림
-      localStorage.setItem(
-        STORAGE_KEYS.STANDALONE_GRAPH_UPDATE,
-        JSON.stringify({
-          brainId,
-          nodeCount: graphData?.nodes?.length || 0,
-          linkCount: graphData?.links?.length || 0,
-          timestamp: Date.now(),
-        })
+      sendGraphUpdate(
+        brainId,
+        graphData?.nodes?.length || 0,
+        graphData?.links?.length || 0
       );
     },
     [brainId]
@@ -124,14 +263,7 @@ function GraphViewStandalone() {
     setGraphRefreshTrigger((prev) => prev + 1);
 
     // 메인 창에 새로고침 알림
-    localStorage.setItem(
-      STORAGE_KEYS.GRAPH_STATE_SYNC,
-      JSON.stringify({
-        brainId,
-        timestamp: Date.now(),
-        action: SYNC_ACTIONS.REFRESH_FROM_STANDALONE,
-      })
-    );
+    sendSyncMessage(brainId, SYNC_ACTIONS.REFRESH_FROM_STANDALONE);
   }, [brainId]);
 
   /**
@@ -147,41 +279,13 @@ function GraphViewStandalone() {
     setFocusNodeNames([]);
 
     // 메인 창에 해제 알림
-    localStorage.setItem(
-      STORAGE_KEYS.GRAPH_STATE_SYNC,
-      JSON.stringify({
-        brainId,
-        timestamp: Date.now(),
-        action: SYNC_ACTIONS.CLEAR_HIGHLIGHTS_FROM_STANDALONE,
-      })
-    );
+    sendSyncMessage(brainId, SYNC_ACTIONS.CLEAR_HIGHLIGHTS_FROM_STANDALONE);
   }, [brainId]);
-
-  /**
-   * URL 파라미터에서 초기 하이라이트 노드 목록 가져오기
-   *
-   * 포맷:
-   * - ?referencedNodes=%5B%22노드1%22,%22노드2%22%5D
-   *
-   * @returns {string[]} 하이라이트할 노드 이름 배열 (파싱 실패 시 빈 배열)
-   */
-  const getReferencedNodesFromUrl = () => {
-    const referencedParam = searchParams.get(URL_PARAMS.REFERENCED_NODES);
-    if (referencedParam) {
-      try {
-        return JSON.parse(decodeURIComponent(referencedParam));
-      } catch (e) {
-        console.warn("Invalid referencedNodes parameter:", e);
-        return [];
-      }
-    }
-    return [];
-  };
 
   // ===== 이펙트 =====
   // 컴포넌트 마운트 시 URL에서 참고된 노드 정보 읽기
   useEffect(() => {
-    const urlReferencedNodes = getReferencedNodesFromUrl();
+    const urlReferencedNodes = getReferencedNodesFromUrl(searchParams);
     if (urlReferencedNodes.length > 0) {
       console.log("🎯 URL에서 참고된 노드 로드:", urlReferencedNodes);
       setReferencedNodes(urlReferencedNodes);
@@ -192,59 +296,55 @@ function GraphViewStandalone() {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEYS.GRAPH_STATE_SYNC && e.newValue) {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data.brainId === brainId) {
-            console.log("📡 메인 창에서 상태 변화 감지:", data);
+        const data = getStorageItem(STORAGE_KEYS.GRAPH_STATE_SYNC);
+        if (data && data.brainId === brainId) {
+          console.log("📡 메인 창에서 상태 변화 감지:", data);
 
-            // 참고된 노드 업데이트 (채팅에서)
-            if (data.referencedNodes && Array.isArray(data.referencedNodes)) {
-              console.log(
-                "💬 채팅에서 참고된 노드 업데이트:",
-                data.referencedNodes
-              );
-              setReferencedNodes(data.referencedNodes);
-              setFocusNodeNames([]); // 포커스 노드 초기화
-            }
-
-            // 포커스 노드 업데이트 (소스패널 노드보기에서)
-            if (data.focusNodeNames && Array.isArray(data.focusNodeNames)) {
-              console.log(
-                "📂 소스패널에서 포커스 노드 업데이트:",
-                data.focusNodeNames
-              );
-              setFocusNodeNames(data.focusNodeNames);
-              setReferencedNodes(data.focusNodeNames); // 포커스된 노드를 하이라이트로도 표시
-              // setGraphRefreshTrigger(prev => prev + 1); //추가?
-            }
-
-            // 그래프 새로고침 (소스 추가/메모 업데이트 등)
-            if (data.action === SYNC_ACTIONS.REFRESH) {
-              console.log("🔄 메인 창에서 그래프 새로고침 요청");
-              setGraphRefreshTrigger((prev) => prev + 1);
-            }
-
-            // 메모 추가/업데이트 감지
-            if (data.action === SYNC_ACTIONS.MEMO_UPDATE) {
-              console.log("📝 메모 업데이트로 인한 그래프 새로고침");
-              setGraphRefreshTrigger((prev) => prev + 1);
-            }
-
-            // 소스 파일 추가 감지
-            if (data.action === SYNC_ACTIONS.SOURCE_ADDED) {
-              console.log("📄 소스 파일 추가로 인한 그래프 새로고침");
-              setGraphRefreshTrigger((prev) => prev + 1);
-            }
-
-            // 하이라이트 해제
-            if (data.action === SYNC_ACTIONS.CLEAR_HIGHLIGHTS) {
-              console.log("🧹 하이라이트 해제");
-              setReferencedNodes([]);
-              setFocusNodeNames([]);
-            }
+          // 참고된 노드 업데이트 (채팅에서)
+          if (data.referencedNodes && Array.isArray(data.referencedNodes)) {
+            console.log(
+              "💬 채팅에서 참고된 노드 업데이트:",
+              data.referencedNodes
+            );
+            setReferencedNodes(data.referencedNodes);
+            setFocusNodeNames([]); // 포커스 노드 초기화
           }
-        } catch (err) {
-          console.error("❌ Storage sync error:", err);
+
+          // 포커스 노드 업데이트 (소스패널 노드보기에서)
+          if (data.focusNodeNames && Array.isArray(data.focusNodeNames)) {
+            console.log(
+              "📂 소스패널에서 포커스 노드 업데이트:",
+              data.focusNodeNames
+            );
+            setFocusNodeNames(data.focusNodeNames);
+            setReferencedNodes(data.focusNodeNames); // 포커스된 노드를 하이라이트로도 표시
+            // setGraphRefreshTrigger(prev => prev + 1); //추가?
+          }
+
+          // 그래프 새로고침 (소스 추가/메모 업데이트 등)
+          if (data.action === SYNC_ACTIONS.REFRESH) {
+            console.log("🔄 메인 창에서 그래프 새로고침 요청");
+            setGraphRefreshTrigger((prev) => prev + 1);
+          }
+
+          // 메모 추가/업데이트 감지
+          if (data.action === SYNC_ACTIONS.MEMO_UPDATE) {
+            console.log("📝 메모 업데이트로 인한 그래프 새로고침");
+            setGraphRefreshTrigger((prev) => prev + 1);
+          }
+
+          // 소스 파일 추가 감지
+          if (data.action === SYNC_ACTIONS.SOURCE_ADDED) {
+            console.log("📄 소스 파일 추가로 인한 그래프 새로고침");
+            setGraphRefreshTrigger((prev) => prev + 1);
+          }
+
+          // 하이라이트 해제
+          if (data.action === SYNC_ACTIONS.CLEAR_HIGHLIGHTS) {
+            console.log("🧹 하이라이트 해제");
+            setReferencedNodes([]);
+            setFocusNodeNames([]);
+          }
         }
       }
     };
@@ -291,7 +391,7 @@ function GraphViewStandalone() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       console.log("🚪 Standalone 창 종료");
-      localStorage.removeItem(STORAGE_KEYS.STANDALONE_GRAPH_UPDATE);
+      removeStorageItem(STORAGE_KEYS.STANDALONE_GRAPH_UPDATE);
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
