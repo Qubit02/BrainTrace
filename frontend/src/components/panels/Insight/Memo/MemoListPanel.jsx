@@ -201,6 +201,180 @@ function generatePreview(content, maxLength = MEMO_DEFAULTS.PREVIEW_LENGTH) {
   return `${preview}...`;
 }
 
+// ===== 하위 컴포넌트 =====
+
+/**
+ * MemoEmptyState 컴포넌트
+ *
+ * 메모가 없을 때 표시되는 빈 상태 안내
+ *
+ * @param {boolean} isTrashMode - 휴지통 모드 여부
+ */
+const MemoEmptyState = ({ isTrashMode }) => {
+  return (
+    <div className="memo-empty-state">
+      <CgNotes className="memo-empty-icon" />
+      <div className="memo-empty-text">
+        {isTrashMode ? UI_TEXT.EMPTY_TRASH : UI_TEXT.EMPTY_NORMAL}
+      </div>
+      <div className="memo-empty-subtext">
+        {isTrashMode ? UI_TEXT.EMPTY_TRASH_SUB : UI_TEXT.EMPTY_NORMAL_SUB}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * RecordingStatus 컴포넌트
+ *
+ * 녹음 중 상태 표시 (타이머 및 볼륨 바)
+ *
+ * @param {boolean} isRecording - 녹음 중 여부
+ * @param {number} elapsedTime - 경과 시간 (초)
+ * @param {number} volume - 볼륨 레벨 (0~1)
+ */
+const RecordingStatus = ({ isRecording, elapsedTime, volume }) => {
+  if (!isRecording) return null;
+
+  return (
+    <div className="recording-status-left">
+      <div className="recording-indicator-timer">{formatTime(elapsedTime)}</div>
+      <div className="volume-bar-bg">
+        <div
+          className="volume-bar-fill"
+          style={{ width: `${volume * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * TranscribingStatus 컴포넌트
+ *
+ * 음성 텍스트 변환 중 상태 표시
+ *
+ * @param {boolean} isTranscribing - 변환 중 여부
+ */
+const TranscribingStatus = ({ isTranscribing }) => {
+  if (!isTranscribing) return null;
+
+  return <div className="transcribing-status-left">텍스트 변환 중...</div>;
+};
+
+/**
+ * MemoItem 컴포넌트
+ *
+ * 개별 메모 아이템
+ *
+ * @param {Object} memo - 메모 객체
+ * @param {boolean} isSelected - 선택 여부
+ * @param {boolean} isHighlighted - 하이라이트 여부
+ * @param {boolean} isTrashMode - 휴지통 모드 여부
+ * @param {Function} onSelect - 선택 핸들러
+ * @param {Function} onDelete - 삭제 핸들러
+ * @param {Function} onRestore - 복구 핸들러
+ * @param {Function} onHardDelete - 완전 삭제 핸들러
+ */
+const MemoItem = ({
+  memo,
+  isSelected,
+  isHighlighted,
+  isTrashMode,
+  onSelect,
+  onDelete,
+  onRestore,
+  onHardDelete,
+}) => {
+  const id = memo.memo_id;
+  const filename = `${memo.memo_title || MEMO_DEFAULTS.TITLE}.memo`;
+  const content = memo.memo_text || "";
+
+  return (
+    <div
+      className={`memo-item ${isSelected ? "active" : ""} ${
+        isHighlighted ? "highlighted" : ""
+      } ${isTrashMode ? "trash-mode" : ""}`}
+      draggable={!isTrashMode}
+      onDragStart={(e) => {
+        if (!isTrashMode) {
+          const dragData = { id, name: filename, content };
+          e.dataTransfer.setData(
+            "application/json-memo",
+            JSON.stringify(dragData)
+          );
+          e.dataTransfer.effectAllowed = "copy";
+          e.currentTarget.classList.add("dragging");
+        }
+      }}
+      onDragEnd={(e) => e.currentTarget.classList.remove("dragging")}
+    >
+      {/* 메모 클릭 영역 */}
+      <div
+        className="memo-item-content"
+        onClick={() => !isTrashMode && onSelect(id)}
+      >
+        <div className="memo-title">
+          {memo.memo_title || MEMO_DEFAULTS.UNTITLED}
+        </div>
+        <div className="memo-preview">{generatePreview(content)}</div>
+        <div className="memo-date">{formatDateKST(memo.memo_date)}</div>
+      </div>
+
+      {/* 메모 삭제/복구/완전삭제 버튼 */}
+      <div
+        className="memo-item-actions"
+        onMouseEnter={(e) => {
+          if (!isTrashMode) {
+            e.currentTarget.parentElement.classList.add("actions-hover");
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isTrashMode) {
+            e.currentTarget.parentElement.classList.remove("actions-hover");
+          }
+        }}
+      >
+        {isTrashMode ? (
+          <>
+            <button
+              className="restore-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRestore(id);
+              }}
+              title={UI_TEXT.TOOLTIP_RESTORE}
+            >
+              <MdOutlineRestore size={18} />
+            </button>
+            <button
+              className="hard-delete-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHardDelete(id);
+              }}
+              title={UI_TEXT.TOOLTIP_HARD_DELETE}
+            >
+              <MdDeleteForever size={18} />
+            </button>
+          </>
+        ) : (
+          <button
+            className="delete-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(id);
+            }}
+            title={UI_TEXT.TOOLTIP_DELETE}
+          >
+            <IoTrashBinOutline size={18} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 function MemoListPanel({
   memos, // 메모 리스트
   selectedId, // 선택된 메모 ID
@@ -302,27 +476,15 @@ function MemoListPanel({
           {/* 마이크 버튼 및 녹음 상태 UI (휴지통 모드에서는 숨김) */}
           {!showTrash && (
             <div className="mic-wrapper">
-              {/* 녹음 중일 때 타이머와 볼륨 바 표시 */}
-              {isRecording && (
-                <div className="recording-status-left">
-                  <div className="recording-indicator-timer">
-                    {formatTime(elapsedTime)}
-                  </div>
-                  <div className="volume-bar-bg">
-                    <div
-                      className="volume-bar-fill"
-                      style={{ width: `${volume * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+              {/* 녹음 중 상태 표시 */}
+              <RecordingStatus
+                isRecording={isRecording}
+                elapsedTime={elapsedTime}
+                volume={volume}
+              />
 
               {/* 음성 텍스트 변환 중 상태 표시 */}
-              {isTranscribing && (
-                <div className="transcribing-status-left">
-                  텍스트 변환 중...
-                </div>
-              )}
+              <TranscribingStatus isTranscribing={isTranscribing} />
 
               {/* 마이크 아이콘 (깜빡이며 상태 표시) */}
               <img
@@ -367,113 +529,23 @@ function MemoListPanel({
       <div className="memo-list">
         {/* 메모가 없을 때 표시되는 안내 */}
         {displayedMemos.length === 0 && (
-          <div className="memo-empty-state">
-            <CgNotes className="memo-empty-icon" />
-            <div className="memo-empty-text">
-              {showTrash ? UI_TEXT.EMPTY_TRASH : UI_TEXT.EMPTY_NORMAL}
-            </div>
-            <div className="memo-empty-subtext">
-              {showTrash ? UI_TEXT.EMPTY_TRASH_SUB : UI_TEXT.EMPTY_NORMAL_SUB}
-            </div>
-          </div>
+          <MemoEmptyState isTrashMode={showTrash} />
         )}
 
         {/* 메모 아이템 목록 렌더링 */}
-        {displayedMemos.map((memo) => {
-          const id = memo.memo_id;
-          const filename = `${memo.memo_title || MEMO_DEFAULTS.TITLE}.memo`;
-          const content = memo.memo_text || "";
-          const isSource = memo.is_source === 1 || memo.is_source === true;
-
-          return (
-            <div
-              key={id}
-              className={`memo-item ${selectedId === id ? "active" : ""} ${
-                highlightedId === id ? "highlighted" : ""
-              } ${showTrash ? "trash-mode" : ""}`}
-              draggable={!showTrash}
-              onDragStart={(e) => {
-                if (!showTrash) {
-                  const dragData = { id, name: filename, content };
-                  e.dataTransfer.setData(
-                    "application/json-memo",
-                    JSON.stringify(dragData)
-                  );
-                  e.dataTransfer.effectAllowed = "copy";
-                  e.currentTarget.classList.add("dragging");
-                }
-              }}
-              onDragEnd={(e) => e.currentTarget.classList.remove("dragging")}
-            >
-              {/* 메모 클릭 영역 */}
-              <div
-                className="memo-item-content"
-                onClick={() => !showTrash && onSelect(id)}
-              >
-                <div className="memo-title">
-                  {memo.memo_title || MEMO_DEFAULTS.UNTITLED}
-                </div>
-                <div className="memo-preview">{generatePreview(content)}</div>
-                <div className="memo-date">{formatDateKST(memo.memo_date)}</div>
-              </div>
-
-              {/* 메모 삭제/복구/완전삭제 버튼 */}
-              <div
-                className="memo-item-actions"
-                onMouseEnter={(e) => {
-                  if (!showTrash) {
-                    e.currentTarget.parentElement.classList.add(
-                      "actions-hover"
-                    );
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showTrash) {
-                    e.currentTarget.parentElement.classList.remove(
-                      "actions-hover"
-                    );
-                  }
-                }}
-              >
-                {showTrash ? (
-                  <>
-                    <button
-                      className="restore-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRestoreMemo(id);
-                      }}
-                      title={UI_TEXT.TOOLTIP_RESTORE}
-                    >
-                      <MdOutlineRestore size={18} />
-                    </button>
-                    <button
-                      className="hard-delete-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleHardDeleteMemo(id);
-                      }}
-                      title={UI_TEXT.TOOLTIP_HARD_DELETE}
-                    >
-                      <MdDeleteForever size={18} />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="delete-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteMemo(id);
-                    }}
-                    title={UI_TEXT.TOOLTIP_DELETE}
-                  >
-                    <IoTrashBinOutline size={18} />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {displayedMemos.map((memo) => (
+          <MemoItem
+            key={memo.memo_id}
+            memo={memo}
+            isSelected={selectedId === memo.memo_id}
+            isHighlighted={highlightedId === memo.memo_id}
+            isTrashMode={showTrash}
+            onSelect={onSelect}
+            onDelete={handleDeleteMemo}
+            onRestore={handleRestoreMemo}
+            onHardDelete={handleHardDeleteMemo}
+          />
+        ))}
       </div>
 
       {/* 하단 총 개수 표시 및 휴지통 토글 */}
