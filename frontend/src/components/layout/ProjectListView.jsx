@@ -77,6 +77,39 @@ export default function ProjectListView() {
 
   const fullText = "지식을 연결하고, 아이디어를 확장하세요.";
 
+  // ===== 날짜 포맷팅 함수 (한국 시간대 기준) =====
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "날짜 없음";
+
+    try {
+      let date;
+      if (typeof timestamp === "string") {
+        date = new Date(timestamp);
+      } else {
+        date = new Date(Number(timestamp));
+      }
+
+      if (isNaN(date.getTime())) {
+        return "날짜 없음";
+      }
+
+      // 한국 시간대(KST, Asia/Seoul)로 변환
+      const koreanDate = new Date(
+        date.toLocaleString("en-US", {
+          timeZone: "Asia/Seoul",
+        })
+      );
+
+      const year = koreanDate.getFullYear();
+      const month = `${koreanDate.getMonth() + 1}`.padStart(2, "0");
+      const day = `${koreanDate.getDate()}`.padStart(2, "0");
+      return `${year}.${month}.${day}`;
+    } catch (error) {
+      console.error("날짜 포맷팅 오류:", error);
+      return "날짜 없음";
+    }
+  };
+
   // ===== 브레인 데이터 관리 =====
   const fetchBrains = () => {
     listBrains().then(setBrains).catch(console.error);
@@ -448,7 +481,11 @@ export default function ProjectListView() {
             >
               {/* 프로젝트 아이콘 */}
               <div className="project-icon">
-                <img width={30} src="/brainnormal.png" alt="프로젝트 아이콘" />
+                {project.deployment_type === "local" ? (
+                  <BiLaptop size={30} />
+                ) : (
+                  <BiCloud size={30} />
+                )}
                 {/* 배포 타입 표시 */}
                 <div className="deployment-badge">
                   {project.deployment_type === "local" ? (
@@ -528,7 +565,7 @@ export default function ProjectListView() {
 
               {/* 생성일자 및 소스 개수 */}
               <div className="project-date">
-                <span>{project.created_at ?? "날짜 없음"}</span>
+                <span>{formatDate(project.created_at)}</span>
                 <span className="source-count">
                   (소스 {sourceCounts[project.brain_id] ?? 0}개)
                 </span>

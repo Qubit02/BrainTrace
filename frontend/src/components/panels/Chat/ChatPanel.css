@@ -225,22 +225,42 @@
   flex: 1;
   border: none;
   resize: none;
-  padding: 8px 60px 8px 12px;
+  padding: 0px 60px 40px 12px;
   background: transparent;
   font-size: 16px;
   line-height: 1.6;
   color: #1f2937;
   outline: none;
   min-height: 32px;
-  max-height: 120px;
+  max-height: 80px;
   font-family: inherit;
   font-weight: 400;
+  overflow-y: auto;
+  vertical-align: top;
 }
 
 .chat-panel-input::placeholder {
   color: #9ca3af;
   font-weight: 400;
   font-size: 16px;
+}
+
+/* 입력창 스크롤바 스타일 */
+.chat-panel-input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-panel-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-panel-input::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.chat-panel-input::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 .chat-panel-submit-circle-button {
@@ -1339,8 +1359,8 @@
 
   .chat-panel-model-dropdown-inline {
     min-width: 75px;
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(229, 231, 235, 0.9);
+    background-color: #ffffff;
+    border: none;
   }
 
   .chat-panel-model-value,
@@ -1439,7 +1459,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background-color: transparent;
+  background-color: #ffffff;
   border: none;
   outline: none;
   cursor: pointer;
@@ -1742,8 +1762,8 @@
     font-size: 11px;
     padding: 4px 8px;
     min-width: 75px;
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(229, 231, 235, 0.9);
+    background-color: #ffffff;
+    border: none;
   }
 
   .chat-panel-model-value-inline {
@@ -1939,7 +1959,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background-color: transparent;
+  background-color: #ffffff;
   border: none;
   outline: none;
   cursor: pointer;
@@ -1961,6 +1981,7 @@
   margin-bottom: 3px;
 }
 
+/* 모델 드롭다운과 완전히 동일한 스타일 적용 */
 .chat-panel-search-mode-value-inline {
   font-weight: 400;
   color: rgb(137, 136, 136);
@@ -1969,9 +1990,10 @@
   font-size: 15px;
   letter-spacing: 0.055em;
   margin-left: 3px;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   box-shadow: none;
   background: transparent;
+  line-height: inherit; /* 모델 드롭다운과 동일하게 */
 }
 
 .chat-panel-search-mode-menu-inline {

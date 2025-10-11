@@ -63,7 +63,7 @@ def extract_noun_phrases_ko(sentence: str) -> list[str]:
     for word, tag in words:
         if '\n' in word:
             continue
-        elif tag in ["Noun", "Alpha"]:
+        elif tag in ["Noun", "Alpha", "Number"]:
             if word not in stopwords and len(word) > 1:
                 current_phrase.append(word)
         elif tag in ["Adjective", "Verb"] and len(word)>1 and word[-1] not in '다요죠며지만':
@@ -98,25 +98,43 @@ def extract_noun_phrases_en(sentence: str) -> list[str]:
 
 
 def compute_phrase_embedding(
-    phrase: str, 
-    indices: List[int], 
-    sentences: List[str], 
-    total_sentences: int
-) -> tuple:
+    phrase: str,
+    indices: List[int],
+    sentences: List[str],
+    total_sentences: int,
+    lang:str
+) -> tuple[str, tuple[float, np.ndarray], np.ndarray]:
+    """
+    특정 phrase가 포함된 문장들의 임베딩을 구해 평균벡터를 반환.
+    - phrase: 현재 구하는 단어/구절
+    - indices: phrase가 등장한 문장 인덱스 리스트
+    - sentences: 전체 문장 리스트
+    - total_sentences: 전체 문장 수
+    반환: (phrase, (tf, avg_emb), embeddings)
+    """
+    # 강조 표시
     highlighted_texts = [sentences[idx].replace(phrase, f"[{phrase}]") for idx in indices]
-    embeddings = get_embeddings_batch(highlighted_texts)
-    avg_emb = np.mean(embeddings, axis=0)
-    tf = len(indices) / total_sentences
-    return phrase, (tf, avg_emb), embeddings
 
+    # 문장 임베딩
+    embeddings = get_embeddings_batch(highlighted_texts, lang)  # shape: (N, D)
+    embeddings = np.atleast_2d(embeddings)
+
+    # 평균 벡터 계산
+    avg_emb = np.mean(embeddings, axis=0)
+    avg_emb = np.ravel(avg_emb)  # shape (D,)
+
+    # TF (빈도 비율)
+    tf = len(indices) / total_sentences
+
+    return phrase, (tf, avg_emb), embeddings
 
     
 
 def compute_scores(
     phrase_info: List[dict], 
-    sentences: List[str]
+    sentences: List[str],
+    lang:str
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
-
     scores = {}
     all_embeddings = {}
     total_sentences = len(sentences)
@@ -125,18 +143,17 @@ def compute_scores(
     central_vecs = []
 
         # phrase별 평균 임베딩 계산=>phrase별 말고 모든 문장 일반 임베딩으로?
-        # 이거 없애도 될듯(중복 계산, 이미 임베딩 벡터 산출할 때 구함)
     with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences)
-            for phrase, indices in phrase_info.items()
-        ]
+            futures = [
+                executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences, lang)
+                for phrase, indices in phrase_info.items()
+            ]
 
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
-            phrase, (tf, avg_emb), embedded_vec = future.result()
-            phrase_embeddings[phrase] = (tf, avg_emb)
-            all_embeddings[phrase]=embedded_vec
-            central_vecs.append(avg_emb)
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
+                phrase, (tf, avg_emb), embedded_vec = future.result()
+                phrase_embeddings[phrase] = (tf, avg_emb)
+                all_embeddings[phrase]=embedded_vec
+                central_vecs.append(avg_emb)
 
     # 중심 벡터 계산
     central_vec = np.mean(central_vecs, axis=0)
@@ -213,11 +230,12 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
             relation=""
             for s_idx in source_idx:
                 if s_idx in target_idx:
-                    relation+=sentences[s_idx]
+                    relation=sentences[s_idx]
+                    edges.append({"source":source_keyword, 
+                                    "target":t,
+                                    "relation":relation})
+            
             relation="관련" if relation=="" else relation
-            edges.append({"source":source_keyword, 
-                        "target":t,
-                        "relation":relation})
         
     return edges
 
@@ -254,28 +272,51 @@ def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
 
     return node
 
-def split_into_tokenized_sentence(text: str) -> tuple[List[Dict], List[str]]:
+def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     """
     텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
-
-    - 텍스트 전체에 마침표(.)가 없으면 줄바꿈 문자를 기준으로 분리합니다.
-    - 마침표가 있으면 [마침표+공백] 또는 [특수문자/숫자 조합+공백]을 기준으로 문장을 분리합니다.
-
-    Returns:
-        Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
+    2단계 분리 로직 적용:
+    1. 먼저 줄바꿈으로 전체 텍스트를 분리.
+    2. 각 줄을 다시 문장 종결 부호로 분리하여 더 정확한 결과를 도출.
+    """
+    """
+    텍스트를 문장 단위로 분할하고, 짧거나 무의미한 조각을 필터링합니다.
+    (수정) 2단계 분리 로직 + 필터링 기능 추가
     """
     tokenized_sentences = []
-    texts = []
+    final_sentences = []
     cleaned_text = text.strip()
 
-    # 1. 텍스트 전체에 마침표가 없는 경우, 줄바꿈 기준으로 문장 분리
-    if '.' not in cleaned_text:
-        texts = [s.strip() for s in cleaned_text.splitlines() if s.strip()]
+    lines = cleaned_text.splitlines()
+    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s])\s+'
     
-    # 2. 마침표가 있는 경우, 정규식을 사용하여 분리
-    else:
-        pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s])\s+'
-        texts = [s.strip() for s in re.split(pattern, cleaned_text) if s.strip()]
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        sub_sentences = re.split(intra_line_pattern, line)
+        
+        for s in sub_sentences:
+            s = s.strip()
+            if not s:
+                continue
+
+            # [필터링 로직 추가]
+            # 1. 문장에서 알파벳, 한글, 숫자만 추출
+            #    예: "가." -> "가", "1)" -> "1", "CPU" -> "CPU"
+            real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', s)
+            
+            # 2. 필터링 조건 적용
+            #    - 조건 1: 문장 전체의 길이가 1 이하인 경우 (예: "ㅇ")
+            #    - 조건 2: 실질적인 문자가 1개 이하인 경우 (예: "가.", "1)")
+            if len(s) <= 1 or len(real_chars) <= 1:
+                continue  # 조건에 해당하면 무시하고 다음 조각으로 넘어감
+
+            # 필터링을 통과한 문장만 최종 리스트에 추가
+            final_sentences.append(s)
+
+    texts = final_sentences
 
 
     for idx, sentence in enumerate(texts):
@@ -312,7 +353,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
     # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
     phrase_info = defaultdict(set)
-
+    lang, _ = langid.classify("".join(sentences))
     phrases, sentences = split_into_tokenized_sentence(sentences)
     print(f"phrases:{phrases}")
 
@@ -322,7 +363,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
 
     print(f"phrase info:{phrase_info}")
     
-    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences)
+    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     #score순으로 topic keyword를 정렬
