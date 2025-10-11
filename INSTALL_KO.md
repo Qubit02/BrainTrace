@@ -30,7 +30,7 @@
 
 **권장 사양**
 
-- CPU: 8코어
+- CPU: 6코어
 - 메모리: 16GB RAM
 - 저장공간: 50GB+ 여유 공간 (AI 모델 및 데이터베이스용)
 
@@ -247,19 +247,35 @@ $prepared = Join-Path $STAGE "neo4j"
 if (Test-Path $prepared) { Remove-Item $prepared -Recurse -Force }
 Rename-Item -Path $extracted.FullName -NewName "neo4j"
 
-# --- 4) conf 수정 ------------------------------------------------------------
+# --- 4) conf 수정 ------------------------------------------------
+function Set-ContentUtf8NoBom {
+  param([string]$Path, [string]$Text)
+  # UTF8NoBOM 저장
+  $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Text)
+  [System.IO.File]::WriteAllBytes($Path, $bytes)
+}
+
 $CONF = Join-Path $prepared "conf\neo4j.conf"
 if (-not (Test-Path $CONF)) { throw "neo4j.conf not found: $CONF" }
 
-$content = Get-Content $CONF
-$changed = $false
-$new = $content -replace '^\s*#\s*(dbms\.security\.auth_enabled\s*=\s*false)\s*$', '$1'
-if ($new -ne $content) { $changed = $true; $content = $new }
-if (-not ($content -match '^\s*dbms\.security\.auth_enabled\s*=')) {
-  $content += 'dbms.security.auth_enabled=false'
-  $changed = $true
+$text = Get-Content -LiteralPath $CONF -Raw
+$text = $text -replace "`r?`n", "`r`n"
+
+#    - 예: '# dbms.security.auth_enabled = true'  →  'dbms.security.auth_enabled=false'
+$pattern = '^[\t ]*#?[\t ]*dbms\.security\.auth_enabled[\t ]*=[\t ]*(true|false)[\t ]*$'
+if ($text -match $pattern) {
+  $text = [System.Text.RegularExpressions.Regex]::Replace(
+    $text, $pattern, 'dbms.security.auth_enabled=false',
+    [System.Text.RegularExpressions.RegexOptions]::Multiline
+  )
 }
-if ($changed) { $content | Set-Content $CONF -Encoding UTF8 }
+else {
+  if ($text.Length -gt 0 -and $text[-1] -ne "`n") { $text += "`r`n" }
+  $text += 'dbms.security.auth_enabled=false' + "`r`n"
+}
+
+Set-ContentUtf8NoBom -Path $CONF -Text $text
+
 
 # --- 5) backend/neo4j 로 이동 ------------------------------------------------
 if (Test-Path $TARGET) { Remove-Item $TARGET -Recurse -Force }

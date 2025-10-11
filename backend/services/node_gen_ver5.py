@@ -254,20 +254,32 @@ def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
 
     return node
 
-def split_into_tokenized_sentence(text:str):
+def split_into_tokenized_sentence(text: str) -> tuple[List[Dict], List[str]]:
     """
-        텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
-        Returns:
-            Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
-    """
+    텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
 
-    tokenized_sentences=[]
-    texts=[]
-    texts = [s.strip() for s in re.split(r'(?<=[.!?])\s+|(?<=[다요]\.)\s*', text.strip()) if s.strip()]
+    - 텍스트 전체에 마침표(.)가 없으면 줄바꿈 문자를 기준으로 분리합니다.
+    - 마침표가 있으면 [마침표+공백] 또는 [특수문자/숫자 조합+공백]을 기준으로 문장을 분리합니다.
+
+    Returns:
+        Tuple[List[Dict], List[str]]: ({"tokens", "index"} 리스트, 원본 문장 리스트)
+    """
+    tokenized_sentences = []
+    texts = []
+    cleaned_text = text.strip()
+
+    # 1. 텍스트 전체에 마침표가 없는 경우, 줄바꿈 기준으로 문장 분리
+    if '.' not in cleaned_text:
+        texts = [s.strip() for s in cleaned_text.splitlines() if s.strip()]
     
-    print(f"texts:{texts}")
+    # 2. 마침표가 있는 경우, 정규식을 사용하여 분리
+    else:
+        pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s])\s+'
+        texts = [s.strip() for s in re.split(pattern, cleaned_text) if s.strip()]
+
+
     for idx, sentence in enumerate(texts):
-        lang=check_lang(sentence)
+        lang = check_lang(sentence)
 
         if lang == "ko":
             tokens = extract_noun_phrases_ko(sentence)
@@ -283,6 +295,7 @@ def split_into_tokenized_sentence(text:str):
         tokenized_sentences.append({"tokens": tokens, "index": idx})
 
     return tokenized_sentences, texts
+
 
         
 
