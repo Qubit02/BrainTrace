@@ -19,6 +19,50 @@ import GraphViewForFullscreen from "./GraphViewForFullscreen";
 import SpaceBackground from "./SpaceBackground";
 import "./SpaceBackground.css";
 
+// ===== 상수 정의 =====
+
+/**
+ * LocalStorage 키 상수
+ */
+const STORAGE_KEYS = {
+  GRAPH_STATE_SYNC: "graphStateSync",
+  STANDALONE_GRAPH_UPDATE: "standaloneGraphUpdate",
+};
+
+/**
+ * URL 쿼리 파라미터 키
+ */
+const URL_PARAMS = {
+  BRAIN_ID: "brainId",
+  REFERENCED_NODES: "referencedNodes",
+};
+
+/**
+ * 그래프 상태 동기화 액션 타입
+ */
+const SYNC_ACTIONS = {
+  REFRESH: "refresh",
+  REFRESH_FROM_STANDALONE: "refresh_from_standalone",
+  MEMO_UPDATE: "memo_update",
+  SOURCE_ADDED: "source_added",
+  CLEAR_HIGHLIGHTS: "clear_highlights",
+  CLEAR_HIGHLIGHTS_FROM_STANDALONE: "clear_highlights_from_standalone",
+};
+
+/**
+ * PostMessage 메시지 타입
+ */
+const MESSAGE_TYPES = {
+  GRAPH_STATE_UPDATE: "GRAPH_STATE_UPDATE",
+};
+
+/**
+ * 기본값 상수
+ */
+const DEFAULTS = {
+  BRAIN_ID: "default-brain-id",
+};
+
 /**
  * Standalone 전체화면 그래프 뷰
  *
@@ -31,7 +75,7 @@ import "./SpaceBackground.css";
  */
 function GraphViewStandalone() {
   const searchParams = new URLSearchParams(window.location.search);
-  const brainId = searchParams.get("brainId") || "default-brain-id";
+  const brainId = searchParams.get(URL_PARAMS.BRAIN_ID) || DEFAULTS.BRAIN_ID;
 
   // ===== 상태 관리 =====
   // MainLayout과 동일한 상태 구조 유지
@@ -56,7 +100,7 @@ function GraphViewStandalone() {
 
       // 메인 창에 그래프 업데이트 알림
       localStorage.setItem(
-        "standaloneGraphUpdate",
+        STORAGE_KEYS.STANDALONE_GRAPH_UPDATE,
         JSON.stringify({
           brainId,
           nodeCount: graphData?.nodes?.length || 0,
@@ -81,11 +125,11 @@ function GraphViewStandalone() {
 
     // 메인 창에 새로고침 알림
     localStorage.setItem(
-      "graphStateSync",
+      STORAGE_KEYS.GRAPH_STATE_SYNC,
       JSON.stringify({
         brainId,
         timestamp: Date.now(),
-        action: "refresh_from_standalone",
+        action: SYNC_ACTIONS.REFRESH_FROM_STANDALONE,
       })
     );
   }, [brainId]);
@@ -104,11 +148,11 @@ function GraphViewStandalone() {
 
     // 메인 창에 해제 알림
     localStorage.setItem(
-      "graphStateSync",
+      STORAGE_KEYS.GRAPH_STATE_SYNC,
       JSON.stringify({
         brainId,
         timestamp: Date.now(),
-        action: "clear_highlights_from_standalone",
+        action: SYNC_ACTIONS.CLEAR_HIGHLIGHTS_FROM_STANDALONE,
       })
     );
   }, [brainId]);
@@ -122,7 +166,7 @@ function GraphViewStandalone() {
    * @returns {string[]} 하이라이트할 노드 이름 배열 (파싱 실패 시 빈 배열)
    */
   const getReferencedNodesFromUrl = () => {
-    const referencedParam = searchParams.get("referencedNodes");
+    const referencedParam = searchParams.get(URL_PARAMS.REFERENCED_NODES);
     if (referencedParam) {
       try {
         return JSON.parse(decodeURIComponent(referencedParam));
@@ -147,7 +191,7 @@ function GraphViewStandalone() {
   // 메인 창과의 실시간 동기화를 위한 localStorage 이벤트 리스너
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === "graphStateSync" && e.newValue) {
+      if (e.key === STORAGE_KEYS.GRAPH_STATE_SYNC && e.newValue) {
         try {
           const data = JSON.parse(e.newValue);
           if (data.brainId === brainId) {
@@ -175,25 +219,25 @@ function GraphViewStandalone() {
             }
 
             // 그래프 새로고침 (소스 추가/메모 업데이트 등)
-            if (data.action === "refresh") {
+            if (data.action === SYNC_ACTIONS.REFRESH) {
               console.log("🔄 메인 창에서 그래프 새로고침 요청");
               setGraphRefreshTrigger((prev) => prev + 1);
             }
 
             // 메모 추가/업데이트 감지
-            if (data.action === "memo_update") {
+            if (data.action === SYNC_ACTIONS.MEMO_UPDATE) {
               console.log("📝 메모 업데이트로 인한 그래프 새로고침");
               setGraphRefreshTrigger((prev) => prev + 1);
             }
 
             // 소스 파일 추가 감지
-            if (data.action === "source_added") {
+            if (data.action === SYNC_ACTIONS.SOURCE_ADDED) {
               console.log("📄 소스 파일 추가로 인한 그래프 새로고침");
               setGraphRefreshTrigger((prev) => prev + 1);
             }
 
             // 하이라이트 해제
-            if (data.action === "clear_highlights") {
+            if (data.action === SYNC_ACTIONS.CLEAR_HIGHLIGHTS) {
               console.log("🧹 하이라이트 해제");
               setReferencedNodes([]);
               setFocusNodeNames([]);
@@ -220,7 +264,7 @@ function GraphViewStandalone() {
       // 메인 창에서 보낸 메시지만 처리
       if (event.origin !== window.location.origin) return;
 
-      if (event.data.type === "GRAPH_STATE_UPDATE") {
+      if (event.data.type === MESSAGE_TYPES.GRAPH_STATE_UPDATE) {
         const data = event.data;
         console.log("📬 PostMessage로 상태 업데이트 받음:", data);
 
@@ -247,7 +291,7 @@ function GraphViewStandalone() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       console.log("🚪 Standalone 창 종료");
-      localStorage.removeItem("standaloneGraphUpdate");
+      localStorage.removeItem(STORAGE_KEYS.STANDALONE_GRAPH_UPDATE);
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
