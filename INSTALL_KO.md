@@ -454,118 +454,121 @@ echo "🛠️ conf 적용: $CONF"
 <details><summary><strong>macOS / Linux</strong></summary>
 
 ```bash
-코드 복사
-#!/usr/bin/env bash
-# Neo4j Community 자동 설치 (macOS / Linux)
-# - backend/ 또는 루트(backend가 보이는 위치)에서 실행
-# - 최신 버전 자동 탐지 → TAR.GZ 다운로드 → 압축 해제 → conf 수정(auth 비활성)
+( set -eu
+  set +u; set -o pipefail 2>/dev/null || true; set -u
 
-set -euo pipefail
+  : "${VERSION:=latest}"
 
-VERSION="${VERSION:-latest}"   # 예: VERSION=5.26.12 ./install_neo4j_macos.sh
-die(){ echo "Error: $*" >&2; exit 1; }
-
-# 실행 위치 규칙
-CWD="$(pwd)"
-if [[ "$(basename "$CWD")" == "backend" ]]; then
-  ROOT="$(dirname "$CWD")"; BACKEND="$CWD"; TARGET="$CWD/neo4j"
-elif [[ -d "$CWD/backend" ]]; then
-  ROOT="$CWD"; BACKEND="$ROOT/backend"; TARGET="$BACKEND/neo4j"
-else
-  die "루트(backend 보이는 곳) 또는 backend 폴더에서 실행하세요."
-fi
-STAGE="$ROOT/neo4j_stage"
-
-# 의존성
-command -v curl >/dev/null || die "curl 필요"
-command -v tar  >/dev/null || die "tar 필요"
-SED="sed"; command -v gsed >/dev/null && SED="gsed"
-
-# 최신 버전 자동 탐지
-get_latest_version() {
-  local pages=(
-    "https://neo4j.com/graph-data-science-software/"
-    "https://neo4j.com/deployment-center/"
-  )
-  local ver=""
-  for u in "${pages[@]}"; do
-    html="$(curl -fsSL --max-time 30 "$u" || true)"; [[ -z "$html" ]] && continue
-    rel="$(printf '%s' "$html" \
-      | grep -Eo 'https?://[^"]*download-thanks[^"]+' \
-      | grep -E 'edition=community' \
-      | grep -E 'unix|packaging=tar(\.gz)?|packaging=zip' \
-      | grep -Eo 'release=[0-9]+\.[0-9]+\.[0-9]+' \
-      | head -n1 | cut -d= -f2)"
-    if [[ -n "$rel" ]]; then ver="$rel"; break; fi
-    rel="$(printf '%s' "$html" \
-      | grep -Eo 'Neo4j Community Edition[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+' \
-      | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
-    [[ -n "$rel" ]] && { ver="$rel"; break; }
-  done
-  [[ -z "$ver" ]] && die "최신 버전 탐지 실패. VERSION 환경변수로 지정하세요."
-  printf '%s' "$ver"
-}
-[[ "$VERSION" == "latest" ]] && VERSION="$(get_latest_version)"
-echo "Using Neo4j Community version: $VERSION"
-
-TAR="neo4j-community-$VERSION-unix.tar.gz"
-URLS=(
-  "https://dist.neo4j.org/$TAR"
-  "https://neo4j.com/artifact.php?name=$TAR"
-)
-
-rm -rf "$STAGE"; mkdir -p "$STAGE" "$BACKEND"
-ARCHIVE="$STAGE/$TAR"
-
-download() {
-  local url="$1"
-  echo "Downloading: $url"
-  curl -fL --retry 5 --retry-delay 2 \
-       --connect-timeout 25 --max-time 1800 \
-       --speed-time 30 --speed-limit 10240 \
-       -o "$ARCHIVE" "$url"
-}
-ok=0
-for u in "${URLS[@]}"; do
-  if download "$u"; then
-    sz="$(wc -c <"$ARCHIVE" 2>/dev/null || echo 0)"
-    if [[ "$sz" -gt $((10*1024*1024)) ]]; then ok=1; break; else rm -f "$ARCHIVE"; fi
-  fi
-done
-[[ $ok -eq 1 ]] || die "Neo4j tarball 다운로드 실패"
-
-tar -xzf "$ARCHIVE" -C "$STAGE"
-extracted="$(find "$STAGE" -maxdepth 1 -type d -name 'neo4j-community-*' | head -n1)"
-[[ -n "$extracted" ]] || die "압축 해제 후 폴더를 찾을 수 없음"
-
-prepared="$STAGE/neo4j"
-rm -rf "$prepared"; mv "$extracted" "$prepared"
-
-CONF="$prepared/conf/neo4j.conf"
-[[ -f "$CONF" ]] || die "neo4j.conf not found: $CONF"
-
-# 주석/비주석 통합하여 auth 비활성화 (mac의 BSD sed 대응)
-if grep -Eq '^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=' "$CONF"; then
-  if sed --version >/dev/null 2>&1; then
-    sed -i -E 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=[[:space:]]*(true|false)[[:space:]]*$/dbms.security.auth_enabled=false/' "$CONF"
+  CWD="$PWD"
+  if [[ "$(basename "$CWD")" == "backend" ]]; then
+    ROOT="$(dirname "$CWD")"; BACKEND="$CWD"; TARGET="$BACKEND/neo4j"
+  elif [[ -d "$CWD/backend" ]]; then
+    ROOT="$CWD"; BACKEND="$ROOT/backend"; TARGET="$BACKEND/neo4j"
   else
-    sed -i '' -E 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=[[:space:]]*(true|false)[[:space:]]*$/dbms.security.auth_enabled=false/' "$CONF"
+    echo "❌ 여기서는 실행하지 마세요. 루트(backend 폴더 보이는 위치) 또는 backend/ 에서 실행" >&2
+    exit 1
   fi
-else
-  printf '\n%s\n' 'dbms.security.auth_enabled=false' >> "$CONF"
-fi
+  STAGE="$ROOT/neo4j_stage"
 
-mkdir -p "$(dirname "$TARGET")"
-rm -rf "$TARGET"
-mv "$prepared" "$(dirname "$TARGET")"
-if [[ "$(basename "$TARGET")" != "neo4j" && -d "$(dirname "$TARGET")/neo4j" ]]; then
-  mv "$(dirname "$TARGET")/neo4j" "$TARGET"
-fi
+  get_latest_version() {
+    local pages=(
+      "https://neo4j.com/graph-data-science-software/"
+      "https://neo4j.com/deployment-center/"
+    )
+    local html rel
+    for u in "${pages[@]}"; do
+      html="$(curl -fsSL --max-time 30 "$u" || true)" || true
+      [[ -z "$html" ]] && continue
+      rel="$(printf '%s' "$html" \
+        | grep -Eo 'https?://[^"]*download-thanks[^"]+' \
+        | grep -E 'edition=community' \
+        | grep -E 'unix|packaging=tar(\.gz)?|packaging=zip' \
+        | grep -Eo 'release=[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -n1 | cut -d= -f2)"
+      [[ -n "$rel" ]] && { printf '%s' "$rel"; return 0; }
+      rel="$(printf '%s' "$html" \
+        | grep -Eo 'Neo4j Community Edition[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+' \
+        | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -n1)"
+      [[ -n "$rel" ]] && { printf '%s' "$rel"; return 0; }
+    done
+    return 1
+  }
 
-rm -rf "$STAGE"
-echo "✅ Neo4j $VERSION 준비 완료"
-echo "📂 경로: $TARGET"
-echo "🛠️ conf 적용: $CONF"
+  if [[ "$VERSION" == "latest" ]]; then
+    echo "🌐 최신 버전 확인 중..."
+    if ! VERSION="$(get_latest_version)"; then
+      echo "❌ 최신 버전 탐지 실패. 환경변수 VERSION으로 지정하세요. (예: export VERSION=5.26.12)" >&2
+      exit 1
+    fi
+  fi
+  echo "✅ Using Neo4j Community version: $VERSION"
+
+  TAR="neo4j-community-$VERSION-unix.tar.gz"
+  URLS=(
+    "https://dist.neo4j.org/$TAR"
+    "https://neo4j.com/artifact.php?name=$TAR"
+  )
+
+  rm -rf "$STAGE"; mkdir -p "$STAGE" "$BACKEND"
+  ARCHIVE="$STAGE/$TAR"
+
+  download() {
+    local url="$1"
+    echo "⬇️  Downloading: $url"
+    curl -fL --retry 5 --retry-delay 2 \
+      --connect-timeout 25 --max-time 1800 \
+      --speed-time 30 --speed-limit 10240 \
+      -o "$ARCHIVE" "$url"
+  }
+  ok=0
+  for u in "${URLS[@]}"; do
+    if download "$u"; then
+      sz="$(wc -c <"$ARCHIVE" 2>/dev/null || echo 0)"
+      if [[ "$sz" -gt $((10*1024*1024)) ]]; then ok=1; break; else rm -f "$ARCHIVE"; fi
+    fi
+  done
+  [[ $ok -eq 1 ]] || { echo "❌ Neo4j tarball 다운로드 실패" >&2; exit 1; }
+
+  tar -xzf "$ARCHIVE" -C "$STAGE"
+  extracted="$(find "$STAGE" -maxdepth 1 -type d -name 'neo4j-community-*' | head -n1)"
+  [[ -n "$extracted" ]] || { echo "❌ 압축 해제 후 폴더를 찾을 수 없습니다." >&2; exit 1; }
+
+  prepared="$STAGE/neo4j"
+  rm -rf "$prepared"; mv "$extracted" "$prepared"
+
+  CONF="$prepared/conf/neo4j.conf"
+  [[ -f "$CONF" ]] || { echo "❌ neo4j.conf not found: $CONF" >&2; exit 1; }
+
+  if command -v gsed >/dev/null 2>&1; then SED="gsed"; else SED="sed"; fi
+  if "$SED" --version >/dev/null 2>/dev/null; then
+    if "$SED" -E -n 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=.*/X/p' "$CONF" | grep -q .; then
+      "$SED" -i -E 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=[[:space:]]*(true|false)[[:space:]]*$/dbms.security.auth_enabled=false/' "$CONF"
+    else
+      printf '\n%s\n' 'dbms.security.auth_enabled=false' >> "$CONF"
+    fi
+  else
+    if "$SED" -E -n 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=.*/X/p' "$CONF" | grep -q .; then
+      "$SED" -i '' -E 's/^[[:space:]]*#?[[:space:]]*dbms\.security\.auth_enabled[[:space:]]*=[[:space:]]*(true|false)[[:space:]]*$/dbms.security.auth_enabled=false/' "$CONF"
+    else
+      printf '\n%s\n' 'dbms.security.auth_enabled=false' >> "$CONF"
+    fi
+  fi
+
+  mkdir -p "$(dirname "$TARGET")"
+  rm -rf "$TARGET"
+  mv "$prepared" "$(dirname "$TARGET")"
+  if [[ "$(basename "$TARGET")" != "neo4j" && -d "$(dirname "$TARGET")/neo4j" ]]; then
+    mv "$(dirname "$TARGET")/neo4j" "$TARGET"
+  fi
+
+  rm -rf "$STAGE"
+  echo ""
+  echo "✅ Neo4j $VERSION 준비 완료"
+  echo "📂 경로: $TARGET"
+  echo "🛠️ conf 적용: $CONF"
+  echo "🚀 실행 예:  $TARGET/bin/neo4j console"
+)
 ```
 </details>
 
