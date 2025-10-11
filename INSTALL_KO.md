@@ -25,7 +25,7 @@
 
 | 프로파일                                  | CPU     | RAM                       | 디스크                |
 | ----------------------------------------- | ------- | ------------------------- | --------------------- |
-| **A) 외부 LLM 사용 / 로컬 LLM 미사용**    | 2–4코어 | **≥ 8GB**                 | 10–20GB (이미지/로그) |
+| **A) 외부 LLM 사용 / 로컬 LLM 미사용**    | 2–4코어 | **≥ 8GB**                 | 10–20GB |
 | **B) 로컬 LLM (Ollama 7B, Q4 기준) 사용** | 4–8코어 | **최소 12GB (권장 16GB)** | 30–50GB+ (모델/캐시)  |
 
 **권장 사양**
@@ -35,8 +35,7 @@
 - 저장공간: 50GB+ 여유 공간 (AI 모델 및 데이터베이스용)
 
 
-## 상세 설치 가이드
-
+## 상세 설치 가이드 (일반 환경 실행, docker 실행 中 택 1) <a id="상세-설치-가이드"></a>
 ### 1. 일반 환경 실행
 
 ```bash
@@ -78,7 +77,10 @@ pip install -r requirements.txt
 ```bash
 # .env 파일 생성 -> backend/.env
 
-# API 키 및 입력
+#Ollama 사용 시 모델 설치 위치 변수 추가
+OLLAMA_MODELS=./models/ollama
+
+# API 키 입력
 # OPENAI_API_KEY=your_api_key_here
 ```
 
@@ -86,9 +88,9 @@ pip install -r requirements.txt
 
 #### 1.2.1 Neo4j 설치
 
-> 아래에서 사용하는 스크립트는 실행 위치를 자동 감지합니다. **저장소 루트(BrainTrace/)** 또는 **backend/** 에서 실행하세요.
+> 아래에서 사용하는 스크립트는 실행 위치를 자동 감지합니다. 터미널에서 **저장소 루트(BrainTrace/)** 또는 **backend/** 에 아래의 코드 중 하나를 붙여넣으세요.
 
-#### 윈도우 설치
+#### 윈도우 설치(Powershell, Git Bash 본인이 사용할 터미널의 코드를 복사)
 
 <details>
 <summary><strong>PowerShell (Windows)</strong></summary>
@@ -545,7 +547,7 @@ npm install
 ```bash
 npm run dev
 ```
-
+---
 ### 2. 도커로 실행
 
 ```bash
@@ -578,7 +580,7 @@ docker-compose up backend
 # 프론트엔드만 실행
 docker-compose up frontend
 
-# 데이터베이스만 실행
+# neo4j/ollama 공식 컨테이너 실행
 docker-compose up neo4j ollama
 ```
 
