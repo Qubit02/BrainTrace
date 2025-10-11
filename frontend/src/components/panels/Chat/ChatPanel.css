@@ -1929,9 +1929,9 @@
 /* ====== 탐색 모드 선택 드롭다운 ====== */
 .chat-panel-search-mode-selector-inline {
   position: absolute;
-  left: 120px; /* 모델 선택 버튼 다음 위치 */
   bottom: 8px;
   z-index: 1000;
+  transition: left 0.3s ease;
 }
 
 .chat-panel-search-mode-dropdown-inline {
@@ -2089,7 +2089,6 @@
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .chat-panel-search-mode-selector-inline {
-    left: 110px;
     bottom: 6px;
   }
 

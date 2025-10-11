@@ -209,220 +209,231 @@ const TitleEditor = ({
  * @param {function} handleInstallModel - 모델 설치 핸들러
  * @param {string|null} installingModel - 설치 중인 모델 이름
  */
-const ModelDropdown = ({
-  selectedModel,
-  availableModels,
-  showModelDropdown,
-  setShowModelDropdown,
-  handleModelSelect,
-  handleInstallModel,
-  installingModel,
-  brainInfo,
-}) => {
-  return (
-    <div className="chat-panel-model-selector-inline">
-      <div
-        className="chat-panel-model-dropdown-inline"
-        onClick={() => setShowModelDropdown(!showModelDropdown)}
-      >
-        <span className="chat-panel-model-value-inline">
-          {selectedModel || "모델을 선택하세요"}
-        </span>
-        <IoChevronDown
-          size={14}
-          className={`chat-panel-dropdown-arrow-inline ${
-            showModelDropdown ? "rotated" : ""
-          }`}
-        />
-      </div>
-      {showModelDropdown && (
-        <div className="chat-panel-model-menu-inline">
-          {/* 배포 타입에 따른 모델 필터링 */}
-          {(() => {
-            const isLocal = brainInfo?.deployment_type === "local";
-            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
+const ModelDropdown = React.forwardRef(
+  (
+    {
+      selectedModel,
+      availableModels,
+      showModelDropdown,
+      setShowModelDropdown,
+      handleModelSelect,
+      handleInstallModel,
+      installingModel,
+      brainInfo,
+    },
+    ref
+  ) => {
+    return (
+      <div ref={ref} className="chat-panel-model-selector-inline">
+        <div
+          className="chat-panel-model-dropdown-inline"
+          onClick={() => setShowModelDropdown(!showModelDropdown)}
+        >
+          <span className="chat-panel-model-value-inline">
+            {selectedModel || "모델을 선택하세요"}
+          </span>
+          <IoChevronDown
+            size={14}
+            className={`chat-panel-dropdown-arrow-inline ${
+              showModelDropdown ? "rotated" : ""
+            }`}
+          />
+        </div>
+        {showModelDropdown && (
+          <div className="chat-panel-model-menu-inline">
+            {/* 배포 타입에 따른 모델 필터링 */}
+            {(() => {
+              const isLocal = brainInfo?.deployment_type === "local";
+              const modelType = isLocal
+                ? MODEL_TYPES.OLLAMA
+                : MODEL_TYPES.OPENAI;
 
-            // 모델 타입에 따라 필터링
-            const filteredModels = filterModelsByType(
-              availableModels.filter((model) => model.installed),
-              modelType
-            );
+              // 모델 타입에 따라 필터링
+              const filteredModels = filterModelsByType(
+                availableModels.filter((model) => model.installed),
+                modelType
+              );
 
-            return sortModelsWithSelectedFirst(filteredModels, selectedModel);
-          })().map((apiModelInfo) => {
-            const model = apiModelInfo.name;
-            const isInstalled = apiModelInfo.installed;
-            const modelData = getModelData(model);
-            return (
-              <div
-                key={model}
-                className={`chat-panel-model-item-inline ${
-                  selectedModel === model ? "selected" : ""
-                }`}
-                onClick={() => handleModelSelect(model)}
-              >
-                <div className="chat-panel-model-info-inline">
-                  <div className="chat-panel-model-header-inline">
-                    <span className="chat-panel-model-name-inline">
-                      {modelData.name}
-                    </span>
-                    {selectedModel === model && (
-                      <IoCheckmarkOutline
-                        size={16}
-                        className="chat-panel-model-checkmark-inline"
-                      />
+              return sortModelsWithSelectedFirst(filteredModels, selectedModel);
+            })().map((apiModelInfo) => {
+              const model = apiModelInfo.name;
+              const isInstalled = apiModelInfo.installed;
+              const modelData = getModelData(model);
+              return (
+                <div
+                  key={model}
+                  className={`chat-panel-model-item-inline ${
+                    selectedModel === model ? "selected" : ""
+                  }`}
+                  onClick={() => handleModelSelect(model)}
+                >
+                  <div className="chat-panel-model-info-inline">
+                    <div className="chat-panel-model-header-inline">
+                      <span className="chat-panel-model-name-inline">
+                        {modelData.name}
+                      </span>
+                      {selectedModel === model && (
+                        <IoCheckmarkOutline
+                          size={16}
+                          className="chat-panel-model-checkmark-inline"
+                        />
+                      )}
+                    </div>
+                    <div className="chat-panel-model-description-inline">
+                      {modelData.description}
+                    </div>
+                    <div className="chat-panel-model-meta-inline">
+                      <span className="chat-panel-model-size-inline">
+                        {modelData.size}
+                      </span>
+                      <span className="chat-panel-model-type-inline">
+                        {modelData.type}
+                      </span>
+                      <span className="chat-panel-model-provider-inline">
+                        {modelData.provider}
+                      </span>
+                    </div>
+                    {modelData.usage && (
+                      <div className="chat-panel-model-usage-inline">
+                        {modelData.usage}
+                      </div>
                     )}
                   </div>
-                  <div className="chat-panel-model-description-inline">
-                    {modelData.description}
-                  </div>
-                  <div className="chat-panel-model-meta-inline">
-                    <span className="chat-panel-model-size-inline">
-                      {modelData.size}
-                    </span>
-                    <span className="chat-panel-model-type-inline">
-                      {modelData.type}
-                    </span>
-                    <span className="chat-panel-model-provider-inline">
-                      {modelData.provider}
-                    </span>
-                  </div>
-                  {modelData.usage && (
-                    <div className="chat-panel-model-usage-inline">
-                      {modelData.usage}
-                    </div>
-                  )}
-                </div>
-                {modelData.buttonText && (
-                  <button
-                    className="chat-panel-model-action-btn-inline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // 새 채팅 기능 구현
-                    }}
-                  >
-                    {modelData.buttonText}
-                  </button>
-                )}
-                {installingModel === model && (
-                  <span className="chat-panel-installing-inline">
-                    설치 중...
-                  </span>
-                )}
-              </div>
-            );
-          })}
-
-          {/* 구분선 - 설치된 모델과 설치 가능한 모델 사이 */}
-          {(() => {
-            const { installed, available } =
-              separateInstalledAndAvailableModels(availableModels);
-            return installed.length > 0 && available.length > 0 ? (
-              <div className="chat-panel-model-separator-inline"></div>
-            ) : null;
-          })()}
-
-          {/* 설치 가능한 모델 목록 (배포 타입에 따라 필터링) */}
-          {(() => {
-            const isLocal = brainInfo?.deployment_type === "local";
-            const modelType = isLocal ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI;
-
-            // 모델 타입에 따라 필터링
-            const filteredModels = filterModelsByType(
-              availableModels.filter((model) => !model.installed),
-              modelType
-            );
-
-            return filteredModels;
-          })().map((apiModelInfo) => {
-            const model = apiModelInfo.name;
-            const isInstalled = apiModelInfo.installed;
-            const modelData = getModelData(model);
-            return (
-              <div
-                key={model}
-                className={`chat-panel-model-item-inline unselectable ${
-                  selectedModel === model ? "selected" : ""
-                }`}
-                title="설치 후 사용 가능합니다"
-                onClick={(e) => {
-                  // 설치되지 않은 모델은 선택할 수 없음
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // 선택 불가능하다는 안내 메시지
-                  alert(
-                    `${modelData.name} 모델을 사용하려면 먼저 설치해주세요.`
-                  );
-                }}
-              >
-                <div className="chat-panel-model-info-inline">
-                  <div className="chat-panel-model-header-inline">
-                    <span className="chat-panel-model-name-inline">
-                      {modelData.name}
-                    </span>
-                    {selectedModel === model && (
-                      <IoCheckmarkOutline
-                        size={16}
-                        className="chat-panel-model-checkmark-inline"
-                      />
-                    )}
-                  </div>
-                  <div className="chat-panel-model-description-inline">
-                    {modelData.description}
-                  </div>
-                  <div className="chat-panel-model-meta-inline">
-                    <span className="chat-panel-model-size-inline">
-                      {modelData.size}
-                    </span>
-                    <span className="chat-panel-model-type-inline">
-                      {modelData.type}
-                    </span>
-                    <span className="chat-panel-model-provider-inline">
-                      {modelData.provider}
-                    </span>
-                  </div>
-                  {modelData.usage && (
-                    <div className="chat-panel-model-usage-inline">
-                      {modelData.usage}
-                    </div>
-                  )}
-                </div>
-                {modelData.buttonText && (
-                  <button
-                    className="chat-panel-model-action-btn-inline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // 새 채팅 기능 구현
-                    }}
-                  >
-                    {modelData.buttonText}
-                  </button>
-                )}
-                {installingModel === model ? (
-                  <span className="chat-panel-installing-inline">
-                    다운로드 중...
-                  </span>
-                ) : (
-                  !isInstalled && (
+                  {modelData.buttonText && (
                     <button
-                      className="chat-panel-install-btn-inline"
+                      className="chat-panel-model-action-btn-inline"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleInstallModel(model);
+                        // 새 채팅 기능 구현
                       }}
                     >
-                      설치
+                      {modelData.buttonText}
                     </button>
-                  )
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
+                  )}
+                  {installingModel === model && (
+                    <span className="chat-panel-installing-inline">
+                      설치 중...
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* 구분선 - 설치된 모델과 설치 가능한 모델 사이 */}
+            {(() => {
+              const { installed, available } =
+                separateInstalledAndAvailableModels(availableModels);
+              return installed.length > 0 && available.length > 0 ? (
+                <div className="chat-panel-model-separator-inline"></div>
+              ) : null;
+            })()}
+
+            {/* 설치 가능한 모델 목록 (배포 타입에 따라 필터링) */}
+            {(() => {
+              const isLocal = brainInfo?.deployment_type === "local";
+              const modelType = isLocal
+                ? MODEL_TYPES.OLLAMA
+                : MODEL_TYPES.OPENAI;
+
+              // 모델 타입에 따라 필터링
+              const filteredModels = filterModelsByType(
+                availableModels.filter((model) => !model.installed),
+                modelType
+              );
+
+              return filteredModels;
+            })().map((apiModelInfo) => {
+              const model = apiModelInfo.name;
+              const isInstalled = apiModelInfo.installed;
+              const modelData = getModelData(model);
+              return (
+                <div
+                  key={model}
+                  className={`chat-panel-model-item-inline unselectable ${
+                    selectedModel === model ? "selected" : ""
+                  }`}
+                  title="설치 후 사용 가능합니다"
+                  onClick={(e) => {
+                    // 설치되지 않은 모델은 선택할 수 없음
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 선택 불가능하다는 안내 메시지
+                    alert(
+                      `${modelData.name} 모델을 사용하려면 먼저 설치해주세요.`
+                    );
+                  }}
+                >
+                  <div className="chat-panel-model-info-inline">
+                    <div className="chat-panel-model-header-inline">
+                      <span className="chat-panel-model-name-inline">
+                        {modelData.name}
+                      </span>
+                      {selectedModel === model && (
+                        <IoCheckmarkOutline
+                          size={16}
+                          className="chat-panel-model-checkmark-inline"
+                        />
+                      )}
+                    </div>
+                    <div className="chat-panel-model-description-inline">
+                      {modelData.description}
+                    </div>
+                    <div className="chat-panel-model-meta-inline">
+                      <span className="chat-panel-model-size-inline">
+                        {modelData.size}
+                      </span>
+                      <span className="chat-panel-model-type-inline">
+                        {modelData.type}
+                      </span>
+                      <span className="chat-panel-model-provider-inline">
+                        {modelData.provider}
+                      </span>
+                    </div>
+                    {modelData.usage && (
+                      <div className="chat-panel-model-usage-inline">
+                        {modelData.usage}
+                      </div>
+                    )}
+                  </div>
+                  {modelData.buttonText && (
+                    <button
+                      className="chat-panel-model-action-btn-inline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 새 채팅 기능 구현
+                      }}
+                    >
+                      {modelData.buttonText}
+                    </button>
+                  )}
+                  {installingModel === model ? (
+                    <span className="chat-panel-installing-inline">
+                      다운로드 중...
+                    </span>
+                  ) : (
+                    !isInstalled && (
+                      <button
+                        className="chat-panel-install-btn-inline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInstallModel(model);
+                        }}
+                      >
+                        설치
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+ModelDropdown.displayName = "ModelDropdown";
 
 /**
  * SearchModeDropdown 컴포넌트
@@ -444,7 +455,31 @@ const SearchModeDropdown = ({
   showSearchModeDropdown,
   setShowSearchModeDropdown,
   handleSearchModeSelect,
+  selectedModel,
+  modelDropdownRef,
 }) => {
+  const searchModeRef = useRef(null);
+  const [leftPosition, setLeftPosition] = useState(160);
+
+  // 모델 드롭다운 너비에 따라 위치 계산
+  useEffect(() => {
+    if (modelDropdownRef?.current && searchModeRef.current) {
+      const modelDropdownRect =
+        modelDropdownRef.current.getBoundingClientRect();
+      const parentRect =
+        modelDropdownRef.current.parentElement?.getBoundingClientRect();
+
+      if (parentRect) {
+        // 모델 드롭다운의 너비 + 여유 공간(20px)
+        const calculatedLeft = modelDropdownRect.width + 20;
+        setLeftPosition(calculatedLeft);
+      }
+    } else if (!selectedModel) {
+      // 모델이 선택되지 않았을 때 기본 위치
+      setLeftPosition(160);
+    }
+  }, [selectedModel, modelDropdownRef]);
+
   const searchModes = [
     {
       id: "fast",
@@ -459,7 +494,11 @@ const SearchModeDropdown = ({
   ];
 
   return (
-    <div className="chat-panel-search-mode-selector-inline">
+    <div
+      ref={searchModeRef}
+      className="chat-panel-search-mode-selector-inline"
+      style={{ left: `${leftPosition}px` }}
+    >
       <div
         className="chat-panel-search-mode-dropdown-inline"
         onClick={() => setShowSearchModeDropdown(!showSearchModeDropdown)}
@@ -552,6 +591,7 @@ const ChatInput = ({
   showSearchModeDropdown,
   setShowSearchModeDropdown,
   handleSearchModeSelect,
+  modelDropdownRef,
 }) => {
   return (
     <form className="chat-controls" onSubmit={handleSubmit}>
@@ -573,6 +613,7 @@ const ChatInput = ({
         />
         <div className="chat-panel-source-count-text">소스 {sourceCount}개</div>
         <ModelDropdown
+          ref={modelDropdownRef}
           selectedModel={selectedModel}
           availableModels={availableModels}
           showModelDropdown={showModelDropdown}
@@ -587,6 +628,8 @@ const ChatInput = ({
           showSearchModeDropdown={showSearchModeDropdown}
           setShowSearchModeDropdown={setShowSearchModeDropdown}
           handleSearchModeSelect={handleSearchModeSelect}
+          selectedModel={selectedModel}
+          modelDropdownRef={modelDropdownRef}
         />
         <button
           type="submit"
@@ -892,6 +935,7 @@ function ChatPanel({
 
   // UI 관련 상태
   const messagesEndRef = useRef(null); // 메시지 끝 참조 (자동 스크롤용)
+  const modelDropdownRef = useRef(null); // 모델 드롭다운 참조 (위치 계산용)
   const [openSourceNodes, setOpenSourceNodes] = useState({}); // 열린 소스 노드 상태
   const [showConfirm, setShowConfirm] = useState(false); // 확인 다이얼로그 표시
   const [isInitialLoading, setIsInitialLoading] = useState(true); // 초기 로딩 상태
@@ -1540,6 +1584,7 @@ function ChatPanel({
     showSearchModeDropdown,
     setShowSearchModeDropdown,
     handleSearchModeSelect,
+    modelDropdownRef,
   };
 
   useEffect(() => {
@@ -1654,6 +1699,7 @@ function ChatPanel({
                   소스 {sourceCount}개
                 </div>
                 <ModelDropdown
+                  ref={modelDropdownRef}
                   selectedModel={selectedModel}
                   availableModels={availableModels}
                   showModelDropdown={showModelDropdown}
@@ -1668,6 +1714,8 @@ function ChatPanel({
                   showSearchModeDropdown={showSearchModeDropdown}
                   setShowSearchModeDropdown={setShowSearchModeDropdown}
                   handleSearchModeSelect={handleSearchModeSelect}
+                  selectedModel={selectedModel}
+                  modelDropdownRef={modelDropdownRef}
                 />
                 <button
                   type="submit"
