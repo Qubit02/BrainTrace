@@ -264,7 +264,7 @@ function KnowledgeGraphStatusBar({ textLength, nodesCount, edgesCount }) {
                 ?
                 <Tooltip
                   text={
-                    "종합 품질 지수: 평균 연결도(50%) + 엣지 밀도(30%) + 노드 밀도(20%) 가중 평균. 로그 스케일 정규화 및 품질 보너스 적용"
+                    "종합 품질 지수: 평균 연결도(50%) + 엣지 밀도(30%) + 노드 밀도(20%) 가중 평균."
                   }
                 />
               </span>
