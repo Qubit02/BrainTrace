@@ -68,7 +68,7 @@ function ChatSession({
   }, [selectedBrainId]);
 
   // === 유틸리티 함수 ===
-  // 타임스탬프를 YYYY.MM.DD 형태로 포맷팅하는 함수
+  // 타임스탬프를 YYYY.MM.DD 형태로 포맷팅하는 함수 (한국 시간대 기준)
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
 
@@ -86,9 +86,16 @@ function ChatSession({
       return "";
     }
 
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
+    // 한국 시간대(KST, Asia/Seoul)로 변환
+    const koreanDate = new Date(
+      date.toLocaleString("en-US", {
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const year = koreanDate.getFullYear();
+    const month = `${koreanDate.getMonth() + 1}`.padStart(2, "0");
+    const day = `${koreanDate.getDate()}`.padStart(2, "0");
     return `${year}.${month}.${day}`;
   };
 
