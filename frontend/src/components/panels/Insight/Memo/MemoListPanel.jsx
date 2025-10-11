@@ -201,6 +201,71 @@ function generatePreview(content, maxLength = MEMO_DEFAULTS.PREVIEW_LENGTH) {
   return `${preview}...`;
 }
 
+/**
+ * 드래그 데이터 생성
+ *
+ * @param {Object} memo - 메모 객체
+ * @returns {Object} 드래그 데이터 객체
+ */
+function createDragData(memo) {
+  return {
+    id: memo.memo_id,
+    name: `${memo.memo_title || MEMO_DEFAULTS.TITLE}.memo`,
+    content: memo.memo_text || "",
+  };
+}
+
+/**
+ * 드래그 시작 이벤트 핸들러 생성
+ *
+ * @param {Object} memo - 메모 객체
+ * @param {boolean} isTrashMode - 휴지통 모드 여부
+ * @returns {Function} 드래그 시작 이벤트 핸들러
+ */
+function createDragStartHandler(memo, isTrashMode) {
+  return (e) => {
+    if (isTrashMode) return;
+
+    const dragData = createDragData(memo);
+    e.dataTransfer.setData("application/json-memo", JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = "copy";
+    e.currentTarget.classList.add("dragging");
+  };
+}
+
+/**
+ * 드래그 종료 이벤트 핸들러
+ *
+ * @param {DragEvent} e - 드래그 이벤트
+ */
+function handleDragEnd(e) {
+  e.currentTarget.classList.remove("dragging");
+}
+
+/**
+ * 액션 호버 이벤트 핸들러 생성
+ *
+ * @param {boolean} isTrashMode - 휴지통 모드 여부
+ * @returns {Object} onMouseEnter, onMouseLeave 핸들러
+ */
+function createActionHoverHandlers(isTrashMode) {
+  if (isTrashMode) {
+    return {
+      onMouseEnter: undefined,
+      onMouseLeave: undefined,
+    };
+  }
+
+  return {
+    onMouseEnter: (e) => {
+      e.currentTarget.parentElement.classList.add("actions-hover");
+    },
+    onMouseLeave: (e) => {
+      e.currentTarget.parentElement.classList.remove("actions-hover");
+    },
+  };
+}
+
 // ===== 하위 컴포넌트 =====
 
 /**
@@ -287,8 +352,23 @@ const MemoItem = ({
   onHardDelete,
 }) => {
   const id = memo.memo_id;
-  const filename = `${memo.memo_title || MEMO_DEFAULTS.TITLE}.memo`;
   const content = memo.memo_text || "";
+
+  // 액션 호버 핸들러 생성
+  const actionHoverHandlers = createActionHoverHandlers(isTrashMode);
+
+  // 메모 클릭 핸들러
+  const handleClick = () => {
+    if (!isTrashMode && onSelect) {
+      onSelect(id);
+    }
+  };
+
+  // 버튼 클릭 핸들러 (이벤트 전파 방지)
+  const createButtonHandler = (handler) => (e) => {
+    e.stopPropagation();
+    if (handler) handler(id);
+  };
 
   return (
     <div
@@ -296,24 +376,11 @@ const MemoItem = ({
         isHighlighted ? "highlighted" : ""
       } ${isTrashMode ? "trash-mode" : ""}`}
       draggable={!isTrashMode}
-      onDragStart={(e) => {
-        if (!isTrashMode) {
-          const dragData = { id, name: filename, content };
-          e.dataTransfer.setData(
-            "application/json-memo",
-            JSON.stringify(dragData)
-          );
-          e.dataTransfer.effectAllowed = "copy";
-          e.currentTarget.classList.add("dragging");
-        }
-      }}
-      onDragEnd={(e) => e.currentTarget.classList.remove("dragging")}
+      onDragStart={createDragStartHandler(memo, isTrashMode)}
+      onDragEnd={handleDragEnd}
     >
       {/* 메모 클릭 영역 */}
-      <div
-        className="memo-item-content"
-        onClick={() => !isTrashMode && onSelect(id)}
-      >
+      <div className="memo-item-content" onClick={handleClick}>
         <div className="memo-title">
           {memo.memo_title || MEMO_DEFAULTS.UNTITLED}
         </div>
@@ -322,37 +389,19 @@ const MemoItem = ({
       </div>
 
       {/* 메모 삭제/복구/완전삭제 버튼 */}
-      <div
-        className="memo-item-actions"
-        onMouseEnter={(e) => {
-          if (!isTrashMode) {
-            e.currentTarget.parentElement.classList.add("actions-hover");
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isTrashMode) {
-            e.currentTarget.parentElement.classList.remove("actions-hover");
-          }
-        }}
-      >
+      <div className="memo-item-actions" {...actionHoverHandlers}>
         {isTrashMode ? (
           <>
             <button
               className="restore-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRestore(id);
-              }}
+              onClick={createButtonHandler(onRestore)}
               title={UI_TEXT.TOOLTIP_RESTORE}
             >
               <MdOutlineRestore size={18} />
             </button>
             <button
               className="hard-delete-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onHardDelete(id);
-              }}
+              onClick={createButtonHandler(onHardDelete)}
               title={UI_TEXT.TOOLTIP_HARD_DELETE}
             >
               <MdDeleteForever size={18} />
@@ -361,10 +410,7 @@ const MemoItem = ({
         ) : (
           <button
             className="delete-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(id);
-            }}
+            onClick={createButtonHandler(onDelete)}
             title={UI_TEXT.TOOLTIP_DELETE}
           >
             <IoTrashBinOutline size={18} />
