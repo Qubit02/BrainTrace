@@ -14,7 +14,62 @@ import ConfirmDialog from "../../../common/ConfirmDialog";
 
 import useAudioRecorder from "../hooks/useAudioRecorder";
 
-// 초 단위 시간을 mm:ss 포맷으로 변환하는 함수
+// ===== 상수 정의 =====
+
+/**
+ * 메모 기본값 상수
+ */
+const MEMO_DEFAULTS = {
+  TITLE: "메모",
+  UNTITLED: "제목 없음",
+  EMPTY_CONTENT: "내용 없음",
+  PREVIEW_LENGTH: 40, // 미리보기 텍스트 길이
+};
+
+/**
+ * UI 타이밍 상수 (밀리초)
+ */
+const TIMING = {
+  ADD_MEMO_DELAY: 1500, // 메모 추가 후 재클릭 가능 시간
+};
+
+/**
+ * 메모 모드 타입
+ */
+const MEMO_MODES = {
+  NORMAL: "normal", // 일반 메모 모드
+  TRASH: "trash", // 휴지통 모드
+};
+
+/**
+ * 메모 표시 텍스트
+ */
+const UI_TEXT = {
+  TITLE_NORMAL: "Memo",
+  TITLE_TRASH: "Bin",
+  BUTTON_ADD: "+ 새 메모",
+  BUTTON_ADDING: "추가 중...",
+  BUTTON_EMPTY_TRASH: "전체 비우기",
+  EMPTY_NORMAL: "저장된 메모가 여기에 표시됩니다",
+  EMPTY_TRASH: "휴지통이 비어있습니다",
+  EMPTY_NORMAL_SUB:
+    "중요한 생각을 메모로 남기고\n드래그해서 소스로 추가하면 그래프에 반영됩니다.",
+  EMPTY_TRASH_SUB: "삭제된 메모가 여기에 표시됩니다",
+  TOOLTIP_RESTORE: "메모 복구",
+  TOOLTIP_HARD_DELETE: "메모 완전 삭제",
+  TOOLTIP_DELETE: "휴지통 이동",
+  TOOLTIP_SHOW_TRASH: "휴지통 보기",
+  TOOLTIP_SHOW_MEMOS: "메모 목록으로",
+};
+
+// ===== 유틸리티 함수 =====
+
+/**
+ * 초 단위 시간을 mm:ss 포맷으로 변환
+ *
+ * @param {number} seconds - 초 단위 시간
+ * @returns {string} mm:ss 형식 문자열
+ */
 function formatTime(seconds) {
   const min = String(Math.floor(seconds / 60)).padStart(2, "0");
   const sec = String(seconds % 60).padStart(2, "0");
@@ -96,7 +151,7 @@ function MemoListPanel({
       await onAdd("");
     } finally {
       // 약간의 지연 후 상태 초기화 (UI 업데이트 시간 확보)
-      setTimeout(() => setIsAddingMemo(false), 1500);
+      setTimeout(() => setIsAddingMemo(false), TIMING.ADD_MEMO_DELAY);
     }
   };
 
@@ -126,7 +181,7 @@ function MemoListPanel({
           {/* 메모 아이콘 + Note 텍스트 */}
           <div className="memo-list-title-row">
             <span className="memo-title-text">
-              {showTrash ? "Bin" : "Memo"}
+              {showTrash ? UI_TEXT.TITLE_TRASH : UI_TEXT.TITLE_NORMAL}
             </span>
           </div>
         </div>
@@ -178,7 +233,7 @@ function MemoListPanel({
               onClick={handleAddMemo}
               disabled={isAddingMemo}
             >
-              {isAddingMemo ? "추가 중..." : "+ 새 메모"}
+              {isAddingMemo ? UI_TEXT.BUTTON_ADDING : UI_TEXT.BUTTON_ADD}
             </button>
           )}
 
@@ -187,10 +242,10 @@ function MemoListPanel({
             <button
               className="empty-trash-button"
               onClick={handleEmptyTrash}
-              title="휴지통 비우기"
+              title={UI_TEXT.BUTTON_EMPTY_TRASH}
             >
               <MdOutlineDeleteSweep size={14} />
-              전체 비우기
+              {UI_TEXT.BUTTON_EMPTY_TRASH}
             </button>
           )}
         </div>
@@ -203,14 +258,10 @@ function MemoListPanel({
           <div className="memo-empty-state">
             <CgNotes className="memo-empty-icon" />
             <div className="memo-empty-text">
-              {showTrash
-                ? "휴지통이 비어있습니다"
-                : "저장된 메모가 여기에 표시됩니다"}
+              {showTrash ? UI_TEXT.EMPTY_TRASH : UI_TEXT.EMPTY_NORMAL}
             </div>
             <div className="memo-empty-subtext">
-              {showTrash
-                ? "삭제된 메모가 여기에 표시됩니다"
-                : "중요한 생각을 메모로 남기고\n드래그해서 소스로 추가하면 그래프에 반영됩니다."}
+              {showTrash ? UI_TEXT.EMPTY_TRASH_SUB : UI_TEXT.EMPTY_NORMAL_SUB}
             </div>
           </div>
         )}
@@ -218,7 +269,7 @@ function MemoListPanel({
         {/* 메모 아이템 목록 렌더링 */}
         {displayedMemos.map((memo) => {
           const id = memo.memo_id;
-          const filename = `${memo.memo_title || "메모"}.memo`;
+          const filename = `${memo.memo_title || MEMO_DEFAULTS.TITLE}.memo`;
           const content = memo.memo_text || "";
           const isSource = memo.is_source === 1 || memo.is_source === true;
 
@@ -248,12 +299,14 @@ function MemoListPanel({
                 onClick={() => !showTrash && onSelect(id)}
               >
                 <div className="memo-title">
-                  {memo.memo_title || "제목 없음"}
+                  {memo.memo_title || MEMO_DEFAULTS.UNTITLED}
                 </div>
                 <div className="memo-preview">
                   {content.length > 0
-                    ? content.slice(0, 40).replace(/\n/g, " ")
-                    : "내용 없음"}
+                    ? content
+                        .slice(0, MEMO_DEFAULTS.PREVIEW_LENGTH)
+                        .replace(/\n/g, " ")
+                    : MEMO_DEFAULTS.EMPTY_CONTENT}
                   ...
                 </div>
                 <div className="memo-date">
@@ -289,7 +342,7 @@ function MemoListPanel({
                         e.stopPropagation();
                         handleRestoreMemo(id);
                       }}
-                      title="메모 복구"
+                      title={UI_TEXT.TOOLTIP_RESTORE}
                     >
                       <MdOutlineRestore size={18} />
                     </button>
@@ -299,7 +352,7 @@ function MemoListPanel({
                         e.stopPropagation();
                         handleHardDeleteMemo(id);
                       }}
-                      title="메모 완전 삭제"
+                      title={UI_TEXT.TOOLTIP_HARD_DELETE}
                     >
                       <MdDeleteForever size={18} />
                     </button>
@@ -311,7 +364,7 @@ function MemoListPanel({
                       e.stopPropagation();
                       handleDeleteMemo(id);
                     }}
-                    title="메모 삭제"
+                    title={UI_TEXT.TOOLTIP_DELETE}
                   >
                     <IoTrashBinOutline size={18} />
                   </button>
@@ -342,13 +395,13 @@ function MemoListPanel({
               <BsTrash
                 className="header-icon"
                 onClick={toggleTrash}
-                title="휴지통 보기"
+                title={UI_TEXT.TOOLTIP_SHOW_TRASH}
               />
             ) : (
               <CiMemoPad
                 className="header-icon"
                 onClick={toggleTrash}
-                title="메모 목록으로"
+                title={UI_TEXT.TOOLTIP_SHOW_MEMOS}
                 size={22}
               />
             )}
