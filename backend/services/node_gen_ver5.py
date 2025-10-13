@@ -252,13 +252,12 @@ def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
     s_indices=[idx for idx in phrase_info[name]]
     brain_id, source_id=id
 
-    if len(s_indices)<=2:
-        for idx in s_indices:
-            description.append({"description":sentences[idx],
-                            "source_id":source_id})
-            ori_sentences.append({"original_sentence":sentences[idx],
-                            "source_id":source_id,
-                            "score": 1.0})   
+    for idx in s_indices[:min(len(s_indices),5)]:
+        description.append({"description":sentences[idx],
+                        "source_id":source_id})
+        ori_sentences.append({"original_sentence":sentences[idx],
+                        "source_id":source_id,
+                        "score": 1.0})   
 
     else:
         description.append({"description":"",
