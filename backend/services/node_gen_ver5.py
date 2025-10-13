@@ -239,7 +239,7 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         
     return edges
 
-def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
+def make_node(name, s_indices, sentences:list[str], id:tuple, embeddings):
     """
     노드를 만들 키워드와 키워드의 등장 위치를 입력 받아 노드를 생성합니다.
     args:   name: 노드를 만들 키워드
@@ -249,11 +249,10 @@ def make_node(name, phrase_info, sentences:list[str], id:tuple, embeddings):
     """
     description=[]
     ori_sentences=[]
-    s_indices=[idx for idx in phrase_info[name]]
     brain_id, source_id=id
 
-    if len(s_indices)<=2:
-        for idx in s_indices:
+    if len(s_indices)!=0:
+        for idx in s_indices[:min(len(s_indices),5)]:
             description.append({"description":sentences[idx],
                             "source_id":source_id})
             ori_sentences.append({"original_sentence":sentences[idx],
@@ -288,7 +287,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     cleaned_text = text.strip()
 
     lines = cleaned_text.splitlines()
-    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s])\s+'
+    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s,])\s+'
     
     for line in lines:
         line = line.strip()
@@ -371,11 +370,15 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     sorted_keywords=[k[0] for k in sorted_keywords]
 
     cnt=0
+    if keyword != "":
+        if phrase_info[keyword[:-1]] != []:
+            nodes.append(make_node(keyword, list(phrase_info[keyword[:-1]]), sentences, id, all_embeddings[keyword[:-1]]))
+
     for t in sorted_keywords:
         if keyword != "":
             edges+=make_edges(sentences, keyword, [t], phrase_info)
         if t not in already_made:
-            nodes.append(make_node(t, phrase_info, sentences, id, all_embeddings[t]))
+            nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
             already_made.append(t)
             cnt+=1
             if t in groups:
@@ -384,7 +387,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
                     if phrases[idx] not in already_made:
                         related_keywords.append(phrases[idx])
                         already_made.append(phrases[idx])
-                        nodes.append(make_node(phrases[idx], phrase_info, sentences, id, all_embeddings[phrases[idx]]))
+                        nodes.append(make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]]))
                         edges+=make_edges(sentences, t, related_keywords, phrase_info)   
                     
         if cnt==5:
