@@ -371,8 +371,9 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
 
     cnt=0
     if keyword != "":
-        if phrase_info[keyword[:-1]] != []:
-            nodes.append(make_node(keyword, list(phrase_info[keyword[:-1]]), sentences, id, all_embeddings[keyword[:-1]]))
+        if keyword[:-1]=="*":
+            if phrase_info[keyword[:-1]] != []:
+                nodes.append(make_node(keyword, list(phrase_info[keyword[:-1]]), sentences, id, all_embeddings[keyword[:-1]]))
 
     for t in sorted_keywords:
         if keyword != "":
