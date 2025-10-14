@@ -167,10 +167,10 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
         description=desc["description"]
         source_id=node["source_id"]
         phrase=node["name"]
+        length= len(embeddings)
 
         if description == "":
             try:
-                print("case: 1")
                 description = node["name"]
                 emb = get_embeddings_batch([description], lang)
                 if emb is None or emb.size == 0:
@@ -182,15 +182,18 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
                 continue
         else:
             if embeddings is None or embeddings.size == 0:  # 빈 리스트 체크
-                print("case: 2")
                 highlighted_description = description.replace(phrase, f"[{phrase}]")
                 emb = get_embeddings_batch([highlighted_description], lang)
                 emb = emb[0] if emb.ndim > 1 else emb
             else:
-                print("case: 3")
-                emb = np.array(embeddings[idx])
-                if emb.ndim > 1:
-                    emb = emb[0]
+                if length > idx:
+                    emb = np.array(embeddings[idx])
+                    if emb.ndim > 1:
+                        emb = emb[0]
+
+                else:
+                    break
+
         
         desc_hash = str(hash(description)) if description else "empty"
         pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_id}_{desc_hash}"))
