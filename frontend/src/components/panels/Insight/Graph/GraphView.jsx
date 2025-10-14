@@ -77,7 +77,10 @@ import React, {
 } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import * as d3 from "d3";
-import { fetchGraphData } from "../../../../../api/services/graphApi";
+import {
+  fetchGraphData,
+  getNodeDescriptions,
+} from "../../../../../api/services/graphApi";
 import "./GraphView.css";
 import { startTimelapse } from "./graphTimelapse";
 import { toast } from "react-toastify";
@@ -210,6 +213,8 @@ function GraphView({
   // === 마우스 인터랙션 상태 ===
   const [hoveredNode, setHoveredNode] = useState(null); // 호버된 노드 상태
   const [hoveredLink, setHoveredLink] = useState(null); // 호버된 링크 상태
+  const [hoveredNodeDescriptions, setHoveredNodeDescriptions] = useState([]); // 호버된 노드의 descriptions
+  const [loadingDescriptions, setLoadingDescriptions] = useState(false); // descriptions 로딩 상태
 
   // === 드래그 상태 관리 ===
   const [draggedNode, setDraggedNode] = useState(null); // 드래그 중인 노드
@@ -322,6 +327,49 @@ function GraphView({
     loading,
     hoveredNode,
   ]);
+
+  // === 노드 hover 시 descriptions 조회 (전체화면일 때만) ===
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchDescriptions = async () => {
+      // 전체화면이 아니거나 hoveredNode가 없으면 조회하지 않음
+      if (!isFullscreen || !hoveredNode || !brainId) {
+        setHoveredNodeDescriptions([]);
+        setLoadingDescriptions(false);
+        return;
+      }
+
+      try {
+        setLoadingDescriptions(true);
+        const nodeName = cleanNodeName(hoveredNode.name || hoveredNode.id);
+        const result = await getNodeDescriptions(nodeName, brainId);
+
+        if (!isCancelled && result && result.descriptions) {
+          setHoveredNodeDescriptions(result.descriptions);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("노드 descriptions 조회 실패:", error);
+          setHoveredNodeDescriptions([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingDescriptions(false);
+        }
+      }
+    };
+
+    // debounce: 300ms 후에 API 호출
+    const timeoutId = setTimeout(() => {
+      fetchDescriptions();
+    }, 300);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [hoveredNode, brainId, isFullscreen]);
 
   // === 하이라이트/포커스/신규노드 관련 ===
   const [showReferenced, setShowReferenced] = useState(
@@ -1327,9 +1375,49 @@ function GraphView({
               </div>
               <div className="tooltip-row">
                 <span className="tooltip-info">
-                  (연결: {hoveredNode.linkCount})
+                  (관계: {hoveredNode.linkCount})
                 </span>
               </div>
+
+              {/* 원본 문장 표시 (전체화면일 때만) */}
+              {isFullscreen && loadingDescriptions && (
+                <div className="tooltip-descriptions">
+                  <div className="tooltip-descriptions-loading">로딩 중...</div>
+                </div>
+              )}
+
+              {isFullscreen &&
+                !loadingDescriptions &&
+                hoveredNodeDescriptions.length > 0 && (
+                  <div className="tooltip-descriptions">
+                    <div className="tooltip-descriptions-header">상세 내용</div>
+                    <div className="tooltip-descriptions-list">
+                      {hoveredNodeDescriptions
+                        .slice(0, 3)
+                        .map((desc, index) => (
+                          <div key={index} className="tooltip-description-item">
+                            {desc.description}
+                          </div>
+                        ))}
+                      {hoveredNodeDescriptions.length > 3 && (
+                        <div className="tooltip-description-more">
+                          외 {hoveredNodeDescriptions.length - 3}개 더...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              {isFullscreen &&
+                !loadingDescriptions &&
+                hoveredNodeDescriptions.length === 0 && (
+                  <div className="tooltip-descriptions">
+                    <div className="tooltip-descriptions-header">상세 내용</div>
+                    <div className="tooltip-descriptions-empty">
+                      상세 내용이 없습니다
+                    </div>
+                  </div>
+                )}
             </div>
           )}
           {hoveredLink && (
@@ -1394,8 +1482,6 @@ function GraphView({
                 }
               : graphData
           }
-          nodeLabel={(node) => cleanNodeName(node.name || node.id)}
-          linkLabel={(link) => `${link.relation}`}
           onNodeClick={handleNodeClick}
           nodeRelSize={customNodeSize}
           linkColor={() => (isDarkMode ? "#64748b" : "#dedede")}
@@ -1427,7 +1513,8 @@ function GraphView({
             // 각 노드를 Canvas에 직접 그리는 함수
             ctx.save();
             // 드래그 중이면 연결된 모든 노드만 진하게, 나머지는 투명하게
-            if (draggedNode) {
+            // 전체화면이 아닐 때는 드래그 효과를 비활성화
+            if (draggedNode && isFullscreen) {
               // node.id가 string인지 확인, 아니면 변환
               const nodeId = typeof node.id === "object" ? node.id.id : node.id;
               ctx.globalAlpha = connectedNodeSet.has(nodeId) ? 1 : 0.18;
@@ -1468,12 +1555,12 @@ function GraphView({
             }
 
             // hover 효과: glow 및 테두리 강조
-            // 링크가 hover 중이면 노드 hover 효과를 무시한다
+            // 링크가 hover 중이면 노드 hover 효과를 무시한다 (전체화면일 때만)
             const isHovered =
               hoveredNode &&
               hoveredNode.id === node.id &&
               !draggedNode &&
-              !hoveredLink;
+              (!hoveredLink || !isFullscreen);
             if (isHovered) {
               ctx.shadowColor = isDarkMode ? "#8ac0ffff" : "#9bc3ffff";
               ctx.shadowBlur = 16;
@@ -1624,7 +1711,7 @@ function GraphView({
               typeof link.source === "object" ? link.source.id : link.source;
             const targetId =
               typeof link.target === "object" ? link.target.id : link.target;
-            if (draggedNode) {
+            if (draggedNode && isFullscreen) {
               const isConnected =
                 connectedNodeSet.has(sourceId) &&
                 connectedNodeSet.has(targetId);

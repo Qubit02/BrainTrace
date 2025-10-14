@@ -176,20 +176,34 @@
     bottom: 16px;
     left: 16px;
     pointer-events: none;
-    background: rgba(225, 227, 231, 0.97);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: #333;
-    border-radius: 8px;
-    padding: 3px 10px;
+    border-radius: 16px;
+    padding: 8px 14px;
     font-size: 15px;
     font-weight: 500;
-    box-shadow: 0 2px 16px 0 #e5e7eb;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+                0 2px 8px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     z-index: 10000;
+    max-height: calc(100vh - 200px);
+    overflow: visible;
+    transform-origin: bottom left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .graph-area.dark-mode .graph-hover-tooltip {
-    background: rgba(176, 184, 193, 0.97);
-    color: #222;
-    box-shadow: 0 2px 16px 0 #b0b8c1;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #e2e8f0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .graph-loading-text-animate {
@@ -435,17 +449,85 @@
 
 /* 전체화면 모드에서 툴팁 위치 조정 */
 .graph-hover-tooltip.fullscreen {
-    bottom: 150px !important;
-    transform: translateY(100%);
+    bottom: 16px !important;
+    left: 16px !important;
     font-size: 18px;
+    max-height: calc(100vh - 180px);
+    max-width: 600px;
+    overflow-y: auto;
+}
+
+/* 전체화면 모드에서 툴팁 내부 텍스트 크기 */
+.graph-hover-tooltip.fullscreen .tooltip-label,
+.graph-hover-tooltip.fullscreen .tooltip-value,
+.graph-hover-tooltip.fullscreen .tooltip-info {
+    font-size: 18px;
+}
+
+.graph-hover-tooltip.fullscreen .tooltip-descriptions-header {
+    font-size: 17px;
+}
+
+.graph-hover-tooltip.fullscreen .tooltip-description-item {
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 12px 16px;
+    border-radius: 10px;
+}
+
+/* 전체화면 툴팁 스크롤바 - 세련된 스타일 */
+.graph-hover-tooltip.fullscreen::-webkit-scrollbar {
+    width: 6px;
+}
+
+.graph-hover-tooltip.fullscreen::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+.graph-hover-tooltip.fullscreen::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.4) 0%, rgba(59, 130, 246, 0.6) 100%);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.graph-hover-tooltip.fullscreen::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.6) 0%, rgba(59, 130, 246, 0.8) 100%);
+}
+
+.graph-area.dark-mode .graph-hover-tooltip.fullscreen::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.4) 0%, rgba(96, 165, 250, 0.6) 100%);
+}
+
+.graph-area.dark-mode .graph-hover-tooltip.fullscreen::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.6) 0%, rgba(96, 165, 250, 0.8) 100%);
+}
+
+/* 전체화면 모드에서 툴팁 배경 개선 */
+.graph-hover-tooltip.fullscreen {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06), 
+                0 1px 8px rgba(0, 0, 0, 0.03),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 16px !important;
+    padding: 16px 20px;
 }
 
 /* 전체화면 모드에서 다크모드일 때 툴팁 스타일 */
 .graph-area.dark-mode .graph-hover-tooltip.fullscreen {
     color: #ffffff;
-    background: none;
-    box-shadow: none;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 
+                0 1px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
+
 
 /* 다크모드에서 툴팁 텍스트 색상 */
 .graph-area.dark-mode .tooltip-label {
@@ -497,6 +579,157 @@
 .tooltip-arrow {
     margin: 0 6px;
     font-weight: 300;
+}
+
+/* ====== 툴팁 Descriptions 스타일 ====== */
+.tooltip-descriptions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    max-width: 400px;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.graph-area.dark-mode .tooltip-descriptions {
+    border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+.tooltip-descriptions-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3b82f6;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.graph-area.dark-mode .tooltip-descriptions-header {
+    color: #60a5fa;
+}
+
+.tooltip-descriptions-loading {
+    font-size: 13px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.graph-area.dark-mode .tooltip-descriptions-loading {
+    color: #94a3b8;
+}
+
+.tooltip-descriptions-empty {
+    font-size: 12px;
+    color: #999;
+    padding: 12px 16px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+    font-style: italic;
+}
+
+.graph-area.dark-mode .tooltip-descriptions-empty {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* 로딩 스피너 애니메이션 */
+.tooltip-descriptions-loading::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: tooltip-spinner 0.8s linear infinite;
+}
+
+.graph-area.dark-mode .tooltip-descriptions-loading::before {
+    border-color: rgba(255, 255, 255, 0.1);
+    border-top-color: #60a5fa;
+}
+
+@keyframes tooltip-spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.tooltip-descriptions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: none;
+}
+
+.tooltip-description-item {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tooltip-description-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+}
+
+.graph-area.dark-mode .tooltip-description-item {
+    color: #cbd5e1;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(96, 165, 250, 0.03) 100%);
+    border-left-color: #60a5fa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.graph-area.dark-mode .tooltip-description-item:hover {
+    box-shadow: 0 2px 6px rgba(96, 165, 250, 0.25);
+}
+
+.tooltip-description-more {
+    font-size: 11px;
+    color: #3b82f6;
+    font-weight: 500;
+    text-align: center;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.tooltip-description-more:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.graph-area.dark-mode .tooltip-description-more {
+    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.1);
+}
+
+.graph-area.dark-mode .tooltip-description-more:hover {
+    background: rgba(96, 165, 250, 0.18);
 }
 
 /* ====== 로딩 스타일 개선 ====== */
