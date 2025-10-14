@@ -249,6 +249,31 @@ export const getSourceIdsByNodeName = (nodeName, brainId) =>
     });
 
 /**
+ * 특정 노드의 descriptions 배열 조회
+ * @param {string} nodeName - 노드 이름
+ * @param {string|number} brainId - 브레인 ID
+ * @returns {Promise<Object>} 노드의 descriptions 정보
+ * @returns {string} return.node_name - 노드 이름
+ * @returns {string} return.brain_id - 브레인 ID
+ * @returns {Array} return.descriptions - description 객체 배열
+ * @returns {number} return.descriptions_count - descriptions 개수
+ */
+export const getNodeDescriptions = async (nodeName, brainId) => {
+  try {
+    const response = await api.get(`/brainGraph/getNodeDescriptions`, {
+      params: { node_name: nodeName, brain_id: brainId },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(
+      `노드 descriptions 조회 실패 (노드: ${nodeName}, 브레인 ID: ${brainId}):`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
  * 유사 설명 기반으로 관련 소스 ID 목록 검색
  * @param {string} query - 검색 쿼리
  * @param {string|number} brainId - 브레인 ID
