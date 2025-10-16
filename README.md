@@ -547,3 +547,5 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 ---
 
 라이선스는 저장소의 [LICENSE](./LICENSE) 파일을 참고하세요.
+<br>
+자세한 제3자 오픈소스 사용 및 라이선스 표기는 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) 파일을 참고하세요.
