@@ -15,6 +15,11 @@
 주의:
 - 형태소 분석기(Okt), gensim LDA 등 외부 라이브러리에 의존합니다. 대형 텍스트에서는 시간이 소요될 수 있습니다.
 - 재귀 청킹은 종료 조건(depth, 토큰 수, 유사도 행렬 유효성 등)을 통해 무한 분할을 방지합니다.
+
+This file uses the spaCy `en_core_web_sm` model (© Explosion AI),
+licensed under CC BY 4.0.
+Source: https://spacy.io/models/en#en_core_web_sm
+
 """
 import logging
 
