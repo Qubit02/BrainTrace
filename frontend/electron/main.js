@@ -12,7 +12,8 @@ app.whenReady().then(() => {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(__dirname, '..', 'public', 'brain.png'),
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, '..', 'src/assets/icons/Appicon 1.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
