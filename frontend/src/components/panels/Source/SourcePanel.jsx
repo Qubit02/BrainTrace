@@ -27,7 +27,7 @@
  * - isNodeViewLoading: 노드 뷰 로딩 상태
  * - setIsNodeViewLoading: 노드 뷰 로딩 상태 설정 함수
  */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import {
   getPdfsByBrain,
   getTextfilesByBrain,
@@ -36,18 +36,18 @@ import {
   getMDFilesByBrain,
   getSourceDataMetrics,
   getDocxFilesByBrain,
-} from "../../../../api/config/apiIndex";
-import { toast } from "react-toastify";
-import FileView from "./FileView";
-import KnowledgeGraphStatusBar from "./KnowledgeGraphStatusBar";
+} from '../../../../api/config/apiIndex';
+import { toast } from 'react-toastify';
+import FileView from './FileView';
+import KnowledgeGraphStatusBar from './KnowledgeGraphStatusBar';
 import {
   VscLayoutSidebarRightOff,
   VscLayoutSidebarLeftOff,
-} from "react-icons/vsc";
-import "./SourcePanel.css";
-import { MdSearch } from "react-icons/md";
-import { MdOutlineDriveFolderUpload } from "react-icons/md";
-import GenericViewer from "./viewer/GenericViewer";
+} from 'react-icons/vsc';
+import './SourcePanel.css';
+import { MdSearch } from 'react-icons/md';
+import { MdOutlineDriveFolderUpload } from 'react-icons/md';
+import GenericViewer from './viewer/GenericViewer';
 
 /**
  * 파일 타입별 메타데이터 추출 함수 맵
@@ -125,7 +125,7 @@ export default function SourcePanel({
 
   // === 검색 관련 상태 ===
   const [showSearchInput, setShowSearchInput] = useState(false); // 검색창 표시 여부
-  const [searchText, setSearchText] = useState(""); // 검색 텍스트
+  const [searchText, setSearchText] = useState(''); // 검색 텍스트
   const [filteredSourceIds, setFilteredSourceIds] = useState(null); // 검색 필터링된 id 리스트
 
   // === 파일 목록 및 포커스 상태 ===
@@ -178,7 +178,7 @@ export default function SourcePanel({
     setOpenedFile(null);
     // 프로젝트 변경 시 검색 상태 초기화
     setShowSearchInput(false);
-    setSearchText("");
+    setSearchText('');
     setFilteredSourceIds(null);
   }, [selectedBrainId]);
 
@@ -196,11 +196,11 @@ export default function SourcePanel({
         setLocalFocusSource(null); // 포커스 초기화
         // 외부에서 소스 클릭 시 검색 상태 초기화
         setShowSearchInput(false);
-        setSearchText("");
+        setSearchText('');
         setFilteredSourceIds(null);
       } else {
         // 파일이 없는 경우 toast 메시지
-        toast.error("해당 소스 파일이 삭제되었거나 존재하지 않습니다.");
+        toast.error('해당 소스 파일이 삭제되었거나 존재하지 않습니다.');
       }
     }
   }, [localFocusSource]);
@@ -224,34 +224,34 @@ export default function SourcePanel({
         ...pdfs.map((pdf) => ({
           ...pdf,
           title: TYPE_META.pdf.title(pdf),
-          type: "pdf",
+          type: 'pdf',
           pdf_id: TYPE_META.pdf.id(pdf),
           pdf_path: TYPE_META.pdf.path(pdf),
         })),
         ...txts.map((txt) => ({
           ...txt,
           title: TYPE_META.txt.title(txt),
-          type: "txt",
+          type: 'txt',
           txt_id: TYPE_META.txt.id(txt),
           txt_path: TYPE_META.txt.path(txt),
         })),
         ...mds.map((md) => ({
           ...md,
           title: TYPE_META.md.title(md),
-          type: "md",
+          type: 'md',
           md_id: TYPE_META.md.id(md),
           md_path: TYPE_META.md.path(md),
         })),
         ...memos.map((memo) => ({
           ...memo,
           title: TYPE_META.memo.title(memo),
-          type: "memo",
+          type: 'memo',
           memo_id: TYPE_META.memo.id(memo),
         })),
         ...docxfiles.map((docx) => ({
           ...docx,
           title: TYPE_META.docx.title(docx),
-          type: "docx",
+          type: 'docx',
           docx_id: TYPE_META.docx.id(docx),
           docx_path: TYPE_META.docx.path(docx),
         })),
@@ -293,7 +293,7 @@ export default function SourcePanel({
     setIsSourceOpen(false);
     // 소스 닫을 때 검색 상태 초기화
     setShowSearchInput(false);
-    setSearchText("");
+    setSearchText('');
     setFilteredSourceIds(null);
     onBackFromSource?.();
   };
@@ -306,14 +306,14 @@ export default function SourcePanel({
   const handleOpenFile = (id, type) => {
     // 파일 타입에 따라 ID 필드명 결정
     const idFieldMap = {
-      pdf: "pdf_id",
-      txt: "txt_id",
-      md: "md_id",
-      docx: "docx_id",
-      memo: "memo_id",
+      pdf: 'pdf_id',
+      txt: 'txt_id',
+      md: 'md_id',
+      docx: 'docx_id',
+      memo: 'memo_id',
     };
 
-    const idField = idFieldMap[type] || "id";
+    const idField = idFieldMap[type] || 'id';
 
     const file = allFiles.find((f) => {
       const fileId = f[idField];
@@ -326,11 +326,11 @@ export default function SourcePanel({
       setIsSourceOpen(true);
       // 파일 열 때 검색 상태 초기화
       setShowSearchInput(false);
-      setSearchText("");
+      setSearchText('');
       setFilteredSourceIds(null);
     } else {
-      console.log("파일을 찾을 수 없음:", { id, type, allFiles });
-      alert("파일을 찾을 수 없습니다.");
+      console.log('파일을 찾을 수 없음:', { id, type, allFiles });
+      alert('파일을 찾을 수 없습니다.');
     }
   };
 
@@ -346,10 +346,10 @@ export default function SourcePanel({
         filePaths = await window.api.openFileDialog();
       } else {
         // 웹 브라우저 환경 - HTML5 file input 사용
-        const input = document.createElement("input");
-        input.type = "file";
+        const input = document.createElement('input');
+        input.type = 'file';
         input.multiple = true;
-        input.accept = ".pdf,.txt,.md,.docx";
+        input.accept = '.pdf,.txt,.md,.docx';
 
         input.onchange = async (event) => {
           const files = Array.from(event.target.files);
@@ -373,7 +373,7 @@ export default function SourcePanel({
         }
       }
     } catch (e) {
-      console.error("파일 선택 오류:", e);
+      console.error('파일 선택 오류:', e);
     }
   };
 
@@ -385,15 +385,15 @@ export default function SourcePanel({
     try {
       const uploadItems = [];
       for (const f of fileObjs) {
-        const ext = f.name.split(".").pop().toLowerCase();
-        if (!["pdf", "txt", "memo", "md", "docx"].includes(ext)) continue;
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf', 'txt', 'md', 'docx'].includes(ext)) continue;
 
         const key = `${f.name}-${f.size || 0}-${ext}`;
         uploadItems.push({
           key,
           name: f.name,
           filetype: ext,
-          status: "processing",
+          status: 'processing',
           fileObj: f,
         });
       }
@@ -402,7 +402,7 @@ export default function SourcePanel({
         setExternalUploadQueue(uploadItems);
       }
     } catch (e) {
-      console.error("파일 처리 오류:", e);
+      console.error('파일 처리 오류:', e);
     }
   };
 
@@ -418,7 +418,7 @@ export default function SourcePanel({
         }, 0);
       } else {
         setFilteredSourceIds(null);
-        setSearchText("");
+        setSearchText('');
       }
       return next;
     });
@@ -435,7 +435,7 @@ export default function SourcePanel({
       const ids = (res.source_ids || []).map((id) => String(id));
       setFilteredSourceIds(ids);
     } catch (err) {
-      alert("검색 중 오류 발생");
+      alert('검색 중 오류 발생');
     }
   };
 
@@ -445,7 +445,7 @@ export default function SourcePanel({
   const handleSearchTextChange = (e) => {
     const text = e.target.value;
     setSearchText(text);
-    if (text.trim() === "") {
+    if (text.trim() === '') {
       setFilteredSourceIds(null); // 검색어 지워졌을 때 전체 보여주기
     }
   };
@@ -453,33 +453,33 @@ export default function SourcePanel({
   return (
     <div
       ref={panelRef}
-      className={`panel-container modern-panel ${collapsed ? "collapsed" : ""}`}
-      style={{ display: "flex", flexDirection: "column", height: "100%" }}
+      className={`panel-container modern-panel ${collapsed ? 'collapsed' : ''}`}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
     >
       {/* ───── 사이드패널 상단 헤더 영역 ───── */}
       <div
         className="panel-header"
         style={{
-          justifyContent: collapsed ? "center" : "space-between",
-          alignItems: "center",
+          justifyContent: collapsed ? 'center' : 'space-between',
+          alignItems: 'center',
         }}
       >
         {!collapsed && <span className="header-title">Source</span>}
         <div
           className="header-right-icons"
-          style={{ display: "flex", alignItems: "center", gap: "10px" }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
         >
           {/* 사이드패널 접기/펴기 버튼 */}
           {collapsed ? (
             <VscLayoutSidebarLeftOff
               size={18}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: 'pointer' }}
               onClick={() => setCollapsed((prev) => !prev)}
             />
           ) : (
             <VscLayoutSidebarRightOff
               size={18}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: 'pointer' }}
               onClick={() => setCollapsed((prev) => !prev)}
             />
           )}
@@ -495,7 +495,7 @@ export default function SourcePanel({
                 {/* 소스 추가 버튼 (아이콘/텍스트 토글) */}
                 <button
                   className={`pill-button ${
-                    panelWidth < RESPONSIVE_THRESHOLDS.SOURCE ? "icon-only" : ""
+                    panelWidth < RESPONSIVE_THRESHOLDS.SOURCE ? 'icon-only' : ''
                   }`}
                   onClick={handleFileSelect}
                 >
@@ -505,19 +505,19 @@ export default function SourcePanel({
                     <>
                       <span
                         style={{
-                          fontSize: "1.2em",
+                          fontSize: '1.2em',
                           fontWeight: 500,
-                          verticalAlign: "middle",
-                          marginTop: "1px",
+                          verticalAlign: 'middle',
+                          marginTop: '1px',
                         }}
                       >
                         ＋
                       </span>
                       <span
                         style={{
-                          fontSize: "1.08em",
+                          fontSize: '1.08em',
                           fontWeight: 600,
-                          verticalAlign: "middle",
+                          verticalAlign: 'middle',
                         }}
                       >
                         소스
@@ -527,28 +527,28 @@ export default function SourcePanel({
                 </button>
                 {/* 탐색 버튼 (panelWidth < 250이면 아이콘만, 아니면 아이콘+텍스트) */}
                 <button
-                  className={`pill-button${showSearchInput ? " active" : ""} ${
-                    panelWidth < RESPONSIVE_THRESHOLDS.SEARCH ? "icon-only" : ""
+                  className={`pill-button${showSearchInput ? ' active' : ''} ${
+                    panelWidth < RESPONSIVE_THRESHOLDS.SEARCH ? 'icon-only' : ''
                   }`}
                   onClick={handleSearchToggle}
                 >
                   {panelWidth < 250 ? (
-                    <MdSearch size={25} style={{ verticalAlign: "middle" }} />
+                    <MdSearch size={25} style={{ verticalAlign: 'middle' }} />
                   ) : (
                     <>
                       <MdSearch
                         size={15}
                         style={{
-                          verticalAlign: "middle",
-                          marginTop: "1px",
-                          color: "black",
+                          verticalAlign: 'middle',
+                          marginTop: '1px',
+                          color: 'black',
                         }}
                       />
                       <span
                         style={{
-                          fontSize: "1.08em",
+                          fontSize: '1.08em',
                           fontWeight: 600,
-                          verticalAlign: "middle",
+                          verticalAlign: 'middle',
                         }}
                       >
                         탐색
@@ -564,7 +564,7 @@ export default function SourcePanel({
           {showSearchInput && (
             <form
               onSubmit={handleSearchSubmit}
-              style={{ padding: "10px 16px" }}
+              style={{ padding: '10px 16px' }}
             >
               <style>{`input::placeholder { color: #888; }`}</style>
               <input
@@ -574,13 +574,13 @@ export default function SourcePanel({
                 value={searchText}
                 onChange={handleSearchTextChange}
                 style={{
-                  width: "100%",
-                  padding: "6px 10px",
-                  fontSize: "14px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                  backgroundColor: "#f9f9f9",
-                  color: "black",
+                  width: '100%',
+                  padding: '6px 10px',
+                  fontSize: '14px',
+                  borderRadius: '6px',
+                  border: '1px solid #ccc',
+                  backgroundColor: '#f9f9f9',
+                  color: 'black',
                 }}
               />
             </form>
@@ -589,39 +589,39 @@ export default function SourcePanel({
           {/* === 메인 콘텐츠 영역 === */}
           <div
             className="panel-content"
-            style={{ flexGrow: 1, overflow: "auto" }}
+            style={{ flexGrow: 1, overflow: 'auto' }}
           >
             {openedFile ? (
               // 모든 파일 타입을 GenericViewer로 통합 처리
-              <div className="pdf-viewer-wrapper" style={{ height: "100%" }}>
+              <div className="pdf-viewer-wrapper" style={{ height: '100%' }}>
                 <GenericViewer
                   type={openedFile.type}
                   fileUrl={
-                    openedFile.type === "txt"
+                    openedFile.type === 'txt'
                       ? `http://localhost:8000/${openedFile.txt_path}`
-                      : openedFile.type === "md"
+                      : openedFile.type === 'md'
                       ? `http://localhost:8000/${openedFile.md_path}`
-                      : openedFile.type === "docx"
+                      : openedFile.type === 'docx'
                       ? `http://localhost:8000/${openedFile.docx_path}`
-                      : openedFile.type === "pdf"
+                      : openedFile.type === 'pdf'
                       ? `http://localhost:8000/${openedFile.pdf_path}`
                       : undefined
                   }
                   memoId={
-                    openedFile.type === "memo" ? openedFile.memo_id : undefined
+                    openedFile.type === 'memo' ? openedFile.memo_id : undefined
                   }
                   onBack={closeSource}
                   title={openedFile.title}
                   docxId={
-                    openedFile.type === "docx" ? openedFile.docx_id : undefined
+                    openedFile.type === 'docx' ? openedFile.docx_id : undefined
                   }
                   pdfId={
-                    openedFile.type === "pdf" ? openedFile.pdf_id : undefined
+                    openedFile.type === 'pdf' ? openedFile.pdf_id : undefined
                   }
                   txtId={
-                    openedFile.type === "txt" ? openedFile.txt_id : undefined
+                    openedFile.type === 'txt' ? openedFile.txt_id : undefined
                   }
-                  mdId={openedFile.type === "md" ? openedFile.md_id : undefined}
+                  mdId={openedFile.type === 'md' ? openedFile.md_id : undefined}
                   highlightingInfo={highlightingInfo}
                 />
               </div>
