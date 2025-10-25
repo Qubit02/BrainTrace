@@ -287,7 +287,12 @@ function GraphView({
       }
       if (nearest && minDist < 35) {
         setHoveredNode(nearest);
-        document.body.style.cursor = "pointer";
+        // 노드에 정확히 닿았을 때만 grab 커서
+        if (minDist === 0) {
+          document.body.style.cursor = "grab";
+        } else {
+          document.body.style.cursor = "default";
+        }
       } else {
         setHoveredNode(null);
         document.body.style.cursor = "default";
