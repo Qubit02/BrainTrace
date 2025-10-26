@@ -687,54 +687,73 @@ const ChatMessage = ({
     >
       <div className="chat-panel-message">
         <div className="chat-panel-message-body">
-          {message.message.split("\n").map((line, idx) => {
-            const trimmed = line.trim();
-            const isReferenced = trimmed.startsWith("-");
-            const nodeName = isReferenced
-              ? trimmed.replace(/^-\t*/, "").trim()
-              : trimmed.trim();
-            return (
-              <div key={idx} className="chat-panel-referenced-line">
-                {isReferenced ? (
-                  <div className="chat-panel-referenced-block">
-                    <div className="chat-panel-referenced-header">
-                      <span style={{ color: "inherit" }}>-</span>
-                      <span
-                        className="chat-panel-referenced-node-text"
-                        onClick={() => {
-                          if (typeof onReferencedNodesUpdate === "function") {
-                            onReferencedNodesUpdate([nodeName]);
-                          }
-                        }}
-                      >
-                        {nodeName.replace(/\*/g, "")}
-                      </span>
-                      <button
-                        className={`chat-panel-modern-source-btn${
-                          openSourceNodes[`${message.chat_id}_${nodeName}`]
-                            ? " active"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          toggleSourceList(message.chat_id, nodeName)
-                        }
-                        style={{ marginLeft: "6px" }}
-                      >
-                        <VscOpenPreview
-                          size={15}
-                          style={{
-                            verticalAlign: "middle",
-                            marginRight: "2px",
+          {(() => {
+            const lines = message.message.split("\n");
+            let isInReferenceSection = false;
+
+            return lines.map((line, idx) => {
+              const trimmed = line.trim();
+
+              // "[참고된 노드 목록]" 섹션 시작 감지
+              if (trimmed.includes("[참고된 노드 목록]")) {
+                isInReferenceSection = true;
+                return (
+                  <div key={idx} className="chat-panel-referenced-line">
+                    {trimmed}
+                  </div>
+                );
+              }
+
+              // "[참고된 노드 목록]" 섹션 내에서만 "-"로 시작하는 줄을 참조 노드로 처리
+              const isReferenced =
+                isInReferenceSection && trimmed.startsWith("-");
+              const nodeName = isReferenced
+                ? trimmed.replace(/^-\t*/, "").trim()
+                : trimmed.trim();
+
+              return (
+                <div key={idx} className="chat-panel-referenced-line">
+                  {isReferenced ? (
+                    <div className="chat-panel-referenced-block">
+                      <div className="chat-panel-referenced-header">
+                        <span style={{ color: "inherit" }}>-</span>
+                        <span
+                          className="chat-panel-referenced-node-text"
+                          onClick={() => {
+                            if (typeof onReferencedNodesUpdate === "function") {
+                              onReferencedNodesUpdate([nodeName]);
+                            }
                           }}
-                        />
-                        <span>출처보기</span>
-                      </button>
-                    </div>
-                    {/* 출처 목록 표시 */}
-                    {openSourceNodes[`${message.chat_id}_${nodeName}`] && (
-                      <ul className="chat-panel-source-title-list">
-                        {openSourceNodes[`${message.chat_id}_${nodeName}`].map(
-                          (item, sourceIndex) => (
+                        >
+                          {nodeName.replace(/\*/g, "")}
+                        </span>
+                        <button
+                          className={`chat-panel-modern-source-btn${
+                            openSourceNodes[`${message.chat_id}_${nodeName}`]
+                              ? " active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            toggleSourceList(message.chat_id, nodeName)
+                          }
+                          style={{ marginLeft: "6px" }}
+                        >
+                          <VscOpenPreview
+                            size={15}
+                            style={{
+                              verticalAlign: "middle",
+                              marginRight: "2px",
+                            }}
+                          />
+                          <span>출처보기</span>
+                        </button>
+                      </div>
+                      {/* 출처 목록 표시 */}
+                      {openSourceNodes[`${message.chat_id}_${nodeName}`] && (
+                        <ul className="chat-panel-source-title-list">
+                          {openSourceNodes[
+                            `${message.chat_id}_${nodeName}`
+                          ].map((item, sourceIndex) => (
                             <li
                               key={sourceIndex}
                               className="chat-panel-source-title-item"
@@ -764,17 +783,17 @@ const ChatMessage = ({
                                 </span>
                               </SourceHoverTooltip>
                             </li>
-                          )
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                ) : (
-                  trimmed
-                )}
-              </div>
-            );
-          })}
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    trimmed
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
         {/* 메시지 액션(복사, 그래프) 버튼 */}
         <div className="chat-panel-message-actions">
