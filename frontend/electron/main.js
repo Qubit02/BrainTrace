@@ -13,7 +13,7 @@ app.whenReady().then(() => {
     width: 1200,
     height: 800,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, '..', 'src/assets/icons/Appicon 1.png'),
+    icon: path.join(__dirname, '..', 'src/assets/icons/Appicon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
