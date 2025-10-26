@@ -17,10 +17,11 @@
  - isLoading이 true일 때 버튼들이 비활성화되고 라벨이 "삭제 중..."으로 변경됩니다.
 */
 import React from "react";
+import { createPortal } from "react-dom";
 import "./ConfirmDialog.css";
 
 export default function ConfirmDialog({ message, onOk, onCancel, isLoading }) {
-  return (
+  return createPortal(
     // 백드롭: 배경 클릭 시 onCancel을 호출하여 다이얼로그를 닫습니다.
     <div className="confirm-back" onClick={onCancel}>
       {/* 다이얼로그 컨테이너: 내부 클릭은 백드롭으로 전파되지 않도록 차단합니다. */}
@@ -45,6 +46,7 @@ export default function ConfirmDialog({ message, onOk, onCancel, isLoading }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
