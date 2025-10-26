@@ -342,7 +342,7 @@ class OllamaAIService(BaseAIService):
                     "prompt": prompt,
                     "stream": False
                 },
-                timeout=60
+                timeout=200
             )
             resp.raise_for_status()
             data = resp.json()

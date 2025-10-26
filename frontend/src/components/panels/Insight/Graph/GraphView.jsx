@@ -215,6 +215,7 @@ function GraphView({
   const [hoveredLink, setHoveredLink] = useState(null); // 호버된 링크 상태
   const [hoveredNodeDescriptions, setHoveredNodeDescriptions] = useState([]); // 호버된 노드의 descriptions
   const [loadingDescriptions, setLoadingDescriptions] = useState(false); // descriptions 로딩 상태
+  const [lastClickedNode, setLastClickedNode] = useState(null); // 마지막으로 클릭한 노드
 
   // === 드래그 상태 관리 ===
   const [draggedNode, setDraggedNode] = useState(null); // 드래그 중인 노드
@@ -314,13 +315,12 @@ function GraphView({
     if (container) {
       container.addEventListener("mousemove", handleMouseMove);
       container.addEventListener("mouseleave", handleMouseLeave);
-      container.addEventListener("dblclick", handleDblClick);
+      // 더블클릭 핸들러는 별도의 useEffect에서 처리
     }
     return () => {
       if (container) {
         container.removeEventListener("mousemove", handleMouseMove);
         container.removeEventListener("mouseleave", handleMouseLeave);
-        container.removeEventListener("dblclick", handleDblClick);
       }
     };
   }, [
@@ -408,8 +408,7 @@ function GraphView({
   const [searchReferencedSet, setSearchReferencedSet] = useState(new Set());
 
   // === 더블클릭/이벤트 관련 ===
-  const lastClickRef = useRef({ node: null, time: 0 }); // 노드 더블클릭 감지용
-  const clickTimeoutRef = useRef(); // 더블클릭 타이머 ref
+  const lastDblClickTime = useRef(0); // 마지막 더블클릭 시간
 
   // === 그래프 준비 상태 ===
   const [graphReady, setGraphReady] = useState(false); // 그래프 준비 완료 상태
@@ -552,32 +551,16 @@ function GraphView({
     }, zoomDuration);
   };
 
-  // === 노드 클릭/더블클릭 핸들러 ===
+  // === 노드 클릭 핸들러 ===
   /**
    * 노드 클릭 이벤트를 처리합니다.
-   * - 단일 클릭: 아무 동작 없음
-   * - 더블 클릭: 해당 노드로 카메라 이동 및 확대
+   * - 단일 클릭: 아무 동작 없음 (더블클릭은 통합 핸들러에서 처리)
    *
    * @param {Object} node - 클릭된 노드 객체
    */
   const handleNodeClick = (node) => {
-    const now = Date.now();
-    const { node: lastNode, time: lastTime } = lastClickRef.current;
-
-    if (lastNode === node && now - lastTime < 300) {
-      clearTimeout(clickTimeoutRef.current);
-      lastClickRef.current = { node: null, time: 0 };
-
-      if (fgRef.current) {
-        fgRef.current.centerAt(node.x, node.y, 800);
-        fgRef.current.zoom(1.5, 800);
-      }
-    } else {
-      lastClickRef.current = { node, time: now };
-      clickTimeoutRef.current = setTimeout(() => {
-        lastClickRef.current = { node: null, time: 0 };
-      }, 300);
-    }
+    // 더블클릭은 통합 핸들러(handleDoubleClick)에서 처리하므로
+    // 여기서는 아무 동작도 하지 않음
   };
 
   // === 그래프 물리 파라미터 실시간 적용 ===
@@ -676,27 +659,39 @@ function GraphView({
     }
   }, [repelStrength, linkDistance, linkStrength, graphData]);
 
-  // === 더블클릭 시 그래프 줌인 ===
+  // === 통합 더블클릭 핸들러 ===
   /**
-   * 노드가 아닌 곳에서 더블클릭 시 해당 위치로 카메라를 이동하고 확대합니다.
-   * 사용자가 그래프의 빈 공간을 더블클릭하여 해당 영역을 자세히 볼 수 있습니다.
+   * 노드와 빈 공간 모두에서 더블클릭을 처리합니다.
+   * - 노드 위 더블클릭: 해당 노드로 카메라 이동 및 확대
+   * - 빈 공간 더블클릭: 클릭한 위치로 카메라 이동 및 확대
    */
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !fgRef.current) return;
 
     const handleDoubleClick = (e) => {
-      // 노드가 아닌 곳에서 더블클릭 시 줌인
-      // hoveredNode가 없을 때만 실행 (노드가 아닌 곳)
-      if (!hoveredNode) {
-        const fg = fgRef.current;
-        const boundingRect = container.getBoundingClientRect();
-        const mouseX = e.clientX - boundingRect.left;
-        const mouseY = e.clientY - boundingRect.top;
+      const now = Date.now();
+      // 중복 이벤트 방지 (300ms 이내)
+      if (now - lastDblClickTime.current < 300) {
+        lastDblClickTime.current = now;
+        return;
+      }
+      lastDblClickTime.current = now;
 
+      const fg = fgRef.current;
+      const boundingRect = container.getBoundingClientRect();
+      const mouseX = e.clientX - boundingRect.left;
+      const mouseY = e.clientY - boundingRect.top;
+
+      if (!hoveredNode) {
+        // 빈 공간에서 더블클릭: 클릭한 위치로 카메라 이동 및 확대
         const graphCoords = fg.screen2GraphCoords(mouseX, mouseY);
         fg.centerAt(graphCoords.x, graphCoords.y, 800);
-        fg.zoom(fg.zoom() * 2, 800); // 현재 줌에서 2배 확대
+        fg.zoom(fg.zoom() * 2, 800);
+      } else {
+        // 노드 위에서 더블클릭: 노드 중심으로 카메라 이동 및 확대
+        fg.centerAt(hoveredNode.x, hoveredNode.y, 800);
+        fg.zoom(1.5, 800);
       }
     };
 
@@ -705,7 +700,7 @@ function GraphView({
     return () => {
       container.removeEventListener("dblclick", handleDoubleClick);
     };
-  }, [dimensions]);
+  }, [hoveredNode]);
 
   // === 하이라이팅 해제 처리 ===
   /**
