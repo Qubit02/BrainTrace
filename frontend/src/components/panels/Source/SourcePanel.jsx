@@ -104,6 +104,7 @@ export default function SourcePanel({
   openSourceId,
   isNodeViewLoading,
   setIsNodeViewLoading,
+  onUploadStateChange,
 }) {
   // === DOM 참조 ===
   const panelRef = useRef(); // 패널 DOM 참조 (리사이징 감지용)
@@ -652,6 +653,7 @@ export default function SourcePanel({
                 setIsNodeViewLoading={setIsNodeViewLoading}
                 externalUploadQueue={externalUploadQueue}
                 setExternalUploadQueue={setExternalUploadQueue}
+                onUploadStateChange={onUploadStateChange}
               />
             )}
           </div>
