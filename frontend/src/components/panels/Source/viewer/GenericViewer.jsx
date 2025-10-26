@@ -114,21 +114,6 @@ export default function GenericViewer({
     highlightingInfo
   );
 
-  // highlightingInfo 구조 로깅
-  useEffect(() => {
-    if (isFromSourceView && highlightingInfo) {
-      console.log("=== highlightingInfo 구조 분석 ===");
-      console.log("전체 객체:", highlightingInfo);
-      console.log("키 목록:", Object.keys(highlightingInfo));
-      console.log("타입:", typeof highlightingInfo);
-      console.log("배열 여부:", Array.isArray(highlightingInfo));
-      if (highlightingInfo.highlightedRanges) {
-        console.log("highlightedRanges:", highlightingInfo.highlightedRanges);
-      }
-      console.log("================================");
-    }
-  }, [isFromSourceView, highlightingInfo]);
-
   // 출처보기에서 하이라이트된 위치로 스크롤하는 함수
   const scrollToHighlight = useCallback(() => {
     if (!isFromSourceView || !highlightingInfo || !contentRef.current) {

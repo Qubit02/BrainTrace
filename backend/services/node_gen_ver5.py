@@ -278,50 +278,85 @@ def make_node(name, s_indices, sentences:list[str], id:tuple, embeddings):
 
 def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     """
-    텍스트를 문장 단위로 분할하고 문장별 명사구 토큰을 생성합니다.
-    2단계 분리 로직 적용:
-    1. 먼저 줄바꿈으로 전체 텍스트를 분리.
-    2. 각 줄을 다시 문장 종결 부호로 분리하여 더 정확한 결과를 도출.
-    """
-    """
-    텍스트를 문장 단위로 분할하고, 짧거나 무의미한 조각을 필터링합니다.
-    (수정) 2단계 분리 로직 + 필터링 기능 추가
-    """
-    tokenized_sentences = []
-    final_sentences = []
-    cleaned_text = text.strip()
+    텍스트를 문장으로 분할합니다.
 
-    lines = cleaned_text.splitlines()
+    수정된 로직:
+    1. 텍스트를 줄바꿈 문자(\\n)를 기준으로 텍스트 덩어리와 \\n으로 분리합니다.
+    2. 텍스트 덩어리를 순회하며 \\n을 만났을 때, 그 *이전까지의 텍스트* 길이를 확인합니다.
+    3. 길이가 30자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (해당 덩어리를 별도 처리)
+    4. 길이가 30자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다.
+    5. 이렇게 재구성된 텍스트 덩어리들(merged_lines)을 대상으로 
+       intra_line_pattern 정규식을 적용해 최종 문장을 분리합니다.
+    """
+    
+    tokenized_sentences: List = [] 
+    final_sentences: List[str] = []
+    
+    cleaned_text = text.strip()
+    if not cleaned_text:
+        return (tokenized_sentences, final_sentences)
+
     intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s,])\s+'
     
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        
-        sub_sentences = re.split(intra_line_pattern, line)
-        
-        for s in sub_sentences:
-            s = s.strip()
-            if not s:
-                continue
-
-            # [필터링 로직 추가]
-            # 1. 문장에서 알파벳, 한글, 숫자만 추출
-            #    예: "가." -> "가", "1)" -> "1", "CPU" -> "CPU"
-            real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', s)
+    # [수정된 로직 1단계: 줄바꿈 처리]
+    # '\n'을 캡처 그룹으로 묶어 텍스트 덩어리와 줄바꿈 문자를 모두 리스트에 포함
+    blocks = re.split(r'(\n)', cleaned_text)
+    
+    merged_lines = []
+    current_line = ""
+    
+    for block in blocks:
+        if block == '\n':
+            # \n을 만났을 때, 현재까지 누적된 current_line을 검사
+            stripped_line = current_line.strip()
             
-            # 2. 필터링 조건 적용
-            #    - 조건 1: 문장 전체의 길이가 1 이하인 경우 (예: "ㅇ")
-            #    - 조건 2: 실질적인 문자가 1개 이하인 경우 (예: "가.", "1)")
-            if len(s) <= 1 or len(real_chars) <= 1:
-                continue  # 조건에 해당하면 무시하고 다음 조각으로 넘어감
+            if not stripped_line:
+                # 빈 줄 (연속된 \n) 처리
+                current_line = ""
+                continue
+            
+            # [핵심 로직]
+            # 이전 텍스트 덩어리가 30자 이하일 때만 \n을 분리점으로 인정
+            if len(stripped_line) <= 30:
+                merged_lines.append(stripped_line) # 분리점으로 인정 (별도 덩어리로 추가)
+                current_line = ""                  # 새 덩어리 시작
+            else:
+                # 30자 초과 시, \n을 공백으로 치환하여 다음 덩어리와 연결
+                current_line += " " 
+        else:
+            # \n이 아닌 텍스트 덩어리는 일단 현재 라인에 추가
+            current_line += block
+            
+    # 반복문이 끝난 후 남아있는 마지막 텍스트 덩어리 처리
+    stripped_last_line = current_line.strip()
+    if stripped_last_line:
+        merged_lines.append(stripped_last_line)
 
-            # 필터링을 통과한 문장만 최종 리스트에 추가
-            final_sentences.append(s)
+    # [수정된 로직 2단계: 정규식으로 문장 분리]
+    # 재구성된 merged_lines를 기반으로 intra_line_pattern 적용
+    candidate_sentences = []
+    for line in merged_lines:
+        # 30자 이하의 짧은 줄도, 30자 초과로 합쳐진 긴 줄도
+        # 모두 intra_line_pattern으로 한 번 더 분리 시도
+        sub_sentences = re.split(intra_line_pattern, line)
+        candidate_sentences.extend(sub_sentences)
 
+
+    # [수정된 로직 3단계: 필터링 (원본 유지)]
+    # 모든 문장 후보에 대해 필터링 로직 일괄 적용
+    for s in candidate_sentences:
+        s = s.strip()
+        if not s:
+            continue
+
+        real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', s)
+        
+        if len(s) <= 1 or len(real_chars) <= 1:
+            continue
+
+        final_sentences.append(s)
+    
     texts = final_sentences
-
 
     for idx, sentence in enumerate(texts):
         lang = check_lang(sentence)

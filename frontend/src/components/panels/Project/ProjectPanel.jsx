@@ -14,6 +14,7 @@
 */
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 /* API ─ backend */
 import { listBrains } from "../../../../api/config/apiIndex";
@@ -32,8 +33,13 @@ import NewBrainModal from "./NewBrainModal";
  * 왼쪽 세로 사이드바 (프로젝트/브레인 아이콘 목록)
  * @param {number}   selectedBrainId   – 현재 열린 브레인 id
  * @param {function} onProjectChange – 상위 컴포넌트로 id 전파
+ * @param {boolean} isFileUploading – 파일 업로드 중 여부
  */
-export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
+export default function ProjectPanel({
+  selectedBrainId,
+  onProjectChange,
+  isFileUploading,
+}) {
   const nav = useNavigate();
   // ===== 상태 =====
   const [brains, setBrains] = useState([]);
@@ -53,9 +59,14 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
   /**
    * 프로젝트 클릭 핸들러
    * - 상위로 선택된 id를 전달하고 해당 라우트로 이동합니다.
+   * - 파일 업로드 중일 때는 이동을 방지하고 toast 메시지를 표시합니다.
    * @param {number} id - 선택한 브레인 id
    */
   const handleProjectClick = (id) => {
+    if (isFileUploading) {
+      toast.error("파일 업로드 중에는 프로젝트를 변경할 수 없습니다.");
+      return;
+    }
     onProjectChange?.(id);
     nav(`/project/${id}`);
   };
@@ -110,9 +121,9 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
                   key={b.brain_id}
                   className={`sidebar-icon ${
                     selectedBrainId === b.brain_id ? "active disabled" : ""
-                  }`}
+                  } ${isFileUploading ? "uploading-disabled" : ""}`}
                   onClick={
-                    selectedBrainId === b.brain_id
+                    selectedBrainId === b.brain_id || isFileUploading
                       ? undefined
                       : () => handleProjectClick(b.brain_id)
                   }
@@ -144,8 +155,10 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
             })}
 
           <div
-            className="sidebar-icon add-icon"
-            onClick={() => setShowModal(true)}
+            className={`sidebar-icon add-icon ${
+              isFileUploading ? "uploading-disabled" : ""
+            }`}
+            onClick={isFileUploading ? undefined : () => setShowModal(true)}
           >
             <AiOutlinePlus size={27} />
             <span>새 프로젝트</span>
@@ -153,7 +166,12 @@ export default function ProjectPanel({ selectedBrainId, onProjectChange }) {
         </div>
       </div>
 
-      <div className="sidebar-icon home-icon" onClick={() => nav("/")}>
+      <div
+        className={`sidebar-icon home-icon ${
+          isFileUploading ? "uploading-disabled" : ""
+        }`}
+        onClick={isFileUploading ? undefined : () => nav("/")}
+      >
         <IoHomeOutline size={25} />
         <span>홈으로</span>
       </div>

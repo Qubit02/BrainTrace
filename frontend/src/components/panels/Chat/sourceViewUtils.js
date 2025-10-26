@@ -57,115 +57,131 @@ export const generateHighlightingInfo = async (item, message, nodeName, selected
       highlightedRanges: []
     };
     
+    // 모든 매칭을 찾는 함수
+    const findAllMatches = (text, searchText) => {
+      const matches = [];
+      let startIndex = 0;
+      while (true) {
+        const index = text.indexOf(searchText, startIndex);
+        if (index === -1) break;
+        matches.push({
+          start: index,
+          end: index + searchText.length,
+          text: searchText
+        });
+        startIndex = index + 1;
+      }
+      return matches;
+    };
+    
     // 각 원본 문장에 대해 소스 텍스트에서 매칭되는 부분 찾기
     targetSource.original_sentences.forEach((sent, index) => {
-      const originalText = sent.original_sentence;
+      const originalText = sent.original_sentence.trim();
+      if (originalText.length === 0) return;
+      
       const sourceText = sourceData.content;
       
-      // 원본 문장을 개별 문장으로 분리 (마침표, 느낌표, 물음표로 구분)
-      const sentences = originalText.split(/[.!?]/).filter(s => s.trim().length > 0);
+      // 원본 문장 전체를 하나의 범위로 찾기 (여러 문장일 경우 모두 포함)
+      // 1단계: 정확한 매칭 시도
+      let foundMatch = false;
       
-      // 각 분리된 문장에 대해 매칭 시도
-      sentences.forEach((sentence, sentenceIndex) => {
-        const trimmedSentence = sentence.trim();
-        if (trimmedSentence.length === 0) return;
+      const exactIndex = sourceText.indexOf(originalText);
+      if (exactIndex !== -1) {
+        highlightingInfo.highlightedRanges.push({
+          start: exactIndex,
+          end: exactIndex + originalText.length,
+          text: originalText,
+          type: 'exact'
+        });
+        foundMatch = true;
+      }
+      
+      // 2단계: 특수문자 처리 후 전체 텍스트 검색
+      if (!foundMatch) {
+        // 시작 부분의 특수문자 제거 (대시, 하이픈 등)
+        const cleanOriginal = originalText.replace(/^[-–—•]\s*/, '').trim();
         
-        // 모든 매칭을 찾는 함수
-        const findAllMatches = (text, searchText) => {
-          const matches = [];
-          let startIndex = 0;
-          while (true) {
-            const index = text.indexOf(searchText, startIndex);
-            if (index === -1) break;
-            matches.push({
-              start: index,
-              end: index + searchText.length,
-              text: searchText
-            });
-            startIndex = index + 1;
-          }
-          return matches;
-        };
-        
-        // 정확한 매칭 찾기 (모든 매칭)
-        const exactMatches = findAllMatches(sourceText, trimmedSentence);
-        if (exactMatches.length > 0) {
-          exactMatches.forEach(match => {
-            highlightingInfo.highlightedRanges.push({
-              ...match,
-              type: 'exact'
-            });
-          });
-        } else {
-          // 1단계: 공백 정리 후 매칭
-          const cleanOriginal = trimmedSentence.replace(/\s+/g, ' ').trim();
-          const cleanSource = sourceText.replace(/\s+/g, ' ').trim();
+        if (cleanOriginal.length > 0) {
+          // 원본 텍스트에서도 특수문자 제거하여 검색
+          const lines = sourceText.split('\n');
+          let currentPos = 0;
           
-          const partialMatches = findAllMatches(cleanSource, cleanOriginal);
-          
-          if (partialMatches.length > 0) {
-            // 원본 텍스트에서 해당 부분들 찾기
-            partialMatches.forEach(match => {
-              const originalIndex = sourceText.indexOf(cleanOriginal, match.start);
-              if (originalIndex !== -1) {
-                highlightingInfo.highlightedRanges.push({
-                  start: originalIndex,
-                  end: originalIndex + cleanOriginal.length,
-                  text: cleanOriginal,
-                  type: 'partial'
-                });
-              }
-            });
-          } else {
-            // 2단계: 더 유연한 매칭 (특수문자 제거, 대소문자 무시)
-            const flexibleOriginal = trimmedSentence
-              .replace(/[^\w\s가-힣]/g, '') // 특수문자 제거
-              .replace(/\s+/g, ' ') // 연속 공백을 하나로
-              .trim()
-              .toLowerCase();
+          for (const line of lines) {
+            const cleanLine = line.replace(/^[-–—•]\s*/, '');
             
-            const flexibleSource = sourceText
-              .replace(/[^\w\s가-힣]/g, '') // 특수문자 제거
-              .replace(/\s+/g, ' ') // 연속 공백을 하나로
-              .trim()
-              .toLowerCase();
+            // 정규화된 텍스트끼리 비교 (공백도 정규화)
+            const normalizedCleanOriginal = cleanOriginal.replace(/\s+/g, ' ').trim();
+            const normalizedCleanLine = cleanLine.replace(/\s+/g, ' ').trim();
             
-            const flexibleMatches = findAllMatches(flexibleSource, flexibleOriginal);
-            
-            if (flexibleMatches.length > 0) {
-              // 원본 텍스트에서 해당 부분들 찾기
-              flexibleMatches.forEach(match => {
-                const estimatedStart = Math.max(0, match.start - 10);
-                const estimatedEnd = Math.min(sourceText.length, match.start + flexibleOriginal.length + 10);
-                const searchRange = sourceText.substring(estimatedStart, estimatedEnd);
+            if (normalizedCleanLine.toLowerCase().includes(normalizedCleanOriginal.toLowerCase())) {
+              // 라인 내에서 위치 찾기
+              const lineIndex = cleanLine.toLowerCase().indexOf(cleanOriginal.toLowerCase());
+              
+              if (lineIndex !== -1 || normalizedCleanLine.toLowerCase().startsWith(normalizedCleanOriginal.toLowerCase())) {
+                const actualStart = currentPos + (lineIndex >= 0 ? lineIndex : 0);
+                const actualEnd = actualStart + cleanOriginal.length;
                 
-                // 가장 유사한 부분 찾기
-                for (let i = 0; i <= searchRange.length - flexibleOriginal.length; i++) {
-                  const candidate = searchRange.substring(i, i + flexibleOriginal.length);
-                  const candidateClean = candidate
-                    .replace(/[^\w\s가-힣]/g, '')
-                    .replace(/\s+/g, ' ')
-                    .trim()
-                    .toLowerCase();
-                  
-                  if (candidateClean === flexibleOriginal) {
-                    const actualStart = estimatedStart + i;
-                    const actualEnd = actualStart + flexibleOriginal.length;
-                    
-                    highlightingInfo.highlightedRanges.push({
-                      start: actualStart,
-                      end: actualEnd,
-                      text: sourceText.substring(actualStart, actualEnd),
-                      type: 'flexible'
-                    });
-                    break;
-                  }
-                }
-              });
+                highlightingInfo.highlightedRanges.push({
+                  start: actualStart,
+                  end: actualEnd,
+                  text: sourceText.substring(actualStart, Math.min(actualEnd, sourceText.length)),
+                  type: 'cleaned'
+                });
+                foundMatch = true;
+                break;
+              }
             }
+            
+            currentPos += line.length + 1;
           }
         }
-      });
+      }
+      
+      // 3단계: 특수문자 제거 후 첫 두 단어로 시작 위치 찾고 원본 길이만큼 하이라이트
+      if (!foundMatch) {
+        // 특수문자 제거 후 단어 분리
+        const cleanText = originalText.replace(/^[-–—•]\s*/, '').trim();
+        const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+        
+        if (words.length >= 2) {
+          // 특수문자를 제거한 첫 두 단어 찾기
+          const firstWord = words[0];
+          const secondWord = words[1];
+          
+          // 두 단어를 함께 찾기
+          const combinedPhrase = firstWord + ' ' + secondWord;
+          let combinedIndex = sourceText.indexOf(combinedPhrase);
+          
+          // 정확한 매칭 실패 시 공백 정리된 버전으로도 시도
+          if (combinedIndex === -1) {
+            const normalizeText = (text) => text.replace(/\s+/g, ' ').trim();
+            const normalizedPhrase = normalizeText(combinedPhrase);
+            const normalizedSource = normalizeText(sourceText);
+            const normalizedIndex = normalizedSource.indexOf(normalizedPhrase);
+            
+            if (normalizedIndex !== -1) {
+              // 정규화된 인덱스를 실제 인덱스로 대략 변환
+              combinedIndex = Math.floor(normalizedIndex * (sourceText.length / normalizedSource.length));
+            }
+          }
+          
+          if (combinedIndex !== -1) {
+            // 원본 텍스트의 길이를 기준으로 하이라이트 (특수문자 포함)
+            const estimatedStart = combinedIndex;
+            const estimatedEnd = combinedIndex + originalText.length;
+            const actualText = sourceText.substring(estimatedStart, Math.min(estimatedEnd, sourceText.length));
+            
+            highlightingInfo.highlightedRanges.push({
+              start: estimatedStart,
+              end: estimatedEnd,
+              text: actualText,
+              type: 'full-length'
+            });
+            foundMatch = true;
+          }
+        }
+      }
+      
     });
     
     // 중복된 범위 제거 및 정렬

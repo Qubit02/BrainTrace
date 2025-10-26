@@ -176,18 +176,11 @@
     bottom: 16px;
     left: 16px;
     pointer-events: none;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: none;
     color: #333;
-    border-radius: 16px;
     padding: 8px 14px;
     font-size: 15px;
     font-weight: 500;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
-                0 2px 8px rgba(0, 0, 0, 0.04),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
     z-index: 10000;
     max-height: calc(100vh - 200px);
     overflow: visible;
@@ -196,14 +189,8 @@
 }
 
 .graph-area.dark-mode .graph-hover-tooltip {
-    background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: none;
     color: #e2e8f0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-                0 2px 8px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .graph-loading-text-animate {
@@ -428,24 +415,6 @@
 }
 
 /* ====== 툴팁 스타일 ====== */
-.graph-hover-tooltip {
-    position: absolute;
-    z-index: 1001;
-    font-size: 15px;
-    font-weight: 400;
-    color: #222;
-    font-family: 'Pretendard, Noto Sans KR, sans-serif';
-    background: none;
-    padding: 0;
-    border-radius: 0;
-    box-shadow: none;
-    pointer-events: none;
-    text-align: left;
-    line-height: 1.5;
-    letter-spacing: -0.01em;
-    min-height: 0;
-    min-width: 0;
-}
 
 /* 전체화면 모드에서 툴팁 위치 조정 */
 .graph-hover-tooltip.fullscreen {
@@ -505,27 +474,14 @@
 
 /* 전체화면 모드에서 툴팁 배경 개선 */
 .graph-hover-tooltip.fullscreen {
-    background: rgba(255, 255, 255, 0.65) !important;
-    backdrop-filter: blur(30px) !important;
-    -webkit-backdrop-filter: blur(30px) !important;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06), 
-                0 1px 8px rgba(0, 0, 0, 0.03),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 16px !important;
+    background: none !important;
     padding: 16px 20px;
 }
 
 /* 전체화면 모드에서 다크모드일 때 툴팁 스타일 */
 .graph-area.dark-mode .graph-hover-tooltip.fullscreen {
     color: #ffffff;
-    background: rgba(15, 23, 42, 0.65) !important;
-    backdrop-filter: blur(30px) !important;
-    -webkit-backdrop-filter: blur(30px) !important;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 
-                0 1px 8px rgba(0, 0, 0, 0.15),
-                inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: none !important;
 }
 
 

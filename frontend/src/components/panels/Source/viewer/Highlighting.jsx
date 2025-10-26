@@ -101,15 +101,24 @@ const useSourceViewHighlighting = (highlightingInfo) => {
   const [highlights, setHighlights] = useState([]);
 
   useEffect(() => {
-    if (highlightingInfo?.highlightedRanges) {
+    if (
+      highlightingInfo?.highlightedRanges &&
+      highlightingInfo.highlightedRanges.length > 0
+    ) {
       const autoHighlights = highlightingInfo.highlightedRanges.map(
-        (range, index) => ({
-          id: `auto-highlight-${index}`,
-          ...range,
-          color: range.type === "exact" ? "#E8E8E8" : "#D3D3D3", // 회색 배경
-          source: "original-sentence",
-        })
+        (range, index) => {
+          return {
+            id: `auto-highlight-${index}`,
+            start: range.start,
+            end: range.end,
+            text: range.text || "",
+            color: range.type === "exact" ? "#E8E8E8" : "#D3D3D3", // 회색 배경
+            source: "original-sentence",
+            type: range.type,
+          };
+        }
       );
+
       setHighlights(autoHighlights);
     } else {
       setHighlights([]);
@@ -426,6 +435,8 @@ export const useHighlighting = (
           h.id && String(h.id).startsWith("auto-highlight-");
         const highlightStyle = getHighlightStyle(isAutoHighlight, h.color);
 
+        const highlightedText = content.slice(h.start, h.end);
+
         elements.push(
           <span
             key={`highlight-${i}`}
@@ -459,7 +470,7 @@ export const useHighlighting = (
               });
             }}
           >
-            {content.slice(h.start, h.end)}
+            {highlightedText}
           </span>
         );
         lastIndex = h.end;

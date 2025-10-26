@@ -91,6 +91,7 @@ export default function FileView({
   setIsNodeViewLoading,
   externalUploadQueue = [], // 외부에서 전달받은 업로드 큐
   setExternalUploadQueue = () => {}, // 외부 업로드 큐 초기화 함수
+  onUploadStateChange, // 업로드 상태 변경 콜백
 }) {
   // === 상태 관리 ===
   const [selectedFile, setSelectedFile] = useState(null); // 현재 선택된 파일 ID
@@ -265,6 +266,14 @@ export default function FileView({
     document.addEventListener("click", closeMenu);
     return () => document.removeEventListener("click", closeMenu);
   }, []);
+
+  /**
+   * 업로드 상태 변경 시 상위 컴포넌트로 알림
+   */
+  useEffect(() => {
+    const isUploading = uploadQueue.length > 0 || isProcessing;
+    onUploadStateChange?.(isUploading);
+  }, [uploadQueue.length, isProcessing, onUploadStateChange]);
 
   // === 핵심 함수들 ===
   /**
