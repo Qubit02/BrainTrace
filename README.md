@@ -430,14 +430,13 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 <details open>
 <summary>&nbsp;<b>홈 화면</b></summary>
 
-![홈 화면](https://github.com/user-attachments/assets/4b7aaf24-4aa0-48e2-9a05-6552227d85d6)
-
+![홈 화면](https://github.com/user-attachments/assets/fccf8b7f-85e2-48ed-8f46-268b491311c9)
 </details>
 
 <details open>
 <summary>&nbsp;<b>메인 화면</b></summary>
 
-![메인 화면](https://github.com/user-attachments/assets/787208fc-36d7-4942-9e6f-c9cf88ac3151)
+![메인 화면](https://github.com/user-attachments/assets/a384c568-f95d-4552-a778-313ffc862c34)
 
 </details>
 
@@ -448,12 +447,12 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 <table style="background-color:#ffffff; border-collapse:separate; border-spacing:10px;">
   <tr>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/97312636-239b-4b67-89b2-0d66bee06c63" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/4d37ea5b-4882-4ba7-8af4-7fb1cb121292" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>새 프로젝트 생성</b></div>
       <div align="center"><sub>프로젝트 이름과 환경을 선택하여 새 프로젝트를 시작할 수 있습니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/d6da0b94-91fd-403b-98a8-176905c8f4e9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/3fe7b00f-b5da-4bb0-a458-5f22a09414f4" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>업로드 시 그래프 생성</b></div>
       <div align="center"><sub>파일을 업로드하면 자동으로 노드와 엣지가 생성되어 그래프에 반영됩니다.</sub></div>
     </td>
@@ -461,12 +460,12 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background-color:#ffffff;">
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/cfa1261a-5c2b-4205-ab56-88d42dc13f73" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/40c78b69-84fb-4e4b-8e33-4567e91ee932" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 하이라이팅</b></div>
-      <div align="center"><sub>특정 소스를 클릭하여 내용을 확인하고 하이라이팅할 수 있습니다.</sub></div>
+      <div align="center"><sub>원하는 소스를 클릭하여 내용을 확인하고 하이라이팅할 수 있습니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/3037ef1f-a1ae-4eea-9316-9d440bdc0d97" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/5198ff83-b0f4-4eb2-bab9-70bb68a8c782" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>Q&A 후 참조된 노드</b></div>
       <div align="center"><sub>답변에 사용된 노드를 그래프 뷰에서 확인할 수 있습니다.</sub></div>
     </td>
@@ -474,12 +473,12 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background-color:#ffffff;">
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/1993ab88-c964-4a55-870d-432dd724c602" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/d326414a-2418-4f97-a3cb-0e3b18273df6" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>출처 보기</b></div>
       <div align="center"><sub>답변에 사용된 노드가 어떤 소스를 참고했는지 확인합니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/1e08bce0-c322-43b0-8f8c-91e231e8bee5" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/3007d333-8566-4098-b474-6979ddd5e810" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 노드 보기</b></div>
       <div align="center"><sub>특정 소스가 생성한 노드를 그래프 뷰에서 확인합니다.</sub></div>
     </td>
@@ -487,25 +486,25 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background-color:#ffffff;">
     <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/1c7bebe5-246b-4495-9fda-9758d610740a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/73aae827-6de4-47d7-8642-8e2dde5e764d" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>메모 작성 및 소스로 추가</b></div>
       <div align="center"><sub>메모를 작성하고 소스로 변환하여 그래프에 반영할 수 있습니다.</sub></div>
     </td> 
     <td width="50%" valign="top" style="padding:8px; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/afe3a647-cb89-47ec-a024-0b2516f154c9" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>음성에서 메모 생성</b></div>
-      <div align="center"><sub>녹음된 오디오를 텍스트로 변환하여 메모로 저장합니다.</sub></div>
+      <img src="https://github.com/user-attachments/assets/02c1606a-5fc4-4dd5-b308-da98664f81ff" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <div align="center"><b>LLM 모델 및 탐색 종류 선택</b></div>
+      <div align="center"><sub>원하는 LLM 모델을 선택하고, 깊은 탐색 또는 빠른 탐색 중 하나를 진행할 수 있습니다.</sub></div>
     </td>
   </tr>
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr style="background-color:#ffffff;">
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/79a58805-a6b2-4e08-88ff-6dfe9d301acd" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/7828da0f-0054-41fb-b0d6-8521f8c90a71" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>소스 삭제</b></div>
       <div align="center"><sub>특정 소스를 삭제하면 해당 소스로 생성된 노드도 함께 삭제됩니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/8497e9c6-d81d-4419-8509-8336fb8ab666" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/8e077054-aa87-4c45-a8a1-0a9ee0dd9704" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>탐색 기능</b></div>
       <div align="center"><sub>파일 내용이나 키워드로 유사한 소스를 찾습니다.</sub></div>
     </td>
@@ -513,7 +512,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
   <tr><td colspan="2" style="height:16px;"></td></tr>
   <tr>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
-      <img src="https://github.com/user-attachments/assets/921bb0fd-0812-4e5a-ad12-fcb24cec4b76" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
+      <img src="https://github.com/user-attachments/assets/52da24d4-094d-4c17-913f-539d585ba94a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
       <div align="center"><b>전체 화면 라이트 모드 노드 검색</b></div>
       <div align="center"><sub>노드 검색으로 원하는 노드로 카메라를 이동합니다.</sub></div>
     </td>
