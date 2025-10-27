@@ -1575,8 +1575,8 @@ function GraphView({
             // 드래그 중 연결된 노드는 폰트도 더 굵고 크게
             const fontSize =
               isReferenced || isNewlyAdded || isFocus
-                ? 13 / globalScale
-                : 9 / globalScale;
+                ? 16 / globalScale
+                : 12 / globalScale;
             ctx.font =
               isReferenced || isNewlyAdded || isFocus
                 ? `bold ${fontSize}px Sans-Serif`

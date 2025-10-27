@@ -139,8 +139,9 @@ def split_into_sentences(text: str):
 BrainT는 AI 모델에게 구조화된 프롬프트를 제공하여 일관된 결과를 얻습니다:
 
 ```python
-# backend/services/ollama_service.py - 실제 프로젝트 코드
+# backend/services/openai_service.py - 실제 프로젝트 코드
 def _extract_from_chunk(self, chunk: str, source_id: str):
+    # AI 모델에게 구조화된 프롬프트 제공
     prompt = (
         "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
         "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
@@ -161,15 +162,19 @@ def _extract_from_chunk(self, chunk: str, source_id: str):
         f"텍스트: {chunk}"
     )
 
-    resp = chat(
+    # OpenAI API 호출 (JSON 응답 강제)
+    completion = client.chat.completions.create(
         model=self.model_name,
         messages=[
-            {"role": "system", "content": "당신은 노드/엣지 추출 전문가입니다."},
+            {"role": "system", "content": "너는 텍스트에서 구조화된 노드와 엣지를 추출하는 전문가야. 엣지의 source와 target은 반드시 노드의 name을 참조해야 해."},
             {"role": "user", "content": prompt}
         ],
-        stream=False
+        max_tokens=5000,
+        temperature=0.3,
+        response_format={"type": "json_object"}
     )
-    content = resp["message"]["content"]
+
+    content = completion.choices[0].message.content
     data = json.loads(content)
 ```
 
@@ -194,26 +199,75 @@ def extract_graph_components(self, text: str, source_id: str):
     )
 ```
 
-#### 3.2.3 검증 및 후처리
+#### 3.2.3 original_sentences 계산
+
+각 노드의 description과 원문 문장들의 의미적 유사도를 계산하여 가장 관련성 높은 문장들을 해당 노드의 `original_sentences`로 할당합니다:
+
+```python
+# backend/services/ollama_service.py - 실제 프로젝트 코드
+# 1. 원본 텍스트를 문장 단위로 분할
+sentences = manual_chunking(chunk)
+
+# 2. 모든 문장의 임베딩을 미리 계산 (성능 최적화)
+sentence_embeds = np.vstack([encode_text(s) for s in sentences])
+
+# 3. 각 노드의 description과 문장들의 코사인 유사도 계산
+threshold = 0.8
+for node in valid_nodes:
+    if not node["descriptions"]:
+        node["original_sentences"] = []
+        continue
+
+    desc_obj = node["descriptions"][0]
+    desc_vec = np.array(encode_text(desc_obj["description"])).reshape(1, -1)
+    sim_scores = cosine_similarity(sentence_embeds, desc_vec).flatten()
+
+    # 유사도 0.8 이상인 문장들을 수집
+    above = [(i, score) for i, score in enumerate(sim_scores) if score >= threshold]
+
+    if above:
+        node["original_sentences"] = [
+            {
+                "original_sentence": sentences[i],
+                "source_id": desc_obj["source_id"],
+                "score": round(float(score), 4)
+            }
+            for i, score in above
+        ]
+    else:
+        # 유사도 문장이 없으면 가장 유사한 문장 1개 선택
+        best_i = int(np.argmax(sim_scores))
+        node["original_sentences"] = [{
+            "original_sentence": sentences[best_i],
+            "source_id": desc_obj["source_id"],
+            "score": round(float(sim_scores[best_i]), 4)
+        }]
+```
+
+#### 3.2.4 검증 및 후처리
 
 ```python
 # backend/services/ollama_service.py - 실제 프로젝트 코드
 def _extract_from_chunk(self, chunk: str, source_id: str):
     # ... AI 모델 호출 ...
 
-    # 노드 검증
+    # 노드 검증 및 정규화
     valid_nodes = []
     for node in data.get("nodes", []):
         if not all(k in node for k in ("label", "name")):
             logging.warning("잘못된 노드: %s", node)
             continue
+
         node.setdefault("descriptions", [])
         node["source_id"] = source_id
+
+        # AI가 생성한 "description"을 "descriptions" 배열로 변환
         if desc := node.pop("description", None):
             node["descriptions"].append({"description": desc, "source_id": source_id})
+
         valid_nodes.append(node)
 
-    # 엣지 검증
+    # 엣지 검증 (source와 target이 실제 노드 name 참조인지 확인)
     node_names = {n["name"] for n in valid_nodes}
     valid_edges = []
     for edge in data.get("edges", []):
@@ -232,98 +286,202 @@ def _extract_from_chunk(self, chunk: str, source_id: str):
 
 ### 4.1 질의응답 시스템
 
-#### 4.1.1 의미적 검색
+#### 4.1.1 의미적 검색 및 답변 생성
 
-BrainT는 벡터 기반 검색을 통해 사용자 질문과 관련된 노드들을 찾습니다:
+질의응답 시스템의 전체 흐름:
+
+```python
+# backend/routers/brain_graph.py - 실제 프로젝트 코드
+async def answer_endpoint(request_data: AnswerRequest):
+    """
+    질의응답 처리 파이프라인:
+    1. 질문 → 임베딩 벡터 생성
+    2. 벡터 검색으로 유사한 노드 찾기
+    3. Neo4j에서 관련 스키마 추출
+    4. 스키마를 텍스트로 변환
+    5. LLM으로 답변 생성
+    6. 답변 기반으로 참조 노드 자동 추출
+    7. 정확도 계산 및 출처 정보 수집
+    """
+    question = request_data.question
+    brain_id = str(request_data.brain_id)
+
+    # 1. 질문 임베딩 생성
+    question_embedding = embedding_service.encode_text(question)
+
+    # 2. 벡터 검색으로 유사한 노드 찾기
+    similar_nodes, Q = embedding_service.search_similar_nodes(
+        embedding=question_embedding,
+        brain_id=brain_id
+    )
+
+    # 3. Neo4j에서 스키마 추출 (description 기반 최적 경로)
+    neo4j_handler = Neo4jHandler()
+    result = neo4j_handler.query_schema_by_node_names(
+        [node["name"] for node in similar_nodes], brain_id
+    )
+
+    # 4. 스키마를 텍스트로 변환
+    raw_schema_text = ai_service.generate_schema_text(
+        result["nodes"],
+        result["relatedNodes"],
+        result["relationships"]
+    )
+
+    # 5. LLM으로 답변 생성
+    final_answer = ai_service.generate_answer(raw_schema_text, question)
+
+    # 5-1. LLM 답변 생성 프롬프트
+    prompt = (
+        "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 "
+        "추론 가능한 범위 내에서만 자연어로 답변해줘. "
+        "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, "
+        "컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해.\n\n"
+        "지식그래프 컨텍스트:\n" + raw_schema_text + "\n\n"
+        "질문: " + question
+    )
+
+    # 6. 답변과 유사한 노드 찾기 (referenced_nodes 자동 추출)
+    referenced_nodes = ai_service.generate_referenced_nodes(final_answer, brain_id)
+
+    # 7. 정확도 계산
+    accuracy = compute_accuracy(final_answer, referenced_nodes, brain_id, Q, raw_schema_text)
+
+    return {
+        "answer": final_answer,
+        "referenced_nodes": referenced_nodes,
+        "accuracy": accuracy
+    }
+```
+
+#### 4.1.2 스키마 텍스트 생성
+
+그래프 스키마를 LLM이 이해하기 쉬운 텍스트 형식으로 변환합니다:
+
+```python
+# backend/services/ollama_service.py - 실제 프로젝트 코드
+def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
+    """
+    스키마를 텍스트로 변환:
+    - 위쪽: 관계 목록 (start -> relation -> end)
+    - 아래쪽: 노드 목록 (name: description)
+    """
+
+    # 1. 모든 노드 수집 및 중복 제거
+    all_nodes = {}
+    for n in nodes + related_nodes:
+        nd = filter_node(n)
+        if nd["name"]:
+            all_nodes[nd["name"]] = nd
+
+    # 2. 관계 줄 만들기
+    relation_lines = []
+    for rel in relationships:
+        start_d = to_dict(getattr(rel, "start_node", {}))
+        end_d = to_dict(getattr(rel, "end_node", {}))
+        start_name = normalize_space(start_d.get("name", ""))
+        end_name = normalize_space(end_d.get("name", ""))
+        relation_label = getattr(rel, "relation", "관계")
+
+        relation_lines.append(f"{start_name} -> {relation_label} -> {end_name}")
+
+    # 3. 노드 설명 생성 (original_sentences의 문장들을 결합)
+    node_lines = []
+    for name, nd in all_nodes.items():
+        desc_str = " ".join([
+            d.get("original_sentence", "")
+            for d in nd.get("original_sentences", [])
+        ])
+        if desc_str.strip():
+            node_lines.append(f"{name}: {desc_str}")
+
+    return "\n".join(relation_lines) + "\n\n" + "\n".join(node_lines)
+```
+
+#### 4.1.3 답변 생성 및 참조 노드 추출
 
 ```python
 # backend/routers/brain_graph.py - 실제 프로젝트 코드
 async def answer_endpoint(request_data: AnswerRequest):
     question = request_data.question
     brain_id = str(request_data.brain_id)
-    model = request_data.model
 
-    # 1. 벡터 검색으로 관련 노드 찾기
-    similar_nodes = embedding_service.search_similar_nodes(
-        question, brain_id, top_k=5
+    # 1. 질문 임베딩 생성
+    question_embedding = embedding_service.encode_text(question)
+
+    # 2. 벡터 검색으로 유사한 노드 찾기
+    similar_nodes, Q = embedding_service.search_similar_nodes(
+        embedding=question_embedding,
+        brain_id=brain_id
     )
 
-    # 2. Neo4j에서 2단계 깊이 스키마 추출
+    # 3. Neo4j에서 스키마 추출
     neo4j_handler = Neo4jHandler()
-    graph_schema = neo4j_handler.query_schema_by_node_names(
+    result = neo4j_handler.query_schema_by_node_names(
         [node["name"] for node in similar_nodes], brain_id
     )
 
-    # 3. AI 모델로 답변 생성
-    if model == "gpt":
-        ai_service = get_ai_service_GPT()
-    else:
-        ai_service = get_ai_service_Ollama()
+    # 4. 스키마를 텍스트로 변환
+    raw_schema_text = ai_service.generate_schema_text(
+        result["nodes"],
+        result["relatedNodes"],
+        result["relationships"]
+    )
 
-    answer = ai_service.generate_answer(question, graph_schema)
+    # 5. LLM으로 답변 생성
+    final_answer = ai_service.generate_answer(raw_schema_text, question)
 
-    # 4. 정확도 점수 계산
-    accuracy_score = compute_accuracy(similar_nodes, answer)
+    # 6. 답변과 유사한 노드 찾기 (referenced_nodes)
+    referenced_nodes = ai_service.generate_referenced_nodes(final_answer, brain_id)
+
+    # 7. 정확도 계산
+    accuracy = compute_accuracy(final_answer, referenced_nodes, brain_id, Q, raw_schema_text)
 
     return {
-        "answer": answer,
-        "sources": collect_source_info(similar_nodes),
-        "confidence_score": accuracy_score
+        "answer": final_answer,
+        "referenced_nodes": referenced_nodes,
+        "accuracy": accuracy
     }
 ```
 
-#### 4.1.2 답변 생성 과정
+#### 4.1.4 referenced_nodes 자동 생성
+
+LLM이 생성한 답변의 의미적 유사도를 기반으로 실제로 참조한 노드를 자동으로 추출합니다:
 
 ```python
 # backend/services/ollama_service.py - 실제 프로젝트 코드
-def generate_answer(self, question: str, graph_schema: Dict):
-    # 그래프 스키마를 컨텍스트로 변환
-    context = self._build_context_from_schema(graph_schema)
-
-    # 프롬프트 생성
-    prompt = f"""
-    다음 정보를 바탕으로 질문에 답변해주세요.
-
-    컨텍스트:
-    {context}
-
-    질문: {question}
-
-    답변은 다음 형식으로 제공해주세요:
-    1. 질문에 대한 직접적인 답변
-    2. 답변의 근거가 되는 정보들
-    3. 참고할 수 있는 추가 정보들
+def generate_referenced_nodes(self, llm_response: str, brain_id: str) -> List[str]:
     """
+    LLM 응답을 임베딩하여 유사도 0.7 이상인 노드들을 자동으로 찾음
+    """
+    # "지식그래프에 정보 없음" 응답 처리
+    if "지식그래프에 해당 정보가 없습니다" in llm_response:
+        return []
 
-    # AI 모델로 답변 생성
-    resp = chat(
-        model=self.model_name,
-        messages=[
-            {"role": "system", "content": "당신은 지식 그래프 기반 답변 생성 전문가입니다."},
-            {"role": "user", "content": prompt}
-        ],
-        stream=False
+    # LLM 응답 임베딩
+    response_embedding = embedding_service.encode_text(llm_response)
+
+    # 벡터DB에서 유사한 노드 검색
+    similar_nodes, avg_score = embedding_service.search_similar_nodes(
+        embedding=response_embedding,
+        brain_id=brain_id,
+        limit=20,
+        threshold=0.7
     )
 
-    return resp["message"]["content"]
+    # 유사도 0.7 이상인 노드만 필터링 (최대 10개)
+    referenced_nodes = [
+        node["name"]
+        for node in similar_nodes
+        if node.get("score", 0) >= 0.7
+    ][:10]
 
-def _build_context_from_schema(self, graph_schema: Dict) -> str:
-    context_parts = []
-
-    # 노드 정보 추가
-    if "nodes" in graph_schema:
-        for node in graph_schema["nodes"]:
-            context_parts.append(f"- {node['name']} ({node['label']}): {node.get('description', '')}")
-
-    # 관계 정보 추가
-    if "relationships" in graph_schema:
-        for rel in graph_schema["relationships"]:
-            context_parts.append(f"- {rel['source']} {rel['relation']} {rel['target']}")
-
-    return "\n".join(context_parts)
+    return referenced_nodes
 ```
 
-#### 4.1.3 정확도 계산
+#### 4.1.5 정확도 계산
+
+답변의 품질을 세 가지 지표로 평가합니다:
 
 ```python
 # backend/services/accuracy_service.py - 실제 프로젝트 코드
@@ -331,31 +489,26 @@ def compute_accuracy(
     answer: str,
     referenced_nodes: List[str],
     brain_id: str,
-    Q: float,  # Retrieval Quality
+    Q: float,  # Retrieval Quality (상위 레이어에서 계산)
     raw_schema_text: str,
     w_Q: float = 0.2,  # Retrieval Quality 가중치
     w_S: float = 0.7,  # Semantic Similarity 가중치
     w_C: float = 0.1   # Coverage 가중치
 ) -> float:
     """
-    답변의 정확도를 계산합니다.
+    Acc = w_Q * Q + w_S * S + w_C * C
 
-    Args:
-        answer: LLM이 생성한 답변 텍스트
-        referenced_nodes: 참조된 노드 이름 리스트
-        brain_id: 브레인 ID
-        Q: 이미 계산된 Retrieval Quality
-        raw_schema_text: 스키마 텍스트
-        w_Q, w_S, w_C: 각 지표의 가중치
-
-    Returns:
-        가중합 정확도 = w_Q*Q + w_S*S + w_C*C
+    Q: Retrieval Quality - 검색된 노드와 질문의 유사도
+    S: Semantic Similarity - 답변과 컨텍스트의 의미적 유사도
+    C: Coverage - 스키마에서 제공된 노드 대비 참조된 노드 비율
     """
-    # S (Semantic Similarity) 계산
+
+    # 1. 답변 텍스트 정제
     answer_clean = answer.split("[참고된 노드 목록]")[0].strip()
     node_names = sorted(set(referenced_nodes))
 
-    # Neo4j에서 노드 설명 조회
+    # 2. S (Semantic Similarity) 계산
+    # Neo4j에서 참조된 노드들의 설명 조회
     neo4j_handler = Neo4jHandler()
     context_sentences = []
     for name in node_names:
@@ -365,11 +518,9 @@ def compute_accuracy(
             if desc:
                 context_sentences.append(f"{name} : {desc}")
 
-    # 컨텍스트 텍스트 생성 및 임베딩
+    # 컨텍스트 텍스트 생성 및 임베딩 유사도 계산
     context_text = "\n".join(context_sentences)
-    if not context_text:
-        S = 0.0
-    else:
+    if context_text:
         answer_vec = encode(answer_clean)
         context_vec = encode(context_text)
         sim = cosine_similarity(
@@ -377,8 +528,11 @@ def compute_accuracy(
             np.array(context_vec).reshape(1, -1)
         )[0][0]
         S = round(float(sim), 4)
+    else:
+        S = 0.0
 
-    # C (Coverage) 계산
+    # 3. C (Coverage) 계산
+    # 스키마 텍스트에서 제공된 노드 이름 추출
     provided_names = set()
     for segment in raw_schema_text.split("->"):
         segment = segment.strip()
@@ -392,10 +546,13 @@ def compute_accuracy(
         name = name.replace(" ", "")
         provided_names.add(name)
 
+    # 참조된 노드 이름 정규화
     ref_names = {n.replace(" ", "") for n in referenced_nodes if isinstance(n, str)}
+
+    # 교집합 비율 계산
     C = len(ref_names & provided_names) / len(provided_names) if provided_names else 0.0
 
-    # 최종 정확도 계산
+    # 4. 가중합 계산
     Acc = w_Q * Q + w_S * S + w_C * C
     return round(Acc, 3)
 ```
@@ -420,39 +577,87 @@ def compute_accuracy(
 
 ### 4.3 지식 분석 및 통찰
 
-#### 4.3.1 중심성 분석
+#### 4.3.1 그래프 스키마 추출 (최적화된 쿼리)
 
-BrainT는 Neo4j의 그래프 알고리즘을 활용하여 노드의 중요도를 분석합니다:
+질문에 관련된 노드들을 찾고, 그 노드들 주변의 그래프 구조를 추출합니다. description 유무에 따라 탐색 전략이 달라집니다:
 
 ```python
 # backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
-def analyze_centrality(self, brain_id: str):
-    centrality_query = """
-    MATCH (n:Node {brain_id: $brain_id})
-    WITH n
-    CALL gds.pageRank.stream('graph')
-    YIELD nodeId, score
-    WHERE gds.util.asNode(nodeId) = n
-    RETURN n.name as node_name, score as pagerank
-    ORDER BY pagerank DESC
-    LIMIT 10
+def query_schema_by_node_names(self, node_names, brain_id):
     """
+    시작 노드 기준으로 주변 노드/관계를 스키마로 추출
+
+    핵심 로직:
+    1. 시작 노드가 description이 없는 경우: description 있는 노드까지 경로 탐색 (최대 5단계)
+    2. 시작 노드가 description이 있는 경우: 한 홉 내 description 있는 이웃만 탐색
+    """
+    query = '''
+        // 시작 노드
+        MATCH (start:Node)
+        WHERE start.brain_id = $brain_id
+        AND start.name IN $names
+
+        WITH start,
+            ANY(d IN start.descriptions
+                WHERE toString(d) CONTAINS '"description"'
+                AND NOT toString(d) CONTAINS '"description": ""'
+                AND NOT toString(d) CONTAINS '"description":""') AS hasDesc
+
+        // A) 시작이 description 없음 → 첫 description 있는 노드에서 멈추는 경로
+        OPTIONAL MATCH p_noDesc = (start)-[*0..5]-(target:Node)
+        WHERE NOT hasDesc
+        AND ALL(m IN nodes(p_noDesc) WHERE m.brain_id = $brain_id)
+        AND ANY(d IN target.descriptions
+            WHERE toString(d) CONTAINS '"description"')
+        AND ALL(m IN nodes(p_noDesc)[..-1]
+            WHERE NOT ANY(d IN m.descriptions
+                        WHERE toString(d) CONTAINS '"description"'))
+
+        // B) 시작이 description 있음 → 한 홉 description 있는 이웃만
+        OPTIONAL MATCH p_hasDesc = (start)-[*1..1]-(t1:Node)
+        WHERE hasDesc
+        AND t1.brain_id = $brain_id
+        AND ANY(d IN t1.descriptions
+            WHERE toString(d) CONTAINS '"description"')
+
+        // 두 케이스 합치기
+        WITH start,
+        coalesce(collect(DISTINCT p_noDesc), []) +
+        coalesce(collect(DISTINCT p_hasDesc), []) AS rawPaths
+
+        // Fallback: 경로가 없으면 [[start]]
+        WITH start,
+        CASE
+        WHEN size(rawPaths)=0 THEN [[start]]
+        ELSE [p IN rawPaths | nodes(p)]
+        END AS nodesLists,
+        CASE
+        WHEN size(rawPaths)=0 THEN [[]]
+        ELSE [p IN rawPaths | relationships(p)]
+        END AS relsLists
+
+        UNWIND range(0, size(nodesLists)-1) AS idx
+        WITH start, nodesLists[idx] AS pathNodes, relsLists[idx] AS pathRels
+
+        WITH collect(DISTINCT start) AS startNodes,
+        reduce(ns=[], l IN collect(pathNodes) | ns + l) AS allPathNodes,
+        reduce(rs=[], l IN collect(pathRels) | rs + l) AS allPathRels
+
+        RETURN
+        startNodes,
+        [n IN allPathNodes WHERE n IS NOT NULL | n] AS allRelatedNodes,
+        [r IN allPathRels WHERE r IS NOT NULL | r] AS allRelationships
+    '''
 
     with self.driver.session() as session:
-        result = session.run(centrality_query, brain_id=brain_id)
-        return [record.data() for record in result]
+        result = session.run(query, names=node_names, brain_id=brain_id)
+        record = result.single()
 
-def get_most_connected_nodes(self, brain_id: str, limit: int = 10):
-    query = """
-    MATCH (n:Node {brain_id: $brain_id})-[r:RELATES_TO]-(other)
-    RETURN n.name as node_name, count(r) as connection_count
-    ORDER BY connection_count DESC
-    LIMIT $limit
-    """
-
-    with self.driver.session() as session:
-        result = session.run(query, brain_id=brain_id, limit=limit)
-        return [record.data() for record in result]
+        return {
+            "nodes": record["startNodes"],
+            "relatedNodes": record["allRelatedNodes"],
+            "relationships": record["allRelationships"]
+        }
 ```
 
 #### 4.3.2 커뮤니티 탐지
@@ -480,6 +685,8 @@ def detect_communities(self, brain_id: str):
 
 #### 4.3.3 지식 밀도 분석
 
+소스별로 텍스트 양 대비 생성된 지식(노드/엣지)의 양을 분석합니다:
+
 ```python
 # backend/routers/brain_graph.py - 실제 프로젝트 코드
 async def get_source_data_metrics(brain_id: str):
@@ -488,38 +695,71 @@ async def get_source_data_metrics(brain_id: str):
         sqlite_handler = SQLiteHandler()
         neo4j_handler = Neo4jHandler()
 
-        # 소스별 텍스트 양 계산
-        source_metrics = {}
-        sources = sqlite_handler.get_all_sources_by_brain_id(brain_id)
+        # Neo4j에서 전체 그래프 데이터 조회
+        graph_data = neo4j_handler.get_brain_graph(brain_id)
+        total_nodes = len(graph_data.get('nodes', []))
+        total_edges = len(graph_data.get('links', []))
 
-        for source in sources:
-            source_id = source["source_id"]
-            text_content = sqlite_handler.get_source_content(source_id, brain_id)
+        # 소스별 메트릭 계산
+        source_metrics = []
 
-            # 텍스트 길이 계산
-            text_length = len(text_content) if text_content else 0
+        # PDF 소스들
+        pdfs = sqlite_handler.get_pdfs_by_brain(brain_id)
+        for pdf in pdfs:
+            pdf_nodes = neo4j_handler.get_nodes_by_source_id(pdf['pdf_id'], brain_id)
+            pdf_edges = neo4j_handler.get_edges_by_source_id(pdf['pdf_id'], brain_id)
 
-            # 노드 개수 계산
-            nodes = neo4j_handler.get_nodes_by_source_id(source_id, brain_id)
-            node_count = len(nodes) if nodes else 0
+            # 파일 크기로 텍스트 길이 추정
+            import os
+            if os.path.exists(pdf['pdf_path']):
+                file_size = os.path.getsize(pdf['pdf_path'])
+                estimated_text_length = int(file_size * 0.1)
+            else:
+                estimated_text_length = 0
 
-            # 엣지 개수 계산
-            edges = neo4j_handler.get_edges_by_source_id(source_id, brain_id)
-            edge_count = len(edges) if edges else 0
+            source_metrics.append({
+                "source_id": pdf['pdf_id'],
+                "source_type": "pdf",
+                "title": pdf['pdf_title'],
+                "text_length": estimated_text_length,
+                "nodes_count": len(pdf_nodes),
+                "edges_count": len(pdf_edges)
+            })
 
-            source_metrics[source_id] = {
-                "title": source["title"],
+        # TXT 소스들
+        txts = sqlite_handler.get_textfiles_by_brain(brain_id)
+        for txt in txts:
+            txt_nodes = neo4j_handler.get_nodes_by_source_id(txt['txt_id'], brain_id)
+            txt_edges = neo4j_handler.get_edges_by_source_id(txt['txt_id'], brain_id)
+
+            # 실제 텍스트 파일 읽기
+            import os
+            if os.path.exists(txt['txt_path']):
+                with open(txt['txt_path'], 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+                    text_length = len(text_content)
+            else:
+                text_length = 0
+
+            source_metrics.append({
+                "source_id": txt['txt_id'],
+                "source_type": "txt",
+                "title": txt['txt_title'],
                 "text_length": text_length,
-                "node_count": node_count,
-                "edge_count": edge_count,
-                "knowledge_density": node_count / max(text_length, 1) * 1000  # 1000자당 노드 수
-            }
+                "nodes_count": len(txt_nodes),
+                "edges_count": len(txt_edges)
+            })
 
-        return source_metrics
+        return {
+            "total_text_length": sum(m["text_length"] for m in source_metrics),
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "source_metrics": source_metrics
+        }
 
     except Exception as e:
         logging.error(f"소스 데이터 메트릭 조회 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail="소스 데이터 메트릭 조회 중 오류가 발생했습니다.")
+        raise
 ```
 
 ---
