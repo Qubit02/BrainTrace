@@ -5,7 +5,6 @@ BrainTrace에 관심을 가져주셔서 감사합니다! 🙌
 설치 및 실행 방법은 아래 문서를 참고하세요.
 
 - 🇰🇷 **[INSTALL_KO.md](INSTALL_KO.md)**
-- en **[INSTALL_EN.md](INSTALL_EN.md)**
 
 ---
 
