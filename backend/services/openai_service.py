@@ -354,16 +354,16 @@ class OpenAIService(BaseAIService) :
         logging.info("🚀 OpenAI API 호출 - 모델: %s", self.model_name)
         
         prompt = (
-        "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
-        "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
-        "지식그래프 컨텍스트 형식:\n"
-        "1. [관계 목록] start_name -> relation_label -> end_name\n (모든 노드가 관계를 가지고 있는 것은 아님)"
-        "2. [노드 목록] NODE: {node_name} | DESCRIPTION: {desc_str}\n"
-        "지식그래프 컨텍스트:\n" + schema_text + "\n\n"
-        "질문: " + question + "\n\n"
-        "출력 형식:\n"
-        "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n"
-
+            "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보를 통해 추론 가능한 범위 내에서만 자연어로 답변해줘. "
+            "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, 컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해. "
+            "지식그래프 컨텍스트 형식:\n"
+            "1. [추가 정보] 노드와 관련된 추가 정보"
+            "2. [노드 목록] NODE: {node_name} | DESCRIPTION: {desc_str}\n"
+            "지식그래프 컨텍스트:\n" + schema_text + "\n\n"
+            "질문: " + question + "\n\n"
+            "출력 형식:\n"
+            "[여기에 질문에 대한 상세 답변 작성 또는 '지식그래프에 해당 정보가 없습니다.' 출력]\n\n"
+            
         )
 
 
@@ -385,7 +385,7 @@ class OpenAIService(BaseAIService) :
 
     def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
         """
-        위: start_name -> relation_label -> end_name (한 줄씩, 중복 제거)
+        위: relation_label(한 줄씩, 중복 제거)
         아래: 모든 노드(관계 있든 없든) 중복 없이
             {node_name}: {desc_str}
         desc_str는 original_sentences[].original_sentence를 모아 공백 정리 및 중복 제거
@@ -459,17 +459,19 @@ class OpenAIService(BaseAIService) :
                     all_nodes[nd["name"]] = nd
 
         # 2) 관계 줄 만들기: "start -> relation -> end"
-        relation_lines = []
-        connected_names = set()
+        
+        relation_labels = set()
+
         if isinstance(relationships, list):
             for rel in relationships:
                 try:
                     if rel is None:
                         continue
-                    start_d = to_dict(getattr(rel, "start_node", {}))
-                    end_d   = to_dict(getattr(rel, "end_node", {}))
-                    start_name = normalize_space(start_d.get("name", "") or "알 수 없음")
-                    end_name   = normalize_space(end_d.get("name", "") or "알 수 없음")
+
+                    # start/end는 이제 필요 없음 (라벨만 뽑을 거라서)
+                    # 남겨두고 싶다면 주석 유지 가능
+                    # start_d = to_dict(getattr(rel, "start_node", {}))
+                    # end_d   = to_dict(getattr(rel, "end_node", {}))
 
                     # relation label: props.relation 우선, 없으면 type, 없으면 "관계"
                     try:
@@ -480,14 +482,14 @@ class OpenAIService(BaseAIService) :
                     relation_label = rel_props.get("relation") or relation_type or "관계"
                     relation_label = normalize_space(relation_label)
 
-                    relation_lines.append(f"{start_name} -> {relation_label} -> {end_name}")
-                    connected_names.update([start_name, end_name])
+                    # 비어있지 않으면 집합에 추가(중복 제거)
+                    if relation_label:
+                        relation_labels.add(relation_label)
+
                 except Exception as e:
                     logging.exception("관계 처리 오류: %s", e)
                     continue
 
-        # 관계 중복 제거 + 정렬
-        relation_lines = sorted(set(relation_lines))
 
         # 3) 노드 설명 만들기: 모든 노드(관계 여부 무관)
         def extract_desc_str(node_data):
@@ -516,7 +518,7 @@ class OpenAIService(BaseAIService) :
                 node_lines.append(f"{name}:")  # 설명이 비면 콜론만
 
         # 4) 최종 출력: 위엔 관계들, 아래엔 노드들
-        top = "\n".join(relation_lines)
+        top = "\n".join(sorted(relation_labels))
         bottom = "\n".join(node_lines)
 
         if top and bottom:
