@@ -545,12 +545,12 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
   <tr>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://github.com/user-attachments/assets/52da24d4-094d-4c17-913f-539d585ba94a" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>전체 화면 라이트 모드 노드 검색</b></div>
-      <div align="center"><sub>노드 검색으로 원하는 노드로 카메라를 이동합니다.</sub></div>
+       <div align="center"><b>그래프 뷰 라이트 모드 노드 검색 및 노드 속성 확인</b></div>
+<div align="center"><sub>노드 검색으로 원하는 노드로 카메라를 이동하고, 노드 호버 시 출처 및 원문을 확인할 수 있습니다.</sub></div>
     </td>
     <td width="50%" valign="top" style="padding:0; background-color:#ffffff; border:2px solid #000000;">
       <img src="https://raw.githubusercontent.com/yes6686/portfolio/main/전체화면 다크모드.gif" width="100%" style="border:4px solid #cfd8e3;border-radius:8px;" />
-      <div align="center"><b>전체 화면 다크 모드</b></div>
+      <div align="center"><b>그래프 뷰 다크 모드</b></div>
       <div align="center"><sub>어두운 테마에서 그래프를 탐색하며 속성을 자유롭게 조절합니다.</sub></div>
     </td>
   </tr>
