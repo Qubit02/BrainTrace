@@ -26,6 +26,7 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 - **기능 추가**: 새로운 모듈/노드, API, UI/UX 개선
 - **버그 수정 & 리팩터링**: 안정성, 성능, 가독성 향상
+- **GraphRAG 기술 성능 향상**: 지식 그래프 생성, 노드 추출, 엣지 연결, 청킹 알고리즘 등 핵심 GraphRAG 파이프라인의 성능 및 정확도 개선 기여를 환영합니다
 - **문서화**: 설치, 아키텍처, 트러블슈팅, 주석 보강
 - **이슈 제보 & 제안**: 버그 리포트, 기능 제안
 
@@ -60,18 +61,18 @@ git checkout -b fix/your-fix-name
 
 ### 커밋 타입
 
-| 타입 이름 | 내용 |
-|---------|------|
-| `feat` | 새로운 기능에 대한 커밋 |
-| `fix` | 버그 수정에 대한 커밋 |
-| `build` | 빌드 관련 파일 수정 / 모듈 설치 또는 삭제에 대한 커밋 |
-| `chore` | 그 외 자잘한 수정에 대한 커밋 |
-| `ci` | ci 관련 설정 수정에 대한 커밋 |
-| `docs` | 문서 수정에 대한 커밋 |
-| `style` | 코드 스타일 혹은 포맷 등에 관한 커밋 |
-| `refactor` | 코드 리팩토링에 대한 커밋 |
-| `test` | 테스트 코드 수정에 대한 커밋 |
-| `perf` | 성능 개선에 대한 커밋 |
+| 타입 이름  | 내용                                                  |
+| ---------- | ----------------------------------------------------- |
+| `feat`     | 새로운 기능에 대한 커밋                               |
+| `fix`      | 버그 수정에 대한 커밋                                 |
+| `build`    | 빌드 관련 파일 수정 / 모듈 설치 또는 삭제에 대한 커밋 |
+| `chore`    | 그 외 자잘한 수정에 대한 커밋                         |
+| `ci`       | ci 관련 설정 수정에 대한 커밋                         |
+| `docs`     | 문서 수정에 대한 커밋                                 |
+| `style`    | 코드 스타일 혹은 포맷 등에 관한 커밋                  |
+| `refactor` | 코드 리팩토링에 대한 커밋                             |
+| `test`     | 테스트 코드 수정에 대한 커밋                          |
+| `perf`     | 성능 개선에 대한 커밋                                 |
 
 - 이슈 자동 종료: 커밋 또는 PR 본문에 **`Closes #<이슈번호>`**
 
@@ -101,4 +102,3 @@ git checkout -b fix/your-fix-name
 - 이슈 템플릿: [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)
 - PR 템플릿: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
 - 라이선스: [LICENSE](LICENSE)
-
