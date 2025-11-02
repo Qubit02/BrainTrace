@@ -5,7 +5,6 @@ BrainTrace에 관심을 가져주셔서 감사합니다! 🙌
 설치 및 실행 방법은 아래 문서를 참고하세요.
 
 - 🇰🇷 **[INSTALL_KO.md](INSTALL_KO.md)**
-- en **[INSTALL_EN.md](INSTALL_EN.md)**
 
 ---
 
@@ -27,6 +26,7 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 - **기능 추가**: 새로운 모듈/노드, API, UI/UX 개선
 - **버그 수정 & 리팩터링**: 안정성, 성능, 가독성 향상
+- **GraphRAG 기술 성능 향상**: 지식 그래프 생성, 노드 추출, 엣지 연결, 청킹 알고리즘 등 핵심 GraphRAG 파이프라인의 성능 및 정확도 개선 기여를 환영합니다
 - **문서화**: 설치, 아키텍처, 트러블슈팅, 주석 보강
 - **이슈 제보 & 제안**: 버그 리포트, 기능 제안
 
@@ -39,35 +39,66 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 ---
 
+## 2-1) 브랜치 생성
+
+```bash
+# dev 브랜치를 최신 상태로 업데이트
+git checkout dev
+git pull origin dev
+
+# dev 브랜치에서 기능 브랜치 생성
+git checkout -b feat/your-feature-name
+# 또는
+git checkout -b fix/your-fix-name
+```
+
+---
+
 ## 3) 커밋 규칙
 
 - 저장소에 정의된 `커밋 규칙(Conventional Commits 등)`을 따릅니다.  
   예) `feat: add /ingest backend endpoint`, `fix: handle empty graph at frontend`
+
+### 커밋 타입
+
+| 타입 이름  | 내용                                                  |
+| ---------- | ----------------------------------------------------- |
+| `feat`     | 새로운 기능에 대한 커밋                               |
+| `fix`      | 버그 수정에 대한 커밋                                 |
+| `build`    | 빌드 관련 파일 수정 / 모듈 설치 또는 삭제에 대한 커밋 |
+| `chore`    | 그 외 자잘한 수정에 대한 커밋                         |
+| `ci`       | ci 관련 설정 수정에 대한 커밋                         |
+| `docs`     | 문서 수정에 대한 커밋                                 |
+| `style`    | 코드 스타일 혹은 포맷 등에 관한 커밋                  |
+| `refactor` | 코드 리팩토링에 대한 커밋                             |
+| `test`     | 테스트 코드 수정에 대한 커밋                          |
+| `perf`     | 성능 개선에 대한 커밋                                 |
+
 - 이슈 자동 종료: 커밋 또는 PR 본문에 **`Closes #<이슈번호>`**
 
 ---
 
 ## 4) PR 가이드
 
+- **타겟 브랜치**: 모든 PR은 `main` 브랜치로 생성합니다.
 - **PR 템플릿**: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) 기준으로 작성합니다.
 - 포함 권장: 변경 요약, 영향 범위, 테스트 방법, 리스크/롤백, 스크린샷(해당 시)
 - 리뷰어: 프로젝트 메인테이너(또는 관련 파트 담당자) 지정
-- CI가 성공하고 리뷰 승인이 완료되면 **Merge**
+- CI가 성공하고 리뷰 승인이 완료되면 **Squash & Merge**로 `main` 브랜치에 병합
 
 ---
 
 ## 5) 문서화
 
 - 기능/플로우 변경 시 관련 문서도 함께 업데이트합니다.
-  - 설치/실행 변화 → `INSTALL_KO/EN.md` 반영 요청
+  - 설치/실행 변화 → `INSTALL_KO.md` 반영 요청
   - API/구조 변경 → 관련 문서, 샘플, 주석 갱신
 
 ---
 
 ## 참고 링크
 
-- 설치/실행: [INSTALL_KO.md](INSTALL_KO.md), [INSTALL_EN.md](INSTALL_EN.md)
+- 설치/실행: [INSTALL_KO.md](INSTALL_KO.md)
 - 이슈 템플릿: [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)
 - PR 템플릿: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
 - 라이선스: [LICENSE](LICENSE)
-
