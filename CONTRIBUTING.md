@@ -38,6 +38,21 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 ---
 
+## 2-1) 브랜치 생성
+
+```bash
+# dev 브랜치를 최신 상태로 업데이트
+git checkout dev
+git pull origin dev
+
+# dev 브랜치에서 기능 브랜치 생성
+git checkout -b feat/your-feature-name
+# 또는
+git checkout -b fix/your-fix-name
+```
+
+---
+
 ## 3) 커밋 규칙
 
 - 저장소에 정의된 `커밋 규칙(Conventional Commits 등)`을 따릅니다.  
@@ -64,24 +79,25 @@ Issue → Branch(from dev) → Commits(our convention) → PR(template) → Revi
 
 ## 4) PR 가이드
 
+- **타겟 브랜치**: 모든 PR은 `main` 브랜치로 생성합니다.
 - **PR 템플릿**: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) 기준으로 작성합니다.
 - 포함 권장: 변경 요약, 영향 범위, 테스트 방법, 리스크/롤백, 스크린샷(해당 시)
 - 리뷰어: 프로젝트 메인테이너(또는 관련 파트 담당자) 지정
-- CI가 성공하고 리뷰 승인이 완료되면 **Merge**
+- CI가 성공하고 리뷰 승인이 완료되면 **Squash & Merge**로 `main` 브랜치에 병합
 
 ---
 
 ## 5) 문서화
 
 - 기능/플로우 변경 시 관련 문서도 함께 업데이트합니다.
-  - 설치/실행 변화 → `INSTALL_KO/EN.md` 반영 요청
+  - 설치/실행 변화 → `INSTALL_KO.md` 반영 요청
   - API/구조 변경 → 관련 문서, 샘플, 주석 갱신
 
 ---
 
 ## 참고 링크
 
-- 설치/실행: [INSTALL_KO.md](INSTALL_KO.md), [INSTALL_EN.md](INSTALL_EN.md)
+- 설치/실행: [INSTALL_KO.md](INSTALL_KO.md)
 - 이슈 템플릿: [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)
 - PR 템플릿: [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
 - 라이선스: [LICENSE](LICENSE)
