@@ -440,7 +440,6 @@ def extract_graph_components(text: str, id: tuple):
 
         store_embeddings(node, brain_id, None)
 
-
     for c in chunks:
         if "chunks" in c:
             current_chunk = c["chunks"]  # 리스트 of 리스트
@@ -451,7 +450,6 @@ def extract_graph_components(text: str, id: tuple):
             all_nodes += nodes
             all_edges += edges
 
-    print(tokenized)
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
     return all_nodes, all_edges      
 

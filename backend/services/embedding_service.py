@@ -224,7 +224,6 @@ def store_embeddings(node:dict, brain_id:str, embeddings:list):
                     )
                 ]
             )
-            logging.info("노드 %s descriptor %d 저장 완료(UUID: %s)", source_id, idx, pid)
         except Exception as e:
             logging.error("Qdrant upsert 실패 (node: %s, idx: %d): %s", source_id, idx, str(e))
     

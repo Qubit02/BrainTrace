@@ -228,19 +228,22 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
     """
     edges=[]
     source=source_keyword[:-1] if source_keyword[-1] == "*" else source_keyword
-    source_idx = [idx for idx in phrase_info[source]]
+    if source in phrase_info.keys():
+        source_idx = [idx for idx in phrase_info[source]]
+    else:
+        source_idx=[]
     for t in target_keywords:
         if t != source:
             target_idx=[idx for idx in phrase_info[t]]
             relation=""
             for s_idx in source_idx:
                 if s_idx in target_idx:
-                    relation=sentences[s_idx]
-                    edges.append({"source":source_keyword, 
-                                    "target":t,
-                                    "relation":relation})
+                    relation+=sentences[s_idx]
             
             relation="관련" if relation=="" else relation
+            edges.append({"source":source_keyword, 
+                "target":t,
+                "relation":relation})
         
     return edges
 
@@ -289,17 +292,20 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
        intra_line_pattern 정규식을 적용해 최종 문장을 분리합니다.
     """
     
-    tokenized_sentences: List = [] 
+    tokenized_sentences: List[dict] = [] # 반환 타입에 맞게 List[dict]로 수정
     final_sentences: List[str] = []
     
     cleaned_text = text.strip()
     if not cleaned_text:
         return (tokenized_sentences, final_sentences)
 
-    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s,])\s+'
+    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s,()[]{}=-%^$@])\s+'
     
-    # [수정된 로직 1단계: 줄바꿈 처리]
-    # '\n'을 캡처 그룹으로 묶어 텍스트 덩어리와 줄바꿈 문자를 모두 리스트에 포함
+    # [ 목록 표시 분리 패턴 ]
+    list_marker_split_pattern = r'(?=[0-9a-zA-Z가-힣]\.\s+)'
+    list_marker_pattern_for_removal = r'\s+[0-9a-zA-Z가-힣]\.'
+
+    # [ 1단계: 줄바꿈 처리 ]
     blocks = re.split(r'(\n)', cleaned_text)
     
     merged_lines = []
@@ -317,7 +323,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
             
             # [핵심 로직]
             # 이전 텍스트 덩어리가 30자 이하일 때만 \n을 분리점으로 인정
-            if len(stripped_line) <= 30:
+            if len(stripped_line) <= 25:
                 merged_lines.append(stripped_line) # 분리점으로 인정 (별도 덩어리로 추가)
                 current_line = ""                  # 새 덩어리 시작
             else:
@@ -332,8 +338,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     if stripped_last_line:
         merged_lines.append(stripped_last_line)
 
-    # [수정된 로직 2단계: 정규식으로 문장 분리]
-    # 재구성된 merged_lines를 기반으로 intra_line_pattern 적용
+    # [ 2단계: 정규식으로 문장 분리 ]
     candidate_sentences = []
     for line in merged_lines:
         # 30자 이하의 짧은 줄도, 30자 초과로 합쳐진 긴 줄도
@@ -342,20 +347,34 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
         candidate_sentences.extend(sub_sentences)
 
 
-    # [수정된 로직 3단계: 필터링 (원본 유지)]
+    # [3단계: 필터링 (원본 유지)]
     # 모든 문장 후보에 대해 필터링 로직 일괄 적용
     for s in candidate_sentences:
         s = s.strip()
         if not s:
             continue
 
-        real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', s)
-        
-        if len(s) <= 1 or len(real_chars) <= 1:
-            continue
+        # [신규] 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
+        sub_fragments = re.split(list_marker_split_pattern, s)
 
-        final_sentences.append(s)
-    
+        for fragment in sub_fragments:
+            fragment = fragment.strip()
+
+            # [신규] 목록 마커("1. ", "a. ")를 감지하고 삭제
+            fragment = re.sub(list_marker_pattern_for_removal, '', fragment)
+            fragment = fragment.strip() # 마커 삭제 후 남을 수 있는 공백 제거
+            
+            if not fragment:
+                continue
+
+            # 원본 필터링 로직 (길이, 실제 문자 수)
+            real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', fragment)
+            if len(fragment) <= 1 or len(real_chars) <= 1:
+                continue
+            
+            # 필터링을 통과한 최종 문장 조각
+            final_sentences.append(fragment)
+
     texts = final_sentences
 
     for idx, sentence in enumerate(texts):
@@ -394,13 +413,11 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     phrase_info = defaultdict(set)
     lang, _ = langid.classify("".join(sentences))
     phrases, sentences = split_into_tokenized_sentence(sentences)
-    print(f"phrases:{phrases}")
 
     for p in phrases:
         for token in p["tokens"]:
             phrase_info[token].add(p["index"])
 
-    print(f"phrase info:{phrase_info}")
     
     phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
@@ -409,32 +426,45 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
     sorted_keywords=[k[0] for k in sorted_keywords]
 
+    contents=phrase_info.keys()
+
     cnt=0
     if keyword != "":
-        if keyword[:-1]=="*":
-            if phrase_info[keyword[:-1]] != []:
-                nodes.append(make_node(keyword, list(phrase_info[keyword[:-1]]), sentences, id, all_embeddings[keyword[:-1]]))
+        if keyword[-1]=="*":
+            find = keyword[:-1]
+        else:
+            find = keyword
+        if find in contents:
+            nodes.append(make_node(keyword, list(phrase_info[find]), sentences, id, all_embeddings[find]))
+        else:
+            return [], [], already_made
 
     for t in sorted_keywords:
         if keyword != "":
             edges+=make_edges(sentences, keyword, [t], phrase_info)
+            print(edges)
+        else:
+            break
         if t not in already_made:
             nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
             already_made.append(t)
             cnt+=1
+            
             if t in groups:
                 related_keywords=[]
                 for idx in range(min(len(groups[t]), 5)):
                     if phrases[idx] not in already_made:
                         related_keywords.append(phrases[idx])
                         already_made.append(phrases[idx])
-                        nodes.append(make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]]))
-                        edges+=make_edges(sentences, t, related_keywords, phrase_info)   
+                        node=make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]])
+                        nodes.append(node)
+                        edge=make_edges(sentences, t, related_keywords, phrase_info)
+                        edges+=edge  
+                    
+
                     
         if cnt==5:
             break
-    
-
     return nodes, edges, already_made
 
 
