@@ -54,21 +54,122 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
    ```python
    # backend/services/node_gen_ver5.py (발췌)
-   def split_into_tokenized_sentence(text:str):
-       tokenized_sentences=[]
-       texts=[]
-       for p in re.split(r'(?<=[.!?])\s+', text.strip()):
-           texts.append(p.strip())
+   def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
+    """
+    텍스트를 문장으로 분할합니다.
 
-       for idx, sentence in enumerate(texts):
-           tokens = extract_noun_phrases(sentence)
-           # 빈 토큰 배열인 경우 기본 토큰 추가
-           if not tokens:
-               tokens = [sentence.strip()]  # 원본 문장을 토큰으로 사용
-           tokenized_sentences.append({"tokens": tokens,
-                                       "index":idx})
+    수정된 로직:
+    1. 텍스트를 줄바꿈 문자(\\n)를 기준으로 텍스트 덩어리와 \\n으로 분리합니다.
+    2. 텍스트 덩어리를 순회하며 \\n을 만났을 때, 그 *이전까지의 텍스트* 길이를 확인합니다.
+    3. 길이가 30자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (해당 덩어리를 별도 처리)
+    4. 길이가 30자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다.
+    5. 이렇게 재구성된 텍스트 덩어리들(merged_lines)을 대상으로 
+       intra_line_pattern 정규식을 적용해 최종 문장을 분리합니다.
+    """
+    
+    tokenized_sentences: List[dict] = [] # 반환 타입에 맞게 List[dict]로 수정
+    final_sentences: List[str] = []
+    
+    cleaned_text = text.strip()
+    if not cleaned_text:
+        return (tokenized_sentences, final_sentences)
 
-       return tokenized_sentences, texts
+    intra_line_pattern = r'(?<=[.!?])\s+|(?<=[다요]\.)\s*|(?<=[^a-zA-Z가-힣\s,()[]{}=-%^$@])\s+'
+    
+    # [ 목록 표시 분리 패턴 ]
+    list_marker_split_pattern = r'(?=[0-9a-zA-Z가-힣]\.\s+)'
+    list_marker_pattern_for_removal = r'\s+[0-9a-zA-Z가-힣]\.'
+
+    # [ 1단계: 줄바꿈 처리 ]
+    blocks = re.split(r'(\n)', cleaned_text)
+    
+    merged_lines = []
+    current_line = ""
+    
+    for block in blocks:
+        if block == '\n':
+            # \n을 만났을 때, 현재까지 누적된 current_line을 검사
+            stripped_line = current_line.strip()
+            
+            if not stripped_line:
+                # 빈 줄 (연속된 \n) 처리
+                current_line = ""
+                continue
+            
+            # [핵심 로직]
+            # 이전 텍스트 덩어리가 30자 이하일 때만 \n을 분리점으로 인정
+            if len(stripped_line) <= 25:
+                merged_lines.append(stripped_line) # 분리점으로 인정 (별도 덩어리로 추가)
+                current_line = ""                  # 새 덩어리 시작
+            else:
+                # 30자 초과 시, \n을 공백으로 치환하여 다음 덩어리와 연결
+                current_line += " " 
+        else:
+            # \n이 아닌 텍스트 덩어리는 일단 현재 라인에 추가
+            current_line += block
+            
+    # 반복문이 끝난 후 남아있는 마지막 텍스트 덩어리 처리
+    stripped_last_line = current_line.strip()
+    if stripped_last_line:
+        merged_lines.append(stripped_last_line)
+
+    # [ 2단계: 정규식으로 문장 분리 ]
+    candidate_sentences = []
+    for line in merged_lines:
+        # 30자 이하의 짧은 줄도, 30자 초과로 합쳐진 긴 줄도
+        # 모두 intra_line_pattern으로 한 번 더 분리 시도
+        sub_sentences = re.split(intra_line_pattern, line)
+        candidate_sentences.extend(sub_sentences)
+
+
+    # [3단계: 필터링 (원본 유지)]
+    # 모든 문장 후보에 대해 필터링 로직 일괄 적용
+    for s in candidate_sentences:
+        s = s.strip()
+        if not s:
+            continue
+
+        # [신규] 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
+        sub_fragments = re.split(list_marker_split_pattern, s)
+
+        for fragment in sub_fragments:
+            fragment = fragment.strip()
+
+            # [신규] 목록 마커("1. ", "a. ")를 감지하고 삭제
+            fragment = re.sub(list_marker_pattern_for_removal, '', fragment)
+            fragment = fragment.strip() # 마커 삭제 후 남을 수 있는 공백 제거
+            
+            if not fragment:
+                continue
+
+            # 원본 필터링 로직 (길이, 실제 문자 수)
+            real_chars = re.sub(r'[^a-zA-Z0-9가-힣]', '', fragment)
+            if len(fragment) <= 1 or len(real_chars) <= 1:
+                continue
+            
+            # 필터링을 통과한 최종 문장 조각
+            final_sentences.append(fragment)
+
+    texts = final_sentences
+
+    for idx, sentence in enumerate(texts):
+        lang = check_lang(sentence)
+
+        if lang == "ko":
+            tokens = extract_noun_phrases_ko(sentence)
+        elif lang == "en":
+            tokens = extract_noun_phrases_en(sentence)
+        else:
+            tokens = [sentence.strip()]
+
+        if not tokens:
+            tokens = [sentence.strip()]  # fallback
+            logging.error(f"한국어도 영어도 아닌 텍스트가 포함되어있습니다: {sentence}")
+
+        tokenized_sentences.append({"tokens": tokens, "index": idx})
+
+    return tokenized_sentences, texts
+
    ```
 
 3. **청킹**:
