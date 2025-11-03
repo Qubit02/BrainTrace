@@ -9,7 +9,7 @@
 1. [지식그래프란 무엇인가?](#지식그래프란-무엇인가)
 2. [GraphRAG 방식의 필요성과 장점](#GraphRAG-방식의-필요성과-장점)
 3. [지식그래프 생성 과정](#지식그래프-생성-과정)
-4. [지식그래프 활용 사례](#지식그래프-활용-사례)
+4. [BrainTrace의 지식그래프 구현](#BrainTrace의-지식그래프-구현)
 
 ---
 
@@ -24,19 +24,19 @@
 #### 노드(Node)
 
 - **정의**: 문서에서 추출된 핵심 개념이나 개체를 나타냅니다.
-- **BrainT에서의 역할**: AI 모델이나 수동 청킹을 통해 텍스트에서 중요한 개념들을 노드로 추출합니다.
+- **BrainTrace에서의 역할**: AI 모델을 통해 텍스트에서 중요한 개념들을 노드로 추출합니다.
 - **속성**: `name`(개체명), `label`(분류), `description`(설명) 등.
 
 #### 엣지(Edge)
 
 - **정의**: 노드 간의 의미적 관계를 나타냅니다.
-- **BrainT에서의 역할**: "포함하다", "관련되다", "영향을 주다" 등의 관계를 엣지로 표현합니다.
+- **BrainTrace에서의 역할**: "포함하다", "관련되다", "영향을 주다" 등의 관계를 엣지로 표현합니다.
 - **속성**: `source`(시작 노드), `target`(도착 노드), `relation`(관계 유형).
 
 #### 속성(Properties)
 
 - **정의**: 노드와 엣지에 추가되는 메타데이터입니다.
-- **BrainT에서의 역할**: `source_id`(출처 문서), `original_sentences`(원문 문장), `descriptions`(다중 설명) 등의 속성을 관리합니다.
+- **BrainTrace에서의 역할**: `source_id`(출처 문서), `original_sentences`(원문 문장), `descriptions`(다중 설명) 등의 속성을 관리합니다.
 
 ### 1.3 지식그래프의 장점
 
@@ -123,20 +123,13 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200):
     return text_splitter.split_text(text)
 ```
 
-#### 3.1.3 문장 단위 분리
-
-```python
-def split_into_sentences(text: str):
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [{"tokens": extract_noun_phrases(sentence), "index": idx}
-            for idx, sentence in enumerate(sentences)]
-```
-
 ### 3.2 AI 모델 기반 지식 추출
+
+BrainTrace는 AI 모델(OpenAI GPT 또는 Ollama)을 사용하여 텍스트에서 구조화된 지식 그래프 정보를 추출합니다.
 
 #### 3.2.1 프롬프트 생성
 
-BrainT는 AI 모델에게 구조화된 프롬프트를 제공하여 일관된 결과를 얻습니다:
+AI 모델에게 구조화된 프롬프트를 제공하여 일관된 결과를 얻습니다:
 
 ```python
 # backend/services/openai_service.py - 실제 프로젝트 코드
@@ -282,29 +275,30 @@ def _extract_from_chunk(self, chunk: str, source_id: str):
 
 ---
 
-## 4. 지식그래프 활용 사례
+## 4. BrainTrace의 지식그래프 구현
 
 ### 4.1 질의응답 시스템
 
 #### 4.1.1 의미적 검색 및 답변 생성
 
-질의응답 시스템의 전체 흐름:
+질의응답 시스템은 다음과 같은 단계로 동작합니다:
+
+**전체 파이프라인:**
+
+1. **질문 임베딩 생성**: 사용자 질문을 벡터로 변환
+2. **유사 노드 검색**: Qdrant 벡터DB에서 질문과 유사한 노드 검색
+3. **그래프 스키마 추출**: 검색된 노드들을 기준으로 Neo4j에서 관련 노드와 관계 추출 (탐색 모드에 따라 다름)
+4. **스키마 텍스트 변환**: 추출된 그래프 구조를 LLM이 이해할 수 있는 텍스트 형식으로 변환
+5. **답변 생성**: LLM이 스키마 텍스트와 질문을 기반으로 최종 답변 생성
+6. **참조 노드 추출**: 생성된 답변과 유사도가 높은 노드들을 자동으로 추출하여 출처로 사용
+7. **정확도 계산**: 세 가지 지표(Q, S, C)를 종합하여 답변의 품질 평가
 
 ```python
 # backend/routers/brain_graph.py - 실제 프로젝트 코드
 async def answer_endpoint(request_data: AnswerRequest):
-    """
-    질의응답 처리 파이프라인:
-    1. 질문 → 임베딩 벡터 생성
-    2. 벡터 검색으로 유사한 노드 찾기
-    3. Neo4j에서 관련 스키마 추출
-    4. 스키마를 텍스트로 변환
-    5. LLM으로 답변 생성
-    6. 답변 기반으로 참조 노드 자동 추출
-    7. 정확도 계산 및 출처 정보 수집
-    """
     question = request_data.question
     brain_id = str(request_data.brain_id)
+    use_deep_search = request_data.use_deep_search
 
     # 1. 질문 임베딩 생성
     question_embedding = embedding_service.encode_text(question)
@@ -315,11 +309,16 @@ async def answer_endpoint(request_data: AnswerRequest):
         brain_id=brain_id
     )
 
-    # 3. Neo4j에서 스키마 추출 (description 기반 최적 경로)
+    # 3. Neo4j에서 스키마 추출 (탐색 모드에 따라 분기)
     neo4j_handler = Neo4jHandler()
-    result = neo4j_handler.query_schema_by_node_names(
-        [node["name"] for node in similar_nodes], brain_id
-    )
+    if use_deep_search:
+        result = neo4j_handler.query_schema_by_node_names_deepSearch(
+            [node["name"] for node in similar_nodes], brain_id
+        )
+    else:
+        result = neo4j_handler.query_schema_by_node_names(
+            [node["name"] for node in similar_nodes], brain_id
+        )
 
     # 4. 스키마를 텍스트로 변환
     raw_schema_text = ai_service.generate_schema_text(
@@ -330,16 +329,6 @@ async def answer_endpoint(request_data: AnswerRequest):
 
     # 5. LLM으로 답변 생성
     final_answer = ai_service.generate_answer(raw_schema_text, question)
-
-    # 5-1. LLM 답변 생성 프롬프트
-    prompt = (
-        "다음 지식그래프 컨텍스트와 질문을 바탕으로, 컨텍스트에 명시된 정보나 연결된 관계를 통해 "
-        "추론 가능한 범위 내에서만 자연어로 답변해줘. "
-        "정보가 일부라도 있다면 해당 범위 내에서 최대한 설명하고, "
-        "컨텍스트와 완전히 무관한 경우에만 '지식그래프에 해당 정보가 없습니다.'라고 출력해.\n\n"
-        "지식그래프 컨텍스트:\n" + raw_schema_text + "\n\n"
-        "질문: " + question
-    )
 
     # 6. 답변과 유사한 노드 찾기 (referenced_nodes 자동 추출)
     referenced_nodes = ai_service.generate_referenced_nodes(final_answer, brain_id)
@@ -398,53 +387,7 @@ def generate_schema_text(self, nodes, related_nodes, relationships) -> str:
     return "\n".join(relation_lines) + "\n\n" + "\n".join(node_lines)
 ```
 
-#### 4.1.3 답변 생성 및 참조 노드 추출
-
-```python
-# backend/routers/brain_graph.py - 실제 프로젝트 코드
-async def answer_endpoint(request_data: AnswerRequest):
-    question = request_data.question
-    brain_id = str(request_data.brain_id)
-
-    # 1. 질문 임베딩 생성
-    question_embedding = embedding_service.encode_text(question)
-
-    # 2. 벡터 검색으로 유사한 노드 찾기
-    similar_nodes, Q = embedding_service.search_similar_nodes(
-        embedding=question_embedding,
-        brain_id=brain_id
-    )
-
-    # 3. Neo4j에서 스키마 추출
-    neo4j_handler = Neo4jHandler()
-    result = neo4j_handler.query_schema_by_node_names(
-        [node["name"] for node in similar_nodes], brain_id
-    )
-
-    # 4. 스키마를 텍스트로 변환
-    raw_schema_text = ai_service.generate_schema_text(
-        result["nodes"],
-        result["relatedNodes"],
-        result["relationships"]
-    )
-
-    # 5. LLM으로 답변 생성
-    final_answer = ai_service.generate_answer(raw_schema_text, question)
-
-    # 6. 답변과 유사한 노드 찾기 (referenced_nodes)
-    referenced_nodes = ai_service.generate_referenced_nodes(final_answer, brain_id)
-
-    # 7. 정확도 계산
-    accuracy = compute_accuracy(final_answer, referenced_nodes, brain_id, Q, raw_schema_text)
-
-    return {
-        "answer": final_answer,
-        "referenced_nodes": referenced_nodes,
-        "accuracy": accuracy
-    }
-```
-
-#### 4.1.4 referenced_nodes 자동 생성
+#### 4.1.3 referenced_nodes 자동 생성
 
 LLM이 생성한 답변의 의미적 유사도를 기반으로 실제로 참조한 노드를 자동으로 추출합니다:
 
@@ -479,7 +422,7 @@ def generate_referenced_nodes(self, llm_response: str, brain_id: str) -> List[st
     return referenced_nodes
 ```
 
-#### 4.1.5 정확도 계산
+#### 4.1.4 정확도 계산
 
 답변의 품질을 세 가지 지표로 평가합니다:
 
@@ -557,6 +500,158 @@ def compute_accuracy(
     return round(Acc, 3)
 ```
 
+#### 4.1.5 탐색 범위 선택 기능
+
+사용자는 ChatPanel에서 질문 전에 탐색 범위를 선택할 수 있습니다. 이 기능은 질의응답의 깊이와 범위를 조절하여 성능과 정확도 사이의 균형을 맞춥니다:
+
+```453:548:frontend/src/components/panels/Chat/ChatPanel.jsx
+const SearchModeDropdown = ({
+  searchMode,
+  showSearchModeDropdown,
+  setShowSearchModeDropdown,
+  handleSearchModeSelect,
+  selectedModel,
+  modelDropdownRef,
+}) => {
+  const searchModeRef = useRef(null);
+  const [leftPosition, setLeftPosition] = useState(160);
+
+  // 모델 드롭다운 너비에 따라 위치 계산
+  useEffect(() => {
+    if (modelDropdownRef?.current && searchModeRef.current) {
+      const modelDropdownRect =
+        modelDropdownRef.current.getBoundingClientRect();
+      const parentRect =
+        modelDropdownRef.current.parentElement?.getBoundingClientRect();
+
+      if (parentRect) {
+        // 모델 드롭다운의 너비 + 여유 공간(20px)
+        const calculatedLeft = modelDropdownRect.width + 20;
+        setLeftPosition(calculatedLeft);
+      }
+    } else if (!selectedModel) {
+      // 모델이 선택되지 않았을 때 기본 위치
+      setLeftPosition(160);
+    }
+  }, [selectedModel, modelDropdownRef]);
+
+  const searchModes = [
+    {
+      id: "fast",
+      name: "빠른 탐색",
+      description: "기본 탐색으로 빠르게 답변을 받습니다",
+    },
+    {
+      id: "deep",
+      name: "더 깊은 탐색",
+      description: "더 많은 연관 정보를 탐색하여 상세한 답변을 제공합니다",
+    },
+  ];
+
+  return (
+    <div
+      ref={searchModeRef}
+      className="chat-panel-search-mode-selector-inline"
+      style={{ left: `${leftPosition}px` }}
+    >
+      <div
+        className="chat-panel-search-mode-dropdown-inline"
+        onClick={() => setShowSearchModeDropdown(!showSearchModeDropdown)}
+      >
+        <span className="chat-panel-search-mode-value-inline">
+          {searchMode === "deep" ? "더 깊은 탐색" : "빠른 탐색"}
+        </span>
+        <IoChevronDown
+          size={14}
+          className={`chat-panel-dropdown-arrow-inline ${
+            showSearchModeDropdown ? "rotated" : ""
+          }`}
+        />
+      </div>
+      {showSearchModeDropdown && (
+        <div className="chat-panel-search-mode-menu-inline">
+          {searchModes.map((mode) => (
+            <div
+              key={mode.id}
+              className={`chat-panel-search-mode-item-inline ${
+                searchMode === mode.id ? "selected" : ""
+              }`}
+              onClick={() => handleSearchModeSelect(mode.id)}
+            >
+              <div className="chat-panel-search-mode-info-inline">
+                <div className="chat-panel-search-mode-header-inline">
+                  <span className="chat-panel-search-mode-name-inline">
+                    {mode.name}
+                  </span>
+                  {searchMode === mode.id && (
+                    <IoCheckmarkOutline
+                      size={16}
+                      className="chat-panel-search-mode-checkmark-inline"
+                    />
+                  )}
+                </div>
+                <div className="chat-panel-search-mode-description-inline">
+                  {mode.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+**탐색 모드 동작 방식:**
+
+1. **빠른 탐색 (Fast Search)** - 기본값
+
+   - `query_schema_by_node_names` 메서드 사용
+   - 시작 노드가 description이 없는 경우: description이 있는 노드까지 최대 5단계 경로 탐색
+   - 시작 노드가 description이 있는 경우: 한 홉(1단계) 내 description이 있는 이웃만 탐색
+   - 빠른 응답 속도에 최적화되어 일반적인 질문에 적합
+
+2. **더 깊은 탐색 (Deep Search)**
+   - `query_schema_by_node_names_deepSearch` 메서드 사용
+   - 시작 노드부터 description이 있는 노드까지 최대 5단계 경로까지 **모든 경로** 탐색
+   - 경로 중간에는 description이 없는 노드만 통과 가능
+   - 끝 노드는 반드시 description이 있어야 함
+   - 더 많은 연관 정보를 포함하여 상세하고 포괄적인 답변 생성
+   - 복잡한 질문이나 깊이 있는 분석이 필요한 경우 사용
+
+**프론트엔드에서 백엔드로의 전달:**
+
+```1423:1435:frontend/src/components/panels/Chat/ChatPanel.jsx
+      // 탐색 모드에 따른 추가 파라미터 설정
+      const searchParams = {
+        deep_search: searchMode === "deep", // "deep" 모드일 때 true
+      };
+
+      const res = await requestAnswer(
+        inputText,
+        selectedSessionId,
+        selectedBrainId,
+        model,
+        model_name,
+        searchParams
+      );
+```
+
+**백엔드에서의 처리:**
+
+```315:318:backend/routers/brain_graph.py
+        if(use_deep_search):
+            result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
+        else:
+            result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+```
+
+**사용 시나리오:**
+
+- **빠른 탐색**: 간단한 질문이나 빠른 응답이 필요한 경우
+- **더 깊은 탐색**: 복잡한 질문이나 더 상세하고 포괄적인 답변이 필요한 경우
+
 ---
 
 ### 4.2 시각화 및 탐색
@@ -577,9 +672,9 @@ def compute_accuracy(
 
 ### 4.3 지식 분석 및 통찰
 
-#### 4.3.1 그래프 스키마 추출 (최적화된 쿼리)
+#### 4.3.1 그래프 스키마 추출 (빠른 탐색 모드)
 
-질문에 관련된 노드들을 찾고, 그 노드들 주변의 그래프 구조를 추출합니다. description 유무에 따라 탐색 전략이 달라집니다:
+빠른 탐색 모드에서 사용되는 최적화된 쿼리입니다. 질문에 관련된 노드들을 찾고, 그 노드들 주변의 그래프 구조를 추출합니다. 시작 노드의 description 유무에 따라 탐색 전략이 달라집니다:
 
 ```python
 # backend/neo4j_db/Neo4jHandler.py - 실제 프로젝트 코드
@@ -768,14 +863,26 @@ async def get_source_data_metrics(brain_id: str):
 
 #### 4.4.1 새로운 문서 통합
 
-- **기존 노드와의 매칭**: 새로운 문서의 노드들을 기존 노드와 매칭
-- **새로운 노드 추가**: 매칭되지 않은 노드들을 새로운 노드로 추가
-- **관계 업데이트**: 기존 노드와 새로운 노드 간의 관계 생성
+새로운 문서를 업로드하면 BrainTrace는 자동으로:
 
-#### 4.4.2 외부 지식 연결
+- **기존 노드와의 매칭**: 새로운 문서에서 추출된 노드들이 기존 그래프의 노드와 동일한 경우 자동으로 매칭
+- **새로운 노드 추가**: 매칭되지 않은 노드들을 새로운 노드로 그래프에 추가
+- **관계 업데이트**: 기존 노드와 새로운 노드 간의 관계를 자동으로 생성하여 그래프 확장
 
-- **위키피디아 연동**: 노드와 위키피디아 페이지 연결
-- **학술 데이터베이스 연동**: 연구 논문과 학술 데이터베이스 연결
-- **뉴스 데이터 연동**: 실시간 뉴스 데이터와 연결
+이를 통해 지식 그래프가 점진적으로 성장하며 더 풍부한 정보 네트워크를 구축할 수 있습니다.
+
+---
+
+## 5. 마무리
+
+BrainTrace의 지식 그래프 시스템은 GraphRAG 방식을 통해 문서 간의 분산된 개념과 관계를 하나의 네트워크로 연결합니다. 이를 통해 단순한 텍스트 검색을 넘어서 개념 간의 의미적 관계를 탐색하고 추론하는 강력한 질의응답 시스템을 제공합니다.
+
+주요 특징:
+
+- **자동화된 지식 추출**: AI 모델을 통한 구조화된 정보 추출
+- **유연한 탐색**: 빠른 탐색과 깊은 탐색 모드를 통한 사용자 맞춤형 답변
+- **증거 기반 답변**: 모든 답변에 출처 노드와 원문 문장을 함께 제공
+- **정량적 품질 평가**: 세 가지 지표를 통한 답변 정확도 계산
+- **확장 가능한 구조**: 새로운 문서 추가 시 자동으로 그래프 확장
 
 ---

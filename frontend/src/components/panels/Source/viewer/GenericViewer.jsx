@@ -55,6 +55,180 @@ import {
   getMDFile,
 } from "../../../../../api/config/apiIndex";
 
+// 상수 정의
+const FONT_SIZE = {
+  MIN: 12,
+  MAX: 48,
+  DEFAULT: 16,
+  STEP: 2,
+};
+
+const SCROLL_DELAY = 1000; // 하이라이트 렌더링 완료 대기 시간 (ms)
+const ANIMATION_DURATION = 2000; // 하이라이트 애니메이션 지속 시간 (ms)
+
+const FILE_TYPE_ERRORS = {
+  docx: "docx_id가 제공되지 않았습니다",
+  memo: "memo_id가 제공되지 않았습니다",
+  pdf: "pdf_id가 제공되지 않았습니다",
+  txt: "txt_id가 제공되지 않았습니다",
+  md: "md_id가 제공되지 않았습니다",
+};
+
+const DEFAULT_ERROR_MESSAGES = {
+  docx: "[텍스트를 불러올 수 없습니다]",
+  memo: "[메모를 불러올 수 없습니다]",
+  pdf: "[텍스트를 불러올 수 없습니다]",
+  txt: "[텍스트를 불러올 수 없습니다]",
+  md: "[텍스트를 불러올 수 없습니다]",
+};
+
+/**
+ * 하이라이트된 요소를 찾는 유틸리티 함수
+ * @param {HTMLElement} container - 검색할 컨테이너 요소
+ * @returns {NodeList} 하이라이트된 요소들의 NodeList
+ */
+const findHighlightedElements = (container) => {
+  // 1. CSS 클래스로 찾기
+  let elements = container.querySelectorAll(".highlight");
+  if (elements.length > 0) return elements;
+
+  // 2. data-highlight 속성으로 찾기
+  elements = container.querySelectorAll("[data-highlight]");
+  if (elements.length > 0) return elements;
+
+  // 3. auto-highlight 스타일로 찾기
+  elements = container.querySelectorAll('span[style*="auto-highlight"]');
+  if (elements.length > 0) return elements;
+
+  // 4. span 태그 중 스타일 속성으로 찾기
+  const allSpans = container.querySelectorAll("span");
+  const highlightedSpans = Array.from(allSpans).filter((span) => {
+    const style = span.getAttribute("style") || "";
+    return (
+      style.includes("background") ||
+      style.includes("highlight") ||
+      style.includes("color")
+    );
+  });
+
+  return highlightedSpans.length > 0 ? highlightedSpans : [];
+};
+
+/**
+ * highlightingInfo에서 검색할 텍스트 추출
+ * @param {Object|string} highlightingInfo - 출처보기 정보
+ * @returns {string} 검색할 텍스트
+ */
+const extractSearchText = (highlightingInfo) => {
+  if (!highlightingInfo) return "";
+
+  if (typeof highlightingInfo === "string") {
+    return highlightingInfo;
+  }
+
+  if (highlightingInfo.text) return highlightingInfo.text;
+  if (highlightingInfo.nodeName) return highlightingInfo.nodeName;
+  if (highlightingInfo.sourceId) return highlightingInfo.sourceId;
+
+  if (
+    highlightingInfo.highlightedRanges &&
+    highlightingInfo.highlightedRanges.length > 0
+  ) {
+    const firstRange = highlightingInfo.highlightedRanges[0];
+    return firstRange.text || "";
+  }
+
+  return "";
+};
+
+/**
+ * 텍스트 검색을 통해 위치로 스크롤
+ * @param {HTMLElement} container - 스크롤할 컨테이너 요소
+ * @param {string} searchText - 검색할 텍스트
+ */
+const scrollToText = (container, searchText) => {
+  if (!searchText || !container) return false;
+
+  const textContent = container.textContent;
+  const textIndex = textContent.indexOf(searchText);
+
+  if (textIndex === -1) return false;
+
+  const lineHeight = parseInt(getComputedStyle(container).lineHeight) || 20;
+  const charsPerLine = Math.floor(container.clientWidth / 8);
+  const lineNumber = Math.floor(textIndex / charsPerLine);
+  const scrollTop = lineNumber * lineHeight;
+
+  container.scrollTo({
+    top: Math.max(0, scrollTop - container.clientHeight / 2),
+    behavior: "smooth",
+  });
+
+  return true;
+};
+
+/**
+ * 하이라이트 요소에 애니메이션 적용
+ * @param {NodeList|Array} elements - 애니메이션을 적용할 요소들
+ */
+const applyHighlightAnimation = (elements) => {
+  const animationDuration = `${ANIMATION_DURATION / 1000}s`;
+  Array.from(elements).forEach((element) => {
+    element.style.animation = `pulse-highlight ${animationDuration} ease-in-out`;
+    setTimeout(() => {
+      element.style.animation = "";
+    }, ANIMATION_DURATION);
+  });
+};
+
+/**
+ * 파일 타입에 따른 파일 로딩 함수
+ * @param {string} type - 파일 타입
+ * @param {Object} params - 파일 ID 매개변수들
+ * @returns {Promise<string>} 파일 내용
+ */
+const loadFileByType = async (type, params) => {
+  const { fileUrl, memoId, docxId, pdfId, txtId, mdId } = params;
+
+  switch (type) {
+    case "docx":
+      if (!docxId) throw new Error(FILE_TYPE_ERRORS.docx);
+      const docxData = await getDocxFile(docxId);
+      return docxData.docx_text || DEFAULT_ERROR_MESSAGES.docx;
+
+    case "memo":
+      if (!memoId) throw new Error(FILE_TYPE_ERRORS.memo);
+      const memoData = await getMemo(memoId);
+      return memoData.memo_text || DEFAULT_ERROR_MESSAGES.memo;
+
+    case "pdf":
+      if (!pdfId) throw new Error(FILE_TYPE_ERRORS.pdf);
+      const pdfData = await getPdf(pdfId);
+      return pdfData.pdf_text || DEFAULT_ERROR_MESSAGES.pdf;
+
+    case "txt":
+      if (!txtId) throw new Error(FILE_TYPE_ERRORS.txt);
+      const txtData = await getTextFile(txtId);
+      return txtData.txt_text || DEFAULT_ERROR_MESSAGES.txt;
+
+    case "md":
+      if (!mdId) throw new Error(FILE_TYPE_ERRORS.md);
+      const mdData = await getMDFile(mdId);
+      return mdData.md_text || DEFAULT_ERROR_MESSAGES.md;
+
+    default:
+      // Fallback: 파일 URL에서 읽기
+      if (!fileUrl) {
+        throw new Error("fileUrl이 제공되지 않았습니다");
+      }
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.text();
+  }
+};
+
 /**
  * GenericViewer - 범용 파일 뷰어 컴포넌트
  *
@@ -82,11 +256,11 @@ export default function GenericViewer({
   highlightingInfo,
 }) {
   const [content, setContent] = useState("");
-  const [fontSize, setFontSize] = useState(16);
+  const [fontSize, setFontSize] = useState(FONT_SIZE.DEFAULT);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const containerRef = useRef(null);
-  const contentRef = useRef(null); // 텍스트 콘텐츠 영역을 위한 새로운 ref
+  const contentRef = useRef(null);
 
   // 출처보기를 통해 들어온 경우인지 확인 (highlightingInfo가 있으면 출처보기)
   const isFromSourceView = !!highlightingInfo;
@@ -117,240 +291,55 @@ export default function GenericViewer({
   // 출처보기에서 하이라이트된 위치로 스크롤하는 함수
   const scrollToHighlight = useCallback(() => {
     if (!isFromSourceView || !highlightingInfo || !contentRef.current) {
-      console.log("스크롤 조건 확인:", {
-        isFromSourceView,
-        highlightingInfo: !!highlightingInfo,
-        contentRef: !!contentRef.current,
-      });
       return;
     }
 
-    console.log("스크롤 함수 실행 시작");
-    console.log(
-      "highlightingInfo 상세 내용:",
-      JSON.stringify(highlightingInfo, null, 2)
-    );
-    console.log("contentRef.current:", contentRef.current);
-    console.log("contentRef.current.innerHTML:", contentRef.current.innerHTML);
+    const container = contentRef.current;
 
-    // 여러 방법으로 하이라이트된 텍스트를 찾기
-    let highlightedElements = contentRef.current.querySelectorAll(".highlight");
-    console.log(
-      "CSS 클래스로 찾은 하이라이트 요소 수:",
-      highlightedElements.length
-    );
+    // 1. 하이라이트된 요소 찾기
+    const highlightedElements = findHighlightedElements(container);
 
-    // CSS 클래스로 찾지 못한 경우, 다른 방법 시도
-    if (highlightedElements.length === 0) {
-      // data-highlight 속성으로 찾기
-      const dataHighlightElements =
-        contentRef.current.querySelectorAll("[data-highlight]");
-      console.log(
-        "data-highlight 속성으로 찾은 요소 수:",
-        dataHighlightElements.length
-      );
-      if (dataHighlightElements.length > 0) {
-        highlightedElements = dataHighlightElements;
-      }
-    }
-
-    // 여전히 못 찾은 경우, 더 다양한 방법 시도
-    if (highlightedElements.length === 0) {
-      // span 태그 중에서 style 속성에 하이라이트 관련 텍스트가 있는 요소 찾기
-      const allSpans = contentRef.current.querySelectorAll("span");
-      console.log("전체 span 요소 수:", allSpans.length);
-
-      const highlightedSpans = [];
-      for (let span of allSpans) {
-        const style = span.getAttribute("style") || "";
-        if (
-          style.includes("background") ||
-          style.includes("highlight") ||
-          style.includes("color")
-        ) {
-          console.log("하이라이트 스타일이 있는 span 발견:", span, style);
-          highlightedSpans.push(span);
-        }
-      }
-
-      if (highlightedSpans.length > 0) {
-        highlightedElements = highlightedSpans;
-        console.log(
-          "스타일로 찾은 하이라이트 span 요소 수:",
-          highlightedSpans.length
-        );
-      }
-    }
-
-    // 추가로 auto-highlight 스타일이 있는 요소들도 찾기
-    if (highlightedElements.length === 0) {
-      const autoHighlightElements = contentRef.current.querySelectorAll(
-        'span[style*="auto-highlight"]'
-      );
-      console.log(
-        "auto-highlight 스타일로 찾은 요소 수:",
-        autoHighlightElements.length
-      );
-      if (autoHighlightElements.length > 0) {
-        highlightedElements = autoHighlightElements;
-      }
-    }
-
-    // 여전히 못 찾은 경우, highlightingInfo의 텍스트로 검색
-    if (highlightedElements.length === 0) {
-      console.log("텍스트 검색으로 하이라이트 위치 찾기 시도");
-
-      // highlightingInfo에서 텍스트 추출 시도
-      let searchText = "";
-      if (highlightingInfo.text) {
-        searchText = highlightingInfo.text;
-      } else if (highlightingInfo.nodeName) {
-        searchText = highlightingInfo.nodeName;
-      } else if (highlightingInfo.sourceId) {
-        searchText = highlightingInfo.sourceId;
-      } else if (typeof highlightingInfo === "string") {
-        searchText = highlightingInfo;
-      } else if (
-        highlightingInfo.highlightedRanges &&
-        highlightingInfo.highlightedRanges.length > 0
-      ) {
-        // highlightedRanges가 있는 경우 첫 번째 범위의 텍스트 사용
-        const firstRange = highlightingInfo.highlightedRanges[0];
-        if (firstRange.text) {
-          searchText = firstRange.text;
-        }
-      }
-
-      console.log("검색할 텍스트:", searchText);
-
-      if (searchText) {
-        const textContent = contentRef.current.textContent;
-        const textIndex = textContent.indexOf(searchText);
-
-        if (textIndex !== -1) {
-          console.log("텍스트 검색으로 위치 찾음:", textIndex);
-
-          // 텍스트 위치를 대략적으로 계산하여 스크롤
-          const lineHeight =
-            parseInt(getComputedStyle(contentRef.current).lineHeight) || 20;
-          const charsPerLine = Math.floor(contentRef.current.clientWidth / 8); // 대략적인 문자당 너비
-          const lineNumber = Math.floor(textIndex / charsPerLine);
-          const scrollTop = lineNumber * lineHeight;
-
-          // 부드러운 스크롤
-          contentRef.current.scrollTo({
-            top: Math.max(0, scrollTop - contentRef.current.clientHeight / 2),
-            behavior: "smooth",
-          });
-
-          console.log("텍스트 위치로 스크롤 완료");
-          return;
-        }
-      }
-    }
-
+    // 2. 하이라이트 요소를 찾은 경우
     if (highlightedElements.length > 0) {
-      // 모든 하이라이트된 요소에 애니메이션 적용
-      console.log(`총 ${highlightedElements.length}개의 하이라이트 요소 발견`);
-
-      highlightedElements.forEach((element, index) => {
-        console.log(`하이라이트 요소 ${index + 1}:`, element);
-
-        // 각 요소에 시각적 강조 효과 추가
-        element.style.animation = "pulse-highlight 2s ease-in-out";
-
-        // 애니메이션 완료 후 스타일 제거
-        setTimeout(() => {
-          element.style.animation = "";
-        }, 2000);
-      });
+      applyHighlightAnimation(highlightedElements);
 
       // 첫 번째 하이라이트된 요소로 스크롤
-      const firstHighlight = highlightedElements[0];
-      console.log("첫 번째 하이라이트 요소로 스크롤:", firstHighlight);
-
-      // 부드러운 스크롤로 이동
-      firstHighlight.scrollIntoView({
+      highlightedElements[0].scrollIntoView({
         behavior: "smooth",
         block: "center",
         inline: "nearest",
       });
-
-      console.log("모든 하이라이트 요소에 애니메이션 적용 및 스크롤 완료");
-    } else {
-      console.log(
-        "하이라이트된 요소를 찾을 수 없습니다. highlightingInfo:",
-        highlightingInfo
-      );
-
-      // 마지막 수단: 페이지 상단으로 스크롤
-      contentRef.current.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+      return;
     }
+
+    // 3. 하이라이트 요소를 찾지 못한 경우, 텍스트 검색으로 스크롤
+    const searchText = extractSearchText(highlightingInfo);
+    if (searchText && scrollToText(container, searchText)) {
+      return;
+    }
+
+    // 4. 모든 방법 실패 시 페이지 상단으로 스크롤
+    container.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }, [isFromSourceView, highlightingInfo]);
 
-  // 파일/메모 불러오기 - useCallback으로 최적화
+  // 파일/메모 불러오기
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      switch (type) {
-        case "docx":
-          if (!docxId) {
-            throw new Error("docx_id가 제공되지 않았습니다");
-          }
-          const docxData = await getDocxFile(docxId);
-          setContent(docxData.docx_text || "[텍스트를 불러올 수 없습니다]");
-          break;
-
-        case "memo":
-          if (!memoId) {
-            throw new Error("memo_id가 제공되지 않았습니다");
-          }
-          const memoData = await getMemo(memoId);
-          setContent(memoData.memo_text || "[메모를 불러올 수 없습니다]");
-          break;
-
-        case "pdf":
-          if (!pdfId) {
-            throw new Error("pdf_id가 제공되지 않았습니다");
-          }
-          const pdfData = await getPdf(pdfId);
-          setContent(pdfData.pdf_text || "[텍스트를 불러올 수 없습니다]");
-          break;
-
-        case "txt":
-          if (!txtId) {
-            throw new Error("txt_id가 제공되지 않았습니다");
-          }
-          const txtData = await getTextFile(txtId);
-          setContent(txtData.txt_text || "[텍스트를 불러올 수 없습니다]");
-          break;
-
-        case "md":
-          if (!mdId) {
-            throw new Error("md_id가 제공되지 않았습니다");
-          }
-          const mdData = await getMDFile(mdId);
-          setContent(mdData.md_text || "[텍스트를 불러올 수 없습니다]");
-          break;
-
-        default:
-          // 기존 방식으로 파일 시스템에서 읽기 (fallback)
-          if (!fileUrl) {
-            throw new Error("fileUrl이 제공되지 않았습니다");
-          }
-          const response = await fetch(fileUrl);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          const text = await response.text();
-          setContent(text);
-          break;
-      }
+      const fileContent = await loadFileByType(type, {
+        fileUrl,
+        memoId,
+        docxId,
+        pdfId,
+        txtId,
+        mdId,
+      });
+      setContent(fileContent);
     } catch (error) {
       console.error("파일 내용 로딩 실패:", error);
       setError(error.message);
@@ -374,60 +363,47 @@ export default function GenericViewer({
 
   // 출처보기인 경우 하이라이트된 위치로 스크롤
   useEffect(() => {
-    if (isFromSourceView && content && !isLoading) {
-      console.log("출처보기 스크롤 useEffect 실행:", {
-        content: !!content,
-        isLoading,
-      });
+    if (!isFromSourceView || !content || isLoading) return;
 
-      // 콘텐츠가 로드되고 하이라이트가 렌더링된 후 스크롤
-      const timer = setTimeout(() => {
-        console.log("스크롤 타이머 실행");
-        scrollToHighlight();
-      }, 1000); // 시간을 더 늘려서 하이라이트 렌더링 완료 보장
+    // 콘텐츠가 로드되고 하이라이트가 렌더링된 후 스크롤
+    const timer = setTimeout(() => {
+      scrollToHighlight();
+    }, SCROLL_DELAY);
 
-      return () => clearTimeout(timer);
-    }
+    return () => clearTimeout(timer);
   }, [isFromSourceView, content, isLoading, scrollToHighlight]);
 
-  // 모든 모드에서 텍스트 선택 활성화 - useCallback으로 최적화
-  const handleTextSelection = useCallback(
-    (containerRef) => {
-      handleSelection(containerRef);
-    },
-    [handleSelection]
-  );
+  // 텍스트 선택 핸들러
+  const handleTextSelection = useCallback(() => {
+    handleSelection(containerRef);
+  }, [handleSelection]);
 
-  // 출처보기를 통해 들어온 경우 하이라이트 클릭 비활성화 - useCallback으로 최적화
-  const handleHighlightClick = useCallback(
-    (highlight) => {
-      if (isFromSourceView) {
-        return; // 출처보기에서는 하이라이트 클릭 기능 비활성화
-      }
-    },
-    [isFromSourceView]
-  );
+  // 하이라이트 클릭 핸들러 (출처보기 모드에서는 비활성화)
+  const handleHighlightClick = useCallback(() => {
+    // 출처보기에서는 하이라이트 클릭 기능 비활성화
+    if (isFromSourceView) return;
+  }, [isFromSourceView]);
 
-  // 글꼴 크기 조절 함수들 - useCallback으로 최적화
+  // 글꼴 크기 조절 함수들
   const decreaseFontSize = useCallback(() => {
-    setFontSize((prev) => Math.max(prev - 2, 12));
+    setFontSize((prev) => Math.max(prev - FONT_SIZE.STEP, FONT_SIZE.MIN));
   }, []);
 
   const increaseFontSize = useCallback(() => {
-    setFontSize((prev) => Math.min(prev + 2, 48));
+    setFontSize((prev) => Math.min(prev + FONT_SIZE.STEP, FONT_SIZE.MAX));
   }, []);
 
-  // 팝업 닫기 함수 - useCallback으로 최적화
+  // 팝업 닫기 함수
   const handlePopupClose = useCallback(() => {
     setPopup(null);
   }, [setPopup]);
 
-  // 컨테이너 스타일 - useMemo로 최적화
+  // 컨테이너 스타일
   const containerStyle = useMemo(
     () => ({
       fontSize: `${fontSize}px`,
-      userSelect: "text", // 모든 모드에서 텍스트 선택 활성화
-      cursor: "text", // 모든 모드에서 텍스트 커서
+      userSelect: "text",
+      cursor: "text",
     }),
     [fontSize]
   );
@@ -526,11 +502,11 @@ export default function GenericViewer({
 
         {/* 텍스트 본문 렌더링 */}
         <div
-          ref={contentRef} // 새로운 ref 추가
+          ref={contentRef}
           className="viewer-pre viewer-text-content"
           style={containerStyle}
-          onSelect={() => handleTextSelection(containerRef)}
-          onMouseUp={() => handleTextSelection(containerRef)}
+          onSelect={handleTextSelection}
+          onMouseUp={handleTextSelection}
         >
           {renderHighlightedContent(content, handleHighlightClick)}
         </div>
