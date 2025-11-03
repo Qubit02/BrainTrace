@@ -129,13 +129,13 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
         if not s:
             continue
 
-        # [신규] 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
+        # 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
         sub_fragments = re.split(list_marker_split_pattern, s)
 
         for fragment in sub_fragments:
             fragment = fragment.strip()
 
-            # [신규] 목록 마커("1. ", "a. ")를 감지하고 삭제
+            # 목록 마커("1. ", "a. ")를 감지하고 삭제
             fragment = re.sub(list_marker_pattern_for_removal, '', fragment)
             fragment = fragment.strip() # 마커 삭제 후 남을 수 있는 공백 제거
             
