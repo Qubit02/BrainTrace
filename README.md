@@ -278,74 +278,74 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
    ```python
    # backend/services/node_gen_ver5.py (발췌)
    ))
-def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
-    """
-    최종적으로 분할된 청크를 입력으로 호출됩니다.
-    각 청크에서 중요한 키워드를 골라 노드를 생성하고
-    keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
-    이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
-    """
-    nodes=[]
-    edges=[]
-
-    # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
-    # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
-    phrase_info = defaultdict(set)
-    lang, _ = langid.classify("".join(sentences))
-    phrases, sentences = split_into_tokenized_sentence(sentences)
-
-    for p in phrases:
-        for token in p["tokens"]:
-            phrase_info[token].add(p["index"])
-
-    
-    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
-    groups=group_phrases(phrases, phrase_scores, sim_matrix)
-
-    #score순으로 topic keyword를 정렬
-    sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
-    sorted_keywords=[k[0] for k in sorted_keywords]
-
-    contents=phrase_info.keys()
-
-    cnt=0
-    if keyword != "":
-        if keyword[-1]=="*":
-            find = keyword[:-1]
-        else:
-            find = keyword
-        if find in contents:
-            nodes.append(make_node(keyword, list(phrase_info[find]), sentences, id, all_embeddings[find]))
-        else:
-            return [], [], already_made
-
-    for t in sorted_keywords:
-        if keyword != "":
-            edges+=make_edges(sentences, keyword, [t], phrase_info)
-            print(edges)
-        else:
-            break
-        if t not in already_made:
-            nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
-            already_made.append(t)
-            cnt+=1
-            
-            if t in groups:
-                related_keywords=[]
-                for idx in range(min(len(groups[t]), 5)):
-                    if phrases[idx] not in already_made:
-                        related_keywords.append(phrases[idx])
-                        already_made.append(phrases[idx])
-                        node=make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]])
-                        nodes.append(node)
-                        edge=make_edges(sentences, t, related_keywords, phrase_info)
-                        edges+=edge  
-                    
-
-                    
-        if cnt==5:
-            break
-    return nodes, edges, already_made
+   def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+       """
+       최종적으로 분할된 청크를 입력으로 호출됩니다.
+       각 청크에서 중요한 키워드를 골라 노드를 생성하고
+       keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
+       이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
+       """
+       nodes=[]
+       edges=[]
+   
+       # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
+       # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
+       phrase_info = defaultdict(set)
+       lang, _ = langid.classify("".join(sentences))
+       phrases, sentences = split_into_tokenized_sentence(sentences)
+   
+       for p in phrases:
+           for token in p["tokens"]:
+               phrase_info[token].add(p["index"])
+   
+       
+       phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
+       groups=group_phrases(phrases, phrase_scores, sim_matrix)
+   
+       #score순으로 topic keyword를 정렬
+       sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
+       sorted_keywords=[k[0] for k in sorted_keywords]
+   
+       contents=phrase_info.keys()
+   
+       cnt=0
+       if keyword != "":
+           if keyword[-1]=="*":
+               find = keyword[:-1]
+           else:
+               find = keyword
+           if find in contents:
+               nodes.append(make_node(keyword, list(phrase_info[find]), sentences, id, all_embeddings[find]))
+           else:
+               return [], [], already_made
+   
+       for t in sorted_keywords:
+           if keyword != "":
+               edges+=make_edges(sentences, keyword, [t], phrase_info)
+               print(edges)
+           else:
+               break
+           if t not in already_made:
+               nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
+               already_made.append(t)
+               cnt+=1
+               
+               if t in groups:
+                   related_keywords=[]
+                   for idx in range(min(len(groups[t]), 5)):
+                       if phrases[idx] not in already_made:
+                           related_keywords.append(phrases[idx])
+                           already_made.append(phrases[idx])
+                           node=make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]])
+                           nodes.append(node)
+                           edge=make_edges(sentences, t, related_keywords, phrase_info)
+                           edges+=edge  
+                       
+   
+                       
+           if cnt==5:
+               break
+       return nodes, edges, already_made
 
    ```
 
