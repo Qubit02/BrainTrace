@@ -425,8 +425,9 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
         for token in p["tokens"]:
             phrase_info[token].add(p["index"])
 
-    
+    # 각 키워드의 중요도 점수를 산출
     phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
+    # 유사도가 높은 키워드들은 그룹으로 만들어, 그룹 내 키워드가 노드로 선택되면 같은 그룹 멤버들은 하위 노드로 생성됨
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     #score순으로 topic keyword를 정렬
