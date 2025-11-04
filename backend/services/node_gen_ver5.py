@@ -408,9 +408,9 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     """
     최종적으로 분할된 청크를 입력으로 호출됩니다.
-    각 청크에서 중요한 키워드를 골라 노드를 생성하고
-    keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
-    이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
+    청크 내부의 키워드들의 중요도 점수를 계산하여 이를 기준으로 노드와 엣지를 생성합니다.
+    생성된 노드를 {청킹 함수에서 전달한 주제 키워드 노드}와 엣지로 연결하여,
+    청킹 함수가 생성한 지식 그래프와 연결합니다.
     """
     nodes=[]
     edges=[]
