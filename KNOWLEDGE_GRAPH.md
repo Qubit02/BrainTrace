@@ -24,7 +24,7 @@
 #### 노드(Node)
 
 - **정의**: 문서에서 추출된 핵심 개념이나 개체를 나타냅니다.
-- **BrainTrace에서의 역할**: AI 모델을 통해 텍스트에서 중요한 개념들을 노드로 추출합니다.
+- **BrainTrace에서의 역할**: 자체 개발 로직을 통해 텍스트에서 중요한 개념들을 노드로 추출합니다.
 - **속성**: `name`(개체명), `label`(분류), `description`(설명) 등.
 
 #### 엣지(Edge)
@@ -123,76 +123,302 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200):
     return text_splitter.split_text(text)
 ```
 
-### 3.2 AI 모델 기반 지식 추출
+### 3.2 자체 개발 로직 기반 지식 추출
 
-BrainTrace는 AI 모델(OpenAI GPT 또는 Ollama)을 사용하여 텍스트에서 구조화된 지식 그래프 정보를 추출합니다.
+BrainTrace는 자체 개발한 로직을 사용하여 텍스트에서 구조화된 지식 그래프 정보를 추출합니다.
 
-#### 3.2.1 프롬프트 생성
+#### 3.2.1 전체 파이프라인: extract_graph_components
 
-AI 모델에게 구조화된 프롬프트를 제공하여 일관된 결과를 얻습니다:
-
-```python
-# backend/services/openai_service.py - 실제 프로젝트 코드
-def _extract_from_chunk(self, chunk: str, source_id: str):
-    # AI 모델에게 구조화된 프롬프트 제공
-    prompt = (
-        "다음 텍스트를 분석해서 노드와 엣지 정보를 추출해줘. "
-        "노드는 { \"label\": string, \"name\": string, \"description\": string } 형식의 객체 배열, "
-        "엣지는 { \"source\": string, \"target\": string, \"relation\": string } 형식의 객체 배열로 출력해줘. "
-        "여기서 source와 target은 노드의 name을 참조해야 하고, source_id는 사용하면 안 돼. "
-        "출력 결과는 반드시 아래 JSON 형식을 준수해야 해:\n"
-        "{\n"
-        '  "nodes": [ ... ],\n'
-        '  "edges": [ ... ]\n'
-        "}\n"
-        "문장에 있는 모든 개념을 노드로 만들어줘"
-        "각 노드의 description은 해당 노드를 간단히 설명하는 문장이어야 해. "
-        "만약 텍스트 내에 하나의 긴 description에 여러 개념이 섞여 있다면, 반드시 개념 단위로 나누어 여러 노드를 생성해줘. "
-        "description은 하나의 개념에 대한 설명만 들어가야 해"
-        "노드의 label과 name은 한글로 표현하고, 불필요한 내용이나 텍스트에 없는 정보는 추가하지 말아줘. "
-        "노드와 엣지 정보가 추출되지 않으면 빈 배열을 출력해줘.\n\n"
-        "json 형식 외에는 출력 금지"
-        f"텍스트: {chunk}"
-    )
-
-    # OpenAI API 호출 (JSON 응답 강제)
-    completion = client.chat.completions.create(
-        model=self.model_name,
-        messages=[
-            {"role": "system", "content": "너는 텍스트에서 구조화된 노드와 엣지를 추출하는 전문가야. 엣지의 source와 target은 반드시 노드의 name을 참조해야 해."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=5000,
-        temperature=0.3,
-        response_format={"type": "json_object"}
-    )
-
-    content = completion.choices[0].message.content
-    data = json.loads(content)
-```
-
-#### 3.2.2 노드/엣지 추출
+자체 개발 로직의 메인 함수로, 텍스트를 입력받아 노드와 엣지를 추출합니다:
 
 ```python
-# backend/services/ollama_service.py - 실제 프로젝트 코드
-def extract_graph_components(self, text: str, source_id: str):
-    all_nodes, all_edges = [], []
-    chunks = chunk_text(text) if len(text) >= 2000 else [text]
-    logging.info(f"총 {len(chunks)}개 청크로 분할")
+# backend/services/manual_chunking_sentences.py - 실제 프로젝트 코드
+def extract_graph_components(text: str, id: tuple):
+    """전체 파이프라인을 수행해 노드/엣지를 생성합니다.
 
-    for idx, chunk in enumerate(chunks, 1):
-        logging.info(f"청크 {idx}/{len(chunks)} 처리")
-        nodes, edges = self._extract_from_chunk(chunk, source_id)
-        all_nodes.extend(nodes)
-        all_edges.extend(edges)
+    단계:
+      1) 문장 분할 및 명사구 기반 토큰화
+      2) 텍스트 길이에 따라 재귀 청킹 사용 여부 결정
+      3) 청킹 결과 및 문장 인덱스를 통해 노드/엣지 생성
 
-    return (
-        self._remove_duplicate_nodes(all_nodes),
-        self._remove_duplicate_edges(all_edges)
-    )
+    Returns:
+        Tuple[List[Dict], List[Dict]]: (노드 리스트, 엣지 리스트)
+    """
+    brain_id, source_id = id
+
+    # 모든 노드와 엣지를 저장할 리스트
+    all_nodes = []
+    all_edges = []
+    chunks = []
+
+    # 1. 문장 단위로 분할 및 토큰화
+    tokenized, sentences = split_into_tokenized_sentence(text)
+
+    # 2. 텍스트 길이에 따른 처리 분기
+    if len(text) >= 2000:
+        # 긴 텍스트: 재귀 청킹 수행
+        chunks, nodes_and_edges, already_made = recurrsive_chunking(
+            tokenized, source_id, 0, "", [], None, 0
+        )
+        if chunks == []:
+            logging.info("chunking에 실패하였습니다.")
+        logging.info("chunking이 완료되었습니다.")
+        all_nodes = nodes_and_edges["nodes"]
+        all_edges = nodes_and_edges["edges"]
+    else:
+        # 짧은 텍스트: LDA로 키워드 추출 후 하나의 청크로 처리
+        top_keyword, _ = lda_keyword_and_similarity(tokenized)
+        if len(top_keyword) < 1:
+            logging.error("LDA keyword 추출에 실패했습니다.")
+        already_made = [top_keyword]
+        top_keyword += "*"
+        chunk = list(range(len(sentences)))
+        chunks = [{"chunks": chunk, "keyword": top_keyword}]
+        all_nodes.append({
+            "name": top_keyword,
+            "label": top_keyword,
+            "source_id": source_id,
+            "descriptions": []
+        })
+        logging.info("chunking없이 노드와 엣지를 추출합니다.")
+
+    # 3. 노드의 description을 문장 인덱스에서 실제 텍스트로 변환
+    for node in all_nodes:
+        resolved_description = ""
+        if node["descriptions"] != []:
+            resolved_description = "".join([
+                sentences[idx] for idx in node["descriptions"]
+            ])
+
+        node["original_sentences"] = [{
+            "original_sentence": resolved_description,
+            "source_id": source_id,
+            "score": 1.0
+        }]
+        node["descriptions"] = [{
+            "description": resolved_description,
+            "source_id": source_id
+        }]
+
+        store_embeddings(node, brain_id, None)
+
+    # 4. 각 청크에서 추가 노드/엣지 추출
+    for c in chunks:
+        if "chunks" in c:
+            current_chunk = c["chunks"]
+            relevant_sentences = [sentences[idx] for idx in current_chunk]
+            relevant_sentences = "\n".join(relevant_sentences)
+            if c["keyword"] != "":
+                nodes, edges, already_made = _extract_from_chunk(
+                    relevant_sentences, id, c["keyword"], already_made
+                )
+            all_nodes += nodes
+            all_edges += edges
+
+    logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
+    return all_nodes, all_edges
 ```
 
-#### 3.2.3 original_sentences 계산
+#### 3.2.2 재귀 청킹: recurrsive_chunking
+
+텍스트를 유사도 기반으로 재귀적으로 분할하여 계층적 지식 그래프 구조를 생성합니다:
+
+```python
+# backend/services/manual_chunking_sentences.py - 실제 프로젝트 코드
+def recurrsive_chunking(
+    chunk: list[int],
+    source_id: str,
+    depth: int,
+    top_keyword: str,
+    already_made: list[str],
+    similarity_matrix,
+    threshold: int
+):
+    """유사도/키워드 기반 재귀 청킹.
+
+    로직 요약:
+      - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
+      - depth>0에서는 인접 유사도/토큰 수/깊이 제한으로 종료 여부 판단
+      - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
+      - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
+    """
+    result = []
+    nodes_and_edges = {"nodes": [], "edges": []}
+    chunk_indices = [c["index"] for c in chunk]
+
+    if depth == 0:
+        # LDA로 전체 텍스트의 키워드와 유사도 행렬 계산
+        top_keyword, similarity_matrix = lda_keyword_and_similarity(chunk)
+        already_made.append(top_keyword)
+        top_keyword += "*"
+
+        # 지식 그래프의 루트 노드 생성
+        top_node = {
+            "label": top_keyword,
+            "name": top_keyword,
+            "descriptions": [],
+            "source_id": source_id
+        }
+        nodes_and_edges["nodes"].append(top_node)
+
+        # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
+        if similarity_matrix.size > 0:
+            flattened = similarity_matrix[
+                np.triu_indices_from(similarity_matrix, k=1)
+            ]
+            threshold = np.quantile(flattened, 0.25)
+        else:
+            threshold = 0.5
+
+    else:
+        # 종료 조건 체크
+        flag = check_termination_condition(chunk, depth)
+
+        if flag == 3:
+            result = nonrecurrsive_chunking(
+                chunk, similarity_matrix, top_keyword
+            )
+            return result, nodes_and_edges, already_made
+
+        if flag != -1:
+            result += [{"chunks": chunk_indices, "keyword": top_keyword}]
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
+            return result, nodes_and_edges, already_made
+
+    # 입력 그룹을 더 작은 그룹으로 분할
+    new_chunk_groups = grouping_into_smaller_chunks(
+        chunk_indices, similarity_matrix, threshold
+    )
+
+    # 생성된 작은 그룹들의 키워드를 추출하고 노드&엣지 생성
+    nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(
+        chunk, new_chunk_groups, top_keyword, already_made, source_id
+    )
+    nodes_and_edges["nodes"] += nodes
+    nodes_and_edges["edges"] += edges
+
+    # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
+    current_result = []
+    for idx, c in enumerate(go_chunk):
+        if idx > len(keywords) - 1 or len(keywords) == 0:
+            break
+        result, graph, already_made_updated = recurrsive_chunking(
+            c, source_id, depth + 1, keywords[idx],
+            already_made, similarity_matrix, threshold * 1.1
+        )
+        already_made = already_made_updated
+        current_result += result
+        nodes_and_edges["nodes"] += graph["nodes"]
+        nodes_and_edges["edges"] += graph["edges"]
+
+    return current_result, nodes_and_edges, already_made
+```
+
+#### 3.2.3 청크에서 노드/엣지 추출: \_extract_from_chunk
+
+최종적으로 분할된 청크에서 명사구를 추출하고, TF-IDF와 임베딩 유사도를 활용해 노드와 엣지를 생성합니다:
+
+```python
+# backend/services/node_gen_ver5.py - 실제 프로젝트 코드
+def _extract_from_chunk(
+    sentences: str,
+    id: tuple,
+    keyword: str,
+    already_made: list[str]
+) -> tuple[dict, dict, list[str]]:
+    """최종적으로 분할된 청크를 입력으로 호출됩니다.
+    각 청크에서 중요한 키워드를 골라 노드를 생성하고
+    keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
+    """
+    nodes = []
+    edges = []
+
+    # 명사구 추출 및 등장 위치 인덱스 수집
+    phrase_info = defaultdict(set)
+    lang, _ = langid.classify("".join(sentences))
+    phrases, sentences = split_into_tokenized_sentence(sentences)
+
+    for p in phrases:
+        for token in p["tokens"]:
+            phrase_info[token].add(p["index"])
+
+    # TF-IDF와 임베딩 유사도 기반으로 점수 계산
+    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(
+        phrase_info, sentences, lang
+    )
+
+    # 유사한 명사구들을 그룹으로 묶기
+    groups = group_phrases(phrases, phrase_scores, sim_matrix)
+
+    # 점수 순으로 정렬
+    sorted_keywords = sorted(
+        phrase_scores.items(),
+        key=lambda x: x[1][0],
+        reverse=True
+    )
+    sorted_keywords = [k[0] for k in sorted_keywords]
+
+    # 키워드 노드 생성
+    if keyword != "":
+        if keyword[-1] == "*":
+            find = keyword[:-1]
+        else:
+            find = keyword
+        if find in phrase_info:
+            nodes.append(make_node(
+                keyword,
+                list(phrase_info[find]),
+                sentences,
+                id,
+                all_embeddings[find]
+            ))
+        else:
+            return [], [], already_made
+
+    # 상위 키워드로 노드 및 엣지 생성
+    cnt = 0
+    for t in sorted_keywords:
+        if keyword != "":
+            edges += make_edges(sentences, keyword, [t], phrase_info)
+
+        if t not in already_made:
+            nodes.append(make_node(
+                t,
+                list(phrase_info[t]),
+                sentences,
+                id,
+                all_embeddings[t]
+            ))
+            already_made.append(t)
+            cnt += 1
+
+            # 관련 키워드 그룹 처리
+            if t in groups:
+                related_keywords = []
+                for idx in range(min(len(groups[t]), 5)):
+                    if phrases[idx] not in already_made:
+                        related_keywords.append(phrases[idx])
+                        already_made.append(phrases[idx])
+                        node = make_node(
+                            phrases[idx],
+                            list(phrase_info[t]),
+                            sentences,
+                            id,
+                            all_embeddings[phrases[idx]]
+                        )
+                        nodes.append(node)
+                        edge = make_edges(
+                            sentences, t, related_keywords, phrase_info
+                        )
+                        edges += edge
+
+        if cnt == 5:
+            break
+
+    return nodes, edges, already_made
+```
+
+#### 3.2.4 original_sentences 계산
 
 각 노드의 description과 원문 문장들의 의미적 유사도를 계산하여 가장 관련성 높은 문장들을 해당 노드의 `original_sentences`로 할당합니다:
 
@@ -237,41 +463,19 @@ for node in valid_nodes:
         }]
 ```
 
-#### 3.2.4 검증 및 후처리
+#### 3.2.5 주요 알고리즘 설명
 
-```python
-# backend/services/ollama_service.py - 실제 프로젝트 코드
-def _extract_from_chunk(self, chunk: str, source_id: str):
-    # ... AI 모델 호출 ...
+자체 개발 로직의 핵심 알고리즘:
 
-    # 노드 검증 및 정규화
-    valid_nodes = []
-    for node in data.get("nodes", []):
-        if not all(k in node for k in ("label", "name")):
-            logging.warning("잘못된 노드: %s", node)
-            continue
+1. **LDA 기반 토픽 추출**: gensim의 LDA 모델을 사용하여 텍스트의 주요 토픽 키워드를 추출하고, 문장 간 토픽 분포 유사도를 계산합니다.
 
-        node.setdefault("descriptions", [])
-        node["source_id"] = source_id
+2. **TF-IDF 기반 키워드 추출**: 각 청크에서 TF-IDF 점수가 높은 명사구를 추출하여 노드 후보로 사용합니다.
 
-        # AI가 생성한 "description"을 "descriptions" 배열로 변환
-        if desc := node.pop("description", None):
-            node["descriptions"].append({"description": desc, "source_id": source_id})
+3. **임베딩 유사도 기반 그룹핑**: 명사구의 임베딩 벡터를 계산하고, 코사인 유사도를 기반으로 유사한 명사구들을 그룹으로 묶어 중복 노드 생성을 방지합니다.
 
-        valid_nodes.append(node)
+4. **재귀 청킹**: 텍스트를 유사도 기반으로 재귀적으로 분할하여 계층적 지식 그래프 구조를 생성합니다. 깊이 제한(depth 5)과 토큰 수 제한을 통해 무한 분할을 방지합니다.
 
-    # 엣지 검증 (source와 target이 실제 노드 name 참조인지 확인)
-    node_names = {n["name"] for n in valid_nodes}
-    valid_edges = []
-    for edge in data.get("edges", []):
-        if all(k in edge for k in ("source", "target", "relation")):
-            if edge["source"] in node_names and edge["target"] in node_names:
-                valid_edges.append(edge)
-            else:
-                logging.warning("잘못된 엣지 참조: %s", edge)
-        else:
-            logging.warning("스키마 누락 엣지: %s", edge)
-```
+5. **명사구 추출**: 한국어는 Okt 형태소 분석기를, 영어는 spaCy를 사용하여 각 문장에서 명사구를 추출합니다.
 
 ---
 
@@ -879,7 +1083,7 @@ BrainTrace의 지식 그래프 시스템은 GraphRAG 방식을 통해 문서 간
 
 주요 특징:
 
-- **자동화된 지식 추출**: AI 모델을 통한 구조화된 정보 추출
+- **자동화된 지식 추출**: 자체 개발 로직을 통한 구조화된 정보 추출
 - **유연한 탐색**: 빠른 탐색과 깊은 탐색 모드를 통한 사용자 맞춤형 답변
 - **증거 기반 답변**: 모든 답변에 출처 노드와 원문 문장을 함께 제공
 - **정량적 품질 평가**: 세 가지 지표를 통한 답변 정확도 계산
