@@ -487,8 +487,7 @@ echo "✅ Neo4j $VERSION 설치 완료"
 #### 1.2.3 백엔드 실행
 
 ```bash
-cd frontend
-npm install
+py main.py
 ```
 
 ### 1.3 프론트엔드 실행
