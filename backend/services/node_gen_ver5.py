@@ -106,7 +106,6 @@ def compute_phrase_embedding(
     phrase: str,
     indices: List[int],
     sentences: List[str],
-    total_sentences: int,
     lang:str
 ) -> tuple[str, tuple[float, np.ndarray], np.ndarray]:
     """
@@ -114,8 +113,7 @@ def compute_phrase_embedding(
     - phrase: 현재 구하는 단어/구절
     - indices: phrase가 등장한 문장 인덱스 리스트
     - sentences: 전체 문장 리스트
-    - total_sentences: 전체 문장 수
-    반환: (phrase, (tf, avg_emb), embeddings)
+    반환: (phrase, avg_emb, embeddings)
     """
     # 강조 표시
     highlighted_texts = [sentences[idx].replace(phrase, f"[{phrase}]") for idx in indices]
@@ -128,10 +126,7 @@ def compute_phrase_embedding(
     avg_emb = np.mean(embeddings, axis=0)
     avg_emb = np.ravel(avg_emb)  # shape (D,)
 
-    # TF (빈도 비율)
-    tf = len(indices) / total_sentences
-
-    return phrase, (tf, avg_emb), embeddings
+    return phrase, avg_emb, embeddings
 
     
 # 각 키워드의 중요도 점수 계산 함수
@@ -139,7 +134,8 @@ def compute_phrase_embedding(
 def compute_scores(
     phrase_info: List[dict], 
     sentences: List[str],
-    lang:str
+    lang:str,
+    tfidf:dict
 ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
     scores = {}
     all_embeddings = {}
@@ -152,13 +148,13 @@ def compute_scores(
     # 또한 각 키워드의 tf 점수를 산출함
     with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
-                executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences, lang)
+                executor.submit(compute_phrase_embedding, phrase, indices, sentences, lang)
                 for phrase, indices in phrase_info.items()
             ]
 
             for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
-                phrase, (tf, avg_emb), embedded_vec = future.result()
-                phrase_embeddings[phrase] = (tf, avg_emb)
+                phrase, avg_emb, embedded_vec = future.result()
+                phrase_embeddings[phrase] =  avg_emb
                 all_embeddings[phrase]=embedded_vec
                 central_vecs.append(avg_emb)
 
@@ -173,8 +169,8 @@ def compute_scores(
     emb_list = []
 
     for phrase in phrases:
-        tf, emb = phrase_embeddings[phrase]
-        tf_adj = tf * cosine_similarity([emb], [central_vec])[0][0]
+        emb = phrase_embeddings[phrase]
+        tf_adj = tfidf[phrase] * cosine_similarity([emb], [central_vec])[0][0]
         scores[phrase] = [tf_adj, emb]
         tf_list.append(tf_adj)
         emb_list.append(emb)
@@ -239,14 +235,20 @@ def make_edges(sentences:list[str], source_keyword:str, target_keywords:list[str
         if t != source:
             target_idx=[idx for idx in phrase_info[t]]
             relation=""
+            cnt=0
             for s_idx in source_idx:
+                if cnt>=4:
+                    break
                 if s_idx in target_idx:
-                    relation+=sentences[s_idx]
+                    edges.append({"source":source_keyword, 
+                    "target":t,
+                    "relation":sentences[s_idx]})
+                    cnt+=1
             
-            relation="관련" if relation=="" else relation
-            edges.append({"source":source_keyword, 
-                "target":t,
-                "relation":relation})
+            if cnt==0:
+                edges.append({"source":source_keyword, 
+                    "target":t,
+                    "relation":"관련"})
         
     return edges
 
@@ -286,7 +288,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     """
     텍스트를 문장으로 분할합니다.
 
-    수정된 로직:
+    로직:
     1. 텍스트를 줄바꿈 문자(\\n)를 기준으로 텍스트 덩어리와 \\n으로 분리합니다.
     2. 텍스트 덩어리를 순회하며 \\n을 만났을 때, 그 *이전까지의 텍스트* 길이를 확인합니다.
     3. 길이가 25자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (제목/소제목 등을 감지하기 위함)
@@ -381,9 +383,11 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 
     texts = final_sentences
 
+    # 현재는 한국어만 지원
+    lang="ko"
     # 각 문장의 언어를 감지하여 맞는 임베딩 모델로 임베딩
     for idx, sentence in enumerate(texts):
-        lang = check_lang(sentence)
+        #lang = check_lang(sentence)
 
         # 한국어 임베딩 모델 호출
         if lang == "ko":
@@ -396,7 +400,6 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 
         if not tokens:
             tokens = [sentence.strip()]  # fallback
-            logging.error(f"한국어도 영어도 아닌 텍스트가 포함되어있습니다: {sentence}")
 
         tokenized_sentences.append({"tokens": tokens, "index": idx})
 
@@ -405,7 +408,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 
         
 
-def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
+def _extract_from_chunk(phrases:list[list[str]], sentences: list[str], id:tuple ,keyword: str, already_made:list[str], tfidf:dict) -> tuple[dict, dict, list[str]]:
     """
     최종적으로 분할된 청크를 입력으로 호출됩니다.
     청크 내부의 키워드들의 중요도 점수를 계산하여 이를 기준으로 노드와 엣지를 생성합니다.
@@ -418,15 +421,14 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
     # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
     # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
     phrase_info = defaultdict(set)
-    lang, _ = langid.classify("".join(sentences))
-    phrases, sentences = split_into_tokenized_sentence(sentences)
+    lang ="ko"
 
-    for p in phrases:
-        for token in p["tokens"]:
-            phrase_info[token].add(p["index"])
-
+    for idx, p in enumerate(phrases):
+        for token in p:
+            phrase_info[token].add(idx)
+    
     # 각 키워드의 중요도 점수를 산출
-    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
+    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang, tfidf)
     # 유사도가 높은 키워드들은 그룹으로 만들어, 그룹 내 키워드가 노드로 선택되면 같은 그룹 멤버들은 하위 노드로 생성됨
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
@@ -453,7 +455,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
         # {청크의 주제 키워드 노드}와 {청크 내부 중요도 점수 상위 키워드} 간의 엣지를 생성
         if keyword != "":
             edges+=make_edges(sentences, keyword, [t], phrase_info)
-            print(edges)
+
         else:
             break
         if t not in already_made:
