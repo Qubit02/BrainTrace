@@ -279,75 +279,133 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
    # backend/services/node_gen_ver5.py (발췌)
    ))
    def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
-       """
-       최종적으로 분할된 청크를 입력으로 호출됩니다.
-       각 청크에서 중요한 키워드를 골라 노드를 생성하고
-       keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
-       이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
-       """
-       nodes=[]
-       edges=[]
-   
-       # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
-       # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
-       phrase_info = defaultdict(set)
-       lang, _ = langid.classify("".join(sentences))
-       phrases, sentences = split_into_tokenized_sentence(sentences)
-   
-       for p in phrases:
-           for token in p["tokens"]:
-               phrase_info[token].add(p["index"])
-   
-       
-       phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
-       groups=group_phrases(phrases, phrase_scores, sim_matrix)
-   
-       #score순으로 topic keyword를 정렬
-       sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
-       sorted_keywords=[k[0] for k in sorted_keywords]
-   
-       contents=phrase_info.keys()
-   
-       cnt=0
-       if keyword != "":
-           if keyword[-1]=="*":
-               find = keyword[:-1]
-           else:
-               find = keyword
-           if find in contents:
-               nodes.append(make_node(keyword, list(phrase_info[find]), sentences, id, all_embeddings[find]))
-           else:
-               return [], [], already_made
-   
-       for t in sorted_keywords:
-           if keyword != "":
-               edges+=make_edges(sentences, keyword, [t], phrase_info)
-               print(edges)
-           else:
-               break
-           if t not in already_made:
-               nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
-               already_made.append(t)
-               cnt+=1
-               
-               if t in groups:
-                   related_keywords=[]
-                   for idx in range(min(len(groups[t]), 5)):
-                       if phrases[idx] not in already_made:
-                           related_keywords.append(phrases[idx])
-                           already_made.append(phrases[idx])
-                           node=make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]])
-                           nodes.append(node)
-                           edge=make_edges(sentences, t, related_keywords, phrase_info)
-                           edges+=edge  
-                       
-   
-                       
-           if cnt==5:
-               break
-       return nodes, edges, already_made
+    """
+    최종적으로 분할된 청크를 입력으로 호출됩니다.
+    청크 내부의 키워드들의 중요도 점수를 계산하여 이를 기준으로 노드와 엣지를 생성합니다.
+    생성된 노드를 {청킹 함수에서 전달한 주제 키워드 노드}와 엣지로 연결하여,
+    청킹 함수가 생성한 지식 그래프와 연결합니다.
+    """
+    nodes=[]
+    edges=[]
+
+    # 명사구로 해당 명사구가 등장한 모든 문장 index를 검색할 수 있도록
+    # 각 명사구를 key로, 명사구가 등장한 문장의 인덱스들의 list를 value로 하는 딕셔너리를 생성합니다.
+    phrase_info = defaultdict(set)
+    lang, _ = langid.classify("".join(sentences))
+    phrases, sentences = split_into_tokenized_sentence(sentences)
+
+    for p in phrases:
+        for token in p["tokens"]:
+            phrase_info[token].add(p["index"])
+
+    # 각 키워드의 중요도 점수를 산출
+    phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
+    # 유사도가 높은 키워드들은 그룹으로 만들어, 그룹 내 키워드가 노드로 선택되면 같은 그룹 멤버들은 하위 노드로 생성됨
+    groups=group_phrases(phrases, phrase_scores, sim_matrix)
+
+    #score순으로 topic keyword를 정렬
+    sorted_keywords = sorted(phrase_scores.items(), key=lambda x: x[1][0], reverse=True)
+    sorted_keywords=[k[0] for k in sorted_keywords]
+
+    contents=phrase_info.keys()
+
+    # 청킹함수에서 전달받은 청크의 주제 키워드를 노드로 생성
+    cnt=0
+    if keyword != "":
+        if keyword[-1]=="*":
+            find = keyword[:-1]
+        else:
+            find = keyword
+        if find in contents:
+            nodes.append(make_node(keyword, list(phrase_info[find]), sentences, id, all_embeddings[find]))
+        else:
+            return [], [], already_made
+
+    # 점수가 높은 키워드 중 중복(이미 노드로 만들어진 키워드)을 제외하여 상위 5개를 노드로 생성
+    for t in sorted_keywords:
+        # {청크의 주제 키워드 노드}와 {청크 내부 중요도 점수 상위 키워드} 간의 엣지를 생성
+        if keyword != "":
+            edges+=make_edges(sentences, keyword, [t], phrase_info)
+            print(edges)
+        else:
+            break
+        if t not in already_made:
+            nodes.append(make_node(t, list(phrase_info[t]), sentences, id, all_embeddings[t]))
+            already_made.append(t)
+            cnt+=1
+            
+            # 노드로 선정된 키워드와 유사도가 높은 키워드가 있으면 하위노드로 생성합니다 
+            if t in groups:
+                related_keywords=[]
+                for idx in range(min(len(groups[t]), 5)):
+                    if phrases[idx] not in already_made:
+                        related_keywords.append(phrases[idx])
+                        already_made.append(phrases[idx])
+                        node=make_node(phrases[idx], list(phrase_info[t]), sentences, id, all_embeddings[phrases[idx]])
+                        nodes.append(node)
+                        edge=make_edges(sentences, t, related_keywords, phrase_info)
+                        edges+=edge  
+                    
+        if cnt==5:
+            break
+    return nodes, edges, already_made
 
    ```
+중요도 점수 산출
+ 
+    ```python
+    # 각 키워드의 중요도 점수 계산 함수
+    # 중심 벡터와의 유사도로 중심성 점수를 계산하고 tf 점수와 곱하여 중요도 점수를 산출
+    def compute_scores(
+        phrase_info: List[dict], 
+        sentences: List[str],
+        lang:str
+    ) -> tuple[Dict[str, tuple[float, np.ndarray]], List[str], np.ndarray]:
+        scores = {}
+        all_embeddings = {}
+        total_sentences = len(sentences)
+   
+        phrase_embeddings = {}
+        central_vecs = []
+   
+       # 각 키워드가 등장한 문장을 임베딩한 후 평균을 내어, 키워드 별로 의미 벡터를 생성
+       # 또한 각 키워드의 tf 점수를 산출함
+       with ThreadPoolExecutor(max_workers=4) as executor:
+               futures = [
+                   executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences, lang)
+                   for phrase, indices in phrase_info.items()
+               ]
+   
+               for future in tqdm(as_completed(futures), total=len(futures), desc="Embedding phrases"):
+                   phrase, (tf, avg_emb), embedded_vec = future.result()
+                   phrase_embeddings[phrase] = (tf, avg_emb)
+                   all_embeddings[phrase]=embedded_vec
+                   central_vecs.append(avg_emb)
+   
+       # 청크 내 모든 문장들의 임베딩 값의 평균으로 청크의 주제를 나타내는 중심 벡터를 산출
+       central_vec = np.mean(central_vecs, axis=0)
+   
+       # 중심 벡터와의 유사도를 계산하여 각 키워드의 중심성 점수 산출
+       # tf 점수와 곱하여 각 키워드의 중요도 점수를 최종적으로 계산
+       # 중요도 점수 상위 5개의 키워드가 노드로 선택됨
+       phrases = list(phrase_embeddings.keys())
+       tf_list = []
+       emb_list = []
+   
+       for phrase in phrases:
+           tf, emb = phrase_embeddings[phrase]
+           tf_adj = tf * cosine_similarity([emb], [central_vec])[0][0]
+           scores[phrase] = [tf_adj, emb]
+           tf_list.append(tf_adj)
+           emb_list.append(emb)
+   
+       emb_array = np.stack(emb_list)
+       sim_matrix = cosine_similarity(emb_array)
+   
+       return scores, phrases, sim_matrix, all_embeddings
+   ```
+    
+    
 
 5. **그래프 병합**:
    모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
