@@ -37,39 +37,65 @@ okt = Okt()
 stop_words = ['하다', '되다', '이다', '있다', '같다', '그리고', '그런데', '하지만', '또한', "매우", "것", "수", "때문에", "그러나", "나름", "아마", "대한"]
 
 
-def extract_keywords_by_tfidf(tokenized_chunks: list[str]):
+def extract_keywords_by_tfidf(tokenized_chunks: list[list[str]]):
     """토큰화된 문단 리스트에서 TF-IDF 상위 키워드를 추출합니다.
 
     Args:
-        tokenized_chunks: 각 문단의 토큰 리스트들의 리스트
+        tokenized_chunks: 각 그룹의 토큰 리스트들의 리스트
 
     Returns:
-        List[List[str]]: 문단별 키워드 리스트들의 리스트
+        all_sorted_keywords: 그룹별 키워드 리스트들의 리스트
     """
-    # 각 단어의 TF-IDF 점수를 계산한 메트릭스를 생성
-    vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=1000)
-    text_chunks = [' '.join(chunk) for chunk in tokenized_chunks]
-    tfidf_matrix = vectorizer.fit_transform(text_chunks)
+    # 1. Vectorizer 정의
+    vectorizer = TfidfVectorizer(
+        stop_words=stop_words,
+        max_features=1000,
+        tokenizer=lambda x: x,      # 입력(토큰 리스트)을 그대로 사용
+        preprocessor=lambda x: x,   # 전처리 생략
+        token_pattern=None,         # 경고 방지
+        lowercase=False             # 전처리/토큰화를 생략할 시 'list' object has no attribute 'lower' 에러 방지
+    )
+    # 2. TF-IDF 계산
+    try:
+        tfidf_matrix = vectorizer.fit_transform(tokenized_chunks)
+    except ValueError as e:
+        # 모든 문서가 불용어이거나 비어있어 vocabulary가 없는 경우
+        if "empty vocabulary" in str(e):
+            return [[] for _ in tokenized_chunks]
+        else:
+            raise e
+            
     feature_names = vectorizer.get_feature_names_out()
 
-    # 각 문단 i의 TF-IDF 벡터를 배열로 변환하고, 값이 큰 순서대로 상위 topn 키워드 선정
-    keywords_per_paragraph = []
+    # 3. 그룹별 키워드 정렬
+    all_sorted_keywords = []
     for i in range(tfidf_matrix.shape[0]):
         row = tfidf_matrix[i].toarray().flatten()
-        top_indices = row.argsort()[::-1]
-        top_keywords = [feature_names[j] for j in top_indices if row[j] > 0  ]
-        for k in top_keywords:
-            if k not in stop_words:
-                keywords_per_paragraph.append(top_keywords)
-                break
+        
+        # TF-IDF 점수가 높은 순서대로 인덱스 정렬
+        sorted_indices = row.argsort()[::-1]
+        
+        # 점수가 0보다 큰 '모든' 키워드를 순서대로 추가
+        sorted_keywords = [
+            feature_names[j] 
+            for j in sorted_indices  # top_n 슬라이싱 제거
+            if row[j] > 0            # 점수가 0인 단어는 제외
+        ]
+        
+        all_sorted_keywords.append(sorted_keywords)
 
-    return keywords_per_paragraph
+    return all_sorted_keywords
 
-
+# [수정된 로직]
+# 임계값을 하위 25%로 설정하고 매 depth마다 1.3배하던 기존 로직을 
+# 입력 받은 유사도 행렬의 하위 10위값을 찾아 둘 중에 더 큰 것을 임계값으로 설정하도록 변경
+# 그룹이 10개를 넘을 수 없게 됨.
 def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, threshold:int):
     """
     임계값을 기준으로 입력 그룹에서 더 작은 그룹들을 생성합니다.
     유사도 행렬을 참조하여 연속적인 두 문장 사이의 유사도가 임계값 이상이면 같은 그룹으로 묶습니다.
+    임계값은 {해당 depth에 전달된 임계값}과 {연속된 문장 사이의 유사도값 중 하위 9번째 값} 중에 더 작은 것이 선택됩니다.
+    한 레벨에서 10개 이상의 자식 노드가 생성되는 것을 방지하기 위함입니다.
 
     Args:
         chunk:입력 그룹, 문장 인덱스의 리스트
@@ -79,6 +105,17 @@ def grouping_into_smaller_chunks(chunk:list[int], similarity_matrix:np.ndarray, 
     returns:
         new_chunk_groups: 새롭게 생성된 더 작은 그룹들
     """
+    num_sentences = len(chunk)
+    # 문장이 10개가 넘는 경우
+    if num_sentences >10:
+        # 연속된 문장들의 유사도를 추출하고 오름차순으로 정렬
+        gaps = []
+        for i in range(1, num_sentences):
+            sim = similarity_matrix[chunk[i]][chunk[i-1]]
+            gaps.append(sim)
+        gaps.sort()
+        threshold=min(threshold, gaps[8])
+        
     new_chunk_groups = []
     visited = set()
     for idx in range(len(chunk)):
@@ -109,8 +146,8 @@ def check_termination_condition(chunk: list[dict], depth:int):
     """
     flag=-1
     size = sum([len(c["tokens"]) for c in chunk])
-    # flag 1:chunk가 다섯 문장 이하이거나 chunk의 크기가 20토큰 이하인 경우 더 이상 쪼개지 않음
-    if len(chunk)<=5 or size<=50:
+    # flag 1:chunk의 크기가 15토큰 이하인 경우 더 이상 쪼개지 않음
+    if size<=15:
         flag=1
     
     #depth가 5 이상일 경우 더 깊이 탐색하지 않음
@@ -168,7 +205,7 @@ def gen_node_edges_for_new_groups(chunk:list[dict], new_chunk_groups, top_keywor
     """
 
     # new_chunk_gorup에 저장된 문장 인덱스를 바탕으로 go_chunk와 get_topics를 생성
-    # go_chunk는 다시 한 번 chunking하기 위해 제귀적으로 호출되는 함수의 argument
+    # go_chunk는 다시 한 번 chunking하기 위해 재귀적으로 호출되는 함수의 argument
     # get_topics는 또한 새롭게 나눠진 chunk group들의 핵심 키워드 추출을 위한 함수의 argument
     go_chunk = []
     get_topics = []
@@ -262,8 +299,10 @@ def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword
             }
         nodes_and_edges["nodes"].append(top_node)
         
-        #유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
-        #이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
+        # 이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        # 이 임계값과 {청크의 하위 10번째 유사도값} 중 더 작은 것이 그룹핑하는 기준이됨
+        # 한 단계에 생성되는 하위노드를 최대 10개로 제한하기
         try:
             if similarity_matrix.size > 0:
                 flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
@@ -287,10 +326,16 @@ def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword
         
         # chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
         # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
-        # 만족된 종료 조건이 있을 경우
-        if flag != -1:
+
+        # 청크의 크기가 3문장 이하 혹은 20토큰 이하인 경우 청크를 저장하지 않음
+        # 이 청크는 더 이상 지식 그래프를 생성하지 않아도 되기 때문
+        elif flag==1:
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
+            return result , nodes_and_edges, already_made
+
+        # 이외의 종료조건을 만족한 경우
+        elif flag != -1:
             result += [{ "chunks":chunk_indices, "keyword": top_keyword}]
-            # 포맷 문자열 수정 및 변수명 오타(flag) 수정
             logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
             return result , nodes_and_edges, already_made
 
@@ -404,6 +449,7 @@ def extract_graph_components(text: str, id: tuple):
     
     tokenized, sentences = split_into_tokenized_sentence(text)
  
+ 
     #텍스트가 2000자 이상인 경우 재귀 청킹 함수를 호출한다
     if len(text)>=2000:
         chunks, nodes_and_edges, already_made = recurrsive_chunking(tokenized, source_id, 0, "", [],  None, 0)
@@ -423,11 +469,10 @@ def extract_graph_components(text: str, id: tuple):
         top_keyword+="*"
         chunk=list(range(len(sentences)))
         chunks=[{"chunks":chunk, "keyword":top_keyword}]
-        all_nodes.append({"name":top_keyword, "label":top_keyword, "source_id":source_id, "descriptions":[]})
         logging.info("chunking없이 노드와 엣지를 추출합니다.")
     
 
-    # chunk의 크기가 2문장 이하인 노드는 그냥 chunk 자체를 노드로
+    # chunk의 크기가 3문장 이하인 노드는 그냥 chunk 자체를 노드로
     # 각 노드의 description을 문장 인덱스 리스트에서 실제 텍스트로 변환
     for node in all_nodes:
         resolved_description=""
@@ -440,16 +485,28 @@ def extract_graph_components(text: str, id: tuple):
         node["descriptions"]=[{"description":resolved_description, "source_id":source_id}]
 
         store_embeddings(node, brain_id, None)
-
+    
+    chunk_keywords=[]
+    chunk_sentences=[]
+    tokenized_chunks=[]
+    
     for c in chunks:
+        chunk_tokens =[]
+        chunk_sent=[]
         if "chunks" in c:
-            current_chunk = c["chunks"]  # 리스트 of 리스트
-            relevant_sentences = [sentences[idx] for idx in current_chunk]
-            relevant_sentences="\n".join(relevant_sentences)
-            if c["keyword"] != "":
-                nodes, edges, already_made = _extract_from_chunk(relevant_sentences, id, c["keyword"], already_made)
-            all_nodes += nodes
-            all_edges += edges
+            for s_idx in c["chunks"]:
+                chunk_tokens.append(tokenized[s_idx]['tokens'])
+                chunk_sent.append(sentences[s_idx])
+                chunk_keywords.append(c["keyword"])
+            tokenized_chunks.append(chunk_tokens)
+            chunk_sentences.append(chunk_sent)
+    chunk_tfidf = all_chunks_tf_idf_(tokenized_chunks)
+
+    for c_idx in range(len(tokenized_chunks)):
+        if chunk_keywords[c_idx] != "":
+            nodes, edges, already_made = _extract_from_chunk(tokenized_chunks[c_idx],chunk_sentences[c_idx], id, chunk_keywords[c_idx], already_made, chunk_tfidf[c_idx])
+        all_nodes += nodes
+        all_edges += edges
 
     logging.info(f"✅ 총 {len(all_nodes)}개의 노드와 {len(all_edges)}개의 엣지가 추출되었습니다.")
     return all_nodes, all_edges      
@@ -481,3 +538,52 @@ def manual_chunking(text:str):
         final_chunks.append(chunk)
 
     return final_chunks
+
+def all_chunks_tf_idf_(tokenized_chunks:list[list[list[str]]]):
+    vectorizer = TfidfVectorizer(
+        stop_words=stop_words,
+        max_features=1000,
+        tokenizer=lambda x: x,      # 입력(토큰 리스트)을 그대로 사용
+        preprocessor=lambda x: x,   # 전처리 생략
+        token_pattern=None,         # 경고 방지
+        lowercase=False             # 전처리/토큰화를 생략할 시 'list' object has no attribute 'lower' 에러 방지
+    )
+    flattened_chunks = []
+    for chunk in tokenized_chunks:
+        # chunk = [ [s1_token1, s1_token2], [s2_token1] ]
+        # doc_tokens = [ s1_token1, s1_token2, s2_token1 ]
+        doc_tokens = [token for sentence in chunk for token in sentence]
+        flattened_chunks.append(doc_tokens)
+    try:
+        tfidf_matrix = vectorizer.fit_transform(flattened_chunks)
+
+    except ValueError as e:
+        # 모든 문서가 불용어이거나 비어있어 vocabulary가 없는 경우
+        if "empty vocabulary" in str(e):
+            return [[] for _ in tokenized_chunks]
+        else:
+            raise e
+        
+    # 1. 전체 고유 토큰(feature) 리스트를 가져옵니다.
+    feature_names = vectorizer.get_feature_names_out()
+    
+    # 2. 결과를 저장할 리스트
+    tfidf_results = []
+
+    # 3. tfidf_matrix를 한 행씩 순회합니다.
+    #    각 row는 하나의 그룹에 해당합니다.
+    for i in range(tfidf_matrix.shape[0]):
+        row = tfidf_matrix[i]
+        
+        # 4. 해당 row(문서)에만 존재하는 토큰들의 점수 사전을 만듭니다.
+        #    row.indices: 이 문서에 존재하는 토큰들의 (feature_names에서의) 인덱스
+        #    row.data: 해당 토큰들의 TF-IDF 점수
+        chunk_dict = {
+            feature_names[col_idx]: score
+            for col_idx, score in zip(row.indices, row.data)
+        }
+        
+        tfidf_results.append(chunk_dict)
+
+    return tfidf_results
+     
