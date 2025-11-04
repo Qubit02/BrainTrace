@@ -134,7 +134,8 @@ def compute_phrase_embedding(
     return phrase, (tf, avg_emb), embeddings
 
     
-
+# 각 키워드의 중요도 점수 계산 함수
+# 중심 벡터와의 유사도로 중심성 점수를 계산하고 tf 점수와 곱하여 중요도 점수를 산출
 def compute_scores(
     phrase_info: List[dict], 
     sentences: List[str],
@@ -147,7 +148,8 @@ def compute_scores(
     phrase_embeddings = {}
     central_vecs = []
 
-        # phrase별 평균 임베딩 계산=>phrase별 말고 모든 문장 일반 임베딩으로?
+    # 각 키워드가 등장한 문장을 임베딩한 후 평균을 내어, 키워드 별로 의미 벡터를 생성
+    # 또한 각 키워드의 tf 점수를 산출함
     with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
                 executor.submit(compute_phrase_embedding, phrase, indices, sentences, total_sentences, lang)
@@ -160,10 +162,12 @@ def compute_scores(
                 all_embeddings[phrase]=embedded_vec
                 central_vecs.append(avg_emb)
 
-    # 중심 벡터 계산
+    # 청크 내 모든 문장들의 임베딩 값의 평균으로 청크의 주제를 나타내는 중심 벡터를 산출
     central_vec = np.mean(central_vecs, axis=0)
 
-    # vector stack for cosine_similarity
+    # 중심 벡터와의 유사도를 계산하여 각 키워드의 중심성 점수 산출
+    # tf 점수와 곱하여 각 키워드의 중요도 점수를 최종적으로 계산
+    # 중요도 점수 상위 5개의 키워드가 노드로 선택됨
     phrases = list(phrase_embeddings.keys())
     tf_list = []
     emb_list = []
@@ -181,7 +185,6 @@ def compute_scores(
     return scores, phrases, sim_matrix, all_embeddings
 
 #유사도를 기반으로 각 명사구를 그룹으로 묶음
-#상위 5개의 노드를 먼저 선별하고 걔네끼리만 유사도를 계산하면 더 빠를듯
 def group_phrases(
     phrases: List[str],
     phrase_scores: List[dict],
@@ -286,8 +289,9 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     수정된 로직:
     1. 텍스트를 줄바꿈 문자(\\n)를 기준으로 텍스트 덩어리와 \\n으로 분리합니다.
     2. 텍스트 덩어리를 순회하며 \\n을 만났을 때, 그 *이전까지의 텍스트* 길이를 확인합니다.
-    3. 길이가 30자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (해당 덩어리를 별도 처리)
-    4. 길이가 30자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다.
+    3. 길이가 25자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (제목/소제목 등을 감지하기 위함)
+    4. 길이가 25자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다. 
+       (문장이 끝나지 않았으나 한 줄이 넘어간 경우로 간주)
     5. 이렇게 재구성된 텍스트 덩어리들(merged_lines)을 대상으로 
        intra_line_pattern 정규식을 적용해 최종 문장을 분리합니다.
     """
@@ -322,7 +326,7 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
                 continue
             
             # [핵심 로직]
-            # 이전 텍스트 덩어리가 30자 이하일 때만 \n을 분리점으로 인정
+            # 이전 텍스트 덩어리가 25자 이하일 때만 \n을 분리점으로 인정
             if len(stripped_line) <= 25:
                 merged_lines.append(stripped_line) # 분리점으로 인정 (별도 덩어리로 추가)
                 current_line = ""                  # 새 덩어리 시작
@@ -341,26 +345,26 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     # [ 2단계: 정규식으로 문장 분리 ]
     candidate_sentences = []
     for line in merged_lines:
-        # 30자 이하의 짧은 줄도, 30자 초과로 합쳐진 긴 줄도
+        # 25자 이하의 짧은 줄도, 25자 초과로 합쳐진 긴 줄도
         # 모두 intra_line_pattern으로 한 번 더 분리 시도
         sub_sentences = re.split(intra_line_pattern, line)
         candidate_sentences.extend(sub_sentences)
 
 
-    # [3단계: 필터링 (원본 유지)]
+    # [3단계: 목록 필터링]
     # 모든 문장 후보에 대해 필터링 로직 일괄 적용
     for s in candidate_sentences:
         s = s.strip()
         if not s:
             continue
 
-        # [신규] 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
+        #  목록 표시(1., a., 가.) 앞에서 추가로 분리
         sub_fragments = re.split(list_marker_split_pattern, s)
 
         for fragment in sub_fragments:
             fragment = fragment.strip()
 
-            # [신규] 목록 마커("1. ", "a. ")를 감지하고 삭제
+            # 목록 마커("1. ", "a. ")를 감지하고 삭제
             fragment = re.sub(list_marker_pattern_for_removal, '', fragment)
             fragment = fragment.strip() # 마커 삭제 후 남을 수 있는 공백 제거
             
@@ -377,11 +381,14 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 
     texts = final_sentences
 
+    # 각 문장의 언어를 감지하여 맞는 임베딩 모델로 임베딩
     for idx, sentence in enumerate(texts):
         lang = check_lang(sentence)
 
+        # 한국어 임베딩 모델 호출
         if lang == "ko":
             tokens = extract_noun_phrases_ko(sentence)
+        # 영어 임베딩 모델 호출
         elif lang == "en":
             tokens = extract_noun_phrases_en(sentence)
         else:
@@ -401,9 +408,9 @@ def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
 def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:list[str]) -> tuple[dict, dict, list[str]]:
     """
     최종적으로 분할된 청크를 입력으로 호출됩니다.
-    각 청크에서 중요한 키워드를 골라 노드를 생성하고
-    keyword로 입력받은 노드를 source로 하는 엣지를 생성합니다.
-    이를 통해 청킹 함수가 생성한 지식 그래프와 병합됩니다.
+    청크 내부의 키워드들의 중요도 점수를 계산하여 이를 기준으로 노드와 엣지를 생성합니다.
+    생성된 노드를 {청킹 함수에서 전달한 주제 키워드 노드}와 엣지로 연결하여,
+    청킹 함수가 생성한 지식 그래프와 연결합니다.
     """
     nodes=[]
     edges=[]
@@ -418,8 +425,9 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
         for token in p["tokens"]:
             phrase_info[token].add(p["index"])
 
-    
+    # 각 키워드의 중요도 점수를 산출
     phrase_scores, phrases, sim_matrix, all_embeddings = compute_scores(phrase_info, sentences, lang)
+    # 유사도가 높은 키워드들은 그룹으로 만들어, 그룹 내 키워드가 노드로 선택되면 같은 그룹 멤버들은 하위 노드로 생성됨
     groups=group_phrases(phrases, phrase_scores, sim_matrix)
 
     #score순으로 topic keyword를 정렬
@@ -428,6 +436,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
 
     contents=phrase_info.keys()
 
+    # 청킹함수에서 전달받은 청크의 주제 키워드를 노드로 생성
     cnt=0
     if keyword != "":
         if keyword[-1]=="*":
@@ -439,7 +448,9 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
         else:
             return [], [], already_made
 
+    # 점수가 높은 키워드 중 중복(이미 노드로 만들어진 키워드)을 제외하여 상위 5개를 노드로 생성
     for t in sorted_keywords:
+        # {청크의 주제 키워드 노드}와 {청크 내부 중요도 점수 상위 키워드} 간의 엣지를 생성
         if keyword != "":
             edges+=make_edges(sentences, keyword, [t], phrase_info)
             print(edges)
@@ -450,6 +461,7 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
             already_made.append(t)
             cnt+=1
             
+            # 노드로 선정된 키워드와 유사도가 높은 키워드가 있으면 하위노드로 생성합니다 
             if t in groups:
                 related_keywords=[]
                 for idx in range(min(len(groups[t]), 5)):
@@ -460,8 +472,6 @@ def _extract_from_chunk(sentences: str, id:tuple ,keyword: str, already_made:lis
                         nodes.append(node)
                         edge=make_edges(sentences, t, related_keywords, phrase_info)
                         edges+=edge  
-                    
-
                     
         if cnt==5:
             break
