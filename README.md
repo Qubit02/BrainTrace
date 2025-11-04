@@ -54,15 +54,17 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
    ```python
    # backend/services/node_gen_ver5.py (발췌)
-   def spldef split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
+   def split_into_tokenized_sentence(text: str) -> tuple[List, List[str]]:
     """
     텍스트를 문장으로 분할합니다.
 
-    수정된 로직:
+    로직:
     1. 텍스트를 줄바꿈 문자(\\n)를 기준으로 텍스트 덩어리와 \\n으로 분리합니다.
     2. 텍스트 덩어리를 순회하며 \\n을 만났을 때, 그 *이전까지의 텍스트* 길이를 확인합니다.
-    3. 길이가 30자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. (해당 덩어리를 별도 처리)
-    4. 길이가 30자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다.
+    3. 길이가 25자 이하이면, \\n을 유효한 문장 분리점으로 취급합니다. 
+       (제목/소제목 등을 감지하기 위함)
+    4. 길이가 25자 초과이면, \\n을 무시하고(공백으로 치환) 다음 텍스트 덩어리와 합칩니다. 
+       (문장이 끝나지 않았으나 한 줄이 넘어간 경우로 간주)
     5. 이렇게 재구성된 텍스트 덩어리들(merged_lines)을 대상으로 
        intra_line_pattern 정규식을 적용해 최종 문장을 분리합니다.
     """
@@ -97,7 +99,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
                 continue
             
             # [핵심 로직]
-            # 이전 텍스트 덩어리가 30자 이하일 때만 \n을 분리점으로 인정
+            # 이전 텍스트 덩어리가 25자 이하일 때만 \n을 분리점으로 인정
             if len(stripped_line) <= 25:
                 merged_lines.append(stripped_line) # 분리점으로 인정 (별도 덩어리로 추가)
                 current_line = ""                  # 새 덩어리 시작
@@ -116,20 +118,20 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
     # [ 2단계: 정규식으로 문장 분리 ]
     candidate_sentences = []
     for line in merged_lines:
-        # 30자 이하의 짧은 줄도, 30자 초과로 합쳐진 긴 줄도
+        # 25자 이하의 짧은 줄도, 25자 초과로 합쳐진 긴 줄도
         # 모두 intra_line_pattern으로 한 번 더 분리 시도
         sub_sentences = re.split(intra_line_pattern, line)
         candidate_sentences.extend(sub_sentences)
 
 
-    # [3단계: 필터링 (원본 유지)]
+    # [3단계: 목록 필터링]
     # 모든 문장 후보에 대해 필터링 로직 일괄 적용
     for s in candidate_sentences:
         s = s.strip()
         if not s:
             continue
 
-        # 2단계: 목록 표시(1., a., 가.) 앞에서 추가로 분리
+        #  목록 표시(1., a., 가.) 앞에서 추가로 분리
         sub_fragments = re.split(list_marker_split_pattern, s)
 
         for fragment in sub_fragments:
@@ -152,18 +154,21 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
     texts = final_sentences
 
+    # 각 문장의 언어를 감지하여 맞는 임베딩 모델로 임베딩
     for idx, sentence in enumerate(texts):
         lang = check_lang(sentence)
 
+        # 한국어 임베딩 모델 호출
         if lang == "ko":
             tokens = extract_noun_phrases_ko(sentence)
+        # 영어 임베딩 모델 호출
         elif lang == "en":
             tokens = extract_noun_phrases_en(sentence)
         else:
             tokens = [sentence.strip()]
 
         if not tokens:
-            tokens = [sentence.strip()]  # fallback
+            tokens = [sentence.strip()]
             logging.error(f"한국어도 영어도 아닌 텍스트가 포함되어있습니다: {sentence}")
 
         tokenized_sentences.append({"tokens": tokens, "index": idx})
@@ -178,102 +183,105 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
    ```python
    # backend/services/manual_chunking_sentences.py (발췌)
-   def recurrsive_chunking(chunk: list[dict], source_id:str ,depth: int, top_keyword:str ,already_made:list[str], similarity_matrix, threshold: int):
-       """유사도/키워드 기반 재귀 청킹.
+   def recurrsive_chunking(chunk: list[int], source_id:str ,depth: int, top_keyword:str ,already_made:list[str], similarity_matrix, threshold: int):
+    """유사도/키워드 기반 재귀 청킹.
 
-       로직 요약:
-         - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
-         - depth>0에서는 인접 유사도/토큰 수/깊이 제한으로 종료 여부 판단
-         - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
-         - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
+    로직 요약:
+      - depth=0에서 LDA로 전체 토픽 키워드(top_keyword) 추정, 초기 threshold 계산
+      - depth>0에서는 인접 유사도/토큰 수/깊이 제한으로 종료 여부 판단
+      - 종료 조건 미충족 시 유사도 기반으로 그룹핑 후 재귀 분할
+      - 각 단계에서 대표 키워드 노드 및 하위 키워드 노드/엣지를 구성
 
-       Args:
-           chunk: 현재 단계에서 분할 대상인 (토큰화된 문장, 인덱스) 페어의 리스트[{"tokens", "index"}]
-           source_id: 소스 식별자(그래프 노드 메타데이터)
-           depth: 현재 재귀 깊이(0부터 시작)
-           already_made: 중복 노드 생성을 방지하기 위한 이름 캐시
-           top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
-           similarity_matrix: 문장 간 유사도 행렬 (numpy array)
-           threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
+    Args:
+        chunk: 현재 단계에서 분할 대상인 (토큰화된 문장, 인덱스) 페어의 리스트({"tokens", "index"})
+        source_id: 소스 식별자(그래프 노드 메타데이터)
+        depth: 현재 재귀 깊이(0부터 시작)
+        already_made: 중복 노드 생성을 방지하기 위한 이름 캐시
+        top_keyword: 상위 단계에서 전달된 대표 키워드(또는 depth=0일 때 LDA에서 추정)
+        threshold: 인접 문장 유사도 기준값(초기값은 depth=0에서 계산)
+        lda_model, dictionary, num_topics: LDA 추정 관련 파라미터
 
-       Returns:
-           Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges"}, 업데이트된 already_made)
-       """
-    result = []
-    nodes_and_edges = {"nodes": [], "edges": []}
-    chunk_indices = [c["index"] for c in chunk]  # 현재 그룹 내부 문장들의 인덱스만 저장
+    Returns:
+        Tuple[list[dict], dict, list[str]]: (청킹 결과 리스트, {"nodes", "edges", "keyword"}, 업데이트된 already_made)
+    """
+    result=[]
+    nodes_and_edges={"nodes":[], "edges":[]}
+    chunk_indices=[c["index"] for c in chunk] #현재 그룹 내부 문장들의 인덱스만 저장한 리스트를 생성
 
 
     if depth == 0:
-       # LDA로 전체 텍스트의 키워드와 유사도 행렬 구함
-       # depth=0일 경우 LDA가 추론한 전체 텍스트의 topic이 top keyword가 됨
-       top_keyword, similarity_matrix = lda_keyword_and_similarity(chunk)
-       already_made.append(top_keyword)
-       top_keyword += "*"  # 루트 노드 표시
+        #lda로 전체 텍스트의 키워드와 각 chunk의 주제간의 유사도를 구함
+        # depth가 0일 경우 lda가 추론한 전체 텍스트의 topic이 해당 chunk(==full text)의 top keyword가 됨
+        top_keyword, similarity_matrix = lda_keyword_and_similarity(chunk)
+        already_made.append(top_keyword)
+        top_keyword+="*"
+        #지식 그래프의 루트 노드를 생성
+        top_node={"label":top_keyword,
+            "name":top_keyword,
+            "descriptions":[],
+            "source_id":source_id
+            }
+        nodes_and_edges["nodes"].append(top_node)
+        
+        #유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
+        #이후에는 depth가 깊어질 때 마다 1.1씩 곱해짐
+        try:
+            if similarity_matrix.size > 0:
+                flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
+                threshold = np.quantile(flattened, 0.25)
+            else:
+                logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
+                return [], {}, []
+                
+        except Exception as e:
+            logging.error(f"threshold 계산 중 오류: {e}")
+            threshold = 0.5  # 기본값 설정
 
-       # 지식 그래프의 루트 노드 생성
-       top_node = {
-           "label": top_keyword,
-           "name": top_keyword,
-           "descriptions": [],
-           "source_id": source_id
-       }
-       nodes_and_edges["nodes"].append(top_node)
+    else:
+        # depth가 0이 아닐 경우
+        # 종료 조건 체크
+        flag = check_termination_condition(chunk, depth)
 
-       # 유사도 matrix의 하위 25% 값을 첫 임계값으로 설정
-       # 이후 depth가 깊어질 때마다 1.1씩 곱해짐
-       try:
-           if similarity_matrix.size > 0:
-               flattened = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
-               threshold = np.quantile(flattened, 0.25)
-           else:
-               logging.error("similarity_matrix 생성 오류: empty or invalid matrix")
-               return [], {}, []
-       except Exception as e:
-           logging.error(f"threshold 계산 중 오류: {e}")
-           threshold = 0.5  # 기본값 설정
+        if flag==3:
+            result = nonrecurrsive_chunking(chunk, similarity_matrix, top_keyword)
+            return result, nodes_and_edges, already_made
+        
+        # chunk간의 유사도 구하기를 실패했을 때 재귀호출을 종료
+        # depth가 1 이상일 경우, 이전 단계에서 tf-idf로 구하여 전달된 키워드가 top_keyword이다
+        # 만족된 종료 조건이 있을 경우
+        if flag != -1:
+            result += [{ "chunks":chunk_indices, "keyword": top_keyword}]
+            # 포맷 문자열 수정 및 변수명 오타(flag) 수정
+            logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
+            return result , nodes_and_edges, already_made
 
-   else:
-       # depth가 0이 아닐 경우 종료 조건 체크
-       flag = check_termination_condition(chunk, depth)
 
-       if flag == 3:
-           result = nonrecurrsive_chunking(chunk, similarity_matrix, top_keyword)
-           return result, nodes_and_edges, already_made
+    # 입력 그룹을 더 작은 그룹으로 분할
+    new_chunk_groups = grouping_into_smaller_chunks(chunk_indices, similarity_matrix, threshold)
 
-       # 종료 조건이 만족된 경우
-       if flag != -1:
-           result += [{"chunks": chunk_indices, "keyword": top_keyword}]
-           logging.info(f"depth {depth} 청킹 종료, flag:{flag}")
-           return result, nodes_and_edges, already_made
+    # 생성된 작은 그룹들의 키워드를 추출하고 노드&엣지 생성
+    nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(chunk, new_chunk_groups, top_keyword, already_made, source_id)
+    nodes_and_edges["nodes"]+=nodes
+    nodes_and_edges["edges"]+=edges
+    
+    # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
+    current_result = []
+    for idx, c in enumerate(go_chunk):
+        if idx > len(keywords)-1 or len(keywords)==0:
+            logging.error(f"keyword generation error\nkeywords:{keywords}\nnumber of chunks:{len(go_chunk)}")
+            break
+        result, graph, already_made_updated = recurrsive_chunking(c, source_id ,depth+1, keywords[idx], already_made, similarity_matrix, threshold*1.1,)
+        #중복되는 노드가 만들어지지 않도록 already_made를 업데이트
+        already_made=already_made_updated
+        current_result+=(result)
+        nodes_and_edges["nodes"]+=graph["nodes"]
+        nodes_and_edges["edges"]+=graph["edges"]
 
-   # 입력 그룹을 더 작은 그룹으로 분할
-   new_chunk_groups = grouping_into_smaller_chunks(chunk_indices, similarity_matrix, threshold)
-
-   # 생성된 작은 그룹들의 키워드를 추출하고 노드&엣지 생성
-   nodes, edges, go_chunk, keywords = gen_node_edges_for_new_groups(
-       chunk, new_chunk_groups, top_keyword, already_made, source_id
-   )
-   nodes_and_edges["nodes"] += nodes
-   nodes_and_edges["edges"] += edges
-
-   # 재귀적으로 함수를 호출하며 생성된 그룹을 더 세분화
-   current_result = []
-   for idx, c in enumerate(go_chunk):
-       result, graph, already_made_updated = recurrsive_chunking(
-           c, source_id, depth+1, keywords[idx], already_made,
-           similarity_matrix, threshold*1.1
-       )
-       already_made = already_made_updated
-       current_result += result
-       nodes_and_edges["nodes"] += graph["nodes"]
-       nodes_and_edges["edges"] += graph["edges"]
-
-   return current_result, nodes_and_edges, already_made
+    return current_result, nodes_and_edges, already_made
    ```
 
 4. **노드 및 엣지 생성**:
-   각 청크에서 개념(노드)과 관계(엣지)를 추출합니다.
+   각 청크에서 개념(노드)과 관계(엣지)를 추출하고 청킹 과정에서 생성한 지식그래프와 연결합니다.
 
    ```python
    # backend/services/node_gen_ver5.py (발췌)
@@ -351,9 +359,9 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
     return nodes, edges, already_made
 
    ```
-중요도 점수 산출
+**- 중요도 점수 산출**
  
-    ```python
+   ```python
     # 각 키워드의 중요도 점수 계산 함수
     # 중심 벡터와의 유사도로 중심성 점수를 계산하고 tf 점수와 곱하여 중요도 점수를 산출
     def compute_scores(
@@ -405,10 +413,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
        return scores, phrases, sim_matrix, all_embeddings
    ```
     
-    
-
-5. **그래프 병합**:
-   모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
+5. **그래프 병합**: 모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
    ```python
    # backend/neo4j_db/Neo4jHandler.py (발췌)
    def insert_nodes_and_edges(self, nodes, edges, brain_id):
@@ -445,7 +450,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
 <img width="960" height="460" alt="image" src="https://github.com/user-attachments/assets/ce93db48-6e44-4520-8d28-b4c3d6ea2623" />
 
-1. **명사구 추출**: 텍스트를 문장 단위로 분할하고 명사구를 추출합니다.
+1. **명사구 추출**: (depth 0에서만 수행) 텍스트를 문장 단위로 분할하고 명사구를 추출합니다.
 
    ```python
    # backend/services/node_gen_ver5.py
@@ -495,7 +500,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
        return phrases
    ```
 
-2. **LDA 모듈을 통한 주제 벡터 변환 & 유사도 계산**: 각 문장을 주제 벡터로 변환하고 벡터간의 내적값을 계산하여 행렬로 저장합니다.
+2. **LDA 모듈을 통한 주제 벡터 변환 & 유사도 계산**: (depth 0에서만 수행) 각 문장을 주제 벡터로 변환하고 벡터간의 내적값을 계산하여 행렬로 저장합니다.
 
    ```python
    # backend/services/manual_chunking_sentences.py (발췌)
@@ -546,7 +551,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
        return top_keyword, sim_matrix
    ```
 
-3. **Grouping**: 주제적으로 다른 문장 사이를 경계로 청크를 구성합니다.
+3. **Grouping**: 유사도를 기준으로 각 문장을 묶어 청크를 구성합니다.
 
    ```python
       # backend/services/manual_chunking_sentneces.py (발췌)
