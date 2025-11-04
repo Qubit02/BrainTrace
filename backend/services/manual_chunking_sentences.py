@@ -394,6 +394,7 @@ def extract_graph_components(text: str, id: tuple):
     짧은 텍스트는 자체적으로 토픽을 추출하고 전체 텍스트를 하나의 청크로 간주합니다.
     각 청크에서 노드와 엣지를 추출하여 반환합니다.
     """
+    
     brain_id, source_id = id
 
     # 모든 노드와 엣지를 저장할 리스트
