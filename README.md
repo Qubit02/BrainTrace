@@ -359,9 +359,9 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
     return nodes, edges, already_made
 
    ```
-중요도 점수 산출
+**- 중요도 점수 산출**
  
-    ```python
+   ```python
     # 각 키워드의 중요도 점수 계산 함수
     # 중심 벡터와의 유사도로 중심성 점수를 계산하고 tf 점수와 곱하여 중요도 점수를 산출
     def compute_scores(
@@ -413,10 +413,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
        return scores, phrases, sim_matrix, all_embeddings
    ```
     
-    
-
-5. **그래프 병합**:
-   모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
+5. **그래프 병합**: 모든 청크에서 노드/엣지를 통합된 지식 그래프로 병합합니다.
    ```python
    # backend/neo4j_db/Neo4jHandler.py (발췌)
    def insert_nodes_and_edges(self, nodes, edges, brain_id):
