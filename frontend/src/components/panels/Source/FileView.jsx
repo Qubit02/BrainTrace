@@ -501,8 +501,8 @@ export default function FileView({
                   className="file-menu-popup"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* 노드 보기 메뉴 */}
-                  <div
+                  {/* 노드 보기 메뉴 숨김 처리 */}
+                  {/* <div
                     className="popup-item"
                     onClick={async () => {
                       setIsNodeViewLoading && setIsNodeViewLoading(f.id);
@@ -549,7 +549,7 @@ export default function FileView({
                         <AiOutlineLoading3Quarters className="loading-spinner" />
                       </span>
                     )}
-                  </div>
+                  </div> */}
 
                   {/* 소스 이름 바꾸기 메뉴 */}
                   <div

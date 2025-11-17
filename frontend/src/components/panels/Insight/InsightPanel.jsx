@@ -318,7 +318,8 @@ function InsightPanel({
               </button>
             </div>
           )}
-          {collapsed ? (
+          {/* 접기/펼치기 버튼 숨김 처리 */}
+          {/* {collapsed ? (
             <VscLayoutSidebarLeftOff
               size={18}
               style={{ cursor: "pointer" }}
@@ -334,7 +335,7 @@ function InsightPanel({
               }}
               onClick={() => setCollapsed((prev) => !prev)}
             />
-          )}
+          )} */}
         </div>
       </div>
 

@@ -465,17 +465,39 @@ for node in valid_nodes:
 
 #### 3.2.5 주요 알고리즘 설명
 
-자체 개발 로직의 핵심 알고리즘:
+```python
+# backend/services/ollama_service.py - 실제 프로젝트 코드
+def _extract_from_chunk(self, chunk: str, source_id: str):
+    # 자체 개발 로직을 통한 노드/엣지 추출
 
-1. **LDA 기반 토픽 추출**: gensim의 LDA 모델을 사용하여 텍스트의 주요 토픽 키워드를 추출하고, 문장 간 토픽 분포 유사도를 계산합니다.
+    # 노드 검증 및 정규화
+    valid_nodes = []
+    for node in data.get("nodes", []):
+        if not all(k in node for k in ("label", "name")):
+            logging.warning("잘못된 노드: %s", node)
+            continue
 
-2. **TF-IDF 기반 키워드 추출**: 각 청크에서 TF-IDF 점수가 높은 명사구를 추출하여 노드 후보로 사용합니다.
+        node.setdefault("descriptions", [])
+        node["source_id"] = source_id
 
-3. **임베딩 유사도 기반 그룹핑**: 명사구의 임베딩 벡터를 계산하고, 코사인 유사도를 기반으로 유사한 명사구들을 그룹으로 묶어 중복 노드 생성을 방지합니다.
+        # 자체 로직에서 생성한 "description"을 "descriptions" 배열로 변환
+        if desc := node.pop("description", None):
+            node["descriptions"].append({"description": desc, "source_id": source_id})
 
-4. **재귀 청킹**: 텍스트를 유사도 기반으로 재귀적으로 분할하여 계층적 지식 그래프 구조를 생성합니다. 깊이 제한(depth 5)과 토큰 수 제한을 통해 무한 분할을 방지합니다.
+        valid_nodes.append(node)
 
-5. **명사구 추출**: 한국어는 Okt 형태소 분석기를, 영어는 spaCy를 사용하여 각 문장에서 명사구를 추출합니다.
+    # 엣지 검증 (source와 target이 실제 노드 name 참조인지 확인)
+    node_names = {n["name"] for n in valid_nodes}
+    valid_edges = []
+    for edge in data.get("edges", []):
+        if all(k in edge for k in ("source", "target", "relation")):
+            if edge["source"] in node_names and edge["target"] in node_names:
+                valid_edges.append(edge)
+            else:
+                logging.warning("잘못된 엣지 참조: %s", edge)
+        else:
+            logging.warning("스키마 누락 엣지: %s", edge)
+```
 
 ---
 

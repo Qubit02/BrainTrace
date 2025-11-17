@@ -475,8 +475,8 @@
 
 .chat-panel-referenced-node-text {
   color: #6b7280;
-  text-decoration: underline;
-  cursor: pointer;
+  text-decoration: none;
+  cursor: default;
   font-weight: 500;
   transition: all 0.2s ease;
   padding: 2px 4px;
@@ -484,9 +484,9 @@
 }
 
 .chat-panel-referenced-node-text:hover {
-  font-weight: 600;
-  color: #000000;
-  background-color: #f3f4f6;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: transparent;
 }
 
 .chat-panel-source-title-list {

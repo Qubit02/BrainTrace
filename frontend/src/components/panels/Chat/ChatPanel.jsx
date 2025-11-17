@@ -18,7 +18,7 @@
  * - LoadingIndicator: 로딩 상태 표시
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./ChatPanel.css";
@@ -74,6 +74,168 @@ import {
   filterModelsByType,
   MODEL_TYPES,
 } from "./modelUtils";
+
+const MODEL_SELECTION_PRESETS = {
+  openai: {
+    general: ["gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"],
+    code: ["gpt-5", "gpt-4o", "gpt-4", "gpt-4o-mini", "gpt-3.5-turbo"],
+    long: ["gpt-5", "gpt-4-32k", "gpt-4o", "gpt-4", "gpt-3.5-turbo-16k"],
+  },
+  ollama: {
+    general: ["mistral:7b", "gemma3:4b", "phi4-mini:3.8b", "qwen3:4b"],
+    code: ["deepseek-r1:7b", "mistral:7b", "phi4-mini:3.8b", "gemma3:4b"],
+    korean: ["exaone3.5:2.4b", "qwen3:4b", "mistral:7b", "gemma3:4b"],
+    long: ["mistral:7b", "gpt-oss:20b", "deepseek-r1:7b"],
+  },
+};
+
+// ===== 모델 자동 선택을 위한 헬퍼 상수/함수 =====
+const LOCAL_MODEL_PRIORITY = [
+  "deepseek-r1:7b",
+  "mistral:7b",
+  "gpt-oss:20b",
+  "gemma3:4b",
+  "phi4-mini:3.8b",
+  "exaone3.5:2.4b",
+  "qwen3:4b",
+];
+
+const CLOUD_MODEL_PRIORITY = [
+  "gpt-5",
+  "gpt-4o",
+  "gpt-5-mini",
+  "gpt-4o-mini",
+  "gpt-4-turbo",
+  "gpt-4",
+  "gpt-3.5-turbo",
+];
+
+const KOREAN_FRIENDLY_MODELS = [
+  "exaone3.5:2.4b",
+  "qwen3:4b",
+  "gpt-4o",
+  "gpt-5",
+  "gpt-4",
+];
+
+const CODING_FRIENDLY_MODELS = [
+  "deepseek-r1:7b",
+  "mistral:7b",
+  "phi4-mini:3.8b",
+  "gpt-4o",
+  "gpt-5",
+  "gpt-4",
+];
+
+const LONG_CONTEXT_MODELS = [
+  "gpt-5",
+  "gpt-4o",
+  "gpt-4",
+  "gpt-oss:20b",
+  "mistral:7b",
+];
+
+const FAST_RESPONSE_MODELS = [
+  "gpt-5-mini",
+  "gpt-4o-mini",
+  "gemma3:4b",
+  "phi4-mini:3.8b",
+];
+
+const extractQuestionFeatures = (question) => {
+  const text = question?.trim() || "";
+  const lower = text.toLowerCase();
+  const isKorean =
+    /[가-힣]/.test(text) &&
+    (text.match(/[가-힣]/g)?.length || 0) >= text.length * 0.2;
+  const hasCode =
+    /코드|프로그래밍|에러|오류|stack trace|function|class|const|let|python|javascript|typescript|java|c\+\+|c#|node/.test(
+      lower
+    );
+  const isLongForm = text.length > 400;
+  const isShortForm = text.length > 0 && text.length < 80;
+  return {
+    isKorean,
+    hasCode,
+    isLongForm,
+    isShortForm,
+  };
+};
+
+const getEligibleModels = (availableModels, brainInfo) => {
+  if (!Array.isArray(availableModels) || !availableModels.length || !brainInfo)
+    return [];
+  const targetType =
+    brainInfo.deployment_type === "local"
+      ? MODEL_TYPES.OLLAMA
+      : MODEL_TYPES.OPENAI;
+  return availableModels.filter((model) => {
+    if (!model.installed) return false;
+    const modelData = getModelData(model.name);
+    return modelData.modelType === targetType;
+  });
+};
+
+const getPriorityList = (deploymentType) =>
+  deploymentType === "local" ? LOCAL_MODEL_PRIORITY : CLOUD_MODEL_PRIORITY;
+
+const autoSelectModelForQuestion = ({
+  question,
+  eligibleModels,
+  currentModel,
+  deploymentType,
+}) => {
+  const trimmedQuestion = question?.trim();
+  if (!trimmedQuestion || !eligibleModels.length) {
+    return currentModel ? { model: currentModel } : null;
+  }
+
+  const features = extractQuestionFeatures(trimmedQuestion);
+  const priorityList = getPriorityList(deploymentType);
+  let bestModel = null;
+  let bestScore = -Infinity;
+
+  eligibleModels.forEach(({ name }) => {
+    let score = 0;
+    if (features.hasCode && CODING_FRIENDLY_MODELS.includes(name)) score += 3;
+    if (features.isKorean && KOREAN_FRIENDLY_MODELS.includes(name)) score += 2;
+    if (features.isLongForm && LONG_CONTEXT_MODELS.includes(name)) score += 2;
+    if (features.isShortForm && FAST_RESPONSE_MODELS.includes(name)) score += 1;
+
+    const priorityIndex = priorityList.indexOf(name);
+    if (priorityIndex !== -1) {
+      score += (priorityList.length - priorityIndex) * 0.01;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestModel = name;
+    }
+  });
+
+  if (!bestModel && currentModel) {
+    return { model: currentModel };
+  }
+
+  if (!bestModel && eligibleModels.length) {
+    return { model: eligibleModels[0].name };
+  }
+
+  const reasons = [];
+  if (features.hasCode && CODING_FRIENDLY_MODELS.includes(bestModel))
+    reasons.push("코드/기술 질문");
+  if (features.isKorean && KOREAN_FRIENDLY_MODELS.includes(bestModel))
+    reasons.push("한국어 최적화");
+  if (features.isLongForm && LONG_CONTEXT_MODELS.includes(bestModel))
+    reasons.push("긴 문맥 처리");
+  if (features.isShortForm && FAST_RESPONSE_MODELS.includes(bestModel))
+    reasons.push("빠른 응답");
+
+  return {
+    model: bestModel,
+    reason: reasons.join(", "),
+  };
+};
 
 /**
  * TitleEditor 컴포넌트
@@ -177,14 +339,15 @@ const TitleEditor = ({
           </button>
         )}
       </div>
-      <div className={`environment-badge environment-${environmentInfo.type}`}>
+      {/* 클라우드/로컬 모드 표시 숨김 처리 */}
+      {/* <div className={`environment-badge environment-${environmentInfo.type}`}>
         {environmentInfo.icon === "MdSecurity" ? (
           <MdSecurity size={14.5} />
         ) : (
           <FaCloud size={14.5} />
         )}
         <span className="environment-label">{environmentInfo.label}</span>
-      </div>
+      </div> */}
       <div className="chat-panel-title-right"></div>
     </div>
   );
@@ -220,26 +383,50 @@ const ModelDropdown = React.forwardRef(
       handleInstallModel,
       installingModel,
       brainInfo,
+      readOnly = false,
     },
     ref
   ) => {
+    // 선택된 모델의 표시 이름 가져오기
+    const getModelDisplayName = () => {
+      if (!selectedModel) return null;
+      const modelData = getModelData(selectedModel);
+      return modelData.name || selectedModel;
+    };
+
+    const modelDisplayName = getModelDisplayName();
+    const hoverTitle = readOnly
+      ? modelDisplayName
+        ? `모델: ${modelDisplayName}`
+        : "모델은 자동으로 선택됩니다"
+      : "모델 선택";
+
     return (
       <div ref={ref} className="chat-panel-model-selector-inline">
         <div
           className="chat-panel-model-dropdown-inline"
-          onClick={() => setShowModelDropdown(!showModelDropdown)}
+          onClick={() => {
+            if (!readOnly) {
+              setShowModelDropdown(!showModelDropdown);
+            }
+          }}
+          style={{
+            cursor: readOnly ? "default" : "pointer",
+            opacity: readOnly ? 0.7 : 1,
+          }}
+          title={hoverTitle}
         >
-          <span className="chat-panel-model-value-inline">
-            {selectedModel || "모델을 선택하세요"}
-          </span>
-          <IoChevronDown
-            size={14}
-            className={`chat-panel-dropdown-arrow-inline ${
-              showModelDropdown ? "rotated" : ""
-            }`}
-          />
+          <span className="chat-panel-model-value-inline">auto</span>
+          {!readOnly && (
+            <IoChevronDown
+              size={14}
+              className={`chat-panel-dropdown-arrow-inline ${
+                showModelDropdown ? "rotated" : ""
+              }`}
+            />
+          )}
         </div>
-        {showModelDropdown && (
+        {showModelDropdown && !readOnly && (
           <div className="chat-panel-model-menu-inline">
             {/* 배포 타입에 따른 모델 필터링 */}
             {(() => {
@@ -574,6 +761,7 @@ const SearchModeDropdown = ({
  * @param {string} searchMode - 현재 선택된 탐색 모드
  * @param {function} handleSearchModeSelect - 탐색 모드 선택 핸들러
  * @param {object} textareaRef - 입력창 ref
+ * @param {boolean} hasUsableModel - 자동 선택 가능한 모델 존재 여부
  */
 const ChatInput = ({
   inputText,
@@ -595,6 +783,7 @@ const ChatInput = ({
   handleSearchModeSelect,
   modelDropdownRef,
   textareaRef,
+  hasUsableModel = true,
 }) => {
   return (
     <form className="chat-controls" onSubmit={handleSubmit}>
@@ -626,20 +815,22 @@ const ChatInput = ({
           handleInstallModel={handleInstallModel}
           installingModel={installingModel}
           brainInfo={brainInfo}
+          readOnly={true}
         />
-        <SearchModeDropdown
+        {/* 빠른 탐색/깊은 탐색 선택 숨김 처리 */}
+        {/* <SearchModeDropdown
           searchMode={searchMode}
           showSearchModeDropdown={showSearchModeDropdown}
           setShowSearchModeDropdown={setShowSearchModeDropdown}
           handleSearchModeSelect={handleSearchModeSelect}
           selectedModel={selectedModel}
           modelDropdownRef={modelDropdownRef}
-        />
+        /> */}
         <button
           type="submit"
           className="chat-panel-submit-circle-button"
           aria-label="메시지 전송"
-          disabled={!inputText.trim() || !selectedModel || isLoading}
+          disabled={!inputText.trim() || isLoading || !hasUsableModel}
         >
           <span className="chat-panel-send-icon">➤</span>
         </button>
@@ -723,6 +914,11 @@ const ChatMessage = ({
                             if (typeof onReferencedNodesUpdate === "function") {
                               onReferencedNodesUpdate([nodeName]);
                             }
+                          }}
+                          style={{
+                            textDecoration: "none",
+                            cursor: "default",
+                            borderBottom: "none",
                           }}
                         >
                           {nodeName.replace(/\*/g, "")}
@@ -809,7 +1005,7 @@ const ChatMessage = ({
             )}
           </button>
           {/* bot 메시지에만 그래프 버튼 표시 */}
-          {message.is_ai && (
+          {/* {message.is_ai && (
             <button
               className="chat-panel-graph-button"
               title="그래프 보기"
@@ -830,10 +1026,10 @@ const ChatMessage = ({
             >
               <PiGraph size={19} color="black" />
             </button>
-          )}
+          )} */}
         </div>
-        {/* 정확도 표시 (AI 답변에만, 정보가 없는 경우 제외) */}
-        {message.is_ai &&
+        {/* 정확도 표시 숨김 처리 */}
+        {/* {message.is_ai &&
           message.accuracy !== null &&
           message.accuracy !== undefined &&
           !message.message.includes("지식그래프에 해당 정보가 없습니다") && (
@@ -853,7 +1049,7 @@ const ChatMessage = ({
               </span>
               <span className="chat-panel-accuracy-help">?</span>
             </div>
-          )}
+          )} */}
 
         {/* 정보가 없는 경우 친절한 안내 메시지 */}
         {message.is_ai &&
@@ -998,16 +1194,77 @@ function ChatPanel({
     }
   };
 
+  const autoSelectModelForQuestion = useCallback(
+    (questionText = "") => {
+      const trimmedQuestion = questionText.trim();
+      if (!trimmedQuestion) return null;
+
+      const installedModels = availableModels.filter(
+        (model) => model.installed
+      );
+      if (!installedModels.length) return null;
+
+      const isLocalDeployment = brainInfo?.deployment_type === "local";
+      let scopedModels = filterModelsByType(
+        installedModels,
+        isLocalDeployment ? MODEL_TYPES.OLLAMA : MODEL_TYPES.OPENAI
+      );
+
+      if (!scopedModels.length) {
+        scopedModels = installedModels;
+      }
+
+      const questionLower = trimmedQuestion.toLowerCase();
+      const hasKorean = /[가-힣]/.test(trimmedQuestion);
+      const isCodeRelated =
+        /```|class\s|\bfunction\b|\bconst\b|\blet\b|\bvar\b|\bimport\b|\bdef\b|\breturn\b|\bconsole\./.test(
+          questionLower
+        );
+      const isLongQuestion =
+        trimmedQuestion.length > 600 ||
+        trimmedQuestion.split(/\s+/).length > 120;
+
+      const targetPresets = isLocalDeployment
+        ? MODEL_SELECTION_PRESETS.ollama
+        : MODEL_SELECTION_PRESETS.openai;
+
+      let presetKey = "general";
+      if (isCodeRelated) {
+        presetKey = "code";
+      } else if (isLongQuestion && targetPresets.long) {
+        presetKey = "long";
+      } else if (isLocalDeployment && hasKorean && targetPresets.korean) {
+        presetKey = "korean";
+      }
+
+      const preferenceOrder =
+        targetPresets[presetKey] || targetPresets.general || [];
+      const availableNames = scopedModels.map((model) => model.name);
+
+      for (const candidate of preferenceOrder) {
+        if (availableNames.includes(candidate)) {
+          return candidate;
+        }
+      }
+
+      return scopedModels[0].name;
+    },
+    [availableModels, brainInfo]
+  );
+
   // ===== 선택한 모델을 localStorage에 저장 =====
-  const saveStoredModel = (modelName) => {
-    try {
-      // 세션별로만 모델 정보를 저장 (전역 저장 안함)
-      const sessionKey = `selectedModel_${selectedSessionId}`;
-      localStorage.setItem(sessionKey, modelName);
-    } catch (error) {
-      console.warn("localStorage에 모델 정보를 저장할 수 없습니다:", error);
-    }
-  };
+  const saveStoredModel = useCallback(
+    (modelName) => {
+      try {
+        // 세션별로만 모델 정보를 저장 (전역 저장 안함)
+        const sessionKey = `selectedModel_${selectedSessionId}`;
+        localStorage.setItem(sessionKey, modelName);
+      } catch (error) {
+        console.warn("localStorage에 모델 정보를 저장할 수 없습니다:", error);
+      }
+    },
+    [selectedSessionId]
+  );
 
   // ===== 초기 로딩 화면 (채팅 내역 로드 후 0.5초) =====
   useEffect(() => {
@@ -1140,12 +1397,7 @@ function ChatPanel({
       getBrain(selectedBrainId)
         .then((brain) => {
           setBrainInfo(brain);
-
-          // 브레인 정보 로드 후 저장된 모델 불러오기
-          const storedModel = getStoredModel(selectedSessionId);
-          if (storedModel) {
-            setSelectedModel(storedModel);
-          }
+          // 자동 모델 선택 기능이 있으므로 초기 모델 선택 제거
         })
         .catch((error) => {
           console.error("브레인 정보 로드 실패:", error);
@@ -1153,14 +1405,11 @@ function ChatPanel({
     }
   }, [selectedBrainId]);
 
-  // ===== 세션 변경 시 저장된 모델 불러오기 =====
+  // ===== 세션 변경 시 모델 초기화 =====
   useEffect(() => {
     if (selectedSessionId) {
-      const storedModel = getStoredModel(selectedSessionId);
-      if (storedModel) {
-        setSelectedModel(storedModel);
-      }
-      // 세션별 모델이 없으면 아무것도 설정하지 않음
+      // 자동 모델 선택 기능이 있으므로 초기 모델 선택 제거
+      setSelectedModel("");
     }
   }, [selectedSessionId]);
 
@@ -1366,8 +1615,36 @@ function ChatPanel({
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
 
+    const questionText = inputText.trim();
+
+    let modelNameToUse = autoSelectModelForQuestion(questionText);
+
+    if (modelNameToUse && modelNameToUse !== selectedModel) {
+      setSelectedModel(modelNameToUse);
+      saveStoredModel(modelNameToUse);
+      const modelMeta = getModelData(modelNameToUse);
+      toast.info(
+        `${modelMeta.name || modelNameToUse} 모델이 자동으로 선택되었습니다.`,
+        {
+          autoClose: 2500,
+          toastId: `auto-model-${modelNameToUse}`,
+        }
+      );
+    }
+
+    if (!modelNameToUse) {
+      modelNameToUse = selectedModel;
+    }
+
+    if (!modelNameToUse) {
+      alert(
+        "사용 가능한 모델이 없습니다. 모델을 설치하거나 직접 선택해주세요."
+      );
+      return;
+    }
+
     // 모델 선택 검증 추가
-    if (!selectedModel || selectedModel.trim() === "") {
+    if (!modelNameToUse || modelNameToUse.trim() === "") {
       alert("사용할 모델을 선택해주세요.");
       return;
     }
@@ -1385,7 +1662,7 @@ function ChatPanel({
     const tempQuestion = {
       chat_id: Date.now(),
       is_ai: false,
-      message: inputText,
+      message: questionText,
       referenced_nodes: [],
     };
     setChatHistory((prev) => [...prev, tempQuestion]);
@@ -1395,7 +1672,7 @@ function ChatPanel({
       // 1-1. 사용자 질문을 DB에 저장
       const questionChatId = await saveChatToSession(selectedSessionId, {
         is_ai: false, // boolean 값으로 변경 (chatApi.js에서 자동으로 0으로 변환)
-        message: inputText,
+        message: questionText,
         referenced_nodes: [], // 빈 배열 (백엔드에서 List[Any]로 받음)
         accuracy: null,
       });
@@ -1416,9 +1693,9 @@ function ChatPanel({
 
       // 2. AI에게 답변 요청
       // GPT 모델인지 확인하고 적절한 model과 model_name 설정
-      const isGptModel = selectedModel.startsWith("gpt-");
+      const isGptModel = modelNameToUse.startsWith("gpt-");
       const model = isGptModel ? "openai" : "ollama";
-      const model_name = selectedModel; // 🚀 항상 selectedModel 사용 (GPT 모델도 포함)
+      const model_name = modelNameToUse; // 🚀 항상 선택 모델 사용 (GPT 모델도 포함)
 
       // 탐색 모드에 따른 추가 파라미터 설정
       const searchParams = {
@@ -1426,7 +1703,7 @@ function ChatPanel({
       };
 
       const res = await requestAnswer(
-        inputText,
+        questionText,
         selectedSessionId,
         selectedBrainId,
         model,
@@ -1595,6 +1872,7 @@ function ChatPanel({
 
   // ===== 유틸리티 변수 =====
   const hasChatStarted = chatHistory.length > 0; // 채팅 시작 여부
+  const hasUsableModel = availableModels.some((model) => model.installed);
 
   // ===== 공통 props 객체 =====
   // ChatInput 컴포넌트에 전달할 props 객체
@@ -1618,6 +1896,7 @@ function ChatPanel({
     handleSearchModeSelect,
     modelDropdownRef,
     textareaRef, // 빈 채팅 상태에서 사용
+    hasUsableModel,
   };
 
   useEffect(() => {
@@ -1742,20 +2021,22 @@ function ChatPanel({
                   handleInstallModel={handleInstallModel}
                   installingModel={installingModel}
                   brainInfo={brainInfo}
+                  readOnly={true}
                 />
-                <SearchModeDropdown
+                {/* 빠른 탐색/깊은 탐색 선택 숨김 처리 */}
+                {/* <SearchModeDropdown
                   searchMode={searchMode}
                   showSearchModeDropdown={showSearchModeDropdown}
                   setShowSearchModeDropdown={setShowSearchModeDropdown}
                   handleSearchModeSelect={handleSearchModeSelect}
                   selectedModel={selectedModel}
                   modelDropdownRef={modelDropdownRef}
-                />
+                /> */}
                 <button
                   type="submit"
                   className="chat-panel-submit-circle-button"
                   aria-label="메시지 전송"
-                  disabled={!inputText.trim() || !selectedModel || isLoading}
+                  disabled={!inputText.trim() || isLoading || !hasUsableModel}
                 >
                   <span className="chat-panel-send-icon">➤</span>
                 </button>
@@ -1765,9 +2046,9 @@ function ChatPanel({
         </div>
       )}
       {/* 안내 문구 */}
-      <p className="chat-panel-disclaimer">
+      {/* <p className="chat-panel-disclaimer">
         BrainTrace는 학습된 정보 기반으로 응답하며, 실제와 다를 수 있습니다.
-      </p>
+      </p> */}
       {/* 대화 초기화 확인 다이얼로그 */}
       {showConfirm && (
         <ConfirmDialog

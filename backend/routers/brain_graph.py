@@ -54,6 +54,25 @@ from dependencies import get_ai_service_Ollama
 from services.accuracy_service import compute_accuracy
 from services import manual_chunking_sentences
 import time
+import json
+import re
+
+# LangChain imports
+try:
+    from langchain_core.pydantic_v1 import BaseModel, Field
+    from langchain.tools import StructuredTool
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError:
+        from langchain_community.chat_models import ChatOpenAI
+    try:
+        from langchain_community.chat_models import ChatOllama
+    except ImportError:
+        ChatOllama = None
+    LANGCHAIN_AVAILABLE = True
+except ImportError as e:
+    LANGCHAIN_AVAILABLE = False
+    logging.warning(f"LangChain이 설치되지 않았거나 일부 모듈을 찾을 수 없습니다. 커스텀 Agent를 사용합니다. 오류: {e}")
 
 # ───────── FastAPI 라우터 설정 ───────── #
 router = APIRouter(
@@ -220,6 +239,310 @@ async def process_text_endpoint(request_data: ProcessTextRequest):
     }
 
 
+# LangChain Tool 정의 (LangChain이 사용 가능한 경우)
+if LANGCHAIN_AVAILABLE:
+    # Tool을 위한 Pydantic 모델 정의
+    class NodeQualityInput(BaseModel):
+        question: str = Field(description="사용자 질문")
+        node_names: list = Field(description="검색된 노드 이름 리스트")
+        node_scores: list = Field(description="각 노드의 유사도 점수 리스트")
+    
+    class SchemaSufficiencyInput(BaseModel):
+        question: str = Field(description="사용자 질문")
+        schema_summary: str = Field(description="스키마 조회 결과 요약")
+    
+    class SchemaOptimizationInput(BaseModel):
+        question: str = Field(description="사용자 질문")
+        raw_schema_text: str = Field(description="원본 스키마 텍스트")
+    
+    def create_langchain_llm(ai_service, model: str, model_name: str):
+        """LangChain LLM 인스턴스 생성"""
+        if model == "openai":
+            return ChatOpenAI(model=model_name, temperature=0)
+        elif model == "ollama":
+            if ChatOllama is None:
+                raise ValueError("ChatOllama를 사용할 수 없습니다. langchain-community가 설치되어 있는지 확인하세요.")
+            return ChatOllama(model=model_name, temperature=0)
+        else:
+            raise ValueError(f"지원하지 않는 모델: {model}")
+    
+    def create_node_quality_tool(llm):
+        """노드 품질 평가 Tool 생성"""
+        def evaluate_nodes(question: str, node_names: list, node_scores: list) -> str:
+            """검색된 노드들의 품질을 평가하고 필터링"""
+            node_info = [f"- {name} (유사도: {score:.2f})" for name, score in zip(node_names, node_scores)]
+            nodes_text = "\n".join(node_info)
+            
+            prompt = (
+                f"다음은 사용자 질문과 검색된 노드 목록입니다.\n\n"
+                f"사용자 질문: {question}\n\n"
+                f"검색된 노드 목록:\n{nodes_text}\n\n"
+                f"질문과 직접적으로 관련된 노드만 선택하여 JSON 형식으로 응답해주세요:\n"
+                f'{{"filtered_node_names": ["노드명1", "노드명2", ...], "needs_more_search": true/false, "reason": "판단 이유"}}'
+            )
+            
+            try:
+                response = llm.invoke(prompt)
+                content = response.content if hasattr(response, 'content') else str(response)
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    return json_match.group()
+                return json.dumps({"filtered_node_names": node_names, "needs_more_search": False, "reason": "파싱 실패"})
+            except Exception as e:
+                logging.error(f"노드 품질 평가 Tool 오류: {e}")
+                return json.dumps({"filtered_node_names": node_names, "needs_more_search": False, "reason": f"오류: {str(e)}"})
+        
+        return StructuredTool.from_function(
+            func=evaluate_nodes,
+            name="evaluate_node_quality",
+            description="검색된 노드들의 질문과의 관련성을 평가하고 필터링합니다.",
+            args_schema=NodeQualityInput
+        )
+    
+    def create_schema_sufficiency_tool(llm):
+        """스키마 충분성 판단 Tool 생성"""
+        def evaluate_schema(question: str, schema_summary: str) -> str:
+            """스키마 조회 결과의 충분성을 판단"""
+            prompt = (
+                f"다음은 사용자 질문과 스키마 조회 결과 요약입니다.\n\n"
+                f"사용자 질문: {question}\n\n"
+                f"스키마 조회 결과: {schema_summary}\n\n"
+                f"질문에 답변하기에 충분한 정보가 있는지 판단하여 JSON 형식으로 응답해주세요:\n"
+                f'{{"is_sufficient": true/false, "needs_deep_search": true/false, "missing_info": "부족한 정보", "reason": "판단 이유"}}'
+            )
+            
+            try:
+                response = llm.invoke(prompt)
+                content = response.content if hasattr(response, 'content') else str(response)
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    return json_match.group()
+                return json.dumps({"is_sufficient": True, "needs_deep_search": False, "missing_info": "", "reason": "파싱 실패"})
+            except Exception as e:
+                logging.error(f"스키마 충분성 판단 Tool 오류: {e}")
+                return json.dumps({"is_sufficient": True, "needs_deep_search": False, "missing_info": "", "reason": f"오류: {str(e)}"})
+        
+        return StructuredTool.from_function(
+            func=evaluate_schema,
+            name="evaluate_schema_sufficiency",
+            description="스키마 조회 결과가 질문에 답변하기에 충분한지 판단합니다.",
+            args_schema=SchemaSufficiencyInput
+        )
+    
+    def create_schema_optimization_tool(llm):
+        """스키마 텍스트 최적화 Tool 생성"""
+        def optimize_schema(question: str, raw_schema_text: str) -> str:
+            """스키마 텍스트를 질문에 맞게 최적화"""
+            if not raw_schema_text or len(raw_schema_text.strip()) == 0:
+                return raw_schema_text
+            
+            prompt = (
+                f"다음은 사용자 질문과 스키마 텍스트입니다.\n\n"
+                f"사용자 질문: {question}\n\n"
+                f"스키마 텍스트:\n{raw_schema_text}\n\n"
+                f"질문에 답변하는데 직접적으로 관련된 정보만 남기고 불필요한 정보는 제거하여 최적화된 스키마 텍스트를 생성해주세요.\n"
+                f"원본 스키마의 구조와 형식은 유지하되, 질문과 무관한 노드나 관계는 제외해주세요."
+            )
+            
+            try:
+                response = llm.invoke(prompt)
+                optimized_text = response.content if hasattr(response, 'content') else str(response)
+                optimized_text = optimized_text.strip()
+                
+                if not optimized_text or len(optimized_text) < 10:
+                    return raw_schema_text
+                
+                return optimized_text
+            except Exception as e:
+                logging.error(f"스키마 최적화 Tool 오류: {e}")
+                return raw_schema_text
+        
+        return StructuredTool.from_function(
+            func=optimize_schema,
+            name="optimize_schema_text",
+            description="스키마 텍스트를 질문에 맞게 최적화하여 관련 정보만 남깁니다.",
+            args_schema=SchemaOptimizationInput
+        )
+
+
+# AI Agent 함수들 (커스텀 구현 - LangChain이 없을 때 사용)
+def evaluate_search_nodes_quality(ai_service, question: str, similar_nodes: list) -> dict:
+    """
+    검색된 노드들의 품질을 평가하고 최적화하는 AI Agent
+    
+    Args:
+        ai_service: AI 서비스 인스턴스
+        question: 사용자 질문
+        similar_nodes: 검색된 유사 노드 리스트
+    
+    Returns:
+        dict: {
+            "filtered_nodes": list,  # 필터링된 노드 리스트
+            "needs_more_search": bool,  # 추가 검색 필요 여부
+            "reason": str  # 판단 이유
+        }
+    """
+    if not similar_nodes:
+        return {
+            "filtered_nodes": [],
+            "needs_more_search": False,
+            "reason": "검색된 노드가 없습니다."
+        }
+    
+    # 노드 이름과 점수 정보 추출
+    node_info = [f"- {node['name']} (유사도: {node['score']:.2f})" for node in similar_nodes]
+    nodes_text = "\n".join(node_info)
+    
+    prompt = (
+        f"다음은 사용자 질문과 검색된 노드 목록입니다.\n\n"
+        f"사용자 질문: {question}\n\n"
+        f"검색된 노드 목록:\n{nodes_text}\n\n"
+        f"다음 JSON 형식으로 응답해주세요:\n"
+        f'{{"filtered_node_names": ["노드명1", "노드명2", ...], "needs_more_search": true/false, "reason": "판단 이유"}}\n\n'
+        f"판단 기준:\n"
+        f"1. 질문과 직접적으로 관련된 노드만 포함\n"
+        f"2. 관련성이 낮은 노드는 제외\n"
+        f"3. 답변에 필요한 정보가 부족하면 needs_more_search를 true로 설정\n"
+        f"4. JSON 형식으로만 응답하고 다른 설명은 포함하지 마세요."
+    )
+    
+    try:
+        response = ai_service.chat(prompt)
+        # JSON 파싱 시도
+        # JSON 부분만 추출
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            # JSON 파싱 실패 시 원본 노드 반환
+            logging.warning("AI Agent 응답 파싱 실패, 원본 노드 사용")
+            return {
+                "filtered_nodes": similar_nodes,
+                "needs_more_search": False,
+                "reason": "응답 파싱 실패"
+            }
+        
+        # 필터링된 노드 이름으로 원본 노드 필터링
+        filtered_names = result.get("filtered_node_names", [])
+        filtered_nodes = [node for node in similar_nodes if node["name"] in filtered_names]
+        
+        # 필터링 결과가 비어있으면 원본 사용
+        if not filtered_nodes:
+            filtered_nodes = similar_nodes
+        
+        return {
+            "filtered_nodes": filtered_nodes,
+            "needs_more_search": result.get("needs_more_search", False),
+            "reason": result.get("reason", "")
+        }
+    except Exception as e:
+        logging.error(f"검색 노드 품질 평가 Agent 오류: {e}")
+        # 오류 시 원본 노드 반환
+        return {
+            "filtered_nodes": similar_nodes,
+            "needs_more_search": False,
+            "reason": f"Agent 오류: {str(e)}"
+        }
+
+
+def evaluate_schema_sufficiency(ai_service, question: str, schema_summary: str) -> dict:
+    """
+    스키마 조회 결과의 충분성을 판단하는 AI Agent
+    
+    Args:
+        ai_service: AI 서비스 인스턴스
+        question: 사용자 질문
+        schema_summary: 스키마 요약 정보 (노드 개수, 관계 개수 등)
+    
+    Returns:
+        dict: {
+            "is_sufficient": bool,  # 충분한지 여부
+            "needs_deep_search": bool,  # 깊은 탐색 필요 여부
+            "missing_info": str,  # 부족한 정보 설명
+            "reason": str  # 판단 이유
+        }
+    """
+    prompt = (
+        f"다음은 사용자 질문과 스키마 조회 결과 요약입니다.\n\n"
+        f"사용자 질문: {question}\n\n"
+        f"스키마 조회 결과: {schema_summary}\n\n"
+        f"다음 JSON 형식으로 응답해주세요:\n"
+        f'{{"is_sufficient": true/false, "needs_deep_search": true/false, "missing_info": "부족한 정보", "reason": "판단 이유"}}\n\n'
+        f"판단 기준:\n"
+        f"1. 질문에 답변하기에 충분한 정보가 있는지 판단\n"
+        f"2. 부족하면 needs_deep_search를 true로 설정\n"
+        f"3. JSON 형식으로만 응답하고 다른 설명은 포함하지 마세요."
+    )
+    
+    try:
+        response = ai_service.chat(prompt)
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            logging.warning("AI Agent 응답 파싱 실패, 기본값 사용")
+            return {
+                "is_sufficient": True,
+                "needs_deep_search": False,
+                "missing_info": "",
+                "reason": "응답 파싱 실패"
+            }
+        
+        return {
+            "is_sufficient": result.get("is_sufficient", True),
+            "needs_deep_search": result.get("needs_deep_search", False),
+            "missing_info": result.get("missing_info", ""),
+            "reason": result.get("reason", "")
+        }
+    except Exception as e:
+        logging.error(f"스키마 충분성 판단 Agent 오류: {e}")
+        return {
+            "is_sufficient": True,
+            "needs_deep_search": False,
+            "missing_info": "",
+            "reason": f"Agent 오류: {str(e)}"
+        }
+
+
+def optimize_schema_text(ai_service, question: str, raw_schema_text: str) -> str:
+    """
+    스키마 텍스트를 질문에 맞게 최적화하는 AI Agent
+    
+    Args:
+        ai_service: AI 서비스 인스턴스
+        question: 사용자 질문
+        raw_schema_text: 원본 스키마 텍스트
+    
+    Returns:
+        str: 최적화된 스키마 텍스트
+    """
+    if not raw_schema_text or len(raw_schema_text.strip()) == 0:
+        return raw_schema_text
+    
+    prompt = (
+        f"다음은 사용자 질문과 스키마 텍스트입니다.\n\n"
+        f"사용자 질문: {question}\n\n"
+        f"스키마 텍스트:\n{raw_schema_text}\n\n"
+        f"질문에 답변하는데 직접적으로 관련된 정보만 남기고 불필요한 정보는 제거하여 최적화된 스키마 텍스트를 생성해주세요.\n"
+        f"원본 스키마의 구조와 형식은 유지하되, 질문과 무관한 노드나 관계는 제외해주세요.\n"
+        f"최적화된 스키마 텍스트만 응답하고 다른 설명은 포함하지 마세요."
+    )
+    
+    try:
+        optimized_text = ai_service.chat(prompt)
+        optimized_text = optimized_text.strip()
+        
+        # 최적화 결과가 비어있거나 너무 짧으면 원본 사용
+        if not optimized_text or len(optimized_text) < 10:
+            logging.warning("최적화된 텍스트가 비어있어 원본 사용")
+            return raw_schema_text
+        
+        return optimized_text
+    except Exception as e:
+        logging.error(f"스키마 텍스트 최적화 Agent 오류: {e}")
+        return raw_schema_text
+
+
 @router.post("/answer",
     summary="질문에 대한 답변 생성",
     description="""
@@ -298,11 +621,68 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 3: 임베딩을 통해 유사한 노드 검색, Q는 검색된 노드와 질문의 유사도 평균으로 정확도 계산에 쓰임
         similar_nodes,Q = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
+            # 관련 노드가 없을 때 일반 지식으로 답변 생성
+            logging.info("관련 노드가 없어 일반 지식으로 답변을 생성합니다.")
+            general_prompt = (
+                f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
+                f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
+                f"질문: {question}\n\n"
+                f"답변:"
+            )
+            final_answer = ai_service.chat(general_prompt)
+            final_answer = final_answer.strip()
+            
+            # 일반 지식 답변 저장
+            chat_id = db_handler.save_chat(session_id, True, final_answer, [], 0.0)
+            
             return {
-            "answer": "해당 노드와 관련된 노드가 존재하지 않습니다.",
-            "referenced_nodes": [],
-            "accuracy": 0
-              }
+                "answer": final_answer,
+                "referenced_nodes": [],
+                "chat_id": chat_id,
+                "accuracy": 0.0
+            }
+        
+        # Step 3-1: [AI Agent] 검색된 노드 품질 평가 및 최적화
+        logging.info("🤖 검색 노드 품질 평가 Agent 실행 중...")
+        
+        if LANGCHAIN_AVAILABLE:
+            # LangChain Agent 사용
+            try:
+                llm = create_langchain_llm(ai_service, model, model_name)
+                node_quality_tool = create_node_quality_tool(llm)
+                
+                node_names = [node["name"] for node in similar_nodes]
+                node_scores = [node["score"] for node in similar_nodes]
+                
+                result_json = node_quality_tool.invoke({
+                    "question": question,
+                    "node_names": node_names,
+                    "node_scores": node_scores
+                })
+                
+                result = json.loads(result_json)
+                filtered_names = result.get("filtered_node_names", [])
+                filtered_nodes = [node for node in similar_nodes if node["name"] in filtered_names]
+                
+                if not filtered_nodes:
+                    filtered_nodes = similar_nodes
+                
+                similar_nodes = filtered_nodes
+                logging.info(f"🤖 LangChain Agent 판단: {result.get('reason', '')}")
+                if result.get("needs_more_search", False):
+                    logging.info("🤖 추가 검색이 필요하다고 판단되었지만, 현재는 원본 노드로 진행합니다.")
+            except Exception as e:
+                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
+                node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
+                similar_nodes = node_quality_result["filtered_nodes"]
+                logging.info(f"🤖 커스텀 Agent 판단: {node_quality_result['reason']}")
+        else:
+            # 커스텀 Agent 사용
+            node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
+            similar_nodes = node_quality_result["filtered_nodes"]
+            logging.info(f"🤖 커스텀 Agent 판단: {node_quality_result['reason']}")
+            if node_quality_result["needs_more_search"]:
+                logging.info("🤖 추가 검색이 필요하다고 판단되었지만, 현재는 원본 노드로 진행합니다.")
         
         # 노드 이름만 추출
         similar_node_names = [node["name"] for node in similar_nodes]
@@ -318,11 +698,26 @@ async def answer_endpoint(request_data: AnswerRequest):
             result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
 
         if not result:
-                return {
-                "answer": "해당 노드와 관련된 노드가 존재하지 않습니다.",
+            # 스키마 조회 결과가 없을 때 일반 지식으로 답변 생성
+            logging.info("스키마 조회 결과가 없어 일반 지식으로 답변을 생성합니다.")
+            general_prompt = (
+                f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
+                f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
+                f"질문: {question}\n\n"
+                f"답변:"
+            )
+            final_answer = ai_service.chat(general_prompt)
+            final_answer = final_answer.strip()
+            
+            # 일반 지식 답변 저장
+            chat_id = db_handler.save_chat(session_id, True, final_answer, [], 0.0)
+            
+            return {
+                "answer": final_answer,
                 "referenced_nodes": [],
-                "accuracy": 0
-                }
+                "chat_id": chat_id,
+                "accuracy": 0.0
+            }
             
         logging.info("### Neo4j 조회 결과 전체: %s", result)
         
@@ -334,55 +729,155 @@ async def answer_endpoint(request_data: AnswerRequest):
         logging.info("Neo4j search result: nodes=%d, related_nodes=%d, relationships=%d", 
                    len(nodes_result), len(related_nodes_result), len(relationships_result))
         
+        # Step 4-1: [AI Agent] 스키마 충분성 판단
+        schema_summary = f"노드 {len(nodes_result)}개, 관련 노드 {len(related_nodes_result)}개, 관계 {len(relationships_result)}개"
+        logging.info("🤖 스키마 충분성 판단 Agent 실행 중...")
+        
+        if LANGCHAIN_AVAILABLE:
+            # LangChain Agent 사용
+            try:
+                llm = create_langchain_llm(ai_service, model, model_name)
+                schema_sufficiency_tool = create_schema_sufficiency_tool(llm)
+                
+                result_json = schema_sufficiency_tool.invoke({
+                    "question": question,
+                    "schema_summary": schema_summary
+                })
+                
+                schema_sufficiency_result = json.loads(result_json)
+                logging.info(f"🤖 LangChain Agent 판단: {schema_sufficiency_result.get('reason', '')}")
+            except Exception as e:
+                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
+                schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
+                logging.info(f"🤖 커스텀 Agent 판단: {schema_sufficiency_result['reason']}")
+        else:
+            # 커스텀 Agent 사용
+            schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
+            logging.info(f"🤖 커스텀 Agent 판단: {schema_sufficiency_result['reason']}")
+        
+        # 충분하지 않고 깊은 탐색이 필요하다고 판단되면 deep search 시도
+        if not schema_sufficiency_result.get("is_sufficient", True) and schema_sufficiency_result.get("needs_deep_search", False) and not use_deep_search:
+            logging.info("🤖 스키마가 부족하여 깊은 탐색을 시도합니다.")
+            result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
+            if result:
+                nodes_result = result.get("nodes", [])
+                related_nodes_result = result.get("relatedNodes", [])
+                relationships_result = result.get("relationships", [])
+                logging.info("🤖 깊은 탐색 결과: nodes=%d, related_nodes=%d, relationships=%d", 
+                           len(nodes_result), len(related_nodes_result), len(relationships_result))
+        
         # Step 5: 스키마 간결화 및 텍스트 구성
         # - 모델이 이해하기 쉽게 스키마를 텍스트로 요약/정리
         raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
         
+        # Step 5-1: [AI Agent] 스키마 텍스트 최적화
+        logging.info("🤖 스키마 텍스트 최적화 Agent 실행 중...")
+        
+        if LANGCHAIN_AVAILABLE:
+            # LangChain Agent 사용
+            try:
+                llm = create_langchain_llm(ai_service, model, model_name)
+                schema_optimization_tool = create_schema_optimization_tool(llm)
+                
+                optimized_schema_text = schema_optimization_tool.invoke({
+                    "question": question,
+                    "raw_schema_text": raw_schema_text
+                })
+                
+                if optimized_schema_text != raw_schema_text:
+                    logging.info(f"🤖 LangChain Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
+                    raw_schema_text = optimized_schema_text
+                else:
+                    logging.info("🤖 LangChain Agent 최적화 결과 원본과 동일하여 원본 사용")
+            except Exception as e:
+                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
+                optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
+                if optimized_schema_text != raw_schema_text:
+                    logging.info(f"🤖 커스텀 Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
+                    raw_schema_text = optimized_schema_text
+                else:
+                    logging.info("🤖 커스텀 Agent 최적화 결과 원본과 동일하여 원본 사용")
+        else:
+            # 커스텀 Agent 사용
+            optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
+            if optimized_schema_text != raw_schema_text:
+                logging.info(f"🤖 커스텀 Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
+                raw_schema_text = optimized_schema_text
+            else:
+                logging.info("🤖 커스텀 Agent 최적화 결과 원본과 동일하여 원본 사용")
+        
         # Step 6: LLM을을 사용해 최종 답변 생성
         logging.info("🚀 답변 생성 시작 - 모델: %s", ai_service.model_name if hasattr(ai_service, 'model_name') else '알 수 없음')
         final_answer = ai_service.generate_answer(raw_schema_text, question)
-        # referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
-        referenced_nodes = ai_service.generate_referenced_nodes(final_answer,brain_id) #출처 노드 반환 함수
         final_answer = final_answer.strip()
+        
+        # 일반 지식 답변 여부 플래그
+        is_general_knowledge_answer = False
+        
+        # 답변에 "지식그래프에 해당 정보가 없습니다"가 포함되어 있는지 확인
+        if "지식그래프에 해당 정보가 없습니다" in final_answer or "지식그래프에 해당 정보가 없습니다." in final_answer:
+            # 일반 지식으로 답변 재생성
+            logging.info("지식그래프에 정보가 없어 일반 지식으로 답변을 재생성합니다.")
+            general_prompt = (
+                f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
+                f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
+                f"질문: {question}\n\n"
+                f"답변:"
+            )
+            final_answer = ai_service.chat(general_prompt)
+            final_answer = final_answer.strip()
+            referenced_nodes = []
+            Q = 0.0
+            is_general_knowledge_answer = True
+        else:
+            # referenced_nodes = ai_service.extract_referenced_nodes(final_answer)
+            referenced_nodes = ai_service.generate_referenced_nodes(final_answer,brain_id) #출처 노드 반환 함수
         
         # referenced_nodes 내용을 텍스트로 final_answer 뒤에 추가
         if referenced_nodes:
             nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
             final_answer += nodes_text
-        # 간단 정확도 산출: 답변/참고노드/브레인/스키마 텍스트 기반 지표
-        accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id,Q,raw_schema_text)
-        logging.info(f"정확도 : {accuracy}")
-        # node의 출처 소스 id들 가져오기
-        node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
-        logging.info(f"node_to_ids: {node_to_ids}")
-        # 모든 source_id 집합 수집
-        all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
-        logging.info(f"all_ids: {all_ids}")
-        # SQLite batch 조회로 id→title 매핑
-        id_to_title = db_handler.get_titles_by_ids(all_ids)
-               
-        # 최종 구조화
-        enriched = []
-        for node in referenced_nodes:
-            # 중복 제거된 source_id 리스트
-            unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
-            sources = []
-            for sid in unique_sids:
-                if sid not in id_to_title:
-                    continue
-                # Neo4j 에서 이 (node, sid) 조합의 original_sentences 가져오기
-                orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
+        
+        # 일반 지식 답변인지 확인
+        if is_general_knowledge_answer:
+            # 일반 지식 답변인 경우 후처리 생략
+            enriched = []
+            accuracy = 0.0
+        else:
+            # 간단 정확도 산출: 답변/참고노드/브레인/스키마 텍스트 기반 지표
+            accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id,Q,raw_schema_text)
+            logging.info(f"정확도 : {accuracy}")
+            # node의 출처 소스 id들 가져오기
+            node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+            logging.info(f"node_to_ids: {node_to_ids}")
+            # 모든 source_id 집합 수집
+            all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
+            logging.info(f"all_ids: {all_ids}")
+            # SQLite batch 조회로 id→title 매핑
+            id_to_title = db_handler.get_titles_by_ids(all_ids)
+                   
+            # 최종 구조화
+            enriched = []
+            for node in referenced_nodes:
+                # 중복 제거된 source_id 리스트
+                unique_sids = list(dict.fromkeys(node_to_ids.get(node, [])))
+                sources = []
+                for sid in unique_sids:
+                    if sid not in id_to_title:
+                        continue
+                    # Neo4j 에서 이 (node, sid) 조합의 original_sentences 가져오기
+                    orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
 
-                sources.append({
-                    "id": str(sid),
-                    "title": id_to_title[sid],
-                    "original_sentences": orig_sents  # 여기에 리스트 형태로 들어감
+                    sources.append({
+                        "id": str(sid),
+                        "title": id_to_title[sid],
+                        "original_sentences": orig_sents  # 여기에 리스트 형태로 들어감
+                    })
+
+                enriched.append({
+                        "name": node,
+                        "source_ids": sources
                 })
-
-            enriched.append({
-                    "name": node,
-                    "source_ids": sources
-            })
 
         # AI 답변 저장 및 chat_id 획득
         chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
