@@ -365,6 +365,143 @@ if LANGCHAIN_AVAILABLE:
         )
 
 
+# 오류 복구 Agent 함수
+def error_recovery_agent(ai_service, error_info: dict, step_name: str, context: dict) -> dict:
+    """
+    오류 발생 시 원인을 분석하고 해결 방안을 제시하는 AI Agent
+    
+    Args:
+        ai_service: AI 서비스 인스턴스
+        error_info: 오류 정보 (error_type, error_message, step, context 등)
+        step_name: 오류가 발생한 단계 이름
+        context: 현재 컨텍스트 정보
+    
+    Returns:
+        dict: {
+            "recovery_action": str,  # 복구 액션 (retry, skip, modify, fallback 등)
+            "modification": dict,  # 수정 사항 (있는 경우)
+            "reason": str,  # 복구 방안 이유
+            "retry_params": dict  # 재시도 시 사용할 파라미터
+        }
+    """
+    error_type = error_info.get("error_type", "Unknown")
+    error_message = error_info.get("error_message", "")
+    step = error_info.get("step", "")
+    
+    prompt = (
+        f"다음은 질문-답변 파이프라인에서 발생한 오류입니다.\n\n"
+        f"오류 발생 단계: {step_name}\n"
+        f"오류 유형: {error_type}\n"
+        f"오류 메시지: {error_message}\n\n"
+        f"현재 컨텍스트:\n"
+        f"- 질문: {context.get('question', 'N/A')}\n"
+        f"- 검색된 노드 수: {context.get('node_count', 'N/A')}\n"
+        f"- 스키마 노드 수: {context.get('schema_node_count', 'N/A')}\n\n"
+        f"다음 JSON 형식으로 응답해주세요:\n"
+        f'{{"recovery_action": "retry|skip|modify|fallback", "modification": {{"key": "value"}}, "reason": "복구 방안 이유", "retry_params": {{"param": "value"}}}}\n\n'
+        f"복구 액션 설명:\n"
+        f"- retry: 동일한 파라미터로 재시도\n"
+        f"- skip: 현재 단계 건너뛰고 다음 단계 진행\n"
+        f"- modify: 파라미터 수정 후 재시도 (retry_params에 수정 사항 포함)\n"
+        f"- fallback: 대체 방법 사용 (예: 일반 지식으로 답변)\n\n"
+        f"JSON 형식으로만 응답하고 다른 설명은 포함하지 마세요."
+    )
+    
+    try:
+        response = ai_service.chat(prompt)
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "recovery_action": result.get("recovery_action", "skip"),
+                "modification": result.get("modification", {}),
+                "reason": result.get("reason", ""),
+                "retry_params": result.get("retry_params", {})
+            }
+        else:
+            logging.warning("오류 복구 Agent 응답 파싱 실패, 기본값 사용")
+            return {
+                "recovery_action": "skip",
+                "modification": {},
+                "reason": "응답 파싱 실패",
+                "retry_params": {}
+            }
+    except Exception as e:
+        logging.error(f"오류 복구 Agent 실행 오류: {e}")
+        return {
+            "recovery_action": "skip",
+            "modification": {},
+            "reason": f"Agent 오류: {str(e)}",
+            "retry_params": {}
+        }
+
+
+def retry_with_recovery(max_retries=3):
+    """
+    오류 발생 시 자동 복구 및 재시도를 위한 데코레이터
+    
+    Args:
+        max_retries: 최대 재시도 횟수
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            ai_service = kwargs.get('ai_service') or (args[0] if args else None)
+            question = kwargs.get('question') or (args[1] if len(args) > 1 else "")
+            step_name = kwargs.get('step_name', func.__name__)
+            
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    error_info = {
+                        "error_type": type(e).__name__,
+                        "error_message": str(e),
+                        "step": step_name,
+                        "attempt": attempt + 1
+                    }
+                    
+                    context = {
+                        "question": question,
+                        "node_count": kwargs.get('node_count', 'N/A'),
+                        "schema_node_count": kwargs.get('schema_node_count', 'N/A')
+                    }
+                    
+                    logging.warning(f"⚠️  [{step_name}] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                    
+                    if attempt < max_retries - 1 and ai_service:
+                        # 오류 복구 Agent 실행
+                        logging.info(f"🔧 오류 복구 Agent 실행 중...")
+                        recovery_result = error_recovery_agent(ai_service, error_info, step_name, context)
+                        
+                        recovery_action = recovery_result.get('recovery_action', 'skip')
+                        logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                        
+                        if recovery_action == "retry":
+                            logging.info(f"🔄 재시도 중...")
+                            continue
+                        elif recovery_action == "modify":
+                            # 파라미터 수정 후 재시도
+                            retry_params = recovery_result.get("retry_params", {})
+                            kwargs.update(retry_params)
+                            logging.info(f"🔄 파라미터 수정 후 재시도: {retry_params}")
+                            continue
+                        elif recovery_action == "skip":
+                            logging.info(f"⏭️  현재 단계 건너뛰기")
+                            return None
+                        elif recovery_action == "fallback":
+                            logging.info(f"🔄 대체 방법 사용")
+                            # fallback 로직은 각 함수에서 구현
+                            return None
+                    else:
+                        # 최대 재시도 횟수 초과
+                        logging.error(f"❌ 최대 재시도 횟수 초과. 오류: {str(e)}")
+                        raise
+            
+            return None
+        return wrapper
+    return decorator
+
+
 # AI Agent 함수들 (커스텀 구현 - LangChain이 없을 때 사용)
 def evaluate_search_nodes_quality(ai_service, question: str, similar_nodes: list) -> dict:
     """
@@ -586,25 +723,18 @@ async def answer_endpoint(request_data: AnswerRequest):
     if not brain_id:
         raise HTTPException(status_code=400, detail="brain_id 파라미터가 필요합니다.")
     
-     # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
+    # 선택된 모델에 따라 AI 서비스 인스턴스를 주입
     if model == "openai":
-        logging.info("🚀 OpenAI 서비스 선택됨 - model_name: %s", model_name)
-        ai_service = get_ai_service_GPT(model_name)  # model_name 전달
-        logging.info("🚀 OpenAI 서비스 생성 완료")
+        ai_service = get_ai_service_GPT(model_name)
+        logging.info("📋 [1] 질문 수신 | 모델: %s (%s)", model_name, model)
     elif model == "ollama":
-        logging.info("🚀 Ollama 서비스 선택됨 - model_name: %s", model_name)
         ai_service = get_ai_service_Ollama(model_name)
-        logging.info("🚀 Ollama 서비스 생성 완료")
+        logging.info("📋 [1] 질문 수신 | 모델: %s (%s)", model_name, model)
     else:
-        logging.error("🚀 지원하지 않는 모델: %s", model)
+        logging.error("지원하지 않는 모델: %s", model)
         raise HTTPException(status_code=400, detail=f"지원하지 않는 모델: {model}")
     
-    # 🚀 핵심 디버깅: 모델 정보 확인
-    logging.info("🚀 === 모델 정보 ===")
-    logging.info("🚀 요청된 model: %s, model_name: %s", model, model_name)
-    logging.info("🚀 AI 서비스 타입: %s", type(ai_service).__name__)
-    if hasattr(ai_service, 'model_name'):
-        logging.info("🚀 실제 사용할 모델: %s", ai_service.model_name)
+    logging.info("💬 질문: %s", question[:100] + "..." if len(question) > 100 else question)
     
     try:
         # SQLite 핸들러: 소스 메타데이터(title 등) 조회와 채팅 로그 저장에 사용
@@ -613,16 +743,16 @@ async def answer_endpoint(request_data: AnswerRequest):
         # Step 1: 컬렉션이 없으면 초기화
         if not embedding_service.is_index_ready(brain_id):
             embedding_service.initialize_collection(brain_id)
-            logging.info("Qdrant 컬렉션 초기화 완료: %s", brain_id)
         
         # Step 2: 질문 임베딩 계산
         question_embedding = embedding_service.encode_text(question)
         
-        # Step 3: 임베딩을 통해 유사한 노드 검색, Q는 검색된 노드와 질문의 유사도 평균으로 정확도 계산에 쓰임
+        # Step 3: 임베딩을 통해 유사한 노드 검색
+        logging.info("🔍 [2] 유사 노드 검색 중...")
         similar_nodes,Q = embedding_service.search_similar_nodes(embedding=question_embedding, brain_id=brain_id)
         if not similar_nodes:
             # 관련 노드가 없을 때 일반 지식으로 답변 생성
-            logging.info("관련 노드가 없어 일반 지식으로 답변을 생성합니다.")
+            logging.info("⚠️  [3] 관련 노드 없음 → 일반 지식으로 답변 생성")
             general_prompt = (
                 f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
                 f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
@@ -634,6 +764,7 @@ async def answer_endpoint(request_data: AnswerRequest):
             
             # 일반 지식 답변 저장
             chat_id = db_handler.save_chat(session_id, True, final_answer, [], 0.0)
+            logging.info("✅ [4] 완료 | 일반 지식 답변 생성 완료")
             
             return {
                 "answer": final_answer,
@@ -643,63 +774,133 @@ async def answer_endpoint(request_data: AnswerRequest):
             }
         
         # Step 3-1: [AI Agent] 검색된 노드 품질 평가 및 최적화
-        logging.info("🤖 검색 노드 품질 평가 Agent 실행 중...")
+        initial_node_count = len(similar_nodes)
+        logging.info("🤖 [3] AI Agent: 노드 품질 평가 중... (검색된 노드: %d개)", initial_node_count)
         
-        if LANGCHAIN_AVAILABLE:
-            # LangChain Agent 사용
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                llm = create_langchain_llm(ai_service, model, model_name)
-                node_quality_tool = create_node_quality_tool(llm)
-                
-                node_names = [node["name"] for node in similar_nodes]
-                node_scores = [node["score"] for node in similar_nodes]
-                
-                result_json = node_quality_tool.invoke({
-                    "question": question,
-                    "node_names": node_names,
-                    "node_scores": node_scores
-                })
-                
-                result = json.loads(result_json)
-                filtered_names = result.get("filtered_node_names", [])
-                filtered_nodes = [node for node in similar_nodes if node["name"] in filtered_names]
-                
-                if not filtered_nodes:
-                    filtered_nodes = similar_nodes
-                
-                similar_nodes = filtered_nodes
-                logging.info(f"🤖 LangChain Agent 판단: {result.get('reason', '')}")
-                if result.get("needs_more_search", False):
-                    logging.info("🤖 추가 검색이 필요하다고 판단되었지만, 현재는 원본 노드로 진행합니다.")
+                if LANGCHAIN_AVAILABLE:
+                    try:
+                        llm = create_langchain_llm(ai_service, model, model_name)
+                        node_quality_tool = create_node_quality_tool(llm)
+                        node_names = [node["name"] for node in similar_nodes]
+                        node_scores = [node["score"] for node in similar_nodes]
+                        result_json = node_quality_tool.invoke({
+                            "question": question,
+                            "node_names": node_names,
+                            "node_scores": node_scores
+                        })
+                        result = json.loads(result_json)
+                        filtered_names = result.get("filtered_node_names", [])
+                        filtered_nodes = [node for node in similar_nodes if node["name"] in filtered_names]
+                        if not filtered_nodes:
+                            filtered_nodes = similar_nodes
+                        similar_nodes = filtered_nodes
+                    except Exception as e:
+                        node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
+                        similar_nodes = node_quality_result["filtered_nodes"]
+                else:
+                    node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
+                    similar_nodes = node_quality_result["filtered_nodes"]
+                break  # 성공 시 루프 종료
             except Exception as e:
-                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
-                node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
-                similar_nodes = node_quality_result["filtered_nodes"]
-                logging.info(f"🤖 커스텀 Agent 판단: {node_quality_result['reason']}")
-        else:
-            # 커스텀 Agent 사용
-            node_quality_result = evaluate_search_nodes_quality(ai_service, question, similar_nodes)
-            similar_nodes = node_quality_result["filtered_nodes"]
-            logging.info(f"🤖 커스텀 Agent 판단: {node_quality_result['reason']}")
-            if node_quality_result["needs_more_search"]:
-                logging.info("🤖 추가 검색이 필요하다고 판단되었지만, 현재는 원본 노드로 진행합니다.")
+                error_info = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "step": "노드 품질 평가",
+                    "attempt": attempt + 1
+                }
+                context = {
+                    "question": question,
+                    "node_count": len(similar_nodes),
+                    "schema_node_count": "N/A"
+                }
+                
+                logging.warning(f"⚠️  [노드 품질 평가] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                
+                if attempt < max_retries - 1:
+                    logging.info("🔧 오류 복구 Agent 실행 중...")
+                    recovery_result = error_recovery_agent(ai_service, error_info, "노드 품질 평가", context)
+                    recovery_action = recovery_result.get('recovery_action', 'skip')
+                    logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                    
+                    if recovery_action == "retry":
+                        logging.info("🔄 재시도 중...")
+                        continue
+                    elif recovery_action == "skip":
+                        logging.info("⏭️  현재 단계 건너뛰기 (원본 노드 사용)")
+                        break
+                    elif recovery_action == "fallback":
+                        logging.info("🔄 대체 방법 사용 (원본 노드 사용)")
+                        break
+                else:
+                    logging.error(f"❌ 최대 재시도 횟수 초과. 원본 노드 사용")
+                    break
         
-        # 노드 이름만 추출
+        filtered_node_count = len(similar_nodes)
+        if initial_node_count != filtered_node_count:
+            logging.info("✓ 최적화 완료: %d개 → %d개 (관련성 낮은 노드 %d개 제거)", 
+                        initial_node_count, filtered_node_count, initial_node_count - filtered_node_count)
+        else:
+            logging.info("✓ 최적화 완료: 모든 노드 유지 (%d개)", filtered_node_count)
         similar_node_names = [node["name"] for node in similar_nodes]
-        logging.info("sim node name: %s", similar_node_names)
-        logging.info("sim node score: %s", [f"{node['name']}:{node['score']:.2f}" for node in similar_nodes])
         
         # Step 4: 유사한 노드들의 스키마 조회
+        logging.info("🗺️  [4] 스키마 조회 중...")
         neo4j_handler = Neo4jHandler()
-
-        if(use_deep_search):
-            result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
-        else:
-            result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+        
+        max_retries = 3
+        result = None
+        for attempt in range(max_retries):
+            try:
+                if(use_deep_search):
+                    result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
+                else:
+                    result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+                break  # 성공 시 루프 종료
+            except Exception as e:
+                error_info = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "step": "스키마 조회",
+                    "attempt": attempt + 1
+                }
+                context = {
+                    "question": question,
+                    "node_count": len(similar_nodes),
+                    "schema_node_count": "N/A"
+                }
+                
+                logging.warning(f"⚠️  [스키마 조회] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                
+                if attempt < max_retries - 1:
+                    logging.info("🔧 오류 복구 Agent 실행 중...")
+                    recovery_result = error_recovery_agent(ai_service, error_info, "스키마 조회", context)
+                    recovery_action = recovery_result.get('recovery_action', 'fallback')
+                    logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                    
+                    if recovery_action == "retry":
+                        logging.info("🔄 재시도 중...")
+                        continue
+                    elif recovery_action == "modify":
+                        # 파라미터 수정 (예: deep_search 토글)
+                        retry_params = recovery_result.get("retry_params", {})
+                        if retry_params.get("use_deep_search") is not None:
+                            use_deep_search = retry_params["use_deep_search"]
+                            logging.info(f"🔄 파라미터 수정: use_deep_search={use_deep_search}")
+                        continue
+                    elif recovery_action == "fallback":
+                        logging.info("🔄 대체 방법 사용 (일반 지식으로 답변)")
+                        result = None
+                        break
+                else:
+                    logging.error(f"❌ 최대 재시도 횟수 초과. 일반 지식으로 답변 생성")
+                    result = None
+                    break
 
         if not result:
-            # 스키마 조회 결과가 없을 때 일반 지식으로 답변 생성
-            logging.info("스키마 조회 결과가 없어 일반 지식으로 답변을 생성합니다.")
+            logging.info("⚠️  [5] 스키마 조회 결과 없음 → 일반 지식으로 답변 생성")
             general_prompt = (
                 f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
                 f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
@@ -711,6 +912,7 @@ async def answer_endpoint(request_data: AnswerRequest):
             
             # 일반 지식 답변 저장
             chat_id = db_handler.save_chat(session_id, True, final_answer, [], 0.0)
+            logging.info("✅ [6] 완료 | 일반 지식 답변 생성 완료")
             
             return {
                 "answer": final_answer,
@@ -719,105 +921,232 @@ async def answer_endpoint(request_data: AnswerRequest):
                 "accuracy": 0.0
             }
             
-        logging.info("### Neo4j 조회 결과 전체: %s", result)
-        
         # 결과를 즉시 처리
         nodes_result = result.get("nodes", [])
         related_nodes_result = result.get("relatedNodes", [])
         relationships_result = result.get("relationships", [])
         
-        logging.info("Neo4j search result: nodes=%d, related_nodes=%d, relationships=%d", 
-                   len(nodes_result), len(related_nodes_result), len(relationships_result))
+        logging.info("✓ 스키마 조회 완료: 노드 %d개, 관계 %d개", len(nodes_result), len(relationships_result))
         
         # Step 4-1: [AI Agent] 스키마 충분성 판단
+        initial_nodes_count = len(nodes_result)
+        initial_relationships_count = len(relationships_result)
         schema_summary = f"노드 {len(nodes_result)}개, 관련 노드 {len(related_nodes_result)}개, 관계 {len(relationships_result)}개"
-        logging.info("🤖 스키마 충분성 판단 Agent 실행 중...")
+        logging.info("🤖 [5] AI Agent: 스키마 충분성 판단 중... (현재: 노드 %d개, 관계 %d개)", 
+                    initial_nodes_count, initial_relationships_count)
         
-        if LANGCHAIN_AVAILABLE:
-            # LangChain Agent 사용
+        max_retries = 3
+        schema_sufficiency_result = {"is_sufficient": True, "needs_deep_search": False}
+        for attempt in range(max_retries):
             try:
-                llm = create_langchain_llm(ai_service, model, model_name)
-                schema_sufficiency_tool = create_schema_sufficiency_tool(llm)
-                
-                result_json = schema_sufficiency_tool.invoke({
-                    "question": question,
-                    "schema_summary": schema_summary
-                })
-                
-                schema_sufficiency_result = json.loads(result_json)
-                logging.info(f"🤖 LangChain Agent 판단: {schema_sufficiency_result.get('reason', '')}")
+                if LANGCHAIN_AVAILABLE:
+                    try:
+                        llm = create_langchain_llm(ai_service, model, model_name)
+                        schema_sufficiency_tool = create_schema_sufficiency_tool(llm)
+                        result_json = schema_sufficiency_tool.invoke({
+                            "question": question,
+                            "schema_summary": schema_summary
+                        })
+                        schema_sufficiency_result = json.loads(result_json)
+                    except Exception as e:
+                        schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
+                else:
+                    schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
+                break  # 성공 시 루프 종료
             except Exception as e:
-                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
-                schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
-                logging.info(f"🤖 커스텀 Agent 판단: {schema_sufficiency_result['reason']}")
-        else:
-            # 커스텀 Agent 사용
-            schema_sufficiency_result = evaluate_schema_sufficiency(ai_service, question, schema_summary)
-            logging.info(f"🤖 커스텀 Agent 판단: {schema_sufficiency_result['reason']}")
+                error_info = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "step": "스키마 충분성 판단",
+                    "attempt": attempt + 1
+                }
+                context = {
+                    "question": question,
+                    "node_count": len(similar_nodes),
+                    "schema_node_count": len(nodes_result)
+                }
+                
+                logging.warning(f"⚠️  [스키마 충분성 판단] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                
+                if attempt < max_retries - 1:
+                    logging.info("🔧 오류 복구 Agent 실행 중...")
+                    recovery_result = error_recovery_agent(ai_service, error_info, "스키마 충분성 판단", context)
+                    recovery_action = recovery_result.get('recovery_action', 'skip')
+                    logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                    
+                    if recovery_action == "retry":
+                        logging.info("🔄 재시도 중...")
+                        continue
+                    elif recovery_action == "skip":
+                        logging.info("⏭️  현재 단계 건너뛰기 (기본값 사용)")
+                        schema_sufficiency_result = {"is_sufficient": True, "needs_deep_search": False}
+                        break
+                else:
+                    logging.error(f"❌ 최대 재시도 횟수 초과. 기본값 사용")
+                    schema_sufficiency_result = {"is_sufficient": True, "needs_deep_search": False}
+                    break
         
         # 충분하지 않고 깊은 탐색이 필요하다고 판단되면 deep search 시도
         if not schema_sufficiency_result.get("is_sufficient", True) and schema_sufficiency_result.get("needs_deep_search", False) and not use_deep_search:
-            logging.info("🤖 스키마가 부족하여 깊은 탐색을 시도합니다.")
+            logging.info("🔍 정보 부족 감지 → 깊은 탐색 실행...")
             result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
             if result:
                 nodes_result = result.get("nodes", [])
                 related_nodes_result = result.get("relatedNodes", [])
                 relationships_result = result.get("relationships", [])
-                logging.info("🤖 깊은 탐색 결과: nodes=%d, related_nodes=%d, relationships=%d", 
-                           len(nodes_result), len(related_nodes_result), len(relationships_result))
+                final_nodes_count = len(nodes_result)
+                final_relationships_count = len(relationships_result)
+                logging.info("✓ 깊은 탐색 완료: 노드 %d개 → %d개 (+%d개), 관계 %d개 → %d개 (+%d개)", 
+                            initial_nodes_count, final_nodes_count, final_nodes_count - initial_nodes_count,
+                            initial_relationships_count, final_relationships_count, final_relationships_count - initial_relationships_count)
+            else:
+                logging.info("✓ 깊은 탐색 완료: 추가 정보 없음")
+        else:
+            if schema_sufficiency_result.get("is_sufficient", True):
+                logging.info("✓ 충분성 판단: 현재 스키마로 답변 가능")
+            else:
+                logging.info("✓ 충분성 판단: 현재 스키마로 진행 (깊은 탐색 불필요)")
         
         # Step 5: 스키마 간결화 및 텍스트 구성
-        # - 모델이 이해하기 쉽게 스키마를 텍스트로 요약/정리
+        logging.info("📝 [6] 스키마 텍스트 생성 중...")
         raw_schema_text = ai_service.generate_schema_text(nodes_result, related_nodes_result, relationships_result)
+        initial_schema_length = len(raw_schema_text)
+        logging.info("  → 원본 스키마 텍스트: %d자", initial_schema_length)
         
         # Step 5-1: [AI Agent] 스키마 텍스트 최적화
-        logging.info("🤖 스키마 텍스트 최적화 Agent 실행 중...")
+        logging.info("🤖 [7] AI Agent: 스키마 텍스트 최적화 중...")
         
-        if LANGCHAIN_AVAILABLE:
-            # LangChain Agent 사용
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                llm = create_langchain_llm(ai_service, model, model_name)
-                schema_optimization_tool = create_schema_optimization_tool(llm)
-                
-                optimized_schema_text = schema_optimization_tool.invoke({
-                    "question": question,
-                    "raw_schema_text": raw_schema_text
-                })
-                
-                if optimized_schema_text != raw_schema_text:
-                    logging.info(f"🤖 LangChain Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
-                    raw_schema_text = optimized_schema_text
+                if LANGCHAIN_AVAILABLE:
+                    try:
+                        llm = create_langchain_llm(ai_service, model, model_name)
+                        schema_optimization_tool = create_schema_optimization_tool(llm)
+                        optimized_schema_text = schema_optimization_tool.invoke({
+                            "question": question,
+                            "raw_schema_text": raw_schema_text
+                        })
+                        if optimized_schema_text != raw_schema_text:
+                            raw_schema_text = optimized_schema_text
+                            optimized_length = len(raw_schema_text)
+                            reduction = initial_schema_length - optimized_length
+                            reduction_rate = (reduction / initial_schema_length * 100) if initial_schema_length > 0 else 0
+                            logging.info("✓ 최적화 완료: %d자 → %d자 (불필요한 정보 %d자 제거, %.1f%% 감소)", 
+                                        initial_schema_length, optimized_length, reduction, reduction_rate)
+                        else:
+                            logging.info("✓ 최적화 완료: 변경 없음 (이미 최적화된 상태)")
+                    except Exception as e:
+                        optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
+                        if optimized_schema_text != raw_schema_text:
+                            raw_schema_text = optimized_schema_text
+                            optimized_length = len(raw_schema_text)
+                            reduction = initial_schema_length - optimized_length
+                            reduction_rate = (reduction / initial_schema_length * 100) if initial_schema_length > 0 else 0
+                            logging.info("✓ 최적화 완료: %d자 → %d자 (불필요한 정보 %d자 제거, %.1f%% 감소)", 
+                                        initial_schema_length, optimized_length, reduction, reduction_rate)
+                        else:
+                            logging.info("✓ 최적화 완료: 변경 없음")
                 else:
-                    logging.info("🤖 LangChain Agent 최적화 결과 원본과 동일하여 원본 사용")
+                    optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
+                    if optimized_schema_text != raw_schema_text:
+                        raw_schema_text = optimized_schema_text
+                        optimized_length = len(raw_schema_text)
+                        reduction = initial_schema_length - optimized_length
+                        reduction_rate = (reduction / initial_schema_length * 100) if initial_schema_length > 0 else 0
+                        logging.info("✓ 최적화 완료: %d자 → %d자 (불필요한 정보 %d자 제거, %.1f%% 감소)", 
+                                    initial_schema_length, optimized_length, reduction, reduction_rate)
+                    else:
+                        logging.info("✓ 최적화 완료: 변경 없음")
+                break  # 성공 시 루프 종료
             except Exception as e:
-                logging.error(f"LangChain Agent 오류, 커스텀 Agent로 전환: {e}")
-                optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
-                if optimized_schema_text != raw_schema_text:
-                    logging.info(f"🤖 커스텀 Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
-                    raw_schema_text = optimized_schema_text
+                error_info = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "step": "스키마 텍스트 최적화",
+                    "attempt": attempt + 1
+                }
+                context = {
+                    "question": question,
+                    "node_count": len(similar_nodes),
+                    "schema_node_count": len(nodes_result)
+                }
+                
+                logging.warning(f"⚠️  [스키마 텍스트 최적화] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                
+                if attempt < max_retries - 1:
+                    logging.info("🔧 오류 복구 Agent 실행 중...")
+                    recovery_result = error_recovery_agent(ai_service, error_info, "스키마 텍스트 최적화", context)
+                    recovery_action = recovery_result.get('recovery_action', 'skip')
+                    logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                    
+                    if recovery_action == "retry":
+                        logging.info("🔄 재시도 중...")
+                        continue
+                    elif recovery_action == "skip":
+                        logging.info("⏭️  현재 단계 건너뛰기 (원본 스키마 텍스트 사용)")
+                        break
                 else:
-                    logging.info("🤖 커스텀 Agent 최적화 결과 원본과 동일하여 원본 사용")
-        else:
-            # 커스텀 Agent 사용
-            optimized_schema_text = optimize_schema_text(ai_service, question, raw_schema_text)
-            if optimized_schema_text != raw_schema_text:
-                logging.info(f"🤖 커스텀 Agent 최적화 완료 (원본: {len(raw_schema_text)}자 → 최적화: {len(optimized_schema_text)}자)")
-                raw_schema_text = optimized_schema_text
-            else:
-                logging.info("🤖 커스텀 Agent 최적화 결과 원본과 동일하여 원본 사용")
+                    logging.error(f"❌ 최대 재시도 횟수 초과. 원본 스키마 텍스트 사용")
+                    break
         
-        # Step 6: LLM을을 사용해 최종 답변 생성
-        logging.info("🚀 답변 생성 시작 - 모델: %s", ai_service.model_name if hasattr(ai_service, 'model_name') else '알 수 없음')
-        final_answer = ai_service.generate_answer(raw_schema_text, question)
-        final_answer = final_answer.strip()
+        # Step 6: LLM을 사용해 최종 답변 생성
+        logging.info("💡 [8] LLM 답변 생성 중...")
+        
+        max_retries = 3
+        final_answer = None
+        for attempt in range(max_retries):
+            try:
+                final_answer = ai_service.generate_answer(raw_schema_text, question)
+                final_answer = final_answer.strip()
+                break  # 성공 시 루프 종료
+            except Exception as e:
+                error_info = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "step": "LLM 답변 생성",
+                    "attempt": attempt + 1
+                }
+                context = {
+                    "question": question,
+                    "node_count": len(similar_nodes),
+                    "schema_node_count": len(nodes_result)
+                }
+                
+                logging.warning(f"⚠️  [LLM 답변 생성] 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                
+                if attempt < max_retries - 1:
+                    logging.info("🔧 오류 복구 Agent 실행 중...")
+                    recovery_result = error_recovery_agent(ai_service, error_info, "LLM 답변 생성", context)
+                    recovery_action = recovery_result.get('recovery_action', 'fallback')
+                    logging.info(f"🔧 복구 방안: {recovery_action} - {recovery_result['reason']}")
+                    
+                    if recovery_action == "retry":
+                        logging.info("🔄 재시도 중...")
+                        continue
+                    elif recovery_action == "modify":
+                        # 파라미터 수정 (예: 스키마 텍스트 단순화)
+                        retry_params = recovery_result.get("retry_params", {})
+                        if retry_params.get("simplify_schema"):
+                            # 스키마 텍스트를 단순화
+                            raw_schema_text = raw_schema_text[:1000] + "..." if len(raw_schema_text) > 1000 else raw_schema_text
+                            logging.info("🔄 스키마 텍스트 단순화 후 재시도")
+                        continue
+                    elif recovery_action == "fallback":
+                        logging.info("🔄 대체 방법 사용 (일반 지식으로 답변)")
+                        final_answer = None
+                        break
+                else:
+                    logging.error(f"❌ 최대 재시도 횟수 초과. 일반 지식으로 답변 생성")
+                    final_answer = None
+                    break
         
         # 일반 지식 답변 여부 플래그
         is_general_knowledge_answer = False
         
-        # 답변에 "지식그래프에 해당 정보가 없습니다"가 포함되어 있는지 확인
-        if "지식그래프에 해당 정보가 없습니다" in final_answer or "지식그래프에 해당 정보가 없습니다." in final_answer:
-            # 일반 지식으로 답변 재생성
-            logging.info("지식그래프에 정보가 없어 일반 지식으로 답변을 재생성합니다.")
+        # 답변 생성 실패 또는 "지식그래프에 해당 정보가 없습니다"가 포함되어 있는지 확인
+        if not final_answer or "지식그래프에 해당 정보가 없습니다" in final_answer or "지식그래프에 해당 정보가 없습니다." in final_answer:
+            logging.info("⚠️  지식그래프 정보 없음 → 일반 지식으로 재생성")
             general_prompt = (
                 f"다음 질문에 대해 일반적인 지식을 바탕으로 친절하고 상세하게 답변해주세요. "
                 f"업로드된 소스 파일을 참고하지 말고, 당신이 알고 있는 일반적인 지식으로만 답변해주세요.\n\n"
@@ -843,16 +1172,15 @@ async def answer_endpoint(request_data: AnswerRequest):
             # 일반 지식 답변인 경우 후처리 생략
             enriched = []
             accuracy = 0.0
+            logging.info("✅ [9] 완료 | 일반 지식 답변 생성")
         else:
             # 간단 정확도 산출: 답변/참고노드/브레인/스키마 텍스트 기반 지표
+            logging.info("📊 [9] 후처리: 참조 노드 추출 및 정확도 계산 중...")
             accuracy = compute_accuracy(final_answer,referenced_nodes,brain_id,Q,raw_schema_text)
-            logging.info(f"정확도 : {accuracy}")
             # node의 출처 소스 id들 가져오기
             node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
-            logging.info(f"node_to_ids: {node_to_ids}")
             # 모든 source_id 집합 수집
             all_ids = sorted({sid for ids in node_to_ids.values() for sid in ids})
-            logging.info(f"all_ids: {all_ids}")
             # SQLite batch 조회로 id→title 매핑
             id_to_title = db_handler.get_titles_by_ids(all_ids)
                    
@@ -881,6 +1209,8 @@ async def answer_endpoint(request_data: AnswerRequest):
 
         # AI 답변 저장 및 chat_id 획득
         chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
+        
+        logging.info("✅ [10] 완료 | 답변 생성 완료 (정확도: %.2f)", accuracy)
 
         return {
             "answer": final_answer,
