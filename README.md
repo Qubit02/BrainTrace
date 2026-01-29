@@ -625,6 +625,8 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
 
 ---
+LLM 기반: OpenAI/Ollama로 노드/엣지 추출
+규칙 기반(수동 청킹): LLM 없이 manual_chunking_sentences 로 노드/엣지 생성
 
 ## 결과물
 
