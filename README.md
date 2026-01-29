@@ -626,8 +626,6 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
 ---
 
----
-
 ## 질문-답변(Q&A) 파이프라인
 
 <p>BrainTrace의 Q&A는 <b>질문 → 임베딩 검색 → 그래프 DB 조회 → LLM 답변 생성 → 참조 노드/출처/정확도 계산 → 출처보기</b> 순으로 처리됩니다. </p>
@@ -757,7 +755,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
    ```
 
 ---
----
+
 ## 지식 그래프 생성 방식 (2가지)
 
 BrainTrace는 지식 그래프를 생성할 때 두 가지 로직을 고려했습니다.
