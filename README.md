@@ -625,6 +625,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
 
 ---
+
 ---
 
 ## 질문-답변(Q&A) 파이프라인
@@ -754,6 +755,19 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
    chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
    return {"answer": final_answer, "referenced_nodes": enriched, "chat_id": chat_id, "accuracy": accuracy}
    ```
+
+---
+---
+## 지식 그래프 생성 방식 (2가지)
+
+BrainTrace는 지식 그래프를 생성할 때 두 가지 로직을 고려했습니다.
+
+1. **알고리즘 기반(수동 청킹)**  
+   위의 “지식 그래프 생성 파이프라인”에서 설명한 방식입니다. LLM 없이 `manual_chunking_sentences`로 문장을 청킹하고, 알고리즘적으로 노드/엣지를 생성합니다.
+
+2. **LLM 기반(OpenAI/Ollama)**  
+   OpenAI/Ollama가 원문에서 노드/엣지를 추출하고, `description`을 추가로 생성합니다. (`description`은 노드를 한 문장으로 요약한 설명입니다.) 
+   이후 `description`과 원문 문장 임베딩 유사도를 비교해 `original_sentences`를 산출합니다.
 
 ---
 
