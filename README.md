@@ -625,6 +625,138 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 지식 그래프에 대한 더 자세한 설명은 [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)에서 확인할 수 있습니다.
 
 ---
+---
+
+## 질문-답변(Q&A) 파이프라인
+
+<p>BrainTrace의 Q&A는 <b>질문 → 임베딩 검색 → 그래프 DB 조회 → LLM 답변 생성 → 참조 노드/출처/정확도 계산 → 출처보기</b> 순으로 처리됩니다. </p>
+
+1. **질문 입력**
+   - 프론트에서 질문을 먼저 세션에 저장한 뒤, 질문/모델 정보를 전송합니다.
+
+   ```python
+   # backend/models/request_models.py
+   class AnswerRequest(BaseModel):
+       question: str
+       session_id: int
+       brain_id: int
+       model: str = "ollama"          # openai 또는 ollama
+       model_name: str = "gemma3:4b"  # 실제 모델명
+       use_deep_search: bool = False  # 딥서치 여부
+   ```
+
+2. **질문 임베딩 & 유사 노드 검색(Qdrant, Q 계산)**
+   - 질문을 KoE5 임베딩으로 변환한 뒤 Qdrant에서 유사 노드를 탐색합니다.
+   - `Q`는 **질문과 검색된 노드들의 평균 유사도**로, 정확도 계산에 사용됩니다.
+
+   ```python
+   # backend/routers/brain_graph.py
+   question_embedding = embedding_service.encode_text(question)
+   similar_nodes, Q = embedding_service.search_similar_nodes(
+       embedding=question_embedding, brain_id=brain_id
+   )
+   ```
+
+   ```python
+   # backend/services/embedding_service.py 
+   def search_similar_nodes(..., threshold=0.55, high_score_threshold=0.95):
+       ...
+       # 최종 노드 평균 유사도 = Q
+       return final_nodes, round(Q, 4)
+   ```
+
+3. **그래프 DB 조회 (빠른 탐색 / 딥서치)**
+   - `use_deep_search`에 따라 Neo4j 쿼리 경로가 달라집니다.
+   - 기본 모드는 **이웃 노드 중 특정 값을 가지고 있는 노드를 탐색**, 딥서치는 **특정 값이 있는 노드가 나올 때까지 탐색**합니다.
+
+   ```python
+   # backend/routers/brain_graph.py 
+   if use_deep_search:
+       result = neo4j_handler.query_schema_by_node_names_deepSearch(similar_node_names, brain_id)
+   else:
+       result = neo4j_handler.query_schema_by_node_names(similar_node_names, brain_id)
+   ```
+
+4. **스키마 텍스트 구성 (LLM 입력용 컨텍스트)**
+   - Neo4j에서 조회된 노드/관계를 **문장형 컨텍스트**로 변환합니다.
+   - 노드 설명은 **`original_sentences` 기반으로 정리**됩니다.
+
+   ```python
+   # backend/services/openai_service.py or ollama_service.py 
+   raw_schema_text = ai_service.generate_schema_text(nodes, related_nodes, relationships)
+   ```
+
+   ```python
+   # generate_schema_text 내부
+   node_lines.append(f"{name}: {original_sentences}")  # original_sentences를 합친 설명
+   ```
+
+5. **LLM 답변 생성**
+   - 스키마 텍스트 + 질문을 LLM에 전달해 최종 답변을 생성합니다.
+
+   ```python
+   # backend/services/openai_service.py or ollama_service.py
+   final_answer = ai_service.generate_answer(raw_schema_text, question)
+   ```
+
+6. **참조 노드 선정 (답변 임베딩 기반) + 답변에 붙이기**
+   - 답변 텍스트를 다시 임베딩하고, 유사 노드를 찾아 LLM이 **참조한 노드**로 선정합니다.
+   - 기본 임계값은 `0.7`입니다.
+   - BrainTrace는 약 10B 미만의 온디바이스 LLM을 사용합니다. 이정도 크기의 모델에게 “참조한 노드를 함께 반환하라”고 지시하면 응답 포맷이 자주 깨지고, 일관성이 없거나 누락이 발생하는 문제가 잦습니다. 그래서 LLM이 어떤 노드를 참고했는지 **모델 응답을 직접 임베딩해서 그래프에서 다시 찾아내는 방식**이 더 안정적이라고 판단했습니다.
+
+   ```python
+   # backend/services/openai_service.py or ollama_service.py 
+   referenced_nodes = ai_service.generate_referenced_nodes(final_answer, brain_id)
+   ```
+
+   ```python
+   # backend/routers/brain_graph.py 
+   if referenced_nodes:
+       nodes_text = "\n\n[참고된 노드 목록]\n" + "\n".join(f"- {node}" for node in referenced_nodes)
+       final_answer += nodes_text
+   ```
+
+7. **정확도 계산 (Q/S/C 가중합)**
+   - 정확도는 **Q(검색 품질), S(답변-컨텍스트 유사도), C(커버리지)**의 가중합입니다.
+   - `S`는 답변과 **Neo4j 노드 description 컨텍스트**의 코사인 유사도입니다.
+    - `C`는 **커버리지(Coverage)**로, 답변이 실제로 **LLM에 제공된 스키마 컨텍스트 안의 노드**를 얼마나 반영했는지 보는 지표입니다.
+
+   ```python
+   # backend/services/accuracy_service.py 
+   Acc = w_Q * Q + w_S * S + w_C * C
+   # 기본 가중치: w_Q=0.2, w_S=0.7, w_C=0.1
+   ```
+
+8. **원본 소스/문장(근거) 구성**
+   - `referenced_nodes`에 대해 **source_id 목록 + 원문**을 구성합니다.
+   - 원문은 **그래프 생성 시 저장된 `original_sentences`**를 기반으로 합니다.
+
+   ```python
+   # backend/routers/brain_graph.py 
+   node_to_ids = neo4j_handler.get_descriptions_bulk(referenced_nodes, brain_id)
+   id_to_title = db_handler.get_titles_by_ids(all_ids)
+   orig_sents = neo4j_handler.get_original_sentences(node, sid, brain_id)
+   ```
+
+   ```python
+   # backend/neo4j_db/Neo4jHandler.py 
+   # source_id로 필터링 + 중복 제거 + score 제거
+   if str(item.get("source_id")) != str(source_id):
+       continue
+   item.pop("score", None)
+   ```
+
+9. **답변 저장 & 응답 구조**
+   - 최종 답변/참조노드/정확도를 SQLite에 저장하고 응답합니다.
+
+   ```python
+   # backend/routers/brain_graph.py 
+   chat_id = db_handler.save_chat(session_id, True, final_answer, enriched, accuracy)
+   return {"answer": final_answer, "referenced_nodes": enriched, "chat_id": chat_id, "accuracy": accuracy}
+   ```
+
+---
+
 
 ## 결과물
 
