@@ -719,7 +719,7 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
    - 정확도는 **Q(검색 품질), S(답변-컨텍스트 유사도), C(커버리지)**의 가중합입니다.
    - Q는 질문 임베딩으로 Qdrant에서 유사 노드를 검색한 뒤,
       (1) threshold 미만은 제거 → (2) high_score_threshold 이상은 모두 유지 →
-      (3) 중복된 노드 제거 → (4) 그 중 점수 상위 limit개를 선택
+      (3) 중복된 노드 제거 → (4) 그 중 점수 상위 limit개를 선택<br>
      이렇게 최종 선택된 노드들의 유사도(score) 평균으로 계산한 값입니다.
    - `S`는 답변과 **Neo4j 노드 description/original_sentences**의 코사인 유사도입니다.
     - `C`는 **커버리지(Coverage)**로, 답변이 실제로 **LLM에 제공된 스키마 컨텍스트 안의 노드**를 얼마나 반영했는지 보는 지표입니다.
