@@ -8,6 +8,8 @@ Brain Trace System (BrainT)는 사용자가 업로드한 PDF, TXT, DOCX, Markdow
 
 문서를 계속 추가할수록 그래프는 더욱 정교해지고, 검색과 탐색의 깊이와 정확성도 함께 향상됩니다. 흩어져 있던 정보들이 유기적으로 연결되며, 지식은 단순히 쌓이는 것을 넘어 구조화되고 유의미하게 진화하는 형태로 재탄생합니다.
 
+<퀄컴 연계 캡스톤 디자인 당시 퀄컴에 업로드 된 포스트>>
+https://www.qualcomm.com/developer/blog/2025/12/hansung-university-relations-capstone-design-projects
 ---
 
 ## 시스템 아키텍처
